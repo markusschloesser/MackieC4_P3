@@ -1,0 +1,93 @@
+# Python bytecode 2.5 (62131)
+# Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/Encoders.py
+# Compiled at: 2011-01-13 21:07:51
+# Decompiled by https://python-decompiler.com
+from __future__ import absolute_import, print_function, unicode_literals #MS
+from .MackieC4Component import *
+from ableton.v2.base import liveobj_valid #MS
+from builtins import range #MS
+class Encoders(MackieC4Component):
+    """ Represents one encoder of the Mackie C4 """
+    __module__ = __name__
+
+    def __init__(self, main_script, vpot_index):
+        MackieC4Component.__init__(self, main_script)
+        # self.within_destroy = False
+        self.__encoder_controller = None
+        self.__vpot_index = vpot_index
+        self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
+        self.__v_pot_parameter = None
+        self.__v_pot_display_mode = VPOT_DISPLAY_SINGLE_DOT
+        return
+
+    # function provided by MackieC4Component super
+    # def destroy(self):
+    #     self.destroy()
+    #     # self.within_destroy = True
+    #     # MackieC4Component.destroy(self)
+    #     # self.within_destroy = False
+
+    def set_encoder_controller(self, encoder_controller):
+        self.__encoder_controller = encoder_controller
+
+    def vpot_index(self):
+        return self.__vpot_index
+
+    def v_pot_parameter(self):
+        return self.__v_pot_parameter
+
+    def set_v_pot_parameter(self, parameter, display_mode=VPOT_DISPLAY_SINGLE_DOT):
+        self.__v_pot_display_mode = display_mode
+        self.__v_pot_parameter = parameter
+        if not parameter:
+            self.unlight_vpot_leds()
+
+    def unlight_vpot_leds(self):
+        data2 = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode]
+        # .send_midi((CC_STATUS, self.__vpot_cc_nbr, data2[0]))  # mode
+        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, LED_OFF_DATA))  # full off - encoder disable?
+
+    def show_full_enlighted_poti(self):
+        data2 = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode]
+        # self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2[0]))  # mode
+        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2[1]))  # full on
+
+    def build_midi_map(self, midi_map_handle):
+        needs_takeover = False
+        encoder = self.__vpot_index
+        param = self.__v_pot_parameter
+        if param is not None:
+            # if self.__v_pot_display_mode == VPOT_DISPLAY_SPREAD:
+            #     range_end = encoder_ring_spread_range.stop
+            # else:
+            #     range_end = encoder_ring_value_range.stop
+
+            feedback_rule = Live.MidiMap.CCFeedbackRule()
+            feedback_rule.channel = 0
+            feedback_rule.cc_no = self.__vpot_cc_nbr
+            display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
+            range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
+            feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
+            feedback_rule.delay_in_ms = -1.0
+            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover)
+            Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
+        else:
+            channel = 0
+            cc_no = self.__vpot_cc_nbr
+            Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
+
+    def __select_track(self):
+        pass
+        # if self._ChannelStrip__assigned_track:
+        #     all_tracks = self.song().tracks + self.song().return_tracks
+        #     if self.song().view.selected_track != all_tracks[self._ChannelStrip__assigned_track_index()]:
+        #         self.song().view.selected_track = all_tracks[self._ChannelStrip__assigned_track_index()]
+        #     elif self.application().view.is_view_visible('Arranger'):
+        #         if self._ChannelStrip__assigned_track:
+        #             self._ChannelStrip__assigned_track.view.is_collapsed = not self._ChannelStrip__assigned_track.view.is_collapsed
+
+    def refresh_state(self):
+        return ' '
+
+    def on_update_display_timer(self):
+        pass
