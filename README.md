@@ -33,7 +33,7 @@ What works:
 
 What doesn't work:
 
-		1. when the last device of a track is deleted, the script goes crazy with an index error and I THINK the main problem is this:
+    1. when the last device of a track is deleted, the script goes crazy with an index error and I THINK the main problem is this:
 			RemoteScriptError: s.build_midi_map(midi_map_handle)
 			RemoteScriptError:   File "C:\ProgramData\Ableton\Live 11 Beta\Resources\MIDI Remote Scripts\MackieC4\Encoders.py", line 74, in build_midi_map
 			RemoteScriptError: Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feeback_rule, needs_takeover)
