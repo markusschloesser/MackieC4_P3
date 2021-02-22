@@ -31,21 +31,24 @@ __init__.py
 
 """
 from __future__ import absolute_import, print_function, unicode_literals
-import logging, time
+from builtins import str
+from builtins import range
+from builtins import object
+import logging
+import time
 from . LiveUtils import *
 from . LiveUtils import getTracks, getSong, getTempo, getTrack
 from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
 from _Framework.ControlSurface import ControlSurface  #MS
-from builtins import range
-from builtins import object
+
 import Live
 import MidiRemoteScript
 
 logger = logging.getLogger(__name__)
 
-#class MackieC4(ControlSurface):
+
 class MackieC4(object):
     """  Main class that establishes the MackieC4 Component
          --- although technically, the Mackie Control C4Pro is an "extension" of the
@@ -95,6 +98,7 @@ class MackieC4(object):
 
         tracks = self.song().visible_tracks + self.song().return_tracks
         index = 0
+
         # if the selected Live track is in view (on computer screen?)
         # assign track to the local index of the matching selected track in Live
         for track in tracks:
@@ -103,6 +107,7 @@ class MackieC4(object):
             index = index + 1
 
         self.track_count = len(tracks)
+
         # if refresh_state is not already listening for visible tracks view changes
         if self.song().visible_tracks_has_listener(self.refresh_state) != 1:
             self.song().add_visible_tracks_listener(self.refresh_state)
@@ -123,7 +128,7 @@ class MackieC4(object):
         To be called from any components, as soon as their internal state changed in a
         way, that we do need to remap the mappings that are processed directly by the
         Live engine.
-        Dont assume that the request will immediately result in a call to
+        Don't assume that the request will immediately result in a call to
         your build_midi_map function. For performance reasons this is only
         called once per GUI frame.
         """
@@ -153,11 +158,13 @@ class MackieC4(object):
         is_note_on_msg = midi_bytes[0] & 0xF0 == NOTE_ON_STATUS  # (& F0 strips off any channel related bits)
         is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
         is_cc_msg = midi_bytes[0] & 0xF0 == CC_STATUS
+
         # self.log_message("noteON<{}> noteOFF<{}> cc<{}> received".format(is_note_on_msg, is_note_off_msg, is_cc_msg))
         if is_note_on_msg or is_note_off_msg:  # it will never be a note off message
             channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
             note = midi_bytes[1]  # data1
             velocity = midi_bytes[2]  # data2
+
             # self.log_message("note<{}> velo<{}> received".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range
@@ -176,9 +183,11 @@ class MackieC4(object):
                 elif note in encoder_switch_ids:  # this is just the 'encoder switches'
                     self.__encoder_controller.handle_pressed_v_pot(note)
         if is_cc_msg:  # 240 == CC_STATUS:
+
             # channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
             cc_nbr = midi_bytes[1]  # data1
             cc_value = midi_bytes[2]  # data2
+
             # self.log_message("cc_nbr<{}> cc_value<{}> received".format(cc_nbr, cc_value))
             if cc_nbr in encoder_cc_ids:  # 0x20 - 0x3F
                 vpot_index = cc_nbr & 0x0F  # & 0F preserves only vpot_index related bits)
@@ -231,6 +240,7 @@ class MackieC4(object):
         self.song().remove_visible_tracks_listener(self.refresh_state)
 
     def build_midi_map(self, midi_map_handle):
+
         # build the relationships between info in Live and each __encoder
         for s in self.__encoders:
             s.build_midi_map(midi_map_handle)
@@ -249,6 +259,7 @@ class MackieC4(object):
 
     def suggest_map_mode(self, cc_no, channel=0):
         result = Live.MidiMap.MapMode.absolute
+
         # if cc_no in range(FID_PANNING_BASE, FID_PANNING_BASE + NUM_ENCODERS):
         if cc_no in encoder_range:
             result = Live.MidiMap.MapMode.relative_signed_bit
@@ -293,6 +304,7 @@ class MackieC4(object):
                 found = 1
 
         if found == 0:
+
             # I think this 128 might mean use the master track index as a fallback
             # but index 128 is out-of-bounds by one
             # (valid track indexes inside EncoderController are 00 - 127)
@@ -325,7 +337,7 @@ class MackieC4(object):
 
     def add_tempo_listener(self):
         self.rem_tempo_listener()
-        # print 'add tempo listener'
+        # print ('add tempo listener')
         if self.song().tempo_has_listener(self.tempo_change) != 1:
             self.song().add_tempo_listener(self.tempo_change)
 
@@ -373,31 +385,31 @@ class MackieC4(object):
 
     def rem_clip_listeners(self):
         for slot in self.slisten:
-            if slot != None:
+            if slot is not None:
                 if slot.has_clip_has_listener(self.slisten[slot]) == 1:
                     slot.remove_has_clip_listener(self.slisten[slot])
 
         self.slisten = {}
         for clip in self.clisten:
-            if clip != None:
+            if clip is not None:
                 if clip.playing_status_has_listener(self.clisten[clip]) == 1:
                     clip.remove_playing_status_listener(self.clisten[clip])
 
         self.clisten = {}
         for clip in self.pplisten:
-            if clip != None:
+            if clip is not None:
                 if clip.playing_position_has_listener(self.pplisten[clip]) == 1:
                     clip.remove_playing_position_listener(self.pplisten[clip])
 
         self.pplisten = {}
         for clip in self.cnlisten:
-            if clip != None:
+            if clip is not None:
                 if clip.name_has_listener(self.cnlisten[clip]) == 1:
                     clip.remove_name_listener(self.cnlisten[clip])
 
         self.cnlisten = {}
         for clip in self.cclisten:
-            if clip != None:
+            if clip is not None:
                 if clip.color_has_listener(self.cclisten[clip]) == 1:
                     clip.remove_color_listener(self.cclisten[clip])
 
@@ -417,15 +429,15 @@ class MackieC4(object):
         return
 
     def add_cliplistener(self, clip, tid, cid):
-        cb = lambda : self.clip_changestate(clip, tid, cid)
+        cb = lambda: self.clip_changestate(clip, tid, cid)
         if (clip in self.clisten) != 1:
             clip.add_playing_status_listener(cb)
             self.clisten[clip] = cb
-        cb2 = lambda : self.clip_position(clip, tid, cid)
+        cb2 = lambda: self.clip_position(clip, tid, cid)
         if (clip in self.pplisten) != 1:
             clip.add_playing_position_listener(cb2)
             self.pplisten[clip] = cb2
-        cb3 = lambda : self.clip_name(clip, tid, cid)
+        cb3 = lambda: self.clip_name(clip, tid, cid)
         if (clip in self.cnlisten) != 1:
             clip.add_name_listener(cb3)
             self.cnlisten[clip] = cb3
@@ -574,25 +586,25 @@ class MackieC4(object):
         if (track in self.mlisten['sends']) != 1:
             self.mlisten['sends'][track] = {}
         if (send in self.mlisten['sends'][track]) != 1:
-            cb = lambda : self.send_changestate(tid, track, sid, send)
+            cb = lambda: self.send_changestate(tid, track, sid, send)
             self.mlisten['sends'][track][send] = cb
             send.add_value_listener(cb)
 
     def add_mixert_listener(self, tid, type, track):
         if (track in self.mlisten[type]) != 1:
-            cb = lambda : self.mixert_changestate(type, tid, track)
+            cb = lambda: self.mixert_changestate(type, tid, track)
             self.mlisten[type][track] = cb
             eval('track.add_' + type + '_listener(cb)')
 
     def add_mixerv_listener(self, tid, type, track):
         if (track in self.mlisten[type]) != 1:
-            cb = lambda : self.mixerv_changestate(type, tid, track)
+            cb = lambda: self.mixerv_changestate(type, tid, track)
             self.mlisten[type][track] = cb
             eval('track.mixer_device.' + type + '.add_value_listener(cb)')
 
     def add_master_listener(self, tid, type, track):
         if (track in self.masterlisten[type]) != 1:
-            cb = lambda : self.mixerv_changestate(type, tid, track, 2)
+            cb = lambda: self.mixerv_changestate(type, tid, track, 2)
             self.masterlisten[type][track] = cb
             eval('track.mixer_device.' + type + '.add_value_listener(cb)')
 
@@ -600,24 +612,24 @@ class MackieC4(object):
         if (track in self.rlisten['sends']) != 1:
             self.rlisten['sends'][track] = {}
         if (send in self.rlisten['sends'][track]) != 1:
-            cb = lambda : self.send_changestate(tid, track, sid, send, 1)
+            cb = lambda: self.send_changestate(tid, track, sid, send, 1)
             self.rlisten['sends'][track][send] = cb
             send.add_value_listener(cb)
 
     def add_retmixert_listener(self, tid, type, track):
         if (track in self.rlisten[type]) != 1:
-            cb = lambda : self.mixert_changestate(type, tid, track, 1)
+            cb = lambda: self.mixert_changestate(type, tid, track, 1)
             self.rlisten[type][track] = cb
             eval('track.add_' + type + '_listener(cb)')
 
     def add_retmixerv_listener(self, tid, type, track):
         if (track in self.rlisten[type]) != 1:
-            cb = lambda : self.mixerv_changestate(type, tid, track, 1)
+            cb = lambda: self.mixerv_changestate(type, tid, track, 1)
             self.rlisten[type][track] = cb
             eval('track.mixer_device.' + type + '.add_value_listener(cb)')
 
     def add_trname_listener(self, tid, track, ret=0):
-        cb = lambda : self.trname_changestate(tid, track, ret)
+        cb = lambda: self.trname_changestate(tid, track, ret)
         if ret == 1:
             if (track in self.rlisten['name']) != 1:
                 self.rlisten['name'][track] = cb
@@ -626,11 +638,11 @@ class MackieC4(object):
         track.add_name_listener(cb)
 
     def add_meter_listener(self, tid, track, r=0):
-        cb = lambda : self.meter_changestate(tid, track, 0, r)
+        cb = lambda: self.meter_changestate(tid, track, 0, r)
         if (track in self.mlisten['oml']) != 1:
             self.mlisten['oml'][track] = cb
         track.add_output_meter_left_listener(cb)
-        cb = lambda : self.meter_changestate(tid, track, 1, r)
+        cb = lambda: self.meter_changestate(tid, track, 1, r)
         if (track in self.mlisten['omr']) != 1:
             self.mlisten['omr'][track] = cb
         track.add_output_meter_right_listener(cb)
@@ -713,7 +725,7 @@ class MackieC4(object):
                 grouptrack = 1
             else:
                 grouptrack = 0
-            import LiveUtils
+            from . LiveUtils import getTracks
             self.trBlock(0, len(LiveUtils.getTracks()))
 
     def meter_changestate(self, tid, track, lr, r=0):
@@ -863,7 +875,6 @@ class MackieC4(object):
             self.log_message("unlocking surface, led state OFF")
             self.surface_is_locked = 0
             self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
-
 
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """

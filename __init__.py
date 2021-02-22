@@ -11,5 +11,5 @@ def create_instance(c_instance):
 
 from _Framework.Capabilities import *
 
-def get_capabilities():
-    return {GENERIC_SCRIPT_KEY: True}
+# def get_capabilities():
+#    return {GENERIC_SCRIPT_KEY: True}

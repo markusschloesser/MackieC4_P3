@@ -2,9 +2,10 @@
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/MackieC4Component.py
 # Compiled at: 2011-01-12 12:23:43
 # Decompiled by https://python-decompiler.com
-from __future__ import absolute_import, print_function, unicode_literals  #MS
+from __future__ import absolute_import, print_function, unicode_literals
 from .consts import *
 import Live
+import MidiRemoteScript
 from _Framework.ControlSurface import ControlSurface
 
 
@@ -27,17 +28,29 @@ class MackieC4Component():
     def main_script(self):
         return self.__main_script
 
-    # def shift_is_pressed(self):
-    #     return self.__main_script.shift_is_pressed()
-    #
-    # def option_is_pressed(self):
-    #     return self.__main_script.option_is_pressed()
-    #
-    # def control_is_pressed(self):
-    #     return self.__main_script.control_is_pressed()
-    #
-    # def alt_is_pressed(self):
-    #     return self.__main_script.alt_is_pressed()
+    def shift_is_pressed(self):
+        return self.__main_script.shift_is_pressed()
+
+    def set_shift_is_pressed(self, pressed):
+        self.__main_script.shift_is_pressed = pressed
+
+    def option_is_pressed(self):
+        return self.__main_script.option_is_pressed()
+
+    def set_option_is_pressed(self, pressed):
+        self.__main_script.option_is_pressed = pressed
+
+    def control_is_pressed(self):
+        return self.__main_script.control_is_pressed()
+
+    def set_control_is_pressed(self, pressed):
+        self.__main_script.set_pressed = pressed
+
+    def alt_is_pressed(self):
+        return self.__main_script.alt_is_pressed()
+
+    def set_alt_is_pressed(self, pressed):
+        self.__main_script.set_pressed = pressed
 
     def song(self):
         return self.__main_script.song()

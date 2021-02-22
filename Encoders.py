@@ -2,17 +2,19 @@
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/Encoders.py
 # Compiled at: 2011-01-13 21:07:51
 # Decompiled by https://python-decompiler.com
-from __future__ import absolute_import, print_function, unicode_literals #MS
-from .MackieC4Component import *
-from ableton.v2.base import liveobj_valid #MS
-from builtins import range #MS
+from __future__ import absolute_import, print_function, unicode_literals  # MS
+from . MackieC4Component import *
+from ableton.v2.base import liveobj_valid  # MS
+from builtins import range  # MS
+
+
 class Encoders(MackieC4Component):
     """ Represents one encoder of the Mackie C4 """
     __module__ = __name__
 
     def __init__(self, main_script, vpot_index):
         MackieC4Component.__init__(self, main_script)
-        # self.within_destroy = False
+        self.within_destroy = False
         self.__encoder_controller = None
         self.__vpot_index = vpot_index
         self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
@@ -22,10 +24,10 @@ class Encoders(MackieC4Component):
 
     # function provided by MackieC4Component super
     # def destroy(self):
-    #     self.destroy()
-    #     # self.within_destroy = True
-    #     # MackieC4Component.destroy(self)
-    #     # self.within_destroy = False
+    #     # self.destroy()
+    #     self.within_destroy = True
+    #     MackieC4Component.destroy(self)
+    #     self.within_destroy = False
 
     def set_encoder_controller(self, encoder_controller):
         self.__encoder_controller = encoder_controller
@@ -62,14 +64,21 @@ class Encoders(MackieC4Component):
             # else:
             #     range_end = encoder_ring_value_range.stop
 
-            feedback_rule = Live.MidiMap.CCFeedbackRule()
-            feedback_rule.channel = 0
-            feedback_rule.cc_no = self.__vpot_cc_nbr
+            feeback_rule = Live.MidiMap.CCFeedbackRule()
+            feeback_rule.channel = 0
+            feeback_rule.cc_no = self.__vpot_cc_nbr
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
             range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
-            feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
-            feedback_rule.delay_in_ms = -1.0
-            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover)
+            feeback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
+            feeback_rule.delay_in_ms = -1.0
+            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feeback_rule, needs_takeover)
+            #  MS: now wtf does the line give a Boost Error with:
+            #  RemoteScriptError: Python argument types in
+            #  MidiMap.map_midi_cc_with_feedback_map(int, DeviceParameter, int, int, MapMode, CCFeedbackRule, bool)
+            #  did not match C++ signature:
+            #  map_midi_cc_with_feedback_map(unsigned int midi_map_handle, class TPyHandle<class ATimeableValue> parameter, int midi_channel, int controller_number, enum NRemoteMapperTypes::TControllerMapMode map_mode, class NPythonMidiMap::TCCFeedbackRule feedback_rule, bool avoid_takeover, float sensitivity=1.0)
+            #  maybe LOM thing??
+
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
             channel = 0
@@ -77,14 +86,14 @@ class Encoders(MackieC4Component):
             Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
 
     def __select_track(self):
-        pass
-        # if self._ChannelStrip__assigned_track:
-        #     all_tracks = self.song().tracks + self.song().return_tracks
-        #     if self.song().view.selected_track != all_tracks[self._ChannelStrip__assigned_track_index()]:
-        #         self.song().view.selected_track = all_tracks[self._ChannelStrip__assigned_track_index()]
-        #     elif self.application().view.is_view_visible('Arranger'):
-        #         if self._ChannelStrip__assigned_track:
-        #             self._ChannelStrip__assigned_track.view.is_collapsed = not self._ChannelStrip__assigned_track.view.is_collapsed
+        #  pass  # MS: SISSY put this pass in, and commented everything following out, why? lets try reversing that
+        if self._ChannelStrip__assigned_track:
+            all_tracks = self.song().tracks + self.song().return_tracks
+            if self.song().view.selected_track != all_tracks[self._ChannelStrip__assigned_track_index()]:
+                self.song().view.selected_track = all_tracks[self._ChannelStrip__assigned_track_index()]
+            elif self.application().view.is_view_visible('Arranger'):
+                if self._ChannelStrip__assigned_track:
+                    self._ChannelStrip__assigned_track.view.is_collapsed = not self._ChannelStrip__assigned_track.view.is_collapsed
 
     def refresh_state(self):
         return ' '

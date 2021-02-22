@@ -4,12 +4,12 @@
 # Decompiled by https://python-decompiler.com
 from __future__ import absolute_import, print_function, unicode_literals  #MS
 from __future__ import division
-from builtins import chr
-from builtins import range
 from past.utils import old_div
-from .MackieC4Component import *
+from builtins import range
+from . consts import *
+from . MackieC4Component import *
 from _Generic.Devices import *
-import math
+import math, time
 
 
 class EncoderController(MackieC4Component):
@@ -42,14 +42,18 @@ class EncoderController(MackieC4Component):
         self.t_r_count = 0  # nbr of return tracks
         self.t_current = 0  # index of current selected track
         self.selected_track = None  # Live's selected-Track Object?
+
         # track device count -- the count of devices loaded on the t_current track
         # see device_counter(self, t, d):
         self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
+
+        # track device current -- the index of the currently selected device indexed by the t_current track
+        self.t_d_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
+
         # t_d bank count -- the count of the devices on the t_current track (in banks of 8 parameters)
         # see device_counter(self, t, d): (at the same index) the same number as t_d_count but divided by 8
         self.t_d_bank_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
-        # track device current -- the index of the currently selected device indexed by the t_current track
-        self.t_d_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
+
         # t_d bank current -- the index of currently selected device indexed by the t_current track
         # (in banks of 8 parameters) the same index as t_d_current divided by 8
         self.t_d_bank_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
@@ -57,15 +61,18 @@ class EncoderController(MackieC4Component):
         # t_d parameter count -- the count of remote controllable parameters available for the currently selected
         # device on the t_current track
         self.t_d_p_count = [[0 for i in range(SETUP_DB_DEFAULT_SIZE)] for j in range(SETUP_DB_DEFAULT_SIZE)]
+
         # t_d_p bank count -- the count of remote controllable parameters available for the currently selected device on
         # the t_current track (in banks of 24 params)[at the same index, the same number as t_d_p_count but divided by 8]
         self.t_d_p_bank_count = [[0 for i in range(SETUP_DB_DEFAULT_SIZE)] for j in range(SETUP_DB_DEFAULT_SIZE)]
+
         # t_d_p bank current -- the index of the selected remote controllable parameter of the currently selected
         # device on the t_current track (in banks of 24 params)
         self.t_d_p_bank_current = [[0 for i in range(SETUP_DB_DEFAULT_SIZE)] for j in range(SETUP_DB_DEFAULT_SIZE)]
 
         self.__ordered_plugin_parameters = []  # Live objects?
         self.__chosen_plugin = None  # Live's selected
+
         # a list of 32 tuples representing 'what text to display' on the LCD screen above each encoder
         # where slot 0 of each tuple contains the bottom row text
         # and slot 1 contain the top row text
@@ -104,16 +111,17 @@ class EncoderController(MackieC4Component):
         self.__last_send_messages4 = {LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
         return
 
-    # function provided by MackieC4Component super
-    # def destroy(self):
+    # function provided by MackieC4Component super #MS reversed to Leighs version, Sissy had delegated destroy to Super
+    def destroy(self):
     #     self.destroy()
-    #     # MackieC4Component.destroy(self)
+        MackieC4Component.destroy(self)
 
-    # function provided by MackieC4Component super
-    # def request_rebuild_midi_map(self):
+    # function provided by MackieC4Component super #MS reversed to Leighs version, Sissy had delegated destroy to Super
+    def request_rebuild_midi_map(self):
+        self._MackieC4Component__main_script.request_rebuild_midi_map()
     #     self.
     #     self.main_script.request_rebuild_midi_map(self)
-    #     #MackieC4Component.request_rebuild_midi_map(self)
+    #     self._MackieC4Component.request_rebuild_midi_map(self)
 
     def reset_device_counter(self):
         self.t_d_count = []
@@ -181,7 +189,7 @@ class EncoderController(MackieC4Component):
             self.song().view.select_device(devices_on_selected_trk[0])
 
         self.__reorder_parameters()
-        self.__reassign_encoder_parameters()
+        self.__reassign_encoder_parameters(for_display_only=False)  # MS for_display_only=False is new! Seems ok
         self.request_rebuild_midi_map()
         return
 
@@ -197,7 +205,7 @@ class EncoderController(MackieC4Component):
         else:
             self.__chosen_plugin = self.selected_track.devices[self.t_d_current[self.t_current]]
             self.__reorder_parameters()
-        self.__reassign_encoder_parameters()
+        self.__reassign_encoder_parameters(for_display_only=False)  # MS for_display_only=False is new! Seems ok
         self.request_rebuild_midi_map()
         return
 
@@ -215,6 +223,7 @@ class EncoderController(MackieC4Component):
         # similarly the number of remote-controllable parameters on any one device must be >= 0 AND <= 128
         for t in track_index_range:
             for d in range(self.t_d_count[t]):
+
                 # shift values up one index to make room for new track data
                 self.t_d_p_count[(t + 1)][d] = self.t_d_p_count[t][d]
                 self.t_d_p_bank_count[(t + 1)][d] = self.t_d_p_bank_count[t][d]
@@ -240,7 +249,8 @@ class EncoderController(MackieC4Component):
             self.t_d_p_bank_count[track_index][d] = math.ceil(len(parms_of_devs_on_trk) / SETUP_DB_PARAM_BANK_SIZE)
             self.t_d_p_bank_current[track_index][d] = 0
 
-        self.refresh_state()
+        # self.refresh_state() #MS out-commented, copy from Leigh on next line
+        self._MackieC4Component__main_script.refresh_state()
         if self.t_d_count[track_index] == 0:
             self.__chosen_plugin = None
             self.__reorder_parameters()
@@ -249,7 +259,7 @@ class EncoderController(MackieC4Component):
             self.__chosen_plugin = selected_device
             self.song().view.select_device(selected_device)
             self.__reorder_parameters()
-        self.__reassign_encoder_parameters()
+        self.__reassign_encoder_parameters(for_display_only=False)
         self.request_rebuild_midi_map()
         return
 
@@ -271,7 +281,7 @@ class EncoderController(MackieC4Component):
 
         self.selected_track = self.song().view.selected_track
         self.t_count -= 1
-        self.refresh_state()
+        self.refresh_state()  # MS potentially copy from leigh over as above
         if len(self.selected_track.devices) == 0:
             self.__chosen_plugin = None
             self.__reorder_parameters()
@@ -279,11 +289,11 @@ class EncoderController(MackieC4Component):
             selected_device = self.selected_track.devices[self.t_d_current[self.t_current]]
             self.__chosen_plugin = selected_device
             self.__reorder_parameters()
-        self.__reassign_encoder_parameters()
+        self.__reassign_encoder_parameters(for_display_only=False)  # MS things in bracket from leigh, seems ok
         self.request_rebuild_midi_map()
         return
 
-    def device_added_deleted_or_changed(self):
+    def device_added_deleted_or_changed(self):  # MS this is where things currently break when device delete line 358
 
         device_count_track = self.t_d_count[self.t_current]
         device_was_added = len(self.selected_track.devices) > device_count_track
@@ -324,9 +334,9 @@ class EncoderController(MackieC4Component):
             self.t_d_bank_current[self.t_current] = math.ceil((device_count_track + 1) / SETUP_DB_DEVICE_BANK_SIZE)
             self.__chosen_plugin = self.selected_track.devices[new_device_index]
             self.__reorder_parameters()
-            self.__reassign_encoder_parameters()
+            self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from Leigh, seems ok
             self.request_rebuild_midi_map()
-        elif device_was_removed:
+        elif device_was_removed:  # MS this is  where things currently really break when last device delete
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
@@ -345,14 +355,14 @@ class EncoderController(MackieC4Component):
 
             self.t_d_count[self.t_current] -= 1
             self.t_d_bank_count[self.t_current] = math.ceil(self.t_d_count[self.t_current] / SETUP_DB_DEVICE_BANK_SIZE)
-            self.__chosen_plugin = self.selected_track.devices[deleted_device_index]
+            self.__chosen_plugin = self.selected_track.devices[deleted_device_index]  # MS this produces an Index error?
             self.__reorder_parameters()
-            self.__reassign_encoder_parameters()
+            self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from Leigh, seems ok
             self.request_rebuild_midi_map()
         else:  # selected device changed
             self.__chosen_plugin = self.selected_track.devices[changed_device_index]
             self.__reorder_parameters()
-            self.__reassign_encoder_parameters()
+            self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket entry new from Leigh, works
             self.request_rebuild_midi_map()
 
     def assignment_mode(self):
@@ -380,23 +390,27 @@ class EncoderController(MackieC4Component):
 
         if update_self:
             self.t_d_p_bank_current[self.t_current][self.t_d_current[self.t_current]] = current_bank_nbr
-            self.__reassign_encoder_parameters()
+            self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket entry new from Leigh, works
             self.request_rebuild_midi_map()
 
     def handle_assignment_switch_ids(self, switch_id):
+
         # C4 assignment.marker button == C4M_USER mode
         update_self = False
         if switch_id == C4SID_MARKER:
+
             # self.__last_assignment_mode = self.__assignment_mode != C4M_USER and self.__assignment_mode
             if self.__assignment_mode != button_id_to_assignment_mode[C4SID_MARKER]:  # C4M_USER:
                 self.__last_assignment_mode = self.__assignment_mode
                 self.__assignment_mode = button_id_to_assignment_mode[C4SID_MARKER]  # C4M_USER
                 update_self = True
+
         # C4 assignment.track button == C4M_PLUGINS mode
         elif switch_id == C4SID_TRACK:
             if self.__assignment_mode != button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
                 self.__last_assignment_mode = self.__assignment_mode
                 self.__assignment_mode = button_id_to_assignment_mode[C4SID_TRACK]  # C4M_PLUGINS
+
                 # **  If the local "db" says the index of the current device is 0,
                 # ** And the local "db" says the count of devices is not 0
                 # ** force the first device on the track to be
@@ -406,12 +420,14 @@ class EncoderController(MackieC4Component):
                 if self.t_d_current[self.t_current] == 0 and self.t_d_count[self.t_current] != 0:
                     self.song().view.select_device(self.selected_track.devices[0])
                 update_self = True
+
         # C4 assignment.chan_strip button == C4M_CHANNEL_STRIP mode
         elif switch_id == C4SID_CHANNEL_STRIP:
             if self.__assignment_mode != button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]:
                 self.__last_assignment_mode = self.__assignment_mode
                 self.__assignment_mode = button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]
                 update_self = True
+
         # C4 assignment.function button == C4M_FUNCTION mode
         elif switch_id == C4SID_FUNCTION:
             if self.__assignment_mode != button_id_to_assignment_mode[C4SID_FUNCTION]:
@@ -421,7 +437,7 @@ class EncoderController(MackieC4Component):
 
         if update_self:
             self.update_assignment_mode_leds()
-            self.__reassign_encoder_parameters()
+            self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket entry new from Leigh, works
             self.request_rebuild_midi_map()
         # else don't update because nothing changed here
 
@@ -446,7 +462,7 @@ class EncoderController(MackieC4Component):
                 self.song().view.select_device(current_selected_device)
                 self.__chosen_plugin = current_selected_device
                 self.__reorder_parameters()
-                self.__reassign_encoder_parameters()
+                self.__reassign_encoder_parameters(for_display_only=False)  # MS for_display_only=False is new! Seems ok
                 self.request_rebuild_midi_map()
 
     def update_assignment_mode_leds(self):
@@ -506,7 +522,6 @@ class EncoderController(MackieC4Component):
                             self.selected_track.mute = False
                             s.unlight_vpot_leds()
 
-
     def handle_pressed_v_pot(self, vpot_index):
         """ 'encoder button' clicks are not handled in C4M_USER assignment mode  """
         encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
@@ -520,7 +535,8 @@ class EncoderController(MackieC4Component):
                 if encoder_index == encoder_07_index:
                     if selected_device_bank_index > 0:
                         selected_device_bank_index -= 1
-                        update_self = True
+                        # update_self = True #MS this was from sissy, next line from Leigh, maybe swap again? try!
+                        self.__reassign_encoder_parameters(for_display_only=False)
                 elif encoder_index == encoder_08_index:
                     if selected_device_bank_index < max_device_bank_index:
                         selected_device_bank_index += 1
@@ -528,8 +544,9 @@ class EncoderController(MackieC4Component):
 
                 if update_self:
                     self.t_d_bank_current[self.t_current] = selected_device_bank_index
-                    self.__reassign_encoder_parameters()
+                    self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from Leigh, seems to work
             elif encoder_index in row_01_encoders:
+
                 # automatically switch to Track/Plugins mode
                 self.handle_assignment_switch_ids(C4SID_TRACK)
 
@@ -539,7 +556,7 @@ class EncoderController(MackieC4Component):
                 self.__reorder_parameters()
                 self.t_d_current[self.t_current] = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
                 self.song().view.select_device(self.selected_track.devices[device_offset])
-                self.__reassign_encoder_parameters()
+                self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from Leigh, seems to work
                 self.request_rebuild_midi_map()
             elif encoder_index in row_02_encoders:
                 param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
@@ -604,7 +621,7 @@ class EncoderController(MackieC4Component):
                     pass
 
             if update_self:
-                self.__reassign_encoder_parameters()
+                self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket new, this replaces to instances from sissy
                 self.request_rebuild_midi_map()
 
         elif self.__assignment_mode == C4M_FUNCTION:
@@ -649,16 +666,17 @@ class EncoderController(MackieC4Component):
     def __on_parameter_list_of_chosen_plugin_changed(self):
         assert self.__chosen_plugin is not None
         self.__reorder_parameters()
-        self.__reassign_encoder_parameters()
+        self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from leigh, seems to work
         self.request_rebuild_midi_map()
         return
 
     def __reorder_parameters(self):
         result = []
         if self.__chosen_plugin:
+
             # if a default Live device is chosen, iterate the DEVICE_DICT constant
             # to reorder the local list of plugin parameters
-            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():
+            if self.__chosen_plugin.class_name in DEVICE_DICT.keys(): #MS should we import device dict from generic devices or Live?
                 device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
                 for bank in device_banks:
                     for param_name in bank:
@@ -669,6 +687,7 @@ class EncoderController(MackieC4Component):
                         else:
                             parameter = ''
                         result.append((parameter, parameter_name))
+
             # otherwise reorder the local list to the order provided by the parameter itself
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
@@ -679,7 +698,7 @@ class EncoderController(MackieC4Component):
             self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
             count += 1
 
-    def __reassign_encoder_parameters(self, for_display_only=False):
+    def __reassign_encoder_parameters(self, for_display_only):  # MS "=False" after display only removed
         """ Reevaluate all v-pot parameter assignments """
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
@@ -740,7 +759,7 @@ class EncoderController(MackieC4Component):
                         vpot_param = (send_param[0], VPOT_DISPLAY_WRAP)
                         format_nbr = s_index % NUM_ENCODERS_ONE_ROW
                         if s_index in row_03_encoders:
-                             format_nbr += NUM_ENCODERS_ONE_ROW
+                            format_nbr += NUM_ENCODERS_ONE_ROW
                         # encoder 17 index is (16 % 8) = send 0
                         # encoder 25 index is (24 % 8) = send 8
                         vpot_display_text = (send_param[1], 'send{0}'.format(format_nbr))
@@ -804,7 +823,8 @@ class EncoderController(MackieC4Component):
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
                 s_index = s.vpot_index()
                 # if s_index < encoder_07_index:
-                    # always fill the __displayParameters list
+
+                # always fill the __displayParameters list
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
                         s.unlight_vpot_leds()
@@ -989,6 +1009,8 @@ class EncoderController(MackieC4Component):
                 lower_string4 += so_many_spaces
             else:
                 device_name = self.selected_track.devices[self.t_d_current[self.t_current]].name
+                # MS: this throws massive Index errors when THE LAST device is deleted, maybe needs fallback to "none"?
+
                 lower_string1b += self.__transform_to_size(str(device_name), 20)
                 #  self.main_script().log_message("problematic string source <{0}>, transformed <{1}>".format(device_name, lower_string1b))
                 lower_string1b = lower_string1b.center(20)
@@ -1083,7 +1105,7 @@ class EncoderController(MackieC4Component):
             transformed_text = transformed_text[:-2]  # remove the trailing 'dB'
 
         if len(transformed_text) > new_size:
-            for um in [' ', 'i', 'o', 'u', 'e', 'a']:
+            for um in (' ', 'i', 'o', 'u', 'e', 'a'):  # MS rounded or eckige Brackets? Sissy had eckig, decompiled Live11 had rounded
                 while len(transformed_text) > new_size and transformed_text.rfind(um, 1) != -1:
                     um_pos = transformed_text.rfind(um, 1)
                     transformed_text = transformed_text[:um_pos]
@@ -1166,6 +1188,7 @@ class EncoderController(MackieC4Component):
         ascii_text_sysex_ints = [ord(c) for c in text_to_display]
         for i in range(len(ascii_text_sysex_ints)):
             if ascii_text_sysex_ints[i] > MIDI_DATA_LAST_VALID:
+
                 # replace any integer values above the ASCII 7-bit (MIDI_DATA) range (0x00 - 0x7F)
                 # replacement value is the code for #
                 ascii_text_sysex_ints[i] = ASCII_HASH

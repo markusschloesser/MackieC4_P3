@@ -6,23 +6,27 @@
 
 # max 128 tracks per song
 from __future__ import absolute_import, print_function, unicode_literals  # MS
-from builtins import range  # MS
+from builtins import range
 
 SETUP_DB_DEFAULT_SIZE = 128
+
 # in Channel Strip mode, devices on a track are controlled in banks of 8 devices (8 encoders, one row)
 SETUP_DB_DEVICE_BANK_SIZE = 8
 SETUP_DB_MAX_DEVICE_BANKS = 16
+
 # max 128 devices per track in 16 banks of 8 encoders/devices
 assert SETUP_DB_DEVICE_BANK_SIZE * SETUP_DB_MAX_DEVICE_BANKS == SETUP_DB_DEFAULT_SIZE
+
 # in Track mode, the selected device's parameters are controlled in banks of 24 parameters (24 encoders, three rows)
 SETUP_DB_PARAM_BANK_SIZE = 24
 SETUP_DB_MAX_PARAM_BANKS = 5
+
 # max 120 parameters per device in 5 banks of 24 encoders/parameters
 assert SETUP_DB_PARAM_BANK_SIZE * SETUP_DB_MAX_PARAM_BANKS == SETUP_DB_DEFAULT_SIZE - SETUP_DB_DEVICE_BANK_SIZE
 
 NOTE_OFF_STATUS = 0x80  # 128  0x80 - 0x8F represent the 16 channels a NOTE_OFF message can be sent to (noteNbr, noteVelocity)
 NOTE_ON_STATUS = 0x90  # 144  0x90 - 0x9F represent the 16 channels a NOTE_ON message can be sent to (noteNbr, noteVelocity)
-PAT_STATUS = 0xA0  # 160  0xA0 - 0xAF represent the 16 channels a POLYFONIC AFTERTOUCH message can be sent to (noteNbr, aftertouchPressure)
+PAT_STATUS = 0xA0  # 160  0xA0 - 0xAF represent the 16 channels a POLYPHONIC AFTERTOUCH message can be sent to (noteNbr, aftertouchPressure)
 CC_STATUS = 0xB0  # 176  0xB0 - 0xBF represent the 16 channels a CC message can be sent to (ccParamNbr, ccParamData)
 PGM_CHG_STATUS = 0xC0  # 192  0xC0 - 0xCF represent the 16 channels a Program Change message can be sent to (pgmNbr)
 CAT_STATUS = 0xD0  # 208  0xD0 - 0xDF represent the 16 channels a CHANNEL AFTERTOUCH message can be sent to (aftertouchPressure)
@@ -32,6 +36,7 @@ SYSEX_END_OF = 0xF7  # 247              End of Sysex Message
 MIDI_DATA_START_OFFSET = 0
 MIDI_DATA_LAST_VALID = 0x7F  # 127
 MIDI_CONTROL_START_OFFSET = MIDI_DATA_LAST_VALID + 1  # 0x80 # 128
+
 """
 ALL SYSEX values IN HEX NOTATION (BASE 16)
 -- example SYSEX message telling the C4 to write text to the top row of top (angled) LCD --
@@ -100,6 +105,7 @@ BUTTON_STATE_BLINKING = 1
 BUTTON_PRESSED = 1  # logical?  like is a button currently pressed?
 BUTTON_RELEASED = 0
 FID_PANNING_BASE = 0
+
 """ 
 
 Encoder Knobs and Encoder Buttons are addressed by the same byte values, but prefixed by a 
@@ -164,6 +170,7 @@ VPOT_DISPLAY_WRAP = 2  #
 VPOT_DISPLAY_SPREAD = 3  #
 VPOT_DISPLAY_BOOLEAN = 4  #
 VPOT_DISPLAY_HEX_CONVERT = 0x10  # 16
+
 # min  max leds in ring illuminated
 encoder_ring_led_mode_cc_values = {VPOT_DISPLAY_SINGLE_DOT: (0x01, 0x0B),  # 01 - 0B
                                    VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B),  # 11 - 1B
@@ -189,13 +196,14 @@ C4M_FUNCTION = 3  # == the C4SID_FUNCTION button = 0x08  # 8  G#-1
 ENCODER_BASE = 0
 NUM_ENCODERS_ONE_ROW = 8
 NUM_ENCODERS = NUM_ENCODERS_ONE_ROW * 4
-encoder_range = range(ENCODER_BASE, NUM_ENCODERS)
+encoder_range = range(ENCODER_BASE, NUM_ENCODERS)  # MS do we need to change "range" cos of Py3? see https://python-future.org/compatible_idioms.html#range
 row_00_encoders = range(ENCODER_BASE, NUM_ENCODERS_ONE_ROW)
 row_01_encoders = range(NUM_ENCODERS_ONE_ROW, NUM_ENCODERS_ONE_ROW * 2)  # [8,9,10,11,12,13,14,15]
 row_02_encoders = range(NUM_ENCODERS_ONE_ROW * 2, NUM_ENCODERS_ONE_ROW * 3)  # [16,17,18,19,20,21,22,23]
 row_03_encoders = range(NUM_ENCODERS_ONE_ROW * 3, NUM_ENCODERS)
 
 C4SID_FIRST = 0
+
 # split is a toggle between four "split states" (None, 1/3, 2/2, 3/1)
 # if Commander and the C4 are communicating, then you can display one, two, or three
 # rows of "the next" layout file Commander has loaded depending on the selected "split state"
@@ -207,18 +215,22 @@ C4SID_FIRST = 0
 C4SID_SPLIT = 0  # C -1
 C4SID_LOCK = 0x03  # 3  Eb-1
 C4SID_SPLIT_ERASE = 0x04  # 4 E -1
+
 # buttons inside the 'function' box on the C4 graphics
 system_switch_ids = range(C4SID_SPLIT, C4SID_SPLIT_ERASE + 1)
 C4SID_MARKER = 0x05  # 5  F-1
 C4SID_TRACK = 0x06  # 6  F#-1
+
 # if Commander and the C4 are communicating, then you can toggle the bottom row
 # of all displays between showing the current encoder value
 # and showing any "bottom line text"
 # you cannot change/toggle channel while edit mode is active
 C4SID_CHANNEL_STRIP = 0x07  # 7  G-1
+
 # if Commander and the C4 are communicating,
 # this button toggles the Run/Edit status in Commander/C4
 C4SID_FUNCTION = 0x08  # 8  G#-1
+
 # buttons inside the 'assignment' box on the C4 graphics
 assignment_mode_switch_ids = range(C4SID_MARKER, C4SID_FUNCTION + 1)
 assignment_mode_to_button_id = {C4M_USER: C4SID_MARKER,
@@ -229,36 +241,46 @@ button_id_to_assignment_mode = {C4SID_MARKER: C4M_USER,
                                 C4SID_TRACK: C4M_PLUGINS,
                                 C4SID_CHANNEL_STRIP: C4M_CHANNEL_STRIP,
                                 C4SID_FUNCTION: C4M_FUNCTION}
+
 # if Commander and the C4 are communicating, then you can move back and forth
 # between pages (banks) of the currently loaded layouts (pages have 8 columns and 4 rows)
 C4SID_BANK_LEFT = 0x09  # 9     A -1
 C4SID_BANK_RIGHT = 0x0A  # 10  A#-1
+
 # buttons inside the 'Parameter' box on the C4 graphics
 bank_switch_ids = range(C4SID_BANK_LEFT, C4SID_BANK_RIGHT + 1)
+
 # if Commander and the C4 are communicating, then you can move back and forth
 # between page columns of the currently loaded layouts (pages have 8 columns and 4 rows)
 # note that page banks and single columns can scroll between loaded layouts too
 C4SID_SINGLE_LEFT = 0x0B  # 11    B -1
 C4SID_SINGLE_RIGHT = 0x0C  # 12   C 0
+
 # buttons inside the 'Parameter' box on the C4 graphics
 single_switch_ids = range(C4SID_SINGLE_LEFT, C4SID_SINGLE_RIGHT + 1)
 C4SID_SHIFT = 0x0D  # 13  C# 0
 C4SID_OPTION = 0x0E  # 14  D  0
+
 # control functions just like the channel button: toggles between bottom row LCD displays
 C4SID_CONTROL = 0x0F  # 15  Eb 0
 C4SID_ALT = 0x10  # 16  E  0
+
 # buttons inside the 'Modifiers' box on the C4 graphics
 modifier_switch_ids = range(C4SID_SHIFT, C4SID_ALT + 1)
+
 # if Commander and the C4 are communicating, then you can move up and down
 # through rows of "layout pages" of currently loaded layouts
 C4SID_SLOT_UP = 0x11  # 17  F  0
 C4SID_SLOT_DOWN = 0x12  # 18 F# 0
+
 # buttons around the 'solid black' ellipse on the C4 graphics
 slot_nav_switch_ids = range(C4SID_SLOT_UP, C4SID_SLOT_DOWN + 1)
+
 # if Commander and the C4 are communicating, then you can move up and down
 # then you can move back and forth between pages of loaded layouts
 C4SID_TRACK_LEFT = 0x13  # 19  G  0
 C4SID_TRACK_RIGHT = 0x14  # 20 G# 0
+
 # buttons around the 'solid black' ellipse on the C4 graphics
 track_nav_switch_ids = range(C4SID_TRACK_LEFT, C4SID_TRACK_RIGHT + 1)
 
@@ -301,6 +323,7 @@ C4SID_VPOT_PUSH_31 = 0x3E  # 62  D  4
 C4SID_VPOT_PUSH_32 = 0x3F  # 63  Eb 4
 encoder_switch_ids = range(C4SID_VPOT_PUSH_1, C4SID_VPOT_PUSH_32 + 1)
 C4SID_LAST = 0x3F  # 63
+
 """
 C4 device turning encoder 00 clockwise (topmost row left end)
 000059F8  22   6     B0    00    01    1  ---  CC: Bank MSB       --> in port 22 from C4 (message reports encoder incremented 1 CW step)
@@ -319,6 +342,7 @@ C4 device turning encoder 01 clockwise (topmost row second from left end)
  000320D0   6  23     B0    21    05    1  ---  Control Change
 
 """
+
 C4SID_VPOT_CC_ADDRESS_BASE = 0x20  # 32
 C4SID_VPOT_CC_ADDRESS_1 = 0x20  # 32
 C4SID_VPOT_CC_ADDRESS_2 = 0x21  # 33
