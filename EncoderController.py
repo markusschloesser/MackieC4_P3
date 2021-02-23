@@ -111,12 +111,12 @@ class EncoderController(MackieC4Component):
         self.__last_send_messages4 = {LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
         return
 
-    # function provided by MackieC4Component super #MS reversed to Leighs version, Sissy had delegated destroy to Super
+    # function provided by MackieC4Component super #MS reversed to Leigh's version, Sissy had delegated destroy to Super
     def destroy(self):
     #     self.destroy()
         MackieC4Component.destroy(self)
 
-    # function provided by MackieC4Component super #MS reversed to Leighs version, Sissy had delegated destroy to Super
+    # function provided by MackieC4Component super #MS reversed to Leigh's version, Sissy had delegated destroy to Super
     def request_rebuild_midi_map(self):
         self._MackieC4Component__main_script.request_rebuild_midi_map()
     #     self.
@@ -336,7 +336,9 @@ class EncoderController(MackieC4Component):
             self.__reorder_parameters()
             self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from Leigh, seems ok
             self.request_rebuild_midi_map()
-        elif device_was_removed:  # MS this is  where things currently really break when last device delete
+        elif device_was_removed:
+            # MS this is  where things currently really break when last device delete.
+            # Update: Bit better now, as C4 switches, but selecting again still causes major on display error
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
@@ -1105,7 +1107,7 @@ class EncoderController(MackieC4Component):
             transformed_text = transformed_text[:-2]  # remove the trailing 'dB'
 
         if len(transformed_text) > new_size:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a'):  # MS rounded or eckige Brackets? Sissy had eckig, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a'):  # MS rounded or square Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(transformed_text) > new_size and transformed_text.rfind(um, 1) != -1:
                     um_pos = transformed_text.rfind(um, 1)
                     transformed_text = transformed_text[:um_pos]

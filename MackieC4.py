@@ -37,14 +37,12 @@ from builtins import object
 import logging
 import time
 from . LiveUtils import *
-from . LiveUtils import getTracks, getSong, getTempo, getTrack
+# from . LiveUtils import getTracks, getSong, getTempo, getTrack #MS
 from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
-from _Framework.ControlSurface import ControlSurface  #MS
-
+# from _Framework.ControlSurface import ControlSurface  #MS
 import Live
-import MidiRemoteScript
 
 logger = logging.getLogger(__name__)
 

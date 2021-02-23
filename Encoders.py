@@ -64,14 +64,14 @@ class Encoders(MackieC4Component):
             # else:
             #     range_end = encoder_ring_value_range.stop
 
-            feeback_rule = Live.MidiMap.CCFeedbackRule()
-            feeback_rule.channel = 0
-            feeback_rule.cc_no = self.__vpot_cc_nbr
+            feedback_rule = Live.MidiMap.CCFeedbackRule()  # MS interestingly in ALL Mackie scripts this is originally "feeback_rule" without the "d"
+            feedback_rule.channel = 0
+            feedback_rule.cc_no = self.__vpot_cc_nbr
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
             range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
-            feeback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
-            feeback_rule.delay_in_ms = -1.0
-            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feeback_rule, needs_takeover)
+            feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
+            feedback_rule.delay_in_ms = -1.0
+            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
             #  MS: now wtf does the line give a Boost Error with:
             #  RemoteScriptError: Python argument types in
             #  MidiMap.map_midi_cc_with_feedback_map(int, DeviceParameter, int, int, MapMode, CCFeedbackRule, bool)
