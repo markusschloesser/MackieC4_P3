@@ -50,7 +50,7 @@ What doesn't work:
 			did not match C++ signature:
 			    map_midi_cc_with_feedback_map(unsigned int midi_map_handle, class TPyHandle<class ATimeableValue> parameter, int midi_channel, int controller_number, enum NRemoteMapperTypes::TControllerMapMode map_mode, class NPythonMidiMap::TCCFeedbackRule feedback_rule, bool avoid_takeover, float sensitivity=1.0)
 		Unfortunately I do not know how to fix this currently (even though I probably spent 4 hrs looking into this already) and I think it's due to LOM changes (Live 8 => Live11)
-		Update: adding the "sensitivy" to the midi map signature thing improves things, see commit notes
+		Update: adding the "sensitivy" to the midi map signature thing improves things, see commit notes. Careful! If you delete the last device and then select the device again on the C4, the log file will fill up VERY quickly.
 		
     2. Parameter names do not get properly shortened, even though the code looks very similar to the Mackie Sources. See the 2 Photos in Google Photos for comparison https://photos.app.goo.gl/m3NXgJcQeLvtHaZZA 
 		
