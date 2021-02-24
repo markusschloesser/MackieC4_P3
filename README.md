@@ -58,3 +58,4 @@ What doesn't work:
 
 
 I am currently not able to fix more, because I don't know how :-). So any help is welcome! Also I just started getting into Git / GitHub and Pycharm as well, so bear (🐻) with me, if I do something stupid and please correct me (constructively cos I'm sensitive ;-) )
+I will also upload the decompiled Ableton Live 11 / Python 3 remote scripts in a separate repository.
