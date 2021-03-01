@@ -1,10 +1,16 @@
+This is a work in progress and NOT fully functioning! 
+I am not a developer and just started diving into Python.
+
+What is it?
+A midi remote script for Ableton Live 11 (!) for the Mackie C4 controller in PYthon 3.
+
 Old Status:
 1. Only had a compiled script from Leigh Hunt
-2. Script was written for Live8 (LOM)
+2. Script was written for Live 8 (LOM)
 3. Was obviously written in Py2
  
 
-What we did last year:
+What we (a very friendly and helpful person which shall remain anonymous until he tells me otherwise) did last year:
   1. First I decompiled the scripts using an online converter, with mixed results.
   2. Jon did lots of stuff to that, fixed, commented, streamlined, adapted. 
   3. I then decompiled using a better online decompiler.
@@ -24,11 +30,11 @@ New status:
 
 What works:
 
-			1. Scripts get detected in Live 11
+			1. Script get detected in Live 11
       
-			2. C4 is usable and shows parameter names, 
+			2. C4 is usable and shows parameter names 
       
-			3. track switching works, also bank parameter switching and device switching
+			3. track switching works, also parameter bank switching and device switching for device mode. Sends etc also work in track mode
  
 
 What doesn't work:
@@ -44,7 +50,12 @@ What doesn't work:
 			did not match C++ signature:
 			    map_midi_cc_with_feedback_map(unsigned int midi_map_handle, class TPyHandle<class ATimeableValue> parameter, int midi_channel, int controller_number, enum NRemoteMapperTypes::TControllerMapMode map_mode, class NPythonMidiMap::TCCFeedbackRule feedback_rule, bool avoid_takeover, float sensitivity=1.0)
 		Unfortunately I do not know how to fix this currently (even though I probably spent 4 hrs looking into this already) and I think it's due to LOM changes (Live 8 => Live11)
+		Update: adding the "sensitivy" to the midi map signature thing improves things, see commit notes. Careful! If you delete the last device and then select the device again on the C4, the log file will fill up VERY quickly.
 		
     2. Parameter names do not get properly shortened, even though the code looks very similar to the Mackie Sources. See the 2 Photos in Google Photos for comparison https://photos.app.goo.gl/m3NXgJcQeLvtHaZZA 
 		
-    3. Parameter values are not shown (which I know is possible because it works on the Mackie Control Pro)
+    3. Parameter values are not shown (which I know is possible because it works on the Mackie Control Pro, again see Photos)
+
+
+I am currently not able to fix more, because I don't know how :-). So any help is welcome! Also I just started getting into Git / GitHub and Pycharm as well, so bear (🐻) with me, if I do something stupid and please correct me (constructively cos I'm sensitive ;-) )
+I will also upload the decompiled Ableton Live 11 / Python 3 remote scripts in a separate repository.
