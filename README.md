@@ -31,10 +31,9 @@ New status:
 What works:
 
 			1. Script get detected in Live 11
-      
-			2. C4 is usable and shows parameter names, encoders can be used and pushing them defaults value 
-			      
-			3. track switching works, also parameter bank switching and device switching for device mode. Sends etc also work in track mode
+			2. C4 is usable and shows parameter names, encoders can be used and pushing them defaults value
+			3. track switching works, also parameter bank switching and device switching for device mode (err just broke that). Sends etc also work in track mode
+			4. (solved, works now) Parameter names do not get properly shortened, even though the code looks very similar to the Mackie Sources. See the 2 Photos in Google Photos for comparison https://photos.app.goo.gl/m3NXgJcQeLvtHaZZA~~ 
  
 
 What doesn't work:
@@ -51,10 +50,8 @@ What doesn't work:
 			    map_midi_cc_with_feedback_map(unsigned int midi_map_handle, class TPyHandle<class ATimeableValue> parameter, int midi_channel, int controller_number, enum NRemoteMapperTypes::TControllerMapMode map_mode, class NPythonMidiMap::TCCFeedbackRule feedback_rule, bool avoid_takeover, float sensitivity=1.0)
 		Unfortunately I do not know how to fix this currently (even though I probably spent 4 hrs looking into this already) and I think it's due to LOM changes (Live 8 => Live11)
 		Update: adding the "sensitivy" to the midi map signature thing improves things, see commit notes. Careful! If you delete the last device and then select the device again on the C4, the log file will fill up VERY quickly.
-		
-    2. (solved) ~~Parameter names do not get properly shortened, even though the code looks very similar to the Mackie Sources. See the 2 Photos in Google Photos for comparison https://photos.app.goo.gl/m3NXgJcQeLvtHaZZA~~ 
-		
-    3. Parameter values are not shown (which I know is possible because it works on the Mackie Control Pro, again see Photos)
+
+    2. Parameter values are not shown (which I know is possible because it works on the Mackie Control Pro, again see Photos), also the encoders light ring shows "values", so it's gotta be somewhere
 
 
 I am currently not able to fix more, because I don't know how :-). So any help is welcome! Also I just started getting into Git / GitHub and Pycharm as well, so bear (🐻) with me, if I do something stupid and please correct me (constructively cos I'm sensitive ;-) )
