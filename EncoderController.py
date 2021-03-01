@@ -118,7 +118,8 @@ class EncoderController(MackieC4Component):
 
     # function provided by MackieC4Component super #MS reversed to Leigh's version, Sissy had delegated destroy to Super
     def request_rebuild_midi_map(self):
-        self._MackieC4Component__main_script.request_rebuild_midi_map()
+        MackieC4Component.request_rebuild_midi_map(self)  # MS mmh good idea? was next line
+        # self._MackieC4Component__main_script.request_rebuild_midi_map()
     #     self.
     #     self.main_script.request_rebuild_midi_map(self)
     #     self._MackieC4Component.request_rebuild_midi_map(self)
@@ -132,6 +133,7 @@ class EncoderController(MackieC4Component):
         self.t_d_bank_count[t] = int(d / SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
     def build_setup_database(self):
+        global device_index
         self.t_count = 0
 
         tracks_in_song = self.song().tracks
@@ -338,7 +340,7 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         elif device_was_removed:
             # MS this is  where things currently really break when last device delete.
-            # Update: Bit better now, as C4 switches, but selecting again still causes major on display error
+            # Update: Bit better now, as C4 switches, but selecting again still causes major on_display error
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
@@ -419,6 +421,8 @@ class EncoderController(MackieC4Component):
                 # ** the selected device in Live?
                 # self.t_d_current[self.t_current] == 0 and self.t_d_count[self.t_current] != 0 and
                 # self.song().view.select_device(self.selected_track.devices[0])
+
+                # MS this could be something
                 if self.t_d_current[self.t_current] == 0 and self.t_d_count[self.t_current] != 0:
                     self.song().view.select_device(self.selected_track.devices[0])
                 update_self = True
@@ -443,7 +447,7 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         # else don't update because nothing changed here
 
-    def handle_slot_nav_switch_ids(self, switch_id):
+    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently broken, don't know what or when I did that cos it used to work
         """ "slot navigation" only functions if the current mode is C4M_PLUGINS """
         if self.__assignment_mode == button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
             current_trk_device_index = self.t_d_current[self.t_current]
@@ -642,7 +646,7 @@ class EncoderController(MackieC4Component):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
         if vpot_index < len(self.selected_track.mixer_device.sends):
             p = self.selected_track.mixer_device.sends[vpot_index]
-            self.main_script().log_message("Param name <{0}>".format(p.name))
+            self.main_script().log_message("Param name <{0}>".format(p.name))  # MS This is were Jon logs the params to the Live log, where to shorten??
             return p, p.name
         else:
             return None, 'None'
@@ -694,13 +698,13 @@ class EncoderController(MackieC4Component):
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
 
-        self.__ordered_plugin_parameters = result
+        self.__ordered_plugin_parameters = result  # MS This is were Jon logs the param names to the Live log
         count = 0
         for p in self.__ordered_plugin_parameters:
             self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
             count += 1
 
-    def __reassign_encoder_parameters(self, for_display_only):  # MS "=False" after display only removed
+    def __reassign_encoder_parameters(self, for_display_only):  # MS "=False" after display only removed. Why?
         """ Reevaluate all v-pot parameter assignments """
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
@@ -921,7 +925,7 @@ class EncoderController(MackieC4Component):
             lower_string1 += '                      '
             for t in encoder_range:
 
-                text_for_display = self.__display_parameters[t]
+                text_for_display = self.__display_parameters[t]  # MS can we shorten here?
                 u_alt_text = ' '
                 l_alt_text = ' '
                 if len(text_for_display) > 1:
@@ -931,23 +935,23 @@ class EncoderController(MackieC4Component):
                     l_alt_text = text_for_display[0]
 
                 if t in range(6, NUM_ENCODERS_ONE_ROW):
-                    upper_string1 += self.__transform_to_size(u_alt_text, 6)
+                    upper_string1 += self.__generate_6_char_string(u_alt_text)
                     upper_string1 += ' '
-                    lower_string1 += self.__transform_to_size(str(l_alt_text), 6)
+                    lower_string1 += self.__generate_6_char_string(str(l_alt_text))
                     lower_string1 += ' '
                 elif t in row_01_encoders:
-                    lower_string2 += self.__transform_to_size(str(l_alt_text), 6)
+                    lower_string2 += self.__generate_6_char_string(str(l_alt_text))
                     lower_string2 += ' '
                 elif t in row_02_encoders:
-                    lower_string3 += self.__transform_to_size(str(l_alt_text), 6)
+                    lower_string3 += self.__generate_6_char_string(str(l_alt_text))
                     lower_string3 += ' '
-                    upper_string3 += self.__transform_to_size(u_alt_text, 6)
+                    upper_string3 += self.__generate_6_char_string(u_alt_text)
                     upper_string3 += ' '
                 elif t in row_03_encoders:
                     if t < encoder_29_index:
-                        lower_string4 += self.__transform_to_size(str(l_alt_text), 6)
+                        lower_string4 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string4 += ' '
-                        upper_string4 += self.__transform_to_size(u_alt_text, 6)
+                        upper_string4 += self.__generate_6_char_string(u_alt_text)
                         upper_string4 += ' '
                     elif t == encoder_29_index:
                         if self.selected_track.can_be_armed:
@@ -971,14 +975,14 @@ class EncoderController(MackieC4Component):
                             lower_string4 += '       '
                             upper_string4 += '       '
                     elif t == encoder_31_index:
-                        lower_string4 += self.__transform_to_size(str(l_alt_text), 6)
+                        lower_string4 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string4 += ' '
                         if self.selected_track.has_audio_output:
                             upper_string4 += ' Pan   '
                         else:
                             upper_string4 += '       '
                     elif t == encoder_32_index:
-                        lower_string4 += self.__transform_to_size(str(l_alt_text), 6)
+                        lower_string4 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string4 += ' '
                         if self.selected_track.has_audio_output:
                             upper_string4 += 'Volume '
@@ -1035,22 +1039,22 @@ class EncoderController(MackieC4Component):
                         l_alt_text = text_for_display[0]
 
                     if t in range(6, NUM_ENCODERS_ONE_ROW):
-                        lower_string1 += self.__transform_to_size(str(l_alt_text), 6)
+                        lower_string1 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string1 += ' '
                     elif t in row_01_encoders:
-                        upper_string2 += self.__transform_to_size(u_alt_text, 6)
+                        upper_string2 += self.__generate_6_char_string(u_alt_text)
                         upper_string2 += ' '
-                        lower_string2 += self.__transform_to_size(str(l_alt_text), 6)
+                        lower_string2 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string2 += ' '
                     elif t in row_02_encoders:
-                        upper_string3 += self.__transform_to_size(u_alt_text, 6)
+                        upper_string3 += self.__generate_6_char_string(u_alt_text)
                         upper_string3 += ' '
-                        lower_string3 += self.__transform_to_size(str(l_alt_text), 6)
+                        lower_string3 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string3 += ' '
                     elif t in row_03_encoders:
-                        upper_string4 += self.__transform_to_size(u_alt_text, 6)
+                        upper_string4 += self.__generate_6_char_string(u_alt_text)
                         upper_string4 += ' '
-                        lower_string4 += self.__transform_to_size(str(l_alt_text), 6)
+                        lower_string4 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string4 += ' '
 
         elif self.__assignment_mode == C4M_FUNCTION:
@@ -1084,9 +1088,29 @@ class EncoderController(MackieC4Component):
         self.send_display_string4(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
         return
 
+  # def __generate_6_char_string(self, display_string): #  MS: Jons work makes sense, but doesn't work. inserted Leighs old stuff, doesnt work either.
+   #     return self.__transform_to_size(display_string, 6)
     def __generate_6_char_string(self, display_string):
-        return self.__transform_to_size(display_string, 6)
+        if not display_string:
+            return '      '
+        if len(display_string.strip()) > 6:
+                if display_string.endswith('dB'):
+                    if display_string.find('.') != -1:
+                        display_string = display_string[:-2]
+        if len(display_string) > 6:
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/'):  # MS added underscore _ and /
+                while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
+                    um_pos = display_string.rfind(um, 1)
+                    display_string = display_string[:um_pos] + display_string[um_pos + 1:]
 
+        else:
+            display_string = display_string.center(6)
+        ret = ''
+        for i in range(6):
+            ret += display_string[i]
+
+        assert len(ret) == 6
+        return ret
     def __generate_20_char_string(self, display_string):
         return self.__transform_to_size(display_string, 20)
 
@@ -1107,7 +1131,7 @@ class EncoderController(MackieC4Component):
             transformed_text = transformed_text[:-2]  # remove the trailing 'dB'
 
         if len(transformed_text) > new_size:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a'):  # MS rounded or square Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/'):  # MS added underscore _  # MS rounded or square Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(transformed_text) > new_size and transformed_text.rfind(um, 1) != -1:
                     um_pos = transformed_text.rfind(um, 1)
                     transformed_text = transformed_text[:um_pos]
@@ -1117,12 +1141,12 @@ class EncoderController(MackieC4Component):
         transformed_text = transformed_text.center(new_size)
         return ''.join([transformed_text[i] for i in range(new_size)])
 
-    def send_display_string1(self, display_address, text_to_display, display_row_offset, cursor_offset=0):
+    def send_display_string1(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
         """
             sends a sysex message to C4 device
             (display_address == Angled display, display_row_offset == top row or bottom row)
         """
-        ascii_text_sysex_ints = self.__generate_sysex_body(text_to_display, display_row_offset, cursor_offset)
+        ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
         is_update = self.__last_send_messages1[display_address][display_row_offset] != ascii_text_sysex_ints
         is_stale = self.__display_repeat_count % self.__display_repeat_timer == 3
         if is_update or is_stale:  # don't send the same sysex message back-to-back unless the repeat timer pops
@@ -1131,12 +1155,12 @@ class EncoderController(MackieC4Component):
                         (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)
 
-    def send_display_string2(self, display_address, text_to_display, display_row_offset, cursor_offset=0):
+    def send_display_string2(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
         """
             sends a sysex message to C4 device
             (display_address == Top-flat display, display_row_offset == top row or bottom row)
         """
-        ascii_text_sysex_ints = self.__generate_sysex_body(text_to_display, display_row_offset, cursor_offset)
+        ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
         is_update = self.__last_send_messages2[display_address][display_row_offset] != ascii_text_sysex_ints
         is_stale = self.__display_repeat_count % self.__display_repeat_timer == 2
         if is_update or is_stale:
@@ -1145,12 +1169,12 @@ class EncoderController(MackieC4Component):
                         (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)
 
-    def send_display_string3(self, display_address, text_to_display, display_row_offset, cursor_offset=0):
+    def send_display_string3(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
         """
             sends a sysex message to C4 device
             (display_address == Middle-flat display, display_row_offset == top row or bottom row)
         """
-        ascii_text_sysex_ints = self.__generate_sysex_body(text_to_display, display_row_offset, cursor_offset)
+        ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
         is_update = self.__last_send_messages3[display_address][display_row_offset] != ascii_text_sysex_ints
         is_stale = self.__display_repeat_count % self.__display_repeat_timer == 1
         if is_update or is_stale:
@@ -1159,12 +1183,12 @@ class EncoderController(MackieC4Component):
                         (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)
 
-    def send_display_string4(self, display_address, text_to_display, display_row_offset, cursor_offset=0):
+    def send_display_string4(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
         """
             sends a sysex message to C4 device
             (display_address == Bottom-flat display, display_row_offset == top row or bottom row)
         """
-        ascii_text_sysex_ints = self.__generate_sysex_body(text_to_display, display_row_offset, cursor_offset)
+        ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
         is_update = self.__last_send_messages4[display_address][display_row_offset] != ascii_text_sysex_ints
         is_stale = self.__display_repeat_count % self.__display_repeat_timer == 0
         if is_update or is_stale:
@@ -1173,7 +1197,7 @@ class EncoderController(MackieC4Component):
                         (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)
 
-    def __generate_sysex_body(self, text_to_display, display_row_offset, cursor_offset=0):
+    def __generate_sysex_body(self, text_for_display, display_row_offset, cursor_offset=0):
 
         # looks like cursor_offset is supposed to be an index to each cell in an LCD row
         # but the SYSEX message for writing to any display row is always 63 bytes
@@ -1187,7 +1211,7 @@ class EncoderController(MackieC4Component):
             assert 0
 
         # convert unicode string (list of character values) to list of integer values
-        ascii_text_sysex_ints = [ord(c) for c in text_to_display]
+        ascii_text_sysex_ints = [ord(c) for c in text_for_display]
         for i in range(len(ascii_text_sysex_ints)):
             if ascii_text_sysex_ints[i] > MIDI_DATA_LAST_VALID:
 

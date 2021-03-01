@@ -256,7 +256,7 @@ class MackieC4(object):
             self.return_resetter = 0
 
     def suggest_map_mode(self, cc_no, channel=0):
-        result = Live.MidiMap.MapMode.absolute
+        result = Live.MidiMap.MapMode.absolute  # does get called (boost error) and does this then need to be 14bit relative?
 
         # if cc_no in range(FID_PANNING_BASE, FID_PANNING_BASE + NUM_ENCODERS):
         if cc_no in encoder_range:

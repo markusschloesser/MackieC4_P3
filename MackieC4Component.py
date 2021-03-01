@@ -3,13 +3,14 @@
 # Compiled at: 2011-01-12 12:23:43
 # Decompiled by https://python-decompiler.com
 from __future__ import absolute_import, print_function, unicode_literals
+from builtins import object  # MS needed for new object at class
 from .consts import *
 import Live
 import MidiRemoteScript
 from _Framework.ControlSurface import ControlSurface
 
 
-class MackieC4Component():
+class MackieC4Component(object):  # MS lets try this, also in new Mackie control scripts
     """Baseclass for every 'sub component' of the Mackie Control. Just offers some """
     __module__ = __name__
 
