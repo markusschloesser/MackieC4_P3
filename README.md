@@ -32,8 +32,8 @@ What works:
 
 			1. Script get detected in Live 11
       
-			2. C4 is usable and shows parameter names 
-      
+			2. C4 is usable and shows parameter names, encoders can be used and pushing them defaults value 
+			      
 			3. track switching works, also parameter bank switching and device switching for device mode. Sends etc also work in track mode
  
 
@@ -52,7 +52,7 @@ What doesn't work:
 		Unfortunately I do not know how to fix this currently (even though I probably spent 4 hrs looking into this already) and I think it's due to LOM changes (Live 8 => Live11)
 		Update: adding the "sensitivy" to the midi map signature thing improves things, see commit notes. Careful! If you delete the last device and then select the device again on the C4, the log file will fill up VERY quickly.
 		
-    2. Parameter names do not get properly shortened, even though the code looks very similar to the Mackie Sources. See the 2 Photos in Google Photos for comparison https://photos.app.goo.gl/m3NXgJcQeLvtHaZZA 
+    2. (solved) ~~Parameter names do not get properly shortened, even though the code looks very similar to the Mackie Sources. See the 2 Photos in Google Photos for comparison https://photos.app.goo.gl/m3NXgJcQeLvtHaZZA~~ 
 		
     3. Parameter values are not shown (which I know is possible because it works on the Mackie Control Pro, again see Photos)
 
