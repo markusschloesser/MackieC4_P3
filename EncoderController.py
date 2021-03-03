@@ -9,7 +9,8 @@ from builtins import range
 from . consts import *
 from . MackieC4Component import *
 from _Generic.Devices import *
-import math, time
+import math
+import time
 
 
 class EncoderController(MackieC4Component):
@@ -133,7 +134,7 @@ class EncoderController(MackieC4Component):
         self.t_d_bank_count[t] = int(d / SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
     def build_setup_database(self):
-        global device_index
+
         self.t_count = 0
 
         tracks_in_song = self.song().tracks
@@ -1088,8 +1089,8 @@ class EncoderController(MackieC4Component):
         self.send_display_string4(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
         return
 
-  # def __generate_6_char_string(self, display_string): #  MS: Jons work makes sense, but doesn't work. inserted Leighs old stuff, doesnt work either.
-   #     return self.__transform_to_size(display_string, 6)
+    # def __generate_6_char_string(self, display_string): #  MS: Jons work makes sense, but doesn't work. inserted Leighs old stuff combined with MCU, now works
+    #     return self.__transform_to_size(display_string, 6)
     def __generate_6_char_string(self, display_string):
         if not display_string:
             return '      '
@@ -1111,6 +1112,7 @@ class EncoderController(MackieC4Component):
 
         assert len(ret) == 6
         return ret
+
     def __generate_20_char_string(self, display_string):
         return self.__transform_to_size(display_string, 20)
 
