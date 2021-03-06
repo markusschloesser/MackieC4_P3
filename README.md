@@ -39,22 +39,8 @@ What works:
 
 What doesn't work / ToDo:
 
-    1. when the last device of a track is deleted, the script goes crazy with an index error and I THINK the main problem is this:
-			RemoteScriptError: s.build_midi_map(midi_map_handle)
-			RemoteScriptError:   File "C:\ProgramData\Ableton\Live 11 Beta\Resources\MIDI Remote Scripts\MackieC4\Encoders.py", line 74, in build_midi_map
-			RemoteScriptError: Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feeback_rule, needs_takeover)
-			RemoteScriptError: Boost.Python
-			RemoteScriptError: ArgumentError
-			RemoteScriptError: Python argument types in
-			    MidiMap.map_midi_cc_with_feedback_map(int, DeviceParameter, int, int, MapMode, CCFeedbackRule, bool)
-			did not match C++ signature:
-			    map_midi_cc_with_feedback_map(unsigned int midi_map_handle, class TPyHandle<class ATimeableValue> parameter, int midi_channel, int controller_number, enum NRemoteMapperTypes::TControllerMapMode map_mode, class NPythonMidiMap::TCCFeedbackRule feedback_rule, bool avoid_takeover, float sensitivity=1.0)
-		Unfortunately I do not know how to fix this currently (even though I probably spent 4 hrs looking into this already) and I think it's due to LOM changes (Live 8 => Live11)
-		Update: adding the "sensitivy" to the midi map signature thing improves things, see commit notes. Careful! If you delete the last device and then select the device again on the C4, the log file will fill up VERY quickly.
-
-    2. Parameter values are not shown in Plugin Mode (which I know is possible because it works on the Mackie Control Pro, again see the 2 Photos in Google Photos for comparison https://photos.app.goo.gl/m3NXgJcQeLvtHaZZA~~), also the encoders light ring shows "values", so it's gotta be somewhere. And it works in track mode! 
-       What I don't understand is, everywhere in the Ableton scripts parameters and values are clearly derived from the LOM, so the "Live.DeviceParameter.DeviceParameter.value" should give me what I want. And in all original LIVE scripts 
-       exactly that is called/accessed, BUT NOT in the Mackie scripts. There everywhere where there should be that, instead vpot_parameter is used and I can't find ANY reference to deviceParameter
+    1. last device deletion causes error #1 https://github.com/markusschloesser/MackieC4_P3/issues/1
+    2. Parameter values are not shown #3 https://github.com/markusschloesser/MackieC4_P3/issues/3
     3. When devices are unfolded, the "new" parameters are not shown, needs some listener to device update or so
     4. device switching (when multiple devices on one track) SOMETIMES works, haven't found out yet why. Seems it doesn't work when a device is grouped
     5. need a way to only show existing "Sends" in Track mode
