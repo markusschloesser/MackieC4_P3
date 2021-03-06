@@ -2,7 +2,7 @@
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/EncoderController.py
 # Compiled at: 2011-01-22 05:02:32
 # Decompiled by https://python-decompiler.com
-from __future__ import absolute_import, print_function, unicode_literals  #MS
+from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 from past.utils import old_div
 from builtins import range
@@ -1110,7 +1110,7 @@ class EncoderController(MackieC4Component):
         for i in range(6):
             ret += display_string[i]
 
-        assert len(ret) == 6
+        assert len(ret) == 6  # MS this was the missing piece of the puzzle, the "for" stops when character length is = 6
         return ret
 
     def __generate_20_char_string(self, display_string):

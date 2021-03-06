@@ -4,6 +4,7 @@
 # Decompiled by https://python-decompiler.com
 """
 # Copyright (C) 2007 Nathan Ramella (nar@remix.net)
+# MS: not sure this applies anymore ;-)
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -22,9 +23,7 @@
 # For questions regarding this module contact
 # Nathan Ramella <nar@remix.net> or visit http://www.remix.net
 
-This script is based off the Ableton Live supplied MIDI Remote Scripts, customised
-for OSC request delivery and response. This script can be run without any extra
-Python libraries out of the box.
+This script is based off the Ableton Live supplied MIDI Remote Scripts.
 
 This is the second file that is loaded, by way of being instantiated through
 __init__.py
@@ -37,11 +36,10 @@ from builtins import object
 import logging
 import time
 from . LiveUtils import *
-# from . LiveUtils import getTracks, getSong, getTempo, getTrack #MS
 from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
-# from _Framework.ControlSurface import ControlSurface  #MS
+from _Framework.ControlSurface import ControlSurface  # MS
 import Live
 
 logger = logging.getLogger(__name__)
@@ -130,6 +128,12 @@ class MackieC4(object):
         your build_midi_map function. For performance reasons this is only
         called once per GUI frame.
         """
+    # MS: _Framework.ControlSurface does the following block
+    # def request_rebuild_midi_map(self):
+    #     if self._suppress_requests_counter > 0:
+    #         self._rebuild_requests_during_suppression += 1
+    #     else:
+    #         self._c_instance.request_rebuild_midi_map()
         self.__c_instance.request_rebuild_midi_map()
 
     def update_display(self):
@@ -191,7 +195,7 @@ class MackieC4(object):
                 vpot_index = cc_nbr & 0x0F  # & 0F preserves only vpot_index related bits)
                 self.__encoder_controller.handle_vpot_rotation(vpot_index, cc_value)
 
-    def can_lock_to_devices(self):
+    def can_lock_to_devices(self):  # MS: shouldn't this be True? there IS a lock button on the C4
         return False
 
     def suggest_input_port(self):
@@ -255,12 +259,13 @@ class MackieC4(object):
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
             self.return_resetter = 0
 
-    def suggest_map_mode(self, cc_no, channel=0):
-        result = Live.MidiMap.MapMode.absolute  # does get called (boost error) and does this then need to be 14bit relative?
+    def suggest_map_mode(self, cc_no, channel=0):  # MS look at how _framework.ControlSurface does this! A lot of
+        # shit could be called from there and a lot in the C4 scripts is probably redundant to that
+        result = Live.MidiMap.MapMode.absolute
 
         # if cc_no in range(FID_PANNING_BASE, FID_PANNING_BASE + NUM_ENCODERS):
         if cc_no in encoder_range:
-            result = Live.MidiMap.MapMode.relative_signed_bit
+            result = Live.MidiMap.MapMode.relative_signed_bit  # does this get called (boost error) and does this then need to be 14bit relative?
         return result
 
     def refresh_state(self):
@@ -343,7 +348,7 @@ class MackieC4(object):
         if self.song().tempo_has_listener(self.tempo_change) == 1:
             self.song().remove_tempo_listener(self.tempo_change)
 
-    def tempo_change(self):
+    def tempo_change(self):  # MS: why is "tempo_CHANGE" associated with tempo?
         tempo = LiveUtils.getTempo()
 
     def add_transport_listener(self):
@@ -366,7 +371,7 @@ class MackieC4(object):
         if self.song().overdub_has_listener(self.overdub_change) == 1:
             self.song().remove_overdub_listener(self.overdub_change)
 
-    def overdub_change(self):
+    def overdub_change(self):  # MS: why is "overdub_CHANGE" associated with tempo?
         overdub = LiveUtils.getSong().overdub
 
     def add_tracks_listener(self):

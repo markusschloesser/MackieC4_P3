@@ -19,7 +19,7 @@
 # For questions regarding this module contact
 # Rob King <rob@e-mu.org> or visit http://www.e-mu.org
 """
-
+from __future__ import absolute_import, print_function, unicode_literals
 import Live
 
 
@@ -210,67 +210,67 @@ class LiveUtils:
         """
         if name is not None:
             Live.Application.get_application().get_document().tracks[track].name = name
-        return repr2(Live.Application.get_application().get_document().tracks[track].name) #MS why repr2?? tried repr, was bad, back to repr2
+        return repr2(Live.Application.get_application().get_document().tracks[track].name)  # MS why repr2?? tried repr, was bad, back to repr2, must be a Live thing
 
-    # def getClipSlots():  # MS: we don't need "Clips" stuff
-    #    """Gets a 2D list of all the clip slots in the song"""
-    #    tracks = Live.Application.get_application().get_document().tracks
-    #    clipSlots = []
-    #    for track in tracks:
-    #        clipSlots.append(track.clip_slots)
-    #    return clipSlots
+    def getClipSlots(self):  # MS: self good?
+        """Gets a 2D list of all the clip slots in the song"""
+        tracks = Live.Application.get_application().get_document().tracks
+        clipSlots = []
+        for track in tracks:
+            clipSlots.append(track.clip_slots)
+        return clipSlots
 
-    # def getClips():
-    #    """Gets a 2D list of all the clip in the song.
+    def getClips(self):
+        """Gets a 2D list of all the clip in the song.
 
-    #    If there is no clip in a clip slot, None is returned
+        If there is no clip in a clip slot, None is returned
+        """
 
-    #    """
-    #    tracks = Live.Application.get_application().get_document().tracks
-    #    clips = []
-    #    for track in getClipSlots():
-    #        trackClips = []
-    #        for clipSlot in track:
-    #            trackClips.append(clipSlot.clip)
-    #        clips.append(trackClips)
-    #    return clips
+        tracks = Live.Application.get_application().get_document().tracks
+        clips = []
+        for track in getClipSlots():
+            trackClips = []
+            for clipSlot in track:
+                trackClips.append(clipSlot.clip)
+            clips.append(trackClips)
+        return clips
 
-    #    def launchClip(track, clip):  # MS was unreachable but we don't need that anyway
-    #     """Launches clip number (clip) in track number (track)"""
-    #    getClip(track, clip).fire()
+    def launchClip(track, clip):  # MS was unreachable but we don't need that anyway
+        """Launches clip number (clip) in track number (track)"""
+        getClip(track, clip).fire()
 
-    # def stopClip(track, clip):
-    #    """Stops clip number (clip) in track (track)"""
-    #    getClip(track, clip).stop()
+    def stopClip(track, clip):
+        """Stops clip number (clip) in track (track)"""
+        getClip(track, clip).stop()
 
-    # def getClip(track, clip):
-    #    """Returns clip number (clip) in track (track)"""
-    #    clips = getClips()
-    #    #return clips[track][clip] # MS thats the original
-    #    # return clips[track][clip]  #MS 05.02.2021 remove next line again?
-    #    return getSong().visible_tracks[track].clip_slots[clip].clip
+    def getClip(track, clip):
+        """Returns clip number (clip) in track (track)"""
+        clips = getClips()
+        # return clips[track][clip] # MS that's the original
+        # return clips[track][clip]  #MS 05.02.2021 remove next line again?
+        return getSong().visible_tracks[track].clip_slots[clip].clip
 
-    # def clipName(track, clip, name = None):
-    #    """Gets/changes the name of clip number (clip) in track (track)
+    def clipName(track, clip, name = None):
+        """Gets/changes the name of clip number (clip) in track (track)
 
-    #    In (name) is specified, the name of the clip is changed
+        In (name) is specified, the name of the clip is changed
 
-    #    """
-    #    if name is not None:
-    #        getClip(track, clip).name = name
-    #    return repr(getClip(track, clip).name)
+        """
+        if name is not None:
+            getClip(track, clip).name = name
+        return repr(getClip(track, clip).name)
 
-    # def clipPitch(track, clip, coarse = None, fine = None):
-    #    """Gets/changes the coarse and fine pitch shift of clip (clip) in track (track).
+    def clipPitch(track, clip, coarse = None, fine = None):
+        """Gets/changes the coarse and fine pitch shift of clip (clip) in track (track).
 
-    #    If (coarse) or (fine) are specified, changes the clip's pitch.
-    #    """
-    #    clip = getClip(track, clip)
-    #    if coarse is not None:
-    #        clip.pitch_coarse = coarse
-    #    if fine is not None:
-    #        clip.pitch_fine = fine
-    #    return (clip.pitch_coarse, clip.pitch_fine)
+        If (coarse) or (fine) are specified, changes the clip's pitch.
+        """
+        clip = getClip(track, clip)
+        if coarse is not None:
+            clip.pitch_coarse = coarse
+        if fine is not None:
+            clip.pitch_fine = fine
+        return (clip.pitch_coarse, clip.pitch_fine)
 
 
 def getSong():
@@ -486,7 +486,7 @@ def trackName(track, name = None):
     """
     if name is not None:
         Live.Application.get_application().get_document().tracks[track].name = name
-    return repr2(Live.Application.get_application().get_document().tracks[track].name) #MS why repr2?? tried repr, was bad, back to repr2
+    return repr2(Live.Application.get_application().get_document().tracks[track].name)  # MS why repr2?? tried repr, was bad, back to repr2, as above, must be a Live thing
 
 
 def getClipSlots():
@@ -518,7 +518,7 @@ def getClips():
 
 
 def stopClip(track, clip):
-    """Stops clip number (clip) in track (track)""" 
+    """Stops clip number (clip) in track (track)"""
     getClip(track, clip).stop()
 
 
@@ -542,14 +542,11 @@ def clipName(track, clip, name = None):
 def clipPitch(track, clip, coarse = None, fine = None):
     """Gets/changes the coarse and fine pitch shift of clip (clip) in track (track).
 
-    If (coarse) or (fine) are specified, changes the clip's pitch.
-    """
+     If (coarse) or (fine) are specified, changes the clip's pitch.
+     """
     clip = getClip(track, clip)
     if coarse is not None:
         clip.pitch_coarse = coarse
     if fine is not None:
         clip.pitch_fine = fine
     return (clip.pitch_coarse, clip.pitch_fine)
-
-
-

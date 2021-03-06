@@ -6,6 +6,8 @@ from __future__ import absolute_import, print_function, unicode_literals  # MS
 from . MackieC4Component import *
 from ableton.v2.base import liveobj_valid  # MS
 from builtins import range  # MS
+from _Framework.ControlSurface import ControlSurface  # MS
+from _Framework.Control import Control  # MS
 
 
 class Encoders(MackieC4Component):
@@ -78,6 +80,7 @@ class Encoders(MackieC4Component):
             #  did not match C++ signature:
             #  map_midi_cc_with_feedback_map(unsigned int midi_map_handle, class TPyHandle<class ATimeableValue> parameter, int midi_channel, int controller_number, enum NRemoteMapperTypes::TControllerMapMode map_mode, class NPythonMidiMap::TCCFeedbackRule feedback_rule, bool avoid_takeover, float sensitivity=1.0)
             #  maybe LOM thing??
+            # _Framework.ControlSurface first does an "installmapping" and then uses that to do a "buildmidimap"
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
