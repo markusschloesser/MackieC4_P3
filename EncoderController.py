@@ -615,7 +615,7 @@ class EncoderController(MackieC4Component):
             elif encoder_index == encoder_08_index:
                 current_track_device_preset_bank = current_parameter_bank_track[current_device_track]
                 track_device_preset_bank_count = self.t_d_p_bank_count[self.t_current][current_device_track]
-                if  current_track_device_preset_bank < track_device_preset_bank_count - 1:
+                if current_track_device_preset_bank < track_device_preset_bank_count - 1:
                     current_parameter_bank_track[current_device_track] += 1
                     update_self = True
             elif encoder_index in display_params_range:  # row_01_encoders
@@ -683,7 +683,7 @@ class EncoderController(MackieC4Component):
 
             # if a default Live device is chosen, iterate the DEVICE_DICT constant
             # to reorder the local list of plugin parameters
-            if self.__chosen_plugin.class_name in DEVICE_DICT.keys(): #MS should we import device dict from generic devices or Live?
+            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():  # MS should we import device dict from generic devices or Live?
                 device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
                 for bank in device_banks:
                     for param_name in bank:
@@ -723,7 +723,7 @@ class EncoderController(MackieC4Component):
         encoder_29_index = 28
         encoder_30_index = 29
         encoder_31_index = 30
-        encoder_32_index  = 31
+        encoder_32_index = 31
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             current_device_bank_track = self.t_d_bank_current[self.t_current]
             max_device_bank_track = self.t_d_bank_count[self.t_current]

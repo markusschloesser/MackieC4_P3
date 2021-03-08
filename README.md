@@ -54,5 +54,5 @@ I also uploaded the decompiled Ableton Live 11 / Python 3 remote scripts in a se
 Other stuff that can be done or needs to be discussed at least:
 1. Do we actually need code related to clips, clip_name, scenes, tempo etc? imho there is no need and could be removed. (tried out commenting some clip stuff, bad idea, broke things horribly) 
 2. Lots of stuff in "LiveUtils" can probably be replaced by proper calls to Live stuff
-3. Switch from using _framework to v2
+3. Switch from using _framework to v2. Having checked, I cannot find ANY utilization of _framework. See 4.
 4. Switch to using the LOM stuff that Live provides instead of doing everything in our own 
