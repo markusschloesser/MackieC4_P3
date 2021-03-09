@@ -559,7 +559,7 @@ class EncoderController(MackieC4Component):
 
                 device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
                 device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
-                self.__chosen_plugin = self.selected_track.devices[device_offset]
+                self.__chosen_plugin = self.selected_track.devices[device_offset]  # MS FIXED (kindof, only works for nongrouped devices) !!! :-) (but NONE are actually displayed as "selectable") BUT pressing vpot knob for a non existing device in channelstrip mode throws index error
                 self.__reorder_parameters()
                 self.t_d_current[self.t_current] = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
                 self.song().view.select_device(self.selected_track.devices[device_offset])
@@ -569,12 +569,12 @@ class EncoderController(MackieC4Component):
                 param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
                 param.value = param.default_value
             elif encoder_index in row_03_encoders:
-                encode_29_index = 28  # 28th index is the 29th element
-                encode_30_index = 29  # 29th index is the 30th element
-                if encoder_index < encode_29_index:
+                encoder_29_index = 28  # 28th index is the 29th element # MS isn't that supposed to be encodeR (with R)?, lets trey changing
+                encoder_30_index = 29  # 29th index is the 30th element  # MS isn't that supposed to be encodeR (with R)?, lets trey changing
+                if encoder_index < encoder_29_index:
                     param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
                     param.value = param.default_value
-                elif encoder_index == encode_29_index:
+                elif encoder_index == encoder_29_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm is not True:
@@ -586,7 +586,7 @@ class EncoderController(MackieC4Component):
                                 turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_29, 0x06)  # any value 00 - 0F?
                                 self.send_midi(turn_off_encoder_led_msg)
                         # else the selected track can't be armed
-                elif encoder_index == encode_30_index:
+                elif encoder_index == encoder_30_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.mute:
                             self.selected_track.mute = False
@@ -596,7 +596,7 @@ class EncoderController(MackieC4Component):
                             self.selected_track.mute = True
                             turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_30, 0x43)
                             self.send_midi(turn_on_encoder_led_msg)
-                elif encoder_index > encode_30_index:
+                elif encoder_index > encoder_30_index:
                     param = self.__encoders[encoder_index].v_pot_parameter()
                     param.value = param.default_value
 
@@ -647,7 +647,7 @@ class EncoderController(MackieC4Component):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
         if vpot_index < len(self.selected_track.mixer_device.sends):
             p = self.selected_track.mixer_device.sends[vpot_index]
-            self.main_script().log_message("Param name <{0}>".format(p.name))  # MS This is were Jon logs the params to the Live log, where to shorten??
+            self.main_script().log_message("Param name <{0}>".format(p.name))  # MS This is were Jon logs the params to the Live log
             return p, p.name
         else:
             return None, 'None'

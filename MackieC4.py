@@ -728,7 +728,7 @@ class MackieC4(object):
                 grouptrack = 1
             else:
                 grouptrack = 0
-            from . LiveUtils import getTracks
+            # from . LiveUtils import getTracks  # MS not needed
             self.trBlock(0, len(LiveUtils.getTracks()))
 
     def meter_changestate(self, tid, track, lr, r=0):

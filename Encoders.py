@@ -8,6 +8,7 @@ from ableton.v2.base import liveobj_valid  # MS
 from builtins import range  # MS
 from _Framework.ControlSurface import ControlSurface  # MS
 from _Framework.Control import Control  # MS
+from itertools import chain
 
 
 class Encoders(MackieC4Component):
@@ -22,6 +23,7 @@ class Encoders(MackieC4Component):
         self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
         self.__v_pot_parameter = None
         self.__v_pot_display_mode = VPOT_DISPLAY_SINGLE_DOT
+        self._Encoders__assigned_track = None
         return
 
     # function provided by MackieC4Component super
@@ -88,15 +90,26 @@ class Encoders(MackieC4Component):
             cc_no = self.__vpot_cc_nbr
             Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
 
+    def __assigned_track_index(self):  # MS new from Mackie Control.ChannelStrip
+        index = 0
+        for t in chain(self.song().visible_tracks, self.song().return_tracks):
+            if t == self._Encoders__assigned_track:
+                return index
+            index += 1
+
+        if self._Encoders__assigned_track:
+            pass
+
     def __select_track(self):
         #  pass  # MS: SISSY put this pass in, and commented everything following out, why? lets try reversing that
-        if self._ChannelStrip__assigned_track:
+        #  lots of changes here, trying to do what mackie control does
+        if self._Encoders__assigned_track:
             all_tracks = self.song().tracks + self.song().return_tracks
-            if self.song().view.selected_track != all_tracks[self._ChannelStrip__assigned_track_index()]:
-                self.song().view.selected_track = all_tracks[self._ChannelStrip__assigned_track_index()]
+            if self.song().view.selected_track != all_tracks[self._Encoders__assigned_track_index()]:
+                self.song().view.selected_track = all_tracks[self._Encoders__assigned_track_index()]
             elif self.application().view.is_view_visible('Arranger'):
-                if self._ChannelStrip__assigned_track:
-                    self._ChannelStrip__assigned_track.view.is_collapsed = not self._ChannelStrip__assigned_track.view.is_collapsed
+                if self._Encoders__assigned_track:
+                    self._Encoders__assigned_track.view.is_collapsed = not self._Encoders__assigned_track.view.is_collapsed
 
     def refresh_state(self):
         return ' '
