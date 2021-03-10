@@ -371,7 +371,7 @@ class MackieC4(object):
         if self.song().overdub_has_listener(self.overdub_change) == 1:
             self.song().remove_overdub_listener(self.overdub_change)
 
-    def overdub_change(self):  # MS: why is "overdub_CHANGE" associated with tempo?
+    def overdub_change(self):  # MS: why is "overdub_CHANGE" associated with overdub?
         overdub = LiveUtils.getSong().overdub
 
     def add_tracks_listener(self):

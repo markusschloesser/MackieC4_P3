@@ -448,17 +448,17 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         # else don't update because nothing changed here
 
-    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently broken, don't know what or when I did that cos it used to work
+    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently half broken, only works for normal devices, not grouped devices and not if m4l device involved
         """ "slot navigation" only functions if the current mode is C4M_PLUGINS """
         if self.__assignment_mode == button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
             current_trk_device_index = self.t_d_current[self.t_current]
             max_trk_device_index = self.t_d_count[self.t_current] - 1
             update_self = False
-            if switch_id == C4SID_SLOT_UP:
+            if switch_id == C4SID_SLOT_DOWN:  # MS I have reversed this up/down, bugged the hell out of me. UP now counts up
                 if current_trk_device_index > 0:
                     current_trk_device_index -= 1
                     update_self = True
-            elif switch_id == C4SID_SLOT_DOWN:
+            elif switch_id == C4SID_SLOT_UP:
                 if current_trk_device_index < max_trk_device_index:
                     current_trk_device_index += 1
                     update_self = True
