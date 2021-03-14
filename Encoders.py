@@ -1,4 +1,4 @@
-# Python bytecode 2.5 (62131)
+# was Python bytecode 2.5 (62131)
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/Encoders.py
 # Compiled at: 2011-01-13 21:07:51
 # Decompiled by https://python-decompiler.com
@@ -9,6 +9,7 @@ from builtins import range  # MS
 from _Framework.ControlSurface import ControlSurface  # MS
 from _Framework.Control import Control  # MS
 from itertools import chain
+from ableton.v2.base import liveobj_valid  # MS not needed right now, but will in the future
 
 
 class Encoders(MackieC4Component):
@@ -69,13 +70,14 @@ class Encoders(MackieC4Component):
             #     range_end = encoder_ring_value_range.stop
 
             feedback_rule = Live.MidiMap.CCFeedbackRule()  # MS interestingly in ALL Mackie scripts this is originally "feeback_rule" without the "d"
-            feedback_rule.channel = 0
-            feedback_rule.cc_no = self.__vpot_cc_nbr
+            # feedback_rule.channel = 0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without
+            # feedback_rule.cc_no = self.__vpot_cc_nbr  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
             range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
-            feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
-            feedback_rule.delay_in_ms = -1.0
-            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
+            # feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without
+            # feedback_rule.delay_in_ms = -1.0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without
+            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover)  # MS "sensitivity" added
+            self.main_script().log_message("potIndex<{}> cc_value<{}> received".format(type, type, encoder, param))
             #  MS: now wtf does the line give a Boost Error with:
             #  RemoteScriptError: Python argument types in
             #  MidiMap.map_midi_cc_with_feedback_map(int, DeviceParameter, int, int, MapMode, CCFeedbackRule, bool)
@@ -104,9 +106,9 @@ class Encoders(MackieC4Component):
         #  pass  # MS: SISSY put this pass in, and commented everything following out, why? lets try reversing that
         #  lots of changes here, trying to do what mackie control does
         if self._Encoders__assigned_track:
-            all_tracks = self.song().tracks + self.song().return_tracks
-            if self.song().view.selected_track != all_tracks[self._Encoders__assigned_track_index()]:
-                self.song().view.selected_track = all_tracks[self._Encoders__assigned_track_index()]
+            all_tracks = tuple(self.song().visible_tracks) + tuple(self.song().return_tracks)  # MS tuple is new and from Mackie script
+            if self.song().view.selected_track != all_tracks[self.__assigned_track_index()]:  # MS new but seems to work
+                self.song().view.selected_track = all_tracks[self.__assigned_track_index()]
             elif self.application().view.is_view_visible('Arranger'):
                 if self._Encoders__assigned_track:
                     self._Encoders__assigned_track.view.is_collapsed = not self._Encoders__assigned_track.view.is_collapsed

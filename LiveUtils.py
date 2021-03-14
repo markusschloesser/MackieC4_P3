@@ -82,7 +82,7 @@ class LiveUtils:
 
     def launchScene(scene):
         """Launches scene number (scene)"""
-        Live.Application.get_application().get_document().scenes(scene).fire()
+        Live.Application.get_application().get_document().scenes[scene].fire()
 
     def getTracks():
         """Returns a list of tracks"""
@@ -154,14 +154,14 @@ class LiveUtils:
         if ty == 1:
             Live.Application.get_application().get_document().return_tracks[track].solo = 1
         else:
-            Live.Application.get_application().get_document().tracks[num].solo = 1    
+            Live.Application.get_application().get_document().tracks[track].solo = 1
         
     def unsoloTrack(track, ty = 0):
         """Un-solos track number (num)"""
         if ty == 1:
             Live.Application.get_application().get_document().return_tracks[track].solo = 0
         else:
-            Live.Application.get_application().get_document().tracks[num].solo = 0
+            Live.Application.get_application().get_document().tracks[track].solo = 0
         
     def toggleSoloTrack(num):
         """Toggles the soloed state of track number (num)"""
@@ -212,7 +212,7 @@ class LiveUtils:
             Live.Application.get_application().get_document().tracks[track].name = name
         return repr2(Live.Application.get_application().get_document().tracks[track].name)  # MS why repr2?? tried repr, was bad, back to repr2, must be a Live thing
 
-    def getClipSlots(self):  # MS: self good?
+    def getClipSlots():  # MS: self good? was empty (). ALso getclipslots is 1. also somewhere else def and 2. gettable from Live itself
         """Gets a 2D list of all the clip slots in the song"""
         tracks = Live.Application.get_application().get_document().tracks
         clipSlots = []
@@ -220,7 +220,7 @@ class LiveUtils:
             clipSlots.append(track.clip_slots)
         return clipSlots
 
-    def getClips(self):
+    def getClips():
         """Gets a 2D list of all the clip in the song.
 
         If there is no clip in a clip slot, None is returned
@@ -424,7 +424,7 @@ def soloTrack(track, ty = 0):
     if ty == 1:
         Live.Application.get_application().get_document().return_tracks[track].solo = 1
     else:
-        Live.Application.get_application().get_document().tracks[num].solo = 1    
+        Live.Application.get_application().get_document().tracks[track].solo = 1
 
 
 def unsoloTrack(track, ty = 0):
@@ -432,7 +432,7 @@ def unsoloTrack(track, ty = 0):
     if ty == 1:
         Live.Application.get_application().get_document().return_tracks[track].solo = 0
     else:
-        Live.Application.get_application().get_document().tracks[num].solo = 0
+        Live.Application.get_application().get_document().tracks[track].solo = 0
 
 
 def toggleSoloTrack(num):
@@ -513,6 +513,8 @@ def getClips():
         clips.append(trackClips)
     return clips
 
+
+def launchClip(track, clip):
     """Launches clip number (clip) in track number (track)"""
     getClip(track, clip).fire()
 

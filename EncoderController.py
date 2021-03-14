@@ -1,4 +1,4 @@
-# Python bytecode 2.5 (62131)
+# was once Python bytecode 2.5 (62131)
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/EncoderController.py
 # Compiled at: 2011-01-22 05:02:32
 # Decompiled by https://python-decompiler.com
@@ -11,6 +11,8 @@ from . MackieC4Component import *
 from _Generic.Devices import *
 import math
 import time
+from itertools import chain
+import Live
 
 
 class EncoderController(MackieC4Component):
@@ -40,13 +42,20 @@ class EncoderController(MackieC4Component):
         self.__last_assignment_mode = C4M_USER
         self.__current_track_name = ''  # Live's Track Name of selected track
         self.t_count = 0    # nbr of regular tracks
+        """number of regular tracks"""
+
         self.t_r_count = 0  # nbr of return tracks
+        """number of return tracks"""
+
         self.t_current = 0  # index of current selected track
-        self.selected_track = None  # Live's selected-Track Object?
+        """index of current selected track"""
+
+        self.selected_track = None  # Live's selected-Track Object? MS yes
 
         # track device count -- the count of devices loaded on the t_current track
         # see device_counter(self, t, d):
         self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
+        """current track device count"""
 
         # track device current -- the index of the currently selected device indexed by the t_current track
         self.t_d_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
@@ -71,7 +80,7 @@ class EncoderController(MackieC4Component):
         # device on the t_current track (in banks of 24 params)
         self.t_d_p_bank_current = [[0 for i in range(SETUP_DB_DEFAULT_SIZE)] for j in range(SETUP_DB_DEFAULT_SIZE)]
 
-        self.__ordered_plugin_parameters = []  # Live objects?
+        self.__ordered_plugin_parameters = []  # Live objects? MS yes
         self.__chosen_plugin = None  # Live's selected
 
         # a list of 32 tuples representing 'what text to display' on the LCD screen above each encoder
@@ -112,9 +121,9 @@ class EncoderController(MackieC4Component):
         self.__last_send_messages4 = {LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
         return
 
-    # function provided by MackieC4Component super #MS reversed to Leigh's version, Sissy had delegated destroy to Super
+    # function provided by MackieC4Component super   #MS reversed to Leigh's version, Sissy had delegated destroy to Super
     def destroy(self):
-    #     self.destroy()
+        # self.destroy()
         MackieC4Component.destroy(self)
 
     # function provided by MackieC4Component super #MS reversed to Leigh's version, Sissy had delegated destroy to Super
@@ -131,7 +140,7 @@ class EncoderController(MackieC4Component):
 
     def device_counter(self, t, d):
         self.t_d_count[t] = d
-        self.t_d_bank_count[t] = int(d / SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
+        self.t_d_bank_count[t] = int(d // SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
     def build_setup_database(self):
 
@@ -141,13 +150,13 @@ class EncoderController(MackieC4Component):
         for i1 in range(len(tracks_in_song)):
             devices_on_track = tracks_in_song[i1].devices
             self.t_d_count[i1] = len(devices_on_track)
-            self.t_d_bank_count[i1] = math.ceil(len(devices_on_track) / SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_count[i1] = math.ceil(len(devices_on_track) // SETUP_DB_DEVICE_BANK_SIZE)
             self.t_d_bank_current[i1] = 0
             self.t_d_current[i1] = 0
             for j in range(len(devices_on_track)):
                 params_of_devices_on_trk = devices_on_track[j].parameters
                 self.t_d_p_count[i1][j] = len(params_of_devices_on_trk)
-                self.t_d_p_bank_count[i1][j] = math.ceil(len(params_of_devices_on_trk) / SETUP_DB_PARAM_BANK_SIZE)
+                self.t_d_p_bank_count[i1][j] = math.ceil(len(params_of_devices_on_trk) // SETUP_DB_PARAM_BANK_SIZE)
                 self.t_d_p_bank_current[i1][j] = 0
 
             self.t_count += 1
@@ -157,13 +166,13 @@ class EncoderController(MackieC4Component):
             devices_on_rtn_track = self.song().return_tracks[i2].devices
             device_index = nbr_nrml_trks + i2 + 1
             self.t_d_count[device_index] = len(devices_on_rtn_track)
-            self.t_d_bank_count[device_index] = math.ceil(len(devices_on_rtn_track) / SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_count[device_index] = math.ceil(len(devices_on_rtn_track) // SETUP_DB_DEVICE_BANK_SIZE)
             self.t_d_bank_current[device_index] = 0
             self.t_d_current[device_index] = 0
             for j in range(len(devices_on_rtn_track)):
                 params_of_devices_on_rtn_trk = devices_on_rtn_track[j].parameters
                 self.t_d_p_count[device_index][j] = len(params_of_devices_on_rtn_trk)
-                sum_nbr = math.ceil(len(params_of_devices_on_rtn_trk) / SETUP_DB_PARAM_BANK_SIZE)
+                sum_nbr = math.ceil(len(params_of_devices_on_rtn_trk) // SETUP_DB_PARAM_BANK_SIZE)
                 self.t_d_p_bank_count[device_index][j] = sum_nbr
                 self.t_d_p_bank_current[device_index][j] = 0
 
@@ -175,13 +184,13 @@ class EncoderController(MackieC4Component):
         lmti = self.__master_track_index
         devices_on_mstr_track = self.song().master_track.devices
         self.t_d_count[lmti] = len(devices_on_mstr_track)
-        self.t_d_bank_count[lmti] = math.ceil(len(devices_on_mstr_track) / SETUP_DB_DEVICE_BANK_SIZE)
+        self.t_d_bank_count[lmti] = math.ceil(len(devices_on_mstr_track) // SETUP_DB_DEVICE_BANK_SIZE)
         self.t_d_bank_current[lmti] = 0
         self.t_d_current[lmti] = 0
         for j in range(len(devices_on_mstr_track)):
             params_of_devices_on_rtn_trk = devices_on_mstr_track[j].parameters
             self.t_d_p_count[lmti][j] = len(params_of_devices_on_rtn_trk)
-            self.t_d_p_bank_count[lmti][j] = math.ceil(len(params_of_devices_on_rtn_trk) / SETUP_DB_PARAM_BANK_SIZE)
+            self.t_d_p_bank_count[lmti][j] = math.ceil(len(params_of_devices_on_rtn_trk) // SETUP_DB_PARAM_BANK_SIZE)
             self.t_d_p_bank_current[lmti][j] = 0
 
         devices_on_selected_trk = self.song().view.selected_track.devices
@@ -244,12 +253,12 @@ class EncoderController(MackieC4Component):
         devices_on_selected_track = self.selected_track.devices
         self.t_d_count[track_index] = len(devices_on_selected_track)
         self.t_d_current[track_index] = 0
-        self.t_d_bank_count[track_index] = math.ceil(len(devices_on_selected_track) / SETUP_DB_DEVICE_BANK_SIZE)
+        self.t_d_bank_count[track_index] = math.ceil(len(devices_on_selected_track) // SETUP_DB_DEVICE_BANK_SIZE)
         self.t_d_bank_current[track_index] = 0
         for d in range(len(devices_on_selected_track)):
             parms_of_devs_on_trk = devices_on_selected_track[d].parameters
             self.t_d_p_count[track_index][d] = len(parms_of_devs_on_trk)
-            self.t_d_p_bank_count[track_index][d] = math.ceil(len(parms_of_devs_on_trk) / SETUP_DB_PARAM_BANK_SIZE)
+            self.t_d_p_bank_count[track_index][d] = math.ceil(len(parms_of_devs_on_trk) // SETUP_DB_PARAM_BANK_SIZE)
             self.t_d_p_bank_current[track_index][d] = 0
 
         # self.refresh_state() #MS out-commented, copy from Leigh on next line
@@ -325,7 +334,7 @@ class EncoderController(MackieC4Component):
                 param_bank_current_track[d] = param_bank_current_track[c]
 
             param_count_track[new_device_index] = len(self.selected_track.devices[new_device_index].parameters)
-            sum_nbr = math.ceil(param_count_track[new_device_index] / SETUP_DB_PARAM_BANK_SIZE)
+            sum_nbr = math.ceil(param_count_track[new_device_index] // SETUP_DB_PARAM_BANK_SIZE)
             param_bank_count_track[new_device_index] = sum_nbr
             param_bank_current_track[new_device_index] = 0
 
@@ -333,8 +342,8 @@ class EncoderController(MackieC4Component):
             device_count_track = self.t_d_count[self.t_current]
 
             self.t_d_current[self.t_current] = new_device_index
-            self.t_d_bank_count[self.t_current] = math.ceil(device_count_track / SETUP_DB_DEVICE_BANK_SIZE)
-            self.t_d_bank_current[self.t_current] = math.ceil((device_count_track + 1) / SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_count[self.t_current] = math.ceil(device_count_track // SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_current[self.t_current] = math.ceil((device_count_track + 1) // SETUP_DB_DEVICE_BANK_SIZE)
             self.__chosen_plugin = self.selected_track.devices[new_device_index]
             self.__reorder_parameters()
             self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from Leigh, seems ok
@@ -355,11 +364,11 @@ class EncoderController(MackieC4Component):
                 self.t_d_current[self.t_current] -= 1
             else:
                 self.t_d_current[self.t_current] = deleted_device_index
-                sum_nbr = math.ceil((self.t_d_current[self.t_current] + 1) / SETUP_DB_DEVICE_BANK_SIZE)
+                sum_nbr = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
                 self.t_d_bank_current[self.t_current] = sum_nbr
 
             self.t_d_count[self.t_current] -= 1
-            self.t_d_bank_count[self.t_current] = math.ceil(self.t_d_count[self.t_current] / SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_count[self.t_current] = math.ceil(self.t_d_count[self.t_current] // SETUP_DB_DEVICE_BANK_SIZE)
             self.__chosen_plugin = self.selected_track.devices[deleted_device_index]  # MS this produces an Index error?
             self.__reorder_parameters()
             self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from Leigh, seems ok
@@ -647,7 +656,7 @@ class EncoderController(MackieC4Component):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
         if vpot_index < len(self.selected_track.mixer_device.sends):
             p = self.selected_track.mixer_device.sends[vpot_index]
-            self.main_script().log_message("Param name <{0}>".format(p.name))  # MS This is were Jon logs the params to the Live log
+            self.main_script().log_message("Param name <{0}>".format(p.name))  # MS This is were Jon logs the "parameter names" to the Live log
             return p, p.name
         else:
             return None, 'None'
@@ -737,7 +746,7 @@ class EncoderController(MackieC4Component):
                     #     always fill the __displayParameters list
                     if s_index == encoder_07_index:
                         if current_device_bank_track > 0:
-                            vpot_display_text = ('<<Bank', 'Device')
+                            vpot_display_text = ('<<Bank', 'Device')  # MS somethings wrong here, for tracks which do not show devices (but should) "<<Bank" is displayed
                             s.show_full_enlighted_poti()
                         else:
                             s.unlight_vpot_leds()
@@ -921,12 +930,12 @@ class EncoderController(MackieC4Component):
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             upper_string1 += '-------Track--------                      '
             upper_string2 += '------------------------Devices------------------------'
-            lower_string1 += self.__transform_to_size(str(self.selected_track.name), 20)
+            lower_string1 += self.__generate_20_char_string(self.selected_track.name)
             lower_string1 = lower_string1.center(20)
             lower_string1 += '                      '
             for t in encoder_range:
 
-                text_for_display = self.__display_parameters[t]  # MS can we shorten here?
+                text_for_display = self.__display_parameters[t]
                 u_alt_text = ' '
                 l_alt_text = ' '
                 if len(text_for_display) > 1:
@@ -999,7 +1008,7 @@ class EncoderController(MackieC4Component):
             else:
                 upper_string1 += '------- '
 
-            lower_string1a += self.__transform_to_size(str(self.selected_track.name), 20)
+            lower_string1a += self.__generate_20_char_string(self.selected_track.name)
             lower_string1a = lower_string1a.center(20)  # should already be centered?
             lower_string1a += ' '
             if self.__chosen_plugin is None:
@@ -1018,7 +1027,7 @@ class EncoderController(MackieC4Component):
                 device_name = self.selected_track.devices[self.t_d_current[self.t_current]].name
                 # MS: this throws massive Index errors when THE LAST device is deleted, maybe needs fallback to "none"?
 
-                lower_string1b += self.__transform_to_size(str(device_name), 20)
+                lower_string1b += self.__generate_20_char_string(device_name)
                 #  self.main_script().log_message("problematic string source <{0}>, transformed <{1}>".format(device_name, lower_string1b))
                 lower_string1b = lower_string1b.center(20)
                 lower_string1 += lower_string1a
@@ -1089,17 +1098,17 @@ class EncoderController(MackieC4Component):
         self.send_display_string4(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
         return
 
-    # def __generate_6_char_string(self, display_string): #  MS: Jons work makes sense, but doesn't work. inserted Leighs old stuff combined with MCU, now works
+    # def __generate_6_char_string(self, display_string): #  MS: Jons work makes sense, but doesn't work. inserted Leigh's old stuff combined with MCU, now works
     #     return self.__transform_to_size(display_string, 6)
     def __generate_6_char_string(self, display_string):
         if not display_string:
             return '      '
         if len(display_string.strip()) > 6:
-                if display_string.endswith('dB'):
-                    if display_string.find('.') != -1:
-                        display_string = display_string[:-2]
+            if display_string.endswith('dB'):
+                if display_string.find('.') != -1:
+                    display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/'):  # MS added underscore _ and /
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1114,7 +1123,23 @@ class EncoderController(MackieC4Component):
         return ret
 
     def __generate_20_char_string(self, display_string):
-        return self.__transform_to_size(display_string, 20)
+        if not display_string:
+            return '      '
+
+        if len(display_string) > 20:
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+                while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
+                    um_pos = display_string.rfind(um, 1)
+                    display_string = display_string[:um_pos] + display_string[um_pos + 1:]
+
+        else:
+            display_string = display_string.center(20)
+        ret = ''
+        for i in range(20):
+            ret += display_string[i]
+
+        assert len(ret) == 20  # MS this was the missing piece of the puzzle, the "for" stops when character length is = 6
+        return ret
 
     def __transform_to_size(self, raw_text, new_size):
         """ trim a string down to a given new_size, removing trailing or leading blank spaces first
@@ -1124,7 +1149,7 @@ class EncoderController(MackieC4Component):
             returns a string exactly new_size
         """
         if not raw_text or not isinstance(raw_text, str):
-            return ''.join(list((' ' for i in range(new_size))))  # if given nothing return blanks
+            return ''.join(list((' ' for i in range(new_size))))  # if given nothing return blanks01
         
         transformed_text = raw_text.strip()
         is_ends_db = transformed_text.endswith('dB')
@@ -1133,7 +1158,7 @@ class EncoderController(MackieC4Component):
             transformed_text = transformed_text[:-2]  # remove the trailing 'dB'
 
         if len(transformed_text) > new_size:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/'):  # MS added underscore _  # MS rounded or square Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(transformed_text) > new_size and transformed_text.rfind(um, 1) != -1:
                     um_pos = transformed_text.rfind(um, 1)
                     transformed_text = transformed_text[:um_pos]

@@ -1,4 +1,4 @@
-# Python bytecode 2.5 (62131)
+# was Python bytecode 2.5 (62131)
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/MackieC4.py
 # Compiled at: 2011-01-22 04:38:37
 # Decompiled by https://python-decompiler.com
@@ -39,9 +39,10 @@ from . LiveUtils import *
 from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
-from _Framework.ControlSurface import ControlSurface  # MS
+from ableton.v2.control_surface.control_surface import ControlSurface  # MS
 import Live
-
+from ableton.v2.control_surface import IdentifiableControlSurface, MIDI_CC_TYPE  # MS new
+from ableton.v2.control_surface.elements import ButtonElement, EncoderElement  # MS new
 logger = logging.getLogger(__name__)
 
 
@@ -74,7 +75,7 @@ class MackieC4(object):
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
-
+        self._suppress_requests_counter = 0
         # initialize the 32 encoders, their EncoderController and
         # add them as __components here
         self.__components = []
@@ -128,13 +129,22 @@ class MackieC4(object):
         your build_midi_map function. For performance reasons this is only
         called once per GUI frame.
         """
-    # MS: _Framework.ControlSurface does the following block
-    # def request_rebuild_midi_map(self):
-    #     if self._suppress_requests_counter > 0:
-    #         self._rebuild_requests_during_suppression += 1
-    #     else:
-    #         self._c_instance.request_rebuild_midi_map()
-        self.__c_instance.request_rebuild_midi_map()
+    # MS: _Framework.ControlSurface does the following codeblock
+        if self._suppress_requests_counter > 0:
+            self._rebuild_requests_during_suppression += 1
+        else:
+            self.__c_instance.request_rebuild_midi_map()
+    #    self.__c_instance.request_rebuild_midi_map()  # MS this was the old line
+
+    def _set_suppress_rebuild_requests(self, suppress_requests):
+        if suppress_requests:
+            self._suppress_requests_counter += 1
+        else:
+            self._suppress_requests_counter -= 1
+            if self._suppress_requests_counter == 0:
+                if self._rebuild_requests_during_suppression > 0:
+                    self.request_rebuild_midi_map()
+                    self._rebuild_requests_during_suppression = 0
 
     def update_display(self):
         """
@@ -265,7 +275,7 @@ class MackieC4(object):
 
         # if cc_no in range(FID_PANNING_BASE, FID_PANNING_BASE + NUM_ENCODERS):
         if cc_no in encoder_range:
-            result = Live.MidiMap.MapMode.relative_signed_bit  # does this get called (boost error) and does this then need to be 14bit relative?
+            result = Live.MidiMap.MapMode.relative_signed_bit
         return result
 
     def refresh_state(self):
@@ -311,7 +321,7 @@ class MackieC4(object):
             # I think this 128 might mean use the master track index as a fallback
             # but index 128 is out-of-bounds by one
             # (valid track indexes inside EncoderController are 00 - 127)
-            selected_index = 128
+            selected_index = 127  # MS ok lets then try and change that to 127
 
         if selected_index != self.track:
             self.track = selected_index
@@ -390,7 +400,7 @@ class MackieC4(object):
         for slot in self.slisten:
             if slot is not None:
                 if slot.has_clip_has_listener(self.slisten[slot]) == 1:
-                    slot.remove_has_clip_listener(self.slisten[slot])
+                    slot.remove_has_clip_listener(self.slisten[slot])  # MS KeyError when deleting a track referring to ClipSlot.ClipSlot
 
         self.slisten = {}
         for clip in self.clisten:
@@ -673,11 +683,11 @@ class MackieC4(object):
             slot.clip.remove_playing_status_listener(self.clisten[slot.clip])
         else:
             if (slot.clip in self.pplisten) == 1:
-                slot.clip.remove_playing_position_listener(self.pplisten[slot.clip])
+                Live.Clip.Clip.remove_playing_position_listener(self.pplisten[slot.clip])
             if (slot.clip in self.cnlisten) == 1:
-                slot.clip.remove_name_listener(self.cnlisten[slot.clip])
+                Live.Clip.Clip.remove_name_listener(self.cnlisten[slot.clip])
             if (slot.clip in self.cclisten) == 1:
-                slot.clip.remove_color_listener(self.cclisten[slot.clip])
+                Live.Clip.Clip.remove_color_listener(self.cclisten[slot.clip])
 
         return
 
@@ -708,27 +718,8 @@ class MackieC4(object):
 
     def trname_changestate(self, tid, track, r=0):
         if r == 1:
-            nm = track.name
-            col = 0
-            grouptrack = 0
-            try:
-                col = track.color
-            except:
-                pass
+            pass
         else:
-            nm = track.name
-            col = 0
-            is_midi_track = track.has_midi_input
-
-            try:
-                col = track.color
-            except:
-                pass
-            if track.is_foldable == 1:
-                grouptrack = 1
-            else:
-                grouptrack = 0
-            # from . LiveUtils import getTracks  # MS not needed
             self.trBlock(0, len(LiveUtils.getTracks()))
 
     def meter_changestate(self, tid, track, lr, r=0):
@@ -792,7 +783,14 @@ class MackieC4(object):
                 if de.parameters_has_listener(ocb) == 1:
                     de.remove_parameters_listener(ocb)
 
-        self.plisten = {}
+        self.plisten = {}  # MS this produces a KeyError when closing Live with:
+        # RemoteScriptError:   File "C:\ProgramData\Ableton\Live 11 Beta\Resources\MIDI Remote Scripts\MackieC4\MackieC4.py", line 240, in disconnect
+        # RemoteScriptError: self.rem_device_listeners()
+        # RemoteScriptError:   File "C:\ProgramData\Ableton\Live 11 Beta\Resources\MIDI Remote Scripts\MackieC4\MackieC4.py", line 776, in rem_device_listeners
+        # RemoteScriptError: ocb = self.prlisten[pr]
+        # RemoteScriptError: KeyError
+        # RemoteScriptError: <DeviceParameter.DeviceParameter object at 0x0000000073D58850>
+
         return
 
     def add_devpmlistener(self, device):
