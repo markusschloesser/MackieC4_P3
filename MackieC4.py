@@ -39,10 +39,9 @@ from . LiveUtils import *
 from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
-from ableton.v2.control_surface.control_surface import ControlSurface  # MS
+from _Framework.ControlSurface import ControlSurface  # MS
 import Live
-from ableton.v2.control_surface import IdentifiableControlSurface, MIDI_CC_TYPE  # MS new
-from ableton.v2.control_surface.elements import ButtonElement, EncoderElement  # MS new
+
 logger = logging.getLogger(__name__)
 
 
@@ -135,7 +134,7 @@ class MackieC4(object):
     #         self._rebuild_requests_during_suppression += 1
     #     else:
     #         self._c_instance.request_rebuild_midi_map()
-            self.__c_instance.request_rebuild_midi_map()
+        self.__c_instance.request_rebuild_midi_map()
 
     def update_display(self):
         """
@@ -674,11 +673,11 @@ class MackieC4(object):
             slot.clip.remove_playing_status_listener(self.clisten[slot.clip])
         else:
             if (slot.clip in self.pplisten) == 1:
-                Live.Clip.Clip.remove_playing_position_listener(self.pplisten[slot.clip])
+                slot.clip.remove_playing_position_listener(self.pplisten[slot.clip])
             if (slot.clip in self.cnlisten) == 1:
-                Live.Clip.Clip.remove_name_listener(self.cnlisten[slot.clip])
+                slot.clip.remove_name_listener(self.cnlisten[slot.clip])
             if (slot.clip in self.cclisten) == 1:
-                Live.Clip.Clip.remove_color_listener(self.cclisten[slot.clip])
+                slot.clip.remove_color_listener(self.cclisten[slot.clip])
 
         return
 
