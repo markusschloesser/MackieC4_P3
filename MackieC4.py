@@ -75,7 +75,7 @@ class MackieC4(object):
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
-        self._suppress_requests_counter = 0
+
         # initialize the 32 encoders, their EncoderController and
         # add them as __components here
         self.__components = []
@@ -130,21 +130,12 @@ class MackieC4(object):
         called once per GUI frame.
         """
     # MS: _Framework.ControlSurface does the following codeblock
-        if self._suppress_requests_counter > 0:
-            self._rebuild_requests_during_suppression += 1
-        else:
+    # def request_rebuild_midi_map(self):
+    #     if self._suppress_requests_counter > 0:
+    #         self._rebuild_requests_during_suppression += 1
+    #     else:
+    #         self._c_instance.request_rebuild_midi_map()
             self.__c_instance.request_rebuild_midi_map()
-    #    self.__c_instance.request_rebuild_midi_map()  # MS this was the old line
-
-    def _set_suppress_rebuild_requests(self, suppress_requests):
-        if suppress_requests:
-            self._suppress_requests_counter += 1
-        else:
-            self._suppress_requests_counter -= 1
-            if self._suppress_requests_counter == 0:
-                if self._rebuild_requests_during_suppression > 0:
-                    self.request_rebuild_midi_map()
-                    self._rebuild_requests_during_suppression = 0
 
     def update_display(self):
         """
