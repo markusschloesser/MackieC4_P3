@@ -692,7 +692,7 @@ class EncoderController(MackieC4Component):
 
             # if a default Live device is chosen, iterate the DEVICE_DICT constant
             # to reorder the local list of plugin parameters
-            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():  # MS should we import device dict from generic devices or Live?
+            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():
                 device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
                 for bank in device_banks:
                     for param_name in bank:
@@ -708,13 +708,14 @@ class EncoderController(MackieC4Component):
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
 
-        self.__ordered_plugin_parameters = result  # MS This is were Jon logs the param names to the Live log
+        self.__ordered_plugin_parameters = result
         count = 0
         for p in self.__ordered_plugin_parameters:
+            # log the param names to the Live log in order
             self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
             count += 1
 
-    def __reassign_encoder_parameters(self, for_display_only):  # MS "=False" after display only removed. Why?
+    def __reassign_encoder_parameters(self, for_display_only):  # JW see for_display_only discussion thread
         """ Reevaluate all v-pot parameter assignments """
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
