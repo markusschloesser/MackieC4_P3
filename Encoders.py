@@ -73,10 +73,10 @@ class Encoders(MackieC4Component):
             # feedback_rule.channel = 0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without
             # feedback_rule.cc_no = self.__vpot_cc_nbr  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
-            range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
+            range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base  # MS with the outcommenting of the next line, range_end is not used anymore
             # feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without
             # feedback_rule.delay_in_ms = -1.0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without
-            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover)  # MS "sensitivity" added
+            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
             self.main_script().log_message("potIndex<{}> cc_value<{}> received".format(type, type, encoder, param))
             #  MS: now wtf does the line give a Boost Error with:
             #  RemoteScriptError: Python argument types in

@@ -54,15 +54,34 @@ class MackieC4(object):
     """
     __module__ = __name__
     prlisten = {}
+    '''prlisten is "Parameter" Listener?'''
+
     plisten = {}
+    '''what the fuck is plisten if prlisten is already Parameter Listener, only reference I can find is "devpm"'''
+
     dlisten = {}
+    '''dlisten is "Device Listener'''
+
     clisten = {}
+    '''clisten is "Clip" Listener'''
+
     slisten = {}
+    '''slisten is "Slot Listener'''
+
     pplisten = {}
+    '''pplisten is "Playing Position" Listener'''
+
     cnlisten = {}
+    '''cnlisten is "Clip Listener'''
+
     cclisten = {}
+    '''cclisten is "Clip Color" Listener'''
+
     mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'oml': {}, 'omr': {}}
+    '''oml is "output_meter_left, omr is output_meter_right'''
+
     rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}}
+    '''rlisten is "Returns" Listener '''
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
     scenelisten = {}
     scene = 0
@@ -259,8 +278,7 @@ class MackieC4(object):
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
             self.return_resetter = 0
 
-    def suggest_map_mode(self, cc_no, channel=0):  # MS look at how _framework.ControlSurface does this! A lot of
-        # shit could be called from there and a lot in the C4 scripts is probably redundant to that
+    def suggest_map_mode(self, cc_no, channel=0):  # MS identical to what MackieControlXT does
         result = Live.MidiMap.MapMode.absolute
 
         # if cc_no in range(FID_PANNING_BASE, FID_PANNING_BASE + NUM_ENCODERS):
