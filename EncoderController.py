@@ -863,8 +863,7 @@ class EncoderController(MackieC4Component):
                 else:
                     plugin_param = self.__plugin_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE)
                     vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
-                    vpot_display_text = (plugin_param[0], plugin_param[1])  # parameter name in bottom display row, blank on top
-                    # s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+                    vpot_display_text = (plugin_param[0], plugin_param[1])  # parameter name in top display row, param value in bottom row
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                 self.__display_parameters.append(vpot_display_text)
@@ -1111,7 +1110,7 @@ class EncoderController(MackieC4Component):
                 if display_string.find('.') != -1:
                     display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):  # MS added german umlauts and "y"  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1130,7 +1129,7 @@ class EncoderController(MackieC4Component):
             return '      '
 
         if len(display_string) > 20:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_'):  # MS added german umlauts and "y"  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1161,7 +1160,7 @@ class EncoderController(MackieC4Component):
             transformed_text = transformed_text[:-2]  # remove the trailing 'dB'
 
         if len(transformed_text) > new_size:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):  # MS added german umlauts and "y"    # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(transformed_text) > new_size and transformed_text.rfind(um, 1) != -1:
                     um_pos = transformed_text.rfind(um, 1)
                     transformed_text = transformed_text[:um_pos]
