@@ -54,10 +54,10 @@ class MackieC4(object):
     """
     __module__ = __name__
     prlisten = {}
-    '''prlisten is "Parameter" Listener?'''
+    '''prlisten is "Parameter Range" Listener?'''
 
     plisten = {}
-    '''what the fuck is plisten if prlisten is already Parameter Listener, only reference I can find is "devpm"'''
+    '''plisten is "Parameter" Listener?"'''
 
     dlisten = {}
     '''dlisten is "Device Listener'''
@@ -82,6 +82,7 @@ class MackieC4(object):
 
     rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}}
     '''rlisten is "Returns" Listener '''
+
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
     scenelisten = {}
     scene = 0

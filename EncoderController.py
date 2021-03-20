@@ -162,6 +162,7 @@ class EncoderController(MackieC4Component):
             self.t_count += 1
 
         nbr_nrml_trks = i1  # assert nbr_nrml_trks == self.t_count
+
         for i2 in range(len(self.song().return_tracks)):
             devices_on_rtn_track = self.song().return_tracks[i2].devices
             device_index = nbr_nrml_trks + i2 + 1
@@ -180,6 +181,7 @@ class EncoderController(MackieC4Component):
             self.t_r_count += 1
 
         nbr_nrml_and_rtn_trks = device_index  # assert nbr_nrml_and_rtn_trks == self.t_count
+
         self.__master_track_index = nbr_nrml_and_rtn_trks + 1
         lmti = self.__master_track_index
         devices_on_mstr_track = self.song().master_track.devices
@@ -654,12 +656,12 @@ class EncoderController(MackieC4Component):
 
     def __send_parameter(self, vpot_index):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
-        if vpot_index < len(self.selected_track.mixer_device.sends):
-            p = self.selected_track.mixer_device.sends[vpot_index]
+        if vpot_index < len(self.song().view.selected_track.mixer_device.sends):
+            p = self.song().view.selected_track.mixer_device.sends[vpot_index]
             self.main_script().log_message("Param name <{0}>".format(p.name))  # MS This is were Jon logs the "parameter names" to the Live log
-            return p, p.name
+            return (p, p.name)
         else:
-            return None, 'None'
+            return None, None
 
     def __plugin_parameter(self, vpot_index):
         """ Return the plugin parameter that is assigned to the given encoder as a tuple (param, param.name)
@@ -677,12 +679,12 @@ class EncoderController(MackieC4Component):
                     self.main_script().log_message("Param {0} tuple name <{1}>".format(vpot_index, p[1]))
                 return p
 
-        return None, 'None'
+        return None, None
 
     def __on_parameter_list_of_chosen_plugin_changed(self):
         assert self.__chosen_plugin is not None
         self.__reorder_parameters()
-        self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from leigh, seems to work
+        self.__reassign_encoder_parameters(for_display_only=False)
         self.request_rebuild_midi_map()
         return
 
@@ -692,7 +694,7 @@ class EncoderController(MackieC4Component):
 
             # if a default Live device is chosen, iterate the DEVICE_DICT constant
             # to reorder the local list of plugin parameters
-            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():  # MS should we import device dict from generic devices or Live?
+            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():  # MS: comes from Live (Simpler etc), shitload of tuples with str
                 device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
                 for bank in device_banks:
                     for param_name in bank:
@@ -708,13 +710,14 @@ class EncoderController(MackieC4Component):
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
 
-        self.__ordered_plugin_parameters = result  # MS This is were Jon logs the param names to the Live log
-        count = 0
+        self.__ordered_plugin_parameters = result
+
+        count = 0  # MS This is were Jon logs the param names to the Live log
         for p in self.__ordered_plugin_parameters:
             self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
             count += 1
 
-    def __reassign_encoder_parameters(self, for_display_only):  # MS "=False" after display only removed. Why?
+    def __reassign_encoder_parameters(self, for_display_only):
         """ Reevaluate all v-pot parameter assignments """
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
@@ -860,7 +863,7 @@ class EncoderController(MackieC4Component):
                 else:
                     plugin_param = self.__plugin_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE)
                     vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
-                    vpot_display_text = (plugin_param[1], '')  # parameter name in bottom display row, blank on top
+                    vpot_display_text = (plugin_param[0], plugin_param[1])  # parameter name in bottom display row, blank on top
                     # s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -921,7 +924,7 @@ class EncoderController(MackieC4Component):
         lower_string3 = ''
         upper_string4 = ''
         lower_string4 = ''
-        self.__display_repeat_count += 1
+        self.__display_repeat_count += 1  # MS what is this for?
 
         encoder_29_index = 28
         encoder_30_index = 29
@@ -1028,7 +1031,7 @@ class EncoderController(MackieC4Component):
                 # MS: this throws massive Index errors when THE LAST device is deleted, maybe needs fallback to "none"?
 
                 lower_string1b += self.__generate_20_char_string(device_name)
-                #  self.main_script().log_message("problematic string source <{0}>, transformed <{1}>".format(device_name, lower_string1b))
+                # self.main_script().log_message("problematic string source <{0}>, transformed <{1}>".format(device_name, lower_string1b))
                 lower_string1b = lower_string1b.center(20)
                 lower_string1 += lower_string1a
                 lower_string1 += lower_string1b
@@ -1108,7 +1111,7 @@ class EncoderController(MackieC4Component):
                 if display_string.find('.') != -1:
                     display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1127,7 +1130,7 @@ class EncoderController(MackieC4Component):
             return '      '
 
         if len(display_string) > 20:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):  # MS added underscore _ / and umlauts  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
                 while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
