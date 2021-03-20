@@ -40,7 +40,7 @@ What works:
 What doesn't work / ToDo:
 
     1. last device deletion causes error #1 https://github.com/markusschloesser/MackieC4_P3/issues/1
-    2. Parameter values are not shown #3 https://github.com/markusschloesser/MackieC4_P3/issues/3
+    2. (fixed in latest "MS_stable" branch) Parameter values are not shown #3 https://github.com/markusschloesser/MackieC4_P3/issues/3
     3. for the other stuff, see "Issues" here
    
 
