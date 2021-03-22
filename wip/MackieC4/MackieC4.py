@@ -51,7 +51,7 @@ if sys.version_info[0] >= 3:  # Live 11
     from .EncoderController import EncoderController
     from _Framework.ControlSurface import ControlSurface  # MS
     import Live
-else: # Live 10
+else:  # Live 10
     from _Framework.ControlSurface import ControlSurface
     import logging, time
     from . LiveUtils import *
@@ -780,8 +780,8 @@ class MackieC4(object):
         self.do_add_device_listeners([self.song().master_track], 2)
 
     def do_add_device_listeners(self, tracks, type):
-        for i, tracks in enumerate(tracks):
-            self.add_devicelistener(f'{i}: {tracks}', i, type)
+        for i in range(len(tracks)):
+            self.add_devicelistener(tracks[i], i, type)
             if len(tracks[i].devices) >= 1:
                 for j in range(len(tracks[i].devices)):
                     self.add_devpmlistener(tracks[i].devices[j])
