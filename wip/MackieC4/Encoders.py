@@ -5,7 +5,11 @@
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from . MackieC4Component import *
 from ableton.v2.base import liveobj_valid  # MS
-from builtins import range  # MS
+
+import sys
+if sys.version_info[0] >= 3:  # Live 11
+    from builtins import range
+
 from _Framework.ControlSurface import ControlSurface  # MS
 from _Framework.Control import Control  # MS
 from itertools import chain

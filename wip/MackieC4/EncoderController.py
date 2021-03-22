@@ -4,8 +4,11 @@
 # Decompiled by https://python-decompiler.com
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
-from past.utils import old_div
-from builtins import range
+import sys
+if sys.version_info[0] >= 3:  # Live 11
+    from past.utils import old_div
+    from builtins import range
+
 from . consts import *
 from . MackieC4Component import *
 from _Generic.Devices import *
@@ -684,7 +687,7 @@ class EncoderController(MackieC4Component):
     def __on_parameter_list_of_chosen_plugin_changed(self):
         assert self.__chosen_plugin is not None
         self.__reorder_parameters()
-        self.__reassign_encoder_parameters(for_display_only=False)
+        self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket from leigh, seems to work
         self.request_rebuild_midi_map()
         return
 
@@ -694,7 +697,7 @@ class EncoderController(MackieC4Component):
 
             # if a default Live device is chosen, iterate the DEVICE_DICT constant
             # to reorder the local list of plugin parameters
-            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():  # MS: comes from Live (Simpler etc), shitload of tuples with str
+            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():
                 device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
                 for bank in device_banks:
                     for param_name in bank:
@@ -711,9 +714,9 @@ class EncoderController(MackieC4Component):
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
 
         self.__ordered_plugin_parameters = result
-
-        count = 0  # MS This is were Jon logs the param names to the Live log
+        count = 0
         for p in self.__ordered_plugin_parameters:
+            # log the param names to the Live log in order
             self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
             count += 1
 

@@ -6,7 +6,9 @@
 
 # max 128 tracks per song
 from __future__ import absolute_import, print_function, unicode_literals  # MS
-from builtins import range
+import sys
+if sys.version_info[0] >= 3:  # Live 11
+    from builtins import range
 
 SETUP_DB_DEFAULT_SIZE = 128
 
