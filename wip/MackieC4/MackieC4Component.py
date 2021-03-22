@@ -3,7 +3,10 @@
 # Compiled at: 2011-01-12 12:23:43
 # Decompiled by https://python-decompiler.com
 from __future__ import absolute_import, print_function, unicode_literals
-from builtins import object  # MS needed for new object at class
+import sys
+if sys.version_info[0] >= 3:  # Live 11
+    from builtins import object  # MS needed for new object at class
+
 from .consts import *
 import Live
 import MidiRemoteScript

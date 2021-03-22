@@ -28,19 +28,38 @@ This script is based off the Ableton Live supplied MIDI Remote Scripts.
 This is the second file that is loaded, by way of being instantiated through
 __init__.py
 
+from _Framework.ControlSurface import ControlSurface
+import logging, time, LiveUtils
+from consts import *
+from Encoder import Encoder
+from EncoderController import EncoderController
+import MidiRemoteScript
+import Live
+
 """
 from __future__ import absolute_import, print_function, unicode_literals
-from builtins import str
-from builtins import range
-from builtins import object
-import logging
-import time
-from . LiveUtils import *
-from .consts import *
-from .Encoders import Encoders
-from .EncoderController import EncoderController
-from _Framework.ControlSurface import ControlSurface  # MS
-import Live
+import sys
+if sys.version_info[0] >= 3:  # Live 11
+    from builtins import str
+    from builtins import range
+    from builtins import object
+    import logging
+    import time
+    from . LiveUtils import *
+    from .consts import *
+    from .Encoders import Encoders
+    from .EncoderController import EncoderController
+    from _Framework.ControlSurface import ControlSurface  # MS
+    import Live
+else: # Live 10
+    from _Framework.ControlSurface import ControlSurface
+    import logging, time
+    from . LiveUtils import *
+    from .consts import *
+    from .Encoders import Encoders
+    from .EncoderController import EncoderController
+    import MidiRemoteScript
+    import Live
 
 logger = logging.getLogger(__name__)
 
