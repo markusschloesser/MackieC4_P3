@@ -1056,7 +1056,7 @@ class EncoderController(MackieC4Component):
                     elif t in row_01_encoders:
                         upper_string2 += self.__generate_6_char_string(u_alt_text)
                         upper_string2 += ' '
-                        lower_string2 += self.__generate_6_char_string(str(l_alt_text))
+                        lower_string2 += self.__generate_6_char_string(str(l_alt_text))  # MS BAD ERROR When switching devices
                         lower_string2 += ' '
                     elif t in row_02_encoders:
                         upper_string3 += self.__generate_6_char_string(u_alt_text)

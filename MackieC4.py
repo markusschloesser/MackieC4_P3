@@ -761,8 +761,8 @@ class MackieC4(object):
         self.do_add_device_listeners([self.song().master_track], 2)
 
     def do_add_device_listeners(self, tracks, type):
-        for i in range(len(tracks)):
-            self.add_devicelistener(tracks[i], i, type)
+        for i, tracks in enumerate(tracks):
+            self.add_devicelistener(f'{i}: {tracks}', i, type)
             if len(tracks[i].devices) >= 1:
                 for j in range(len(tracks[i].devices)):
                     self.add_devpmlistener(tracks[i].devices[j])
@@ -773,7 +773,7 @@ class MackieC4(object):
 
     def rem_device_listeners(self):
         for pr in self.prlisten:
-            ocb = self.prlisten[pr]
+            ocb = self.prlisten[pr]  # KeyError when exchanging M4L device
             if pr is not None:
                 if pr.value_has_listener(ocb) == 1:
                     pr.remove_value_listener(ocb)
@@ -843,7 +843,7 @@ class MackieC4(object):
                 return i
 
     def track_inc_dec(self, note):
-        self.log_message("handling note <{}> for track inc dec".format(note))
+        # self.log_message("handling note <{}> for track inc dec".format(note))  # MS logging for track changes currently not needed
         selected_track = self.song().view.selected_track
         tracks = self.song().visible_tracks + self.song().return_tracks
         index = 0
