@@ -267,7 +267,7 @@ class MackieC4(object):
         block = []
         tracks = self.song().visible_tracks
         for track in range(0, blocksize):
-            block.extend([str(tracks[(trackOffset + track)].name)])
+            block.extend([str(tracks[(trackOffset + track)].name)])  # MS IndexError when closing Live, again a Lambda thing!!
 
     def disconnect(self):
         self.rem_clip_listeners()
@@ -711,7 +711,7 @@ class MackieC4(object):
             slot.clip.remove_playing_status_listener(self.clisten[slot.clip])
         else:
             if (slot.clip in self.pplisten) == 1:
-                slot.clip.remove_playing_position_listener(self.pplisten[slot.clip])
+                slot.clip.remove_playing_position_listener(self.pplisten[slot.clip])  # MS something's wrong here, according to LOM only clip.clip has pplisten,but not slot.clip
             if (slot.clip in self.cnlisten) == 1:
                 slot.clip.remove_name_listener(self.cnlisten[slot.clip])
             if (slot.clip in self.cclisten) == 1:

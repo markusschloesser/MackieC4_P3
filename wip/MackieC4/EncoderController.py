@@ -587,7 +587,7 @@ class EncoderController(MackieC4Component):
                 encoder_30_index = 29  # 29th index is the 30th element  # MS isn't that supposed to be encodeR (with R)?, lets try changing. fixed something
                 if encoder_index < encoder_29_index:
                     param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
-                    param.value = param.default_value
+                    param.value = param.default_value  # AttributeError when closing " 'NoneType' object has no attribute 'default_value' "
                 elif encoder_index == encoder_29_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.can_be_armed:
@@ -768,7 +768,7 @@ class EncoderController(MackieC4Component):
                     current_encoder_offset = current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE
                     if count + current_encoder_offset < self.t_d_count[self.t_current]:
                         s.show_full_enlighted_poti()
-                        device_name = self.selected_track.devices[(count + int(current_encoder_offset))].name
+                        device_name = self.selected_track.devices[(count + int(current_encoder_offset))].name  # MS IndexError when closing Live
                         vpot_display_text = (device_name, '')  # device_name in bottom row, blanks on top
                     else:
                         s.unlight_vpot_leds()
