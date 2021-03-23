@@ -234,7 +234,7 @@ class MackieC4(object):
                 vpot_index = cc_nbr & 0x0F  # & 0F preserves only vpot_index related bits)
                 self.__encoder_controller.handle_vpot_rotation(vpot_index, cc_value)
 
-    def can_lock_to_devices(self):  # MS: shouldn't this be True? there IS a lock button on the C4
+    def can_lock_to_devices(self):
         return False
 
     def suggest_input_port(self):
@@ -427,8 +427,8 @@ class MackieC4(object):
     def rem_clip_listeners(self):
         for slot in self.slisten:
             if slot is not None:
-                if slot.has_clip_has_listener(self.slisten[slot]) == 1:
-                    slot.remove_has_clip_listener(self.slisten[slot])  # MS KeyError when deleting a track referring to ClipSlot.ClipSlot
+                if slot.has_clip_has_listener(self.slisten[slot]) == 1:  # MS KeyError when deleting a track, referring to ClipSlot.ClipSlot
+                    slot.remove_has_clip_listener(self.slisten[slot])
 
         self.slisten = {}
         for clip in self.clisten:
