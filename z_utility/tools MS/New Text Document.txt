@@ -1,0 +1,21 @@
+map_midi_cc_with_feedback_map( (int)midi_map_handle, (DeviceParameter)parameter, (int)midi_channel, (int)controller_number, (MapMode)map_mode, (CCFeedbackRule)feedback_rule, (bool)avoid_takeover [, (float)sensitivity=1.0]) -&gt; bool : 
+
+C++ signature :  bool map_midi_cc_with_feedback_map(unsigned int,TPyHandle&lt;ATimeableValue&gt;,int,int,NRemoteMapperTypes::TControllerMapMode,NPythonMidiMap::TCCFeedbackRule,bool [,float=1.0])
+
+map_midi_cc_with_feedback_map( (int)midi_map_handle, (DeviceParameter)parameter, (int)midi_channel, (int)controller_number, (MapMode)map_mode, (CCFeedbackRule)feedback_rule, (bool)avoid_takeover [, (float)sensitivity=1.0]) -&gt; bool : 
+
+C++ signature : bool map_midi_cc_with_feedback_map(unsigned long,class TPyHandle&lt;class ATimeable&gt;,long,long,enum NRemoteMapperTypes::TControllerMapMode,class NPythonMidiMap::TCCFeedbackRule,bool [,float=1.0])
+
+
+
+(int)midi_map_handle	param					0			encoder			Live.MidiMap.MapMode.relative_signed_bit	feedback_rule					needs_takeover		sensitivity=1.0
+(int)			(DeviceParameter)			(int)midi_channel	(int)controller_number	(MapMode)					(CCFeedbackRule)				(bool)avoid_takeover	(float)sensitivity=1.0]) -&gt; bool
+unsigned long		class TPyHandle&lt;class ATimeable&gt;	long			long			enum NRemoteMapperTypes::TControllerMapMode	class NPythonMidiMap::TCCFeedbackRule		bool 			[,float=1.0])
+unsigned int		TPyHandle&lt;ATimeableValue&gt;		int			int			NRemoteMapperTypes::TControllerMapMode		NPythonMidiMap::TCCFeedbackRule			bool 			[,float=1.0])
+
+
+
+Instance attribute __display_parameters of EncoderController __display_parameters: 			list[Union[tuple[None, int],	tuple[str, str], 	tuple[Any, int], 		tuple[Any, Any], tuple[str, int], tuple[Any, str], list]] = []
+Instance attribute __display_parameters of EncoderController.EncoderController __display_parameters: 	list[Union[tuple[str, str], 	tuple[Any, str], 	tuple[Optional[int],str]]] = []
+display_parameters: 											list[Union[tuple[Any, Any],	tuple[None, None], 	list, 				tuple[Any, str]]] = []
+display_parameters: 											list[Union[tuple[Any, Any], 	tuple[None, None], 	list, 				tuple[Any, str]]] = []
