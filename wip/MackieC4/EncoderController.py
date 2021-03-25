@@ -57,19 +57,19 @@ class EncoderController(MackieC4Component):
 
         # track device count -- the count of devices loaded on the t_current track
         # see device_counter(self, t, d):
-        self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
+        self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # MS why is "i" not used??
         """current track device count"""
 
         # track device current -- the index of the currently selected device indexed by the t_current track
-        self.t_d_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
+        self.t_d_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # MS why is "i" not used??
 
         # t_d bank count -- the count of the devices on the t_current track (in banks of 8 parameters)
         # see device_counter(self, t, d): (at the same index) the same number as t_d_count but divided by 8
-        self.t_d_bank_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
+        self.t_d_bank_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # MS why is "i" not used??
 
         # t_d bank current -- the index of currently selected device indexed by the t_current track
         # (in banks of 8 parameters) the same index as t_d_current divided by 8
-        self.t_d_bank_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
+        self.t_d_bank_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # MS why is "i" not used??
 
         # t_d parameter count -- the count of remote controllable parameters available for the currently selected
         # device on the t_current track
@@ -129,7 +129,7 @@ class EncoderController(MackieC4Component):
         # self.destroy()
         MackieC4Component.destroy(self)
 
-    # function provided by MackieC4Component super #MS reversed to Leigh's version, Sissy had delegated destroy to Super
+    # function provided by MackieC4Component super #MS reversed to Leigh's version, Sissy had delegated to Super
     def request_rebuild_midi_map(self):
         MackieC4Component.request_rebuild_midi_map(self)  # MS mmh good idea? was next line
         # self._MackieC4Component__main_script.request_rebuild_midi_map()
@@ -267,7 +267,7 @@ class EncoderController(MackieC4Component):
             self.t_d_p_bank_current[track_index][d] = 0
 
         # self.refresh_state() #MS out-commented, copy from Leigh on next line
-        self._MackieC4Component__main_script.refresh_state()
+        self._MackieC4Component__main_script.refresh_state()  # MS why do we delegate to component, which in turn delegates to main??
         if self.t_d_count[track_index] == 0:
             self.__chosen_plugin = None
             self.__reorder_parameters()
@@ -280,11 +280,7 @@ class EncoderController(MackieC4Component):
         self.request_rebuild_midi_map()
         return
 
-    def track_deleted(self, track_index):
-        # suspect this breaks if the only normal or return track is deleted,
-        # the master-track becomes the only track "tracked here", and then
-        # fun would ensue elsewhere such as in __reassign_encoder_parameters() or request_rebuild_midi_map()
-        # because of 0 regular or return tracks in the song
+    def track_deleted(self, track_index):  # MS original comment deleted, there is ALWAYS one track
         for t in range(self.t_current + 1, self.t_count, 1):
             for d in range(self.t_d_count[t]):
                 self.t_d_p_count[(t - 1)][d] = self.t_d_p_count[t][d]
@@ -306,7 +302,7 @@ class EncoderController(MackieC4Component):
             selected_device = self.selected_track.devices[self.t_d_current[self.t_current]]
             self.__chosen_plugin = selected_device
             self.__reorder_parameters()
-        self.__reassign_encoder_parameters(for_display_only=False)  # MS things in bracket from leigh, seems ok
+        self.__reassign_encoder_parameters(for_display_only=False)
         self.request_rebuild_midi_map()
         return
 
@@ -1032,7 +1028,7 @@ class EncoderController(MackieC4Component):
                 device_name = self.selected_track.devices[self.t_d_current[self.t_current]].name
                 # MS: this throws massive Index errors when THE LAST device is deleted, maybe needs fallback to "none"?
 
-                lower_string1b += self.__generate_20_char_string(device_name)
+                lower_string1b += self.__generate_20_char_string(str(device_name))  # MS lets try str
                 # self.main_script().log_message("problematic string source <{0}>, transformed <{1}>".format(device_name, lower_string1b))
                 lower_string1b = lower_string1b.center(20)
                 lower_string1 += lower_string1a

@@ -44,7 +44,7 @@ class LiveUtils:
     def jumpBy(time):
         """Jumps the playhead relative to it's current position by time.  Stops playback."""
         Live.Application.get_application().get_document().jump_by(time)
-        
+
     def scrubBy(time):
         """Jumps the playhead relative to it's current position by time.  Does not stop playback"""
         Live.Application.get_application().get_document().scrub_by(time)
@@ -61,7 +61,7 @@ class LiveUtils:
         """Stops Ableton"""
         Live.Application.get_application().get_document().stop_playing()
 
-    def currentTime(time = None):
+    def currentTime(time=None):
         """Sets/Returns the current song time"""
         song = Live.Application.get_application().get_document()
         if time is not None:
@@ -97,7 +97,7 @@ class LiveUtils:
         track = Live.Application.get_application().get_document().tracks[trackNumber]
         for clipSlot in track.clip_slots:
             clipSlot.stop()
-        
+
     def getTempo():
         """Returns the current song tempo"""
         return Live.Application.get_application().get_document().tempo
@@ -106,11 +106,11 @@ class LiveUtils:
         Live.Application.get_application().get_document().tempo = tempo
 
     def jumpToNextCue():
-        Live.Application.get_application().get_document().jump_to_next_cue()    
+        Live.Application.get_application().get_document().jump_to_next_cue()
 
     def jumpToPrevCue():
         Live.Application.get_application().get_document().jump_to_prev_cue()
-        
+
     def armTrack(num):
         """Arms track number (num)"""
         Live.Application.get_application().get_document().tracks[num].arm = 1
@@ -127,20 +127,20 @@ class LiveUtils:
         else:
             Live.Application.get_application().get_document().tracks[num].arm = 1
 
-    def muteTrack(track, ty = 0):
+    def muteTrack(track, ty=0):
         """Mutes track number (num)"""
         if ty == 1:
             Live.Application.get_application().get_document().return_tracks[track].mute = 1
         else:
             Live.Application.get_application().get_document().tracks[track].mute = 1
 
-    def unmuteTrack(track, ty = 0):
+    def unmuteTrack(track, ty=0):
         """Unmutes track number (num)"""
         if ty == 1:
             Live.Application.get_application().get_document().return_tracks[track].mute = 0
-        else:    
+        else:
             Live.Application.get_application().get_document().tracks[track].mute = 0
-        
+
     def toggleMuteTrack(num):
         """Toggles the muted state of track number (num)"""
         muted = Live.Application.get_application().get_document().tracks[num].mute
@@ -149,20 +149,20 @@ class LiveUtils:
         else:
             Live.Application.get_application().get_document().tracks[num].mute = 1
 
-    def soloTrack(track, ty = 0):
+    def soloTrack(track, ty=0):
         """Solo's track number (num)"""
         if ty == 1:
             Live.Application.get_application().get_document().return_tracks[track].solo = 1
         else:
             Live.Application.get_application().get_document().tracks[track].solo = 1
-        
-    def unsoloTrack(track, ty = 0):
+
+    def unsoloTrack(track, ty=0):
         """Un-solos track number (num)"""
         if ty == 1:
             Live.Application.get_application().get_document().return_tracks[track].solo = 0
         else:
             Live.Application.get_application().get_document().tracks[track].solo = 0
-        
+
     def toggleSoloTrack(num):
         """Toggles the soloed state of track number (num)"""
         soloed = Live.Application.get_application().get_document().tracks[num].solo
@@ -171,7 +171,7 @@ class LiveUtils:
         else:
             Live.Application.get_application().get_document().tracks[num].solo = 1
 
-    def trackVolume(track, volume = None):
+    def trackVolume(track, volume=None):
         """Gets/Changes the volume of track (track)
 
         If (volume) is specified, changes the volume of track number
@@ -181,7 +181,7 @@ class LiveUtils:
             Live.Application.get_application().get_document().tracks[track].mixer_device.volume.value = volume
         return Live.Application.get_application().get_document().tracks[track].mixer_device.volume.value
 
-    def trackPan(track, pan = None):
+    def trackPan(track, pan=None):
         """Gets/Changes the panning of track number (track)
 
         If (pan) is specified, changes the panning to (pan).
@@ -191,7 +191,7 @@ class LiveUtils:
             Live.Application.get_application().get_document().tracks[track].mixer_device.panning.value = pan
         return Live.Application.get_application().get_document().tracks[track].mixer_device.panning.value
 
-    def trackSend(track, send = None, level=None):
+    def trackSend(track, send=None, level=None):
         """Gets/Changes the level of send number (send) on track (track).
 
         If (level) is specified, the level of the send is set to (level),
@@ -202,25 +202,29 @@ class LiveUtils:
         if level is not None:
             Live.Application.get_application().get_document().tracks[track].mixer_device.sends[send].value = level
         return Live.Application.get_application().get_document().tracks[track].mixer_device.sends[send].value
-        
-    def trackName(track, name = None):
+
+    def trackName(track, name=None):
         """Gets/Changes the name of track (track).
 
         If (name) is specified, the track name is changed
         """
         if name is not None:
             Live.Application.get_application().get_document().tracks[track].name = name
-        return repr2(Live.Application.get_application().get_document().tracks[track].name)  # MS why repr2?? tried repr, was bad, back to repr2, must be a Live thing
+        return repr2(Live.Application.get_application().get_document().tracks[
+                         track].name)  # MS why repr2?? tried repr, was bad, back to repr2, must be a Live thing
 
-    def getClipSlots():  # MS: self good? was empty (). ALso getclipslots is 1. also somewhere else def and 2. gettable from Live itself
+    def getClipSlots(self):
+        # MS: self good? was empty (). ALso getclipslots is 1. also somewhere else def and 2. gettable from Live itself
+
         """Gets a 2D list of all the clip slots in the song"""
+
         tracks = Live.Application.get_application().get_document().tracks
         clipSlots = []
         for track in tracks:
             clipSlots.append(track.clip_slots)
         return clipSlots
 
-    def getClips():
+    def getClips(self):
         """Gets a 2D list of all the clip in the song.
 
         If there is no clip in a clip slot, None is returned
@@ -235,13 +239,15 @@ class LiveUtils:
             clips.append(trackClips)
         return clips
 
-    def launchClip(track, clip):  # MS was unreachable but we don't need that anyway
+    def launchClip(track, clip):  # MS was unreachable
         """Launches clip number (clip) in track number (track)"""
-        getClip(track, clip).fire()
+        # getClip(track, clip).fire()
+        Live.Clip.Clip.fire(clip, clip)  # MS fix some clip action
 
     def stopClip(track, clip):
         """Stops clip number (clip) in track (track)"""
-        getClip(track, clip).stop()
+        # getClip(track, clip).stop()
+        Live.Clip.Clip.stop(clip, clip)  # MS fix some clip action
 
     def getClip(track, clip):
         """Returns clip number (clip) in track (track)"""
@@ -250,7 +256,7 @@ class LiveUtils:
         # return clips[track][clip]  #MS 05.02.2021 remove next line again?
         return getSong().visible_tracks[track].clip_slots[clip].clip
 
-    def clipName(track, clip, name = None):
+    def clipName(track, clip, name=None):
         """Gets/changes the name of clip number (clip) in track (track)
 
         In (name) is specified, the name of the clip is changed
@@ -260,7 +266,7 @@ class LiveUtils:
             getClip(track, clip).name = name
         return repr(getClip(track, clip).name)
 
-    def clipPitch(track, clip, coarse = None, fine = None):
+    def clipPitch(track, clip, coarse=None, fine=None):
         """Gets/changes the coarse and fine pitch shift of clip (clip) in track (track).
 
         If (coarse) or (fine) are specified, changes the clip's pitch.
@@ -318,7 +324,7 @@ def stop():
     Live.Application.get_application().get_document().stop_playing()
 
 
-def currentTime(time = None):
+def currentTime(time=None):
     """Sets/Returns the current song time"""
     song = Live.Application.get_application().get_document()
     if time is not None:
@@ -368,7 +374,7 @@ def setTempo(tempo):
 
 
 def jumpToNextCue():
-    Live.Application.get_application().get_document().jump_to_next_cue()    
+    Live.Application.get_application().get_document().jump_to_next_cue()
 
 
 def jumpToPrevCue():
@@ -394,7 +400,7 @@ def toggleArmTrack(num):
         Live.Application.get_application().get_document().tracks[num].arm = 1
 
 
-def muteTrack(track, ty = 0):
+def muteTrack(track, ty=0):
     """Mutes track number (num)"""
     if ty == 1:
         Live.Application.get_application().get_document().return_tracks[track].mute = 1
@@ -402,11 +408,11 @@ def muteTrack(track, ty = 0):
         Live.Application.get_application().get_document().tracks[track].mute = 1
 
 
-def unmuteTrack(track, ty = 0):
+def unmuteTrack(track, ty=0):
     """Unmutes track number (num)"""
     if ty == 1:
         Live.Application.get_application().get_document().return_tracks[track].mute = 0
-    else:    
+    else:
         Live.Application.get_application().get_document().tracks[track].mute = 0
 
 
@@ -419,7 +425,7 @@ def toggleMuteTrack(num):
         Live.Application.get_application().get_document().tracks[num].mute = 1
 
 
-def soloTrack(track, ty = 0):
+def soloTrack(track, ty=0):
     """Solo's track number (num)"""
     if ty == 1:
         Live.Application.get_application().get_document().return_tracks[track].solo = 1
@@ -427,7 +433,7 @@ def soloTrack(track, ty = 0):
         Live.Application.get_application().get_document().tracks[track].solo = 1
 
 
-def unsoloTrack(track, ty = 0):
+def unsoloTrack(track, ty=0):
     """Un-solos track number (num)"""
     if ty == 1:
         Live.Application.get_application().get_document().return_tracks[track].solo = 0
@@ -444,7 +450,7 @@ def toggleSoloTrack(num):
         Live.Application.get_application().get_document().tracks[num].solo = 1
 
 
-def trackVolume(track, volume = None):
+def trackVolume(track, volume=None):
     """Gets/Changes the volume of track (track)
 
     If (volume) is specified, changes the volume of track number
@@ -455,7 +461,7 @@ def trackVolume(track, volume = None):
     return Live.Application.get_application().get_document().tracks[track].mixer_device.volume.value
 
 
-def trackPan(track, pan = None):
+def trackPan(track, pan=None):
     """Gets/Changes the panning of track number (track)
 
     If (pan) is specified, changes the panning to (pan).
@@ -466,7 +472,7 @@ def trackPan(track, pan = None):
     return Live.Application.get_application().get_document().tracks[track].mixer_device.panning.value
 
 
-def trackSend(track, send = None, level=None):
+def trackSend(track, send=None, level=None):
     """Gets/Changes the level of send number (send) on track (track).
 
     If (level) is specified, the level of the send is set to (level),
@@ -479,14 +485,15 @@ def trackSend(track, send = None, level=None):
     return Live.Application.get_application().get_document().tracks[track].mixer_device.sends[send].value
 
 
-def trackName(track, name = None):
+def trackName(track, name=None):
     """Gets/Changes the name of track (track).
 
     If (name) is specified, the track name is changed
     """
     if name is not None:
         Live.Application.get_application().get_document().tracks[track].name = name
-    return repr2(Live.Application.get_application().get_document().tracks[track].name)  # MS why repr2?? tried repr, was bad, back to repr2, as above, must be a Live thing
+    return repr2(Live.Application.get_application().get_document().tracks[
+                     track].name)  # MS why repr2?? tried repr, was bad, back to repr2, as above, must be a Live thing
 
 
 def getClipSlots():
@@ -530,7 +537,7 @@ def getClip(track, clip):
     return clips[track][clip]
 
 
-def clipName(track, clip, name = None):
+def clipName(track, clip, name=None):
     """Gets/changes the name of clip number (clip) in track (track)
 
     In (name) is specified, the name of the clip is changed
@@ -541,7 +548,7 @@ def clipName(track, clip, name = None):
     return repr(getClip(track, clip).name)
 
 
-def clipPitch(track, clip, coarse = None, fine = None):
+def clipPitch(track, clip, coarse=None, fine=None):
     """Gets/changes the coarse and fine pitch shift of clip (clip) in track (track).
 
      If (coarse) or (fine) are specified, changes the clip's pitch.
