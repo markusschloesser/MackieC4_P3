@@ -87,6 +87,8 @@ class MackieC4(object):
     slisten = {}
     '''slisten is "Slot Listener'''
 
+    sslisten = {}
+
     pplisten = {}
     '''pplisten is "Playing Position" Listener'''
 
@@ -96,10 +98,10 @@ class MackieC4(object):
     cclisten = {}
     '''cclisten is "Clip Color" Listener'''
 
-    mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'oml': {}, 'omr': {}}
+    mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'oml': {}, 'omr': {}, 'color': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
     '''oml is "output_meter_left, omr is output_meter_right'''
 
-    rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}}
+    rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'color': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
     '''rlisten is "Returns" Listener '''
 
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
@@ -340,7 +342,7 @@ class MackieC4(object):
         selected_index = 0
         for track in tracks:
             index = index + 1
-            if track == self.song().view.selected_track:
+            if track == selected_track:
                 selected_index = index
                 found = 1
 
@@ -425,15 +427,25 @@ class MackieC4(object):
         self.request_rebuild_midi_map()
 
     def rem_clip_listeners(self):
+        self.log_message("** Remove Listeners **")
+
         for slot in self.slisten:
             if slot is not None:
-                if slot.has_clip_has_listener(self.slisten[slot]) == 1:  # MS KeyError when deleting a track, referring to ClipSlot.ClipSlot
+                if slot.has_clip_has_listener(self.slisten[slot]) == 1:  # MS HAD a KeyError when deleting a track, referring to ClipSlot.ClipSlot, fixed in LiveUtils
                     slot.remove_has_clip_listener(self.slisten[slot])
 
         self.slisten = {}
+
+        for slot in self.sslisten:
+            if slot is not None:
+                if slot.has_stop_button_has_listener(self.sslisten[slot]) == 1:
+                    slot.remove_has_stop_button_listener(self.sslisten[slot])
+
+        self.sslisten = {}
+
         for clip in self.clisten:
             if clip is not None:
-                if clip.playing_status_has_listener(self.clisten[clip]) == 1:
+                if clip.playing_status_has_listener(self.clisten[clip]) == 1:  # MS KeyError when clip move across tracks, was 6 lines above, now here
                     clip.remove_playing_status_listener(self.clisten[clip])
 
         self.clisten = {}
@@ -493,6 +505,7 @@ class MackieC4(object):
             self.slisten[slot] = cb
 
     def rem_mixer_listeners(self):
+        # Master Track
         for type in ('volume', 'panning', 'crossfader'):
             for tr in self.masterlisten[type]:
                 if tr is not None:
@@ -501,7 +514,11 @@ class MackieC4(object):
                     if test == 1:
                         eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
 
-        for type in ('arm', 'solo', 'mute'):
+        # Normal Tracks
+        for type in ('arm', 'solo', 'mute', 'current_monitoring_state', 'available_input_routing_channels',
+                     'available_input_routing_types', 'available_output_routing_channels',
+                     'available_output_routing_types', 'input_routing_channel', 'input_routing_type',
+                     'output_routing_channel', 'output_routing_type'):
             for tr in self.mlisten[type]:
                 if tr is not None:
                     cb = self.mlisten[type][tr]
@@ -509,6 +526,10 @@ class MackieC4(object):
                         if tr.can_be_armed == 1:
                             if tr.arm_has_listener(cb) == 1:
                                 tr.remove_arm_listener(cb)
+                    elif type == 'current_monitoring_state':
+                        if tr.can_be_armed == 1:
+                            if tr.current_monitoring_state_has_listener(cb) == 1:
+                                tr.remove_current_monitoring_state_listener(cb)
                     else:
                         test = eval('tr.' + type + '_has_listener(cb)')
                         if test == 1:
@@ -536,9 +557,20 @@ class MackieC4(object):
                 if tr.name_has_listener(cb) == 1:
                     tr.remove_name_listener(cb)
 
+        for tr in self.mlisten['color']:
+            if tr is not None:
+                cb = self.mlisten['color'][tr]
+
+                try:
+                    if tr.color_has_listener(cb) == 1:
+                        tr.remove_color_listener(cb)
+                except:
+                    pass
+
         for tr in self.mlisten['oml']:
             if tr is not None:
                 cb = self.mlisten['oml'][tr]
+
                 if tr.output_meter_left_has_listener(cb) == 1:
                     tr.remove_output_meter_left_listener(cb)
 
@@ -548,7 +580,8 @@ class MackieC4(object):
                 if tr.output_meter_right_has_listener(cb) == 1:
                     tr.remove_output_meter_right_listener(cb)
 
-        for type in ('solo', 'mute'):
+        # Return Tracks
+        for type in ('solo', 'mute', 'available_output_routing_channels', 'available_output_routing_types', 'output_routing_channel', 'output_routing_type'):
             for tr in self.rlisten[type]:
                 if tr is not None:
                     cb = self.rlisten[type][tr]
@@ -578,8 +611,23 @@ class MackieC4(object):
                 if tr.name_has_listener(cb) == 1:
                     tr.remove_name_listener(cb)
 
-        self.mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'oml': {}, 'omr': {}}
-        self.rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}}
+        for tr in self.rlisten['color']:
+            if tr is not None:
+                cb = self.rlisten["color"][tr]
+                try:
+                    if tr.color_has_listener(cb) == 1:
+                        tr.remove_color_listener(cb)
+                except:
+                    pass
+        self.mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {},
+                        'sends': {}, 'name': {}, 'oml': {}, 'omr': {}, 'color': {},
+                        'available_input_routing_channels': {}, 'available_input_routing_types': {},
+                        'available_output_routing_channels': {}, 'available_output_routing_types': {},
+                        'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {},
+                        'output_routing_type': {}}
+        self.rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'color': {},
+                        'available_output_routing_channels': {}, 'available_output_routing_types': {},
+                        'output_routing_channel': {}, 'output_routing_type': {}}
         self.masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
         return
 
@@ -669,6 +717,7 @@ class MackieC4(object):
             self.rlisten[type][track] = cb
             eval('track.mixer_device.' + type + '.add_value_listener(cb)')
 
+     # Track name listener
     def add_trname_listener(self, tid, track, ret=0):
         cb = lambda: self.trname_changestate(tid, track, ret)
         if ret == 1:
@@ -720,11 +769,23 @@ class MackieC4(object):
         return
 
     def clip_changestate(self, clip, x, y):
-        playing = 1
+        playing = 0
+
         if clip.is_playing == 1:
-            playing = 2
+            playing = 1
+            if clip.is_recording == 1:
+                playing = 3
+            if self.song().tracks[x].arm == 1 and clip.is_audio_clip == 0:
+                if self.song().overdub == 1:
+                    playing = 3
+                else:
+                    playing = 1
+        else:
+            pass
         if clip.is_triggered == 1:
-            playing = 3
+            playing = 2
+        else:
+            pass
 
     def mixerv_changestate(self, type, tid, track, r=0):
         val = eval('track.mixer_device.' + type + '.value')
@@ -766,7 +827,7 @@ class MackieC4(object):
     def check_md(self, param):
         devices = self.song().master_track.devices
         if len(devices) > 0:
-            if devices[0].parameters[param].value > 0:
+            if devices[0].parameters[param].value > 0:  # MS IndexError (out of range) referring to "if self.check_md(2)" and "cb = lambda: self.meter_changestate(tid, track, 0, r)"
                 return 1
             else:
                 return 0
@@ -792,7 +853,7 @@ class MackieC4(object):
 
     def rem_device_listeners(self):
         for pr in self.prlisten:
-            ocb = self.prlisten[pr]  # KeyError when exchanging M4L device
+            ocb = self.prlisten[pr]  # KeyError when exchanging M4L device, KeyError when closing Live after deleting last device, ref to disconnect
             if pr is not None:
                 if pr.value_has_listener(ocb) == 1:
                     pr.remove_value_listener(ocb)
@@ -848,7 +909,7 @@ class MackieC4(object):
             track.view.add_selected_device_listener(cb)
             self.dlisten[track] = cb
 
-    def device_changestate(self, track, tid, type):
+    def device_changestate(self, track, tid, type):  # MS THIS is the origin of shit, is it?
         did = self.tuple_idx(track.devices, track.view.selected_device)
         self.__encoder_controller.device_added_deleted_or_changed()
         if type == 2:
