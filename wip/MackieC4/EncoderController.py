@@ -910,7 +910,7 @@ class EncoderController(MackieC4Component):
                         vpot_display_text = (self.selected_track.mixer_device.volume, 'Volume')  # ( value, value label)
                         vpot_param = (self.selected_track.mixer_device.volume, VPOT_DISPLAY_WRAP)
                     else:
-                        # however, plain midi tracks for example do have "Volumn Sliders", so ???
+                        # plain midi tracks do NOT have "Volumn Sliders", so "KEEP MOVING, NOTHING TO SHOW HERE"
                         vpot_display_text = ('', '')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
