@@ -92,7 +92,7 @@ class EncoderController(MackieC4Component):
 
         self.__display_parameters = []
         for x in range(NUM_ENCODERS):
-            # initialize to blank screens
+            # initialize to blank screen segments
             self.__display_parameters.append(EncoderDisplaySegment(self, x))
 
         # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
@@ -718,7 +718,7 @@ class EncoderController(MackieC4Component):
             # else encoder_index points to an encoder that is "unmapped" for selected device
 
             if update_self:
-                self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket new, this replaces to instances from sissy
+                self.__reassign_encoder_parameters(for_display_only=False)
                 self.request_rebuild_midi_map()
 
         elif self.__assignment_mode == C4M_FUNCTION: # seems to be simply Start/Stop playback
@@ -761,7 +761,7 @@ class EncoderController(MackieC4Component):
                     self.main_script().log_message("Param {0} tuple name <{1}>".format(vpot_index, p[1]))
                 return p
             else:
-                self.main_script().log_message("vpot_index + preset_bank_index: invalid parameter index")
+                self.main_script().log_message("vpot_index + preset_bank_index == invalid parameter index")
 
             # The device doesn't have this many parameters
             return None, '[[[]]]'  # remove this text after you see it in the LCD, just use blanks
@@ -825,9 +825,8 @@ class EncoderController(MackieC4Component):
             current_device_bank_track = self.t_d_bank_current[self.t_current]
             max_device_bank_track = self.t_d_bank_count[self.t_current]
 
-            for s in self.__encoders: #
+            for s in self.__encoders:
                 s_index = s.vpot_index()
-                # vpot_display_text = ('      ', '      ')
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
                 vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
@@ -837,14 +836,12 @@ class EncoderController(MackieC4Component):
                     #     always fill the __displayParameters list
                     if s_index == encoder_07_index:
                         if current_device_bank_track > 0:
-                            # vpot_display_text = ('<<Bank', 'Device')
                             vpot_display_text.set_text('<<Bank', 'Device')
                             s.show_full_enlighted_poti()
                         else:
                             s.unlight_vpot_leds()
                     elif s_index == encoder_08_index:
                         if current_device_bank_track < max_device_bank_track - 1:
-                            # vpot_display_text = ('Bank>>', 'Device')
                             vpot_display_text.set_text('Bank>>', 'Device')
                             s.show_full_enlighted_poti()
                         else:
@@ -858,7 +855,7 @@ class EncoderController(MackieC4Component):
                         encoder_in_row_count = count + int(current_encoder_offset)
                         if len(self.selected_track.devices) > encoder_in_row_count:
                             device_name = self.selected_track.devices[encoder_in_row_count].name
-                            # vpot_display_text = (device_name, '')  # device_name in bottom row, blanks on top
+                            # device_name in bottom row, blanks on top
                             vpot_display_text.set_text(device_name, '')
                         else:
                             vpot_display_text.set_text('dvcNme', 'No')  # could just leave as default blank spaces
@@ -875,11 +872,10 @@ class EncoderController(MackieC4Component):
                         if s_index in row_03_encoders:
                             format_nbr += NUM_ENCODERS_ONE_ROW
                         # encoder 17 index is (16 % 8) = send 0
-                        # encoder 25 index is (24 % 8) = send 8
-                        # vpot_display_text = (send_param[0], send_param[1])
+                        # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
                         vpot_display_text.set_text(send_param[0], send_param[1])
                     # else:
-                    #     vpot_display_text = ('      ', '      ')
+                    #     vpot_display_text = default
                     #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
                     #
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -891,11 +887,9 @@ class EncoderController(MackieC4Component):
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm:
                                 s.show_full_enlighted_poti()
-                                # vpot_display_text = (' Off   ', 'RecArm ')
                                 vpot_display_text.set_text(' Off   ', 'RecArm ')
                             else:
                                 s.unlight_vpot_leds()
-                                # vpot_display_text = ('  ON   ', 'RecArm ')
                                 vpot_display_text.set_text('  ON   ', 'RecArm ')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -906,34 +900,31 @@ class EncoderController(MackieC4Component):
 
                         if self.selected_track.mute:
                             s.show_full_enlighted_poti()
-                            # vpot_display_text = (' Off  ', ' Mute ')
                             vpot_display_text.set_text(' Off  ', ' Mute ')
                         else:
                             s.unlight_vpot_leds()
-                            # vpot_display_text = (' On   ', ' Mute ')
                             vpot_display_text.set_text(' On   ', ' Mute ')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_31_index:
                     if self.selected_track.has_audio_output:
-                        # vpot_display_text = (self.selected_track.mixer_device.panning, 'Pan') # ( value, value label)
+                        # lower == value, upper == value label
                         vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')
                         vpot_param = (self.selected_track.mixer_device.panning, VPOT_DISPLAY_BOOST_CUT)
                     #else:
                         # plain midi tracks for example don't have audio output, no "Pan" per se
-                        # vpot_display_text = ('', '')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_32_index:
                     if self.selected_track.has_audio_output:
-                        # vpot_display_text = (self.selected_track.mixer_device.volume, 'Volume')  # ( value, value label)
+                        # lower == value, upper == value label)
                         vpot_display_text.set_text(self.selected_track.mixer_device.volume, 'Volume')
                         vpot_param = (self.selected_track.mixer_device.volume, VPOT_DISPLAY_WRAP)
                     else:
-                        # plain midi tracks do NOT have "Volumn Sliders", so "KEEP MOVING, NOTHING TO SHOW HERE"
-                        vpot_display_text = ('', '')
+                        # plain midi tracks do NOT have "Volumn Sliders", so KEEP MOVING, NOTHING TO SHOW HERE
+                        vpot_display_text.set_text('', '')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
@@ -943,36 +934,29 @@ class EncoderController(MackieC4Component):
             max_device_bank_param_track = self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]]
             for s in self.__encoders:
                 s_index = s.vpot_index()
-                # vpot_display_text = ('      ', '      ')
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
                 vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
                 # if s_index < encoder_07_index:
-                    # Only default display text
+                #     Only display text
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
-                        # vpot_display_text = ('Device', ' None ')
                         vpot_display_text.set_text('Device', ' None ')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
-                        # vpot_display_text = ('<<  - ', 'PrvBnk')
                         vpot_display_text.set_text('<<  - ', 'PrvBnk')
                         s.show_full_enlighted_poti()
                     else:
-                        # vpot_display_text = (' Bank ', 'NoPrev')
                         vpot_display_text.set_text(' Bank ', 'NoPrev')
                         s.unlight_vpot_leds()
                 elif s_index == encoder_08_index:
                     if self.__chosen_plugin is None:
-                        # vpot_display_text = ('Device', 'No')
                         vpot_display_text.set_text('Device', 'No')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track < max_device_bank_param_track - 1:
-                        # vpot_display_text = ('  + >>', 'NxtBnk')
                         vpot_display_text.set_text('  + >>', 'NxtBnk')
                         s.show_full_enlighted_poti()
                     else:
-                        # vpot_display_text = (' Bank ', 'NoNext')
                         vpot_display_text.set_text(' Bank ', 'NoNext')
                         s.unlight_vpot_leds()
                 else:
@@ -982,7 +966,7 @@ class EncoderController(MackieC4Component):
                     plugin_param = self.__plugin_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE)
                     if plugin_param is not None:
                         vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
-                        # vpot_display_text = (plugin_param[0], plugin_param[1])  # parameter name in top display row, param value in bottom row
+                        # parameter name in top display row, param value in bottom row
                         vpot_display_text.set_text(plugin_param[0], plugin_param[1])
                     else:
                         vpot_display_text.set_text('Param', ' No ')
@@ -992,24 +976,21 @@ class EncoderController(MackieC4Component):
 
         elif self.__assignment_mode == C4M_FUNCTION:
             # ????  in the "button pressed" method, "Play" and "Stop" are different encoder buttons ????
-            # here if the song is playing or stopped written over just encoder 26
+            # here if the song is playing or stopped is written over just encoder 26
             for s in self.__encoders:
                 s_index = s.vpot_index()
-                # vpot_display_text = ('      ', '      ')
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
                 vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
                 # if s_index < encoder_26_index:
-                    # Only default display text
+                #     Only default display text
                 if s.vpot_index() == encoder_26_index:
                     vpot_param = (None, VPOT_DISPLAY_WRAP)
                     if self.song().is_playing:
-                        # vpot_display_text = (' Play ', ' Song ')
                         vpot_display_text.set_text(' Play ', ' Song ')
                         s.show_full_enlighted_poti()
                     else:
-                        # vpot_display_text = (' Stop ', ' Song ')
                         vpot_display_text.set_text(' Stop ', ' Song ')
                         s.unlight_vpot_leds()
 
@@ -1019,7 +1000,6 @@ class EncoderController(MackieC4Component):
         elif self.__assignment_mode == C4M_USER:
             for s in self.__encoders:
                 s_index = s.vpot_index()
-                # vpot_display_text = ('      ', '      ')
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
                 vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
@@ -1027,25 +1007,22 @@ class EncoderController(MackieC4Component):
                 vpot_display_text.set_text('', '')
                 # can only write a "long message" (more than 6 or 7 chars)
                 # like this if it won't interfere with subsequent Display segments
+                # only the first 56 bytes or whatever of any string fit on the LCDs
                 if s_index == row_00_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 0'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    # vpot_display_text = (bottom_line, top_line)
                     vpot_display_text.set_text(bottom_line, top_line)
                 elif s_index == row_01_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 1'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    # vpot_display_text = (bottom_line, top_line)
                     vpot_display_text.set_text(bottom_line, top_line)
                 elif s_index == row_02_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 2'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    # vpot_display_text = (bottom_line, top_line)
                     vpot_display_text.set_text(bottom_line, top_line)
-                else:  # if s_index == row_03_encoders[0]:
+                elif s_index == row_03_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 3'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    # vpot_display_text = (bottom_line, top_line)
                     vpot_display_text.set_text(bottom_line, top_line)
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -1065,6 +1042,13 @@ class EncoderController(MackieC4Component):
         upper_string4 = ''
         lower_string4 = ''
         self.__display_repeat_count += 1  # see comments near lines 97 - 102 in __init__
+
+        # uncommenting this condition check when the two lengths are not equal
+        # will result in spamming the log file with the indented log message
+        # If you comment out initializing self.__display_parameters with EncoderDisplaySegment objects
+        # inside __init__ above, and just leave the empty list assignment self.__display_parameters = []
+        # you can force the two lengths to not be equal here after the script loads,
+        # but for example before the first "track change" message is processed when everything "reloads"
 
         # dsply_sgmts = len(self.__display_parameters)
         # encdr_range = len(encoder_range)
@@ -1088,30 +1072,11 @@ class EncoderController(MackieC4Component):
             upper_string2 += '------------------------Devices------------------------'
 
             for t in encoder_range:
-                # segments_for_display = next(x for x in self.__display_parameters if (x.filter_index(t)))
-                # sgmt
-                # if len(segments_for_display) > 0:
-                #     if len(segments_for_display) > 1:
-                #         self.main_script().log_message(
-                #             "more than one display segment object found for Encoder index, using first")
-                #     sgmt = segments_for_display[0]
-                # else:
-                #     self.main_script().log_message("No display segment object found for Encoder index, using default")
-                #     sgmt = EncoderDisplaySegment(self, t)
                 try:
                     text_for_display = next(x for x in self.__display_parameters if (x.filter_index(t)))
                 except StopIteration:
                     text_for_display = EncoderDisplaySegment(self, t)
                     text_for_display.set_text('zzzzzz', 'ZZZZZZ')
-
-                # text_for_display = self.__display_parameters[t]
-                # u_alt_text = ' '
-                # l_alt_text = ' '
-                # if len(text_for_display) > 1:
-                #     u_alt_text = text_for_display[1]
-                #     l_alt_text = text_for_display[0]
-                # elif len(text_for_display) > 0:
-                #     l_alt_text = text_for_display[0]
 
                 u_alt_text = text_for_display.get_upper_text()
                 l_alt_text = text_for_display.get_lower_text()
@@ -1221,17 +1186,8 @@ class EncoderController(MackieC4Component):
                     try:
                         text_for_display = self.__display_parameters[t]  # assumes there are always 32
                     except IndexError:
-                        # text_for_display = ('---', ' X ')
                         text_for_display = EncoderDisplaySegment(self, t)
                         text_for_display.set_text('---', ' X ')
-
-                    # u_alt_text = ''
-                    # l_alt_text = ''
-                    # if len(text_for_display) > 1:
-                    #     u_alt_text = text_for_display[1]
-                    #     l_alt_text = text_for_display[0]
-                    # elif len(text_for_display) > 0:
-                    #     l_alt_text = text_for_display[0]
 
                     u_alt_text = text_for_display.get_upper_text()
                     l_alt_text = text_for_display.get_lower_text()
@@ -1244,7 +1200,7 @@ class EncoderController(MackieC4Component):
                         # parameter value plugin_param[0] == text_for_display[0] in bottom row
                         upper_string2 += self.__generate_6_char_string(u_alt_text)
                         upper_string2 += ' '
-                        lower_string2 += self.__generate_6_char_string(str(l_alt_text))  # MS BAD ERROR When switching devices
+                        lower_string2 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string2 += ' '
                     elif t in row_02_encoders:
                         upper_string3 += self.__generate_6_char_string(u_alt_text)
@@ -1268,14 +1224,6 @@ class EncoderController(MackieC4Component):
             lower_string4 += so_many_spaces
 
         elif self.__assignment_mode == C4M_USER:
-            # upper_string1 += self.__display_parameters[0][1]
-            # lower_string1 += self.__display_parameters[0][0]
-            # upper_string2 += self.__display_parameters[1][1]
-            # lower_string2 += self.__display_parameters[1][0]
-            # upper_string3 += self.__display_parameters[2][1]
-            # lower_string3 += self.__display_parameters[2][0]
-            # upper_string4 += self.__display_parameters[3][1]
-            # lower_string4 += self.__display_parameters[3][0]
             for s in self.__encoders:
                 s_index = s.vpot_index()
                 try:
@@ -1308,8 +1256,7 @@ class EncoderController(MackieC4Component):
         self.send_display_string4(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
         return
 
-    # def __generate_6_char_string(self, display_string): #  MS: Jons work makes sense, but doesn't work. inserted Leigh's old stuff combined with MCU, now works
-    #     return self.__transform_to_size(display_string, 6)
+    # LOL whatever works
     def __generate_6_char_string(self, display_string):
         if not display_string:
             return '      '
@@ -1318,7 +1265,7 @@ class EncoderController(MackieC4Component):
                 if display_string.find('.') != -1:
                     display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):  # MS added german umlauts and "y"  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1329,7 +1276,7 @@ class EncoderController(MackieC4Component):
         for i in range(6):
             ret += display_string[i]
 
-        assert len(ret) == 6  # MS this was the missing piece of the puzzle, the "for" stops when character length is = 6
+        # assert len(ret) == 6  # range(6) always produces 6 items in the range [0, 1, 2, 3, 4, 5]
         return ret
 
     def __generate_20_char_string(self, display_string):
@@ -1337,7 +1284,7 @@ class EncoderController(MackieC4Component):
             return '      '
 
         if len(display_string) > 20:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_'):  # MS added german umlauts and "y"  # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_'):
                 while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1348,7 +1295,7 @@ class EncoderController(MackieC4Component):
         for i in range(20):
             ret += display_string[i]
 
-        assert len(ret) == 20  # MS this was the missing piece of the puzzle, the "for" stops when character length is = 6
+        assert len(ret) == 20
         return ret
 
     def __transform_to_size(self, raw_text, new_size):
@@ -1368,7 +1315,7 @@ class EncoderController(MackieC4Component):
             transformed_text = transformed_text[:-2]  # remove the trailing 'dB'
 
         if len(transformed_text) > new_size:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):  # MS added german umlauts and "y"    # MS rounded (tuple) or square (List) Brackets? Sissy had square, decompiled Live11 had rounded
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):
                 while len(transformed_text) > new_size and transformed_text.rfind(um, 1) != -1:
                     um_pos = transformed_text.rfind(um, 1)
                     transformed_text = transformed_text[:um_pos]
