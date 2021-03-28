@@ -90,11 +90,10 @@ class EncoderController(MackieC4Component):
         self.__ordered_plugin_parameters = []  # Live objects? MS yes
         self.__chosen_plugin = None  # Live's selected
 
-        # a list of 32 tuples representing 'what text to display' on the LCD screen above each encoder
-        # where slot 0 of each tuple contains the bottom row text
-        # and slot 1 contain the top row text
-        # self.__display_parameters = [[] for x in range(NUM_ENCODERS)]
         self.__display_parameters = []
+        for x in range(NUM_ENCODERS):
+            # initialize to blank screens
+            self.__display_parameters.append(EncoderDisplaySegment(self, x))
 
         # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
         # received by the C4 from somewhere else, not-here.  Such a display change is not tracked here (obviously),
@@ -921,9 +920,9 @@ class EncoderController(MackieC4Component):
                         # vpot_display_text = (self.selected_track.mixer_device.panning, 'Pan') # ( value, value label)
                         vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')
                         vpot_param = (self.selected_track.mixer_device.panning, VPOT_DISPLAY_BOOST_CUT)
-                    else:
+                    #else:
                         # plain midi tracks for example don't have audio output, no "Pan" per se
-                        vpot_display_text = ('', '')
+                        # vpot_display_text = ('', '')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
@@ -952,34 +951,41 @@ class EncoderController(MackieC4Component):
                     # Only default display text
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
-                        vpot_display_text = ('Device', ' None ')
+                        # vpot_display_text = ('Device', ' None ')
+                        vpot_display_text.set_text('Device', ' None ')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
                         # vpot_display_text = ('<<  - ', 'PrvBnk')
                         vpot_display_text.set_text('<<  - ', 'PrvBnk')
                         s.show_full_enlighted_poti()
                     else:
-                        vpot_display_text = (' Bank ', 'NoPrev')
+                        # vpot_display_text = (' Bank ', 'NoPrev')
+                        vpot_display_text.set_text(' Bank ', 'NoPrev')
                         s.unlight_vpot_leds()
                 elif s_index == encoder_08_index:
                     if self.__chosen_plugin is None:
-                        vpot_display_text = ('Device', 'No')
+                        # vpot_display_text = ('Device', 'No')
+                        vpot_display_text.set_text('Device', 'No')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track < max_device_bank_param_track - 1:
                         # vpot_display_text = ('  + >>', 'NxtBnk')
                         vpot_display_text.set_text('  + >>', 'NxtBnk')
                         s.show_full_enlighted_poti()
                     else:
-                        vpot_display_text = (' Bank ', 'NoNext')
+                        # vpot_display_text = (' Bank ', 'NoNext')
+                        vpot_display_text.set_text(' Bank ', 'NoNext')
                         s.unlight_vpot_leds()
                 else:
                     # these are the 24 encoders from 9 - 32
                     # some devices do not have more than 1 or 2 parameters
                     # we are only concerned with the 24 encoders on the current "device bank page"
                     plugin_param = self.__plugin_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE)
-                    vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
-                    # vpot_display_text = (plugin_param[0], plugin_param[1])  # parameter name in top display row, param value in bottom row
-                    vpot_display_text.set_text(plugin_param[0], plugin_param[1])
+                    if plugin_param is not None:
+                        vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
+                        # vpot_display_text = (plugin_param[0], plugin_param[1])  # parameter name in top display row, param value in bottom row
+                        vpot_display_text.set_text(plugin_param[0], plugin_param[1])
+                    else:
+                        vpot_display_text.set_text('Param', ' No ')
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                 self.__display_parameters.append(vpot_display_text)
