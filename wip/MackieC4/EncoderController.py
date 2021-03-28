@@ -373,19 +373,38 @@ class EncoderController(MackieC4Component):
                 param_bank_count_track[d] = param_bank_count_track[c]
                 param_bank_current_track[d] = param_bank_current_track[c]
 
-            if deleted_device_index == device_count_track - 1:
+            if deleted_device_index == device_count_track - 1:  # "last" device in list or "only" device in list
+                # only decrement "current device" index if deleted device wasn't the only device
                 if deleted_device_index > 0:
                     self.t_d_current[self.t_current] -= 1
+                    sum_nbr = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
+                    self.t_d_bank_current[self.t_current] = sum_nbr
                 else:
-                    self.main_script().log_message("not decrementing")
+                    self.t_d_current[self.t_current] = 0  # zero is the value all "db" lists are initialized with
             else:
                 self.t_d_current[self.t_current] = deleted_device_index
+                # index of deleted device is now index of current device
+                # set the current "parameter bank" page number of new current device
+                # calculate the current bank page number of the new current device by adding 1 to
+                # the value of the deleted device index (this is index of device on "right" of deleted device because
+                # inside this else condition we know there is at least one device at a higher index,
+                # "above" the deleted device's index) and then dividing by 8?
+                # and that is supposed to be the "selected parameter bank" of the new current device?
+                # we wouldn't do this when the only device was deleted, but when the 4th of 4 was deleted, wouldn't
+                # we also want to update the new current device's current selected parameter bank? (see change above)
                 sum_nbr = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
                 self.t_d_bank_current[self.t_current] = sum_nbr
 
+            # decrement this track's total device count
             self.t_d_count[self.t_current] -= 1
+            # set the device "bank" -- if there are more than 8 devices on a track, 9 - 16 will be in device bank 2
             self.t_d_bank_count[self.t_current] = math.ceil(self.t_d_count[self.t_current] // SETUP_DB_DEVICE_BANK_SIZE)
-            if len(self.selected_track.devices) > deleted_device_index:
+
+            # if there is a device with a higher index than the deleted device's
+            # make that device the new chosen plugin, otherwise remove the chosen plugin value
+            if deleted_device_index > -1 and len(self.selected_track.devices) > deleted_device_index:
+                self.main_script().log_message("reassigning __chosen_plugin to device at index {0}"
+                                               .format(deleted_device_index))
                 self.__chosen_plugin = self.selected_track.devices[deleted_device_index]
             else:
                 self.__chosen_plugin = None
@@ -565,44 +584,77 @@ class EncoderController(MackieC4Component):
         max_device_bank_index = self.t_d_bank_count[self.t_current] - 1
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             if encoder_index in row_00_encoders:
+                # only "top row" encoders 7 and 8 are mapped in C4M_CHANNEL_STRIP mode
                 encoder_07_index = 6
                 encoder_08_index = 7
                 update_self = False
                 if encoder_index == encoder_07_index:
                     if selected_device_bank_index > 0:
                         selected_device_bank_index -= 1
-                        # update_self = True #MS this was from sissy, next line from Leigh, maybe swap again? try!
-                        self.__reassign_encoder_parameters(for_display_only=False)
+                        update_self = True
+                    else:
+                        self.main_script().log_message("can't decrement selected_device_bank_index: already bank 0")
                 elif encoder_index == encoder_08_index:
                     if selected_device_bank_index < max_device_bank_index:
                         selected_device_bank_index += 1
                         update_self = True
+                    else:
+                        self.main_script().log_message("can't increment selected_device_bank_index: already on last bank")
 
                 if update_self:
                     self.t_d_bank_current[self.t_current] = selected_device_bank_index
                     self.__reassign_encoder_parameters(for_display_only=False)
+                # else nothing to update
             elif encoder_index in row_01_encoders:
+                # (row 2 "index" is 01)
+                # these encoders represent devices 1 - 8 on the selected track in C4M_CHANNEL_STRIP mode
 
-                # automatically switch to Track/Plugins mode
+                # encoder button press == automatically switch to Track/Plugins mode AND update "current selected
+                # Plugin" to the device represented by the encoder clicked
                 self.handle_assignment_switch_ids(C4SID_TRACK)
 
                 device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
                 device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
-                self.__chosen_plugin = self.selected_track.devices[device_offset]  # MS FIXED (kind of, only works for nongrouped devices) !!! :-) (but NONE are actually displayed as "selectable") BUT pressing vpot knob for a non existing device in channelstrip mode throws index error
-                self.__reorder_parameters()
-                self.t_d_current[self.t_current] = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
-                self.song().view.select_device(self.selected_track.devices[device_offset])
-                self.__reassign_encoder_parameters(for_display_only=False)
-                self.request_rebuild_midi_map()
+                if len(self.selected_track.devices) > device_offset: # if the calculated offset is valid device index
+                    self.__chosen_plugin = self.selected_track.devices[device_offset]
+                    self.__reorder_parameters()
+                    self.t_d_current[self.t_current] = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
+                    self.song().view.select_device(self.selected_track.devices[device_offset])
+                    self.__reassign_encoder_parameters(for_display_only=False)
+                    self.request_rebuild_midi_map()
+                else:
+                    msg = "can't update __chosen_plugin: the calculated device_offset {0} is NOT a valid device index"\
+                        .format(device_offset)
+                    self.main_script().log_message(msg)
+                    self.__chosen_plugin = None
             elif encoder_index in row_02_encoders:
+                # these encoders represent sends 1 - 8 (row 3 "index" is 02) in C4M_CHANNEL_STRIP mode
                 param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
-                param.value = param.default_value
+                if param is not None:
+                    if isinstance(param, int):  # PyCharm says 'param' is an int based on the
+                        #                         self.__encoders[encoder_index].v_pot_parameter() assignment above.
+                        #                         int also doesn't have a default_value?
+                        param.value = 0  # if param is never actually an int when it isn't None,
+                        #                  this assignment just satisfies PyCharm
+                    else:
+                        param.value = param.default_value  # button press == jump to default value of Send?
+                else:
+                    self.main_script().log_message("can't update param.value to default: None object")
             elif encoder_index in row_03_encoders:
-                encoder_29_index = 28  # 28th index is the 29th element # MS isn't that supposed to be encodeR (with R)?, lets try changing. fixed something
-                encoder_30_index = 29  # 29th index is the 30th element  # MS isn't that supposed to be encodeR (with R)?, lets try changing. fixed something
+                # encoder 29 is "Rec Arm" encoder in C4M_CHANNEL_STRIP mode
+                # encoder 30 is "Mute"
+                encoder_29_index = 28
+                encoder_30_index = 29
                 if encoder_index < encoder_29_index:
+                    # these encoders are the four < encoder_29_index, left half of bottom row, sends 9 - 12
                     param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
-                    param.value = param.default_value  # AttributeError when closing " 'NoneType' object has no attribute 'default_value' "
+                    if param is not None:
+                        if isinstance(param, int):
+                            param.value = 0
+                        else:
+                            param.value = param.default_value  # button press == jump to default value of Send?
+                    else:
+                        self.main_script().log_message("can't update param.value to default: None object")
                 elif encoder_index == encoder_29_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.can_be_armed:
@@ -615,6 +667,7 @@ class EncoderController(MackieC4Component):
                                 turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_29, 0x06)  # any value 00 - 0F?
                                 self.send_midi(turn_off_encoder_led_msg)
                         # else the selected track can't be armed
+                    # else __filter_mst_trk == false, so 29 is not Record Arm, but some master track param?
                 elif encoder_index == encoder_30_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.mute:
@@ -625,9 +678,13 @@ class EncoderController(MackieC4Component):
                             self.selected_track.mute = True
                             turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_30, 0x43)
                             self.send_midi(turn_on_encoder_led_msg)
+                        # else the selected track can't be muted
+                    # else __filter_mst_trk == false, so 30 is not mute, but some master track param?
                 elif encoder_index > encoder_30_index:
+                    #  encoder 31 is "Pan"
+                    #  encoder 32 is "Volume"
                     param = self.__encoders[encoder_index].v_pot_parameter()
-                    param.value = param.default_value
+                    param.value = param.default_value  # button press == jump to default value of Pan or Vol?
 
         elif self.__assignment_mode == C4M_PLUGINS:
             encoder_07_index = 6
@@ -641,26 +698,33 @@ class EncoderController(MackieC4Component):
                 if current_parameter_bank_track[current_device_track] > 0:
                     current_parameter_bank_track[current_device_track] -= 1
                     update_self = True
+                else:
+                    self.main_script().log_message("can't decrement current_parameter_bank_track: already bank 0")
             elif encoder_index == encoder_08_index:
                 current_track_device_preset_bank = current_parameter_bank_track[current_device_track]
                 track_device_preset_bank_count = self.t_d_p_bank_count[self.t_current][current_device_track]
                 if current_track_device_preset_bank < track_device_preset_bank_count - 1:
                     current_parameter_bank_track[current_device_track] += 1
                     update_self = True
-            elif encoder_index in display_params_range:  # row_01_encoders
+                else:
+                    self.main_script().log_message("can't increment current_parameter_bank_track: already last bank")
+            elif encoder_index in display_params_range:  # could be encoders 9 - 32 (on each param page), but "stops"
                 param = self.__encoders[encoder_index].v_pot_parameter()
                 try:
-                    param.value = param.default_value
+                    param.value = param.default_value  # button press == jump to default value of device parameter?
                 except (RuntimeError, AttributeError):
                     # There is no default value available for this type of parameter
                     # 'NoneType' object has no attribute 'default_value'
                     pass
+            # else encoder_index points to an encoder that is "unmapped" for selected device
 
             if update_self:
                 self.__reassign_encoder_parameters(for_display_only=False)  # MS bracket new, this replaces to instances from sissy
                 self.request_rebuild_midi_map()
 
-        elif self.__assignment_mode == C4M_FUNCTION:
+        elif self.__assignment_mode == C4M_FUNCTION: # seems to be simply Start/Stop playback
+            # encoder 25 is bottom row left "Stop Playback"
+            # encoder 26 is bottom row second from left "Start Playback"
             encoder_25_index = 24
             encoder_26_index = 25
             if encoder_index == encoder_25_index:
@@ -676,10 +740,11 @@ class EncoderController(MackieC4Component):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
         if vpot_index < len(self.song().view.selected_track.mixer_device.sends):
             p = self.song().view.selected_track.mixer_device.sends[vpot_index]
-            self.main_script().log_message("Param name <{0}>".format(p.name))  # MS This is were Jon logs the "parameter names" to the Live log
+            self.main_script().log_message("Param name <{0}>".format(p.name))
             return (p, p.name)
         else:
-            return None, None
+            # The Song doesn't have this many sends
+            return None, '{{{}}}' # remove this text after you see it in the LCD, just use blanks
 
     def __plugin_parameter(self, vpot_index):
         """ Return the plugin parameter that is assigned to the given encoder as a tuple (param, param.name)
@@ -696,8 +761,11 @@ class EncoderController(MackieC4Component):
                 except AttributeError:  # 'tuple' object has no attribute 'name'
                     self.main_script().log_message("Param {0} tuple name <{1}>".format(vpot_index, p[1]))
                 return p
+            else:
+                self.main_script().log_message("vpot_index + preset_bank_index: invalid parameter index")
 
-        return None, None
+            # The device doesn't have this many parameters
+            return None, '[[[]]]'  # remove this text after you see it in the LCD, just use blanks
 
     def __on_parameter_list_of_chosen_plugin_changed(self):
         assert self.__chosen_plugin is not None
@@ -854,6 +922,7 @@ class EncoderController(MackieC4Component):
                         vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')
                         vpot_param = (self.selected_track.mixer_device.panning, VPOT_DISPLAY_BOOST_CUT)
                     else:
+                        # plain midi tracks for example don't have audio output, no "Pan" per se
                         vpot_display_text = ('', '')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -864,6 +933,7 @@ class EncoderController(MackieC4Component):
                         vpot_display_text.set_text(self.selected_track.mixer_device.volume, 'Volume')
                         vpot_param = (self.selected_track.mixer_device.volume, VPOT_DISPLAY_WRAP)
                     else:
+                        # plain midi tracks do NOT have "Volumn Sliders", so "KEEP MOVING, NOTHING TO SHOW HERE"
                         vpot_display_text = ('', '')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -882,23 +952,30 @@ class EncoderController(MackieC4Component):
                     # Only default display text
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
+                        vpot_display_text = ('Device', ' None ')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
                         # vpot_display_text = ('<<  - ', 'PrvBnk')
                         vpot_display_text.set_text('<<  - ', 'PrvBnk')
                         s.show_full_enlighted_poti()
                     else:
+                        vpot_display_text = (' Bank ', 'NoPrev')
                         s.unlight_vpot_leds()
                 elif s_index == encoder_08_index:
                     if self.__chosen_plugin is None:
+                        vpot_display_text = ('Device', 'No')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track < max_device_bank_param_track - 1:
                         # vpot_display_text = ('  + >>', 'NxtBnk')
                         vpot_display_text.set_text('  + >>', 'NxtBnk')
                         s.show_full_enlighted_poti()
                     else:
+                        vpot_display_text = (' Bank ', 'NoNext')
                         s.unlight_vpot_leds()
                 else:
+                    # these are the 24 encoders from 9 - 32
+                    # some devices do not have more than 1 or 2 parameters
+                    # we are only concerned with the 24 encoders on the current "device bank page"
                     plugin_param = self.__plugin_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE)
                     vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
                     # vpot_display_text = (plugin_param[0], plugin_param[1])  # parameter name in top display row, param value in bottom row
@@ -908,6 +985,8 @@ class EncoderController(MackieC4Component):
                 self.__display_parameters.append(vpot_display_text)
 
         elif self.__assignment_mode == C4M_FUNCTION:
+            # ????  in the "button pressed" method, "Play" and "Stop" are different encoder buttons ????
+            # here if the song is playing or stopped written over just encoder 26
             for s in self.__encoders:
                 s_index = s.vpot_index()
                 # vpot_display_text = ('      ', '      ')
@@ -1003,7 +1082,6 @@ class EncoderController(MackieC4Component):
             upper_string2 += '------------------------Devices------------------------'
 
             for t in encoder_range:
-
                 # segments_for_display = next(x for x in self.__display_parameters if (x.filter_index(t)))
                 # sgmt
                 # if len(segments_for_display) > 0:
@@ -1127,7 +1205,6 @@ class EncoderController(MackieC4Component):
                     msg = "Current Track Device List length too short for index:"
                     msg += " name display blank over device index {0}"
                     self.main_script().log_message(msg.format(self.t_d_current[self.t_current]))
-
                 lower_string1b += self.__generate_20_char_string(str(device_name))
                 lower_string1b = lower_string1b.center(20)
                 lower_string1 += lower_string1a
@@ -1157,6 +1234,8 @@ class EncoderController(MackieC4Component):
                         lower_string1 += self.__generate_6_char_string(str(l_alt_text))
                         lower_string1 += ' '
                     elif t in row_01_encoders:
+                        # parameter name plugin_param[1] == text_for_display[1] in top display row,
+                        # parameter value plugin_param[0] == text_for_display[0] in bottom row
                         upper_string2 += self.__generate_6_char_string(u_alt_text)
                         upper_string2 += ' '
                         lower_string2 += self.__generate_6_char_string(str(l_alt_text))  # MS BAD ERROR When switching devices

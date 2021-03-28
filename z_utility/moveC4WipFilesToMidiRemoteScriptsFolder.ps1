@@ -55,4 +55,5 @@ Foreach($file in $filesAtTestSource) {
     }
 }
 
+exit 0
 
