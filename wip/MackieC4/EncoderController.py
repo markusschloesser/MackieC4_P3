@@ -743,7 +743,7 @@ class EncoderController(MackieC4Component):
             return (p, p.name)
         else:
             # The Song doesn't have this many sends
-            return None, '{{{}}}' # remove this text after you see it in the LCD, just use blanks
+            return None, '      '  # remove this text after you see it in the LCD, just use blanks
 
     def __plugin_parameter(self, vpot_index):
         """ Return the plugin parameter that is assigned to the given encoder as a tuple (param, param.name)
@@ -764,7 +764,7 @@ class EncoderController(MackieC4Component):
                 self.main_script().log_message("vpot_index + preset_bank_index == invalid parameter index")
 
             # The device doesn't have this many parameters
-            return None, '[[[]]]'  # remove this text after you see it in the LCD, just use blanks
+            return None, '      '  # remove this text after you see it in the LCD, just use blanks
 
     def __on_parameter_list_of_chosen_plugin_changed(self):
         assert self.__chosen_plugin is not None
@@ -1265,7 +1265,7 @@ class EncoderController(MackieC4Component):
                 if display_string.find('.') != -1:
                     display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-'):
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1284,7 +1284,7 @@ class EncoderController(MackieC4Component):
             return '      '
 
         if len(display_string) > 20:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_'):
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-'):
                 while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
