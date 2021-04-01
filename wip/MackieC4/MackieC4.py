@@ -45,7 +45,7 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import object
     import logging
     import time
-    from . LiveUtils import *
+#    from . LiveUtils import *
     from .consts import *
     from .Encoders import Encoders
     from .EncoderController import EncoderController
@@ -54,7 +54,7 @@ if sys.version_info[0] >= 3:  # Live 11
 else:  # Live 10
     from _Framework.ControlSurface import ControlSurface
     import logging, time
-    from . LiveUtils import *
+#    from . LiveUtils import *
     from .consts import *
     from .Encoders import Encoders
     from .EncoderController import EncoderController
@@ -388,8 +388,8 @@ class MackieC4(object):
         if self.song().tempo_has_listener(self.tempo_change) == 1:
             self.song().remove_tempo_listener(self.tempo_change)
 
-    def tempo_change(self):  # MS: why is "tempo_CHANGE" associated with tempo?
-        tempo = LiveUtils.getTempo()
+    def tempo_change(self):  # MS was broken and referring to LiveUtils, fixed and requirement for LiveUtils removed
+        return Live.Application.get_application().get_document().tempo
 
     def add_transport_listener(self):
         if self.song().is_playing_has_listener(self.transport_change) != 1:
