@@ -268,8 +268,13 @@ class MackieC4(object):
     def trBlock(self, trackOffset, blocksize):
         block = []
         tracks = self.song().visible_tracks
-        for track in range(0, blocksize):
-            block.extend([str(tracks[(trackOffset + track)].name)])  # MS IndexError when closing Live, again a Lambda thing!!
+        for track_index in range(0, blocksize):
+            if len(tracks) > trackOffset + track_index:
+                trk_nme = tracks[(trackOffset + track_index)].name
+                # not just adding the track name, adding a list with one element that is the track name
+                block.extend([str(trk_nme)])
+            else:
+                block.extend(['fake Track NAME'])  # MS lets try
 
     def disconnect(self):
         self.rem_clip_listeners()
@@ -411,8 +416,8 @@ class MackieC4(object):
         if self.song().overdub_has_listener(self.overdub_change) == 1:
             self.song().remove_overdub_listener(self.overdub_change)
 
-    def overdub_change(self):  # MS: why is "overdub_CHANGE" associated with overdub?
-        overdub = LiveUtils.getSong().overdub
+    def overdub_change(self):  # MS: removed dependency to LiveUtils
+        return Live.Song.Song.overdub
 
     def add_tracks_listener(self):
         self.rem_tracks_listener()
@@ -717,7 +722,7 @@ class MackieC4(object):
             self.rlisten[type][track] = cb
             eval('track.mixer_device.' + type + '.add_value_listener(cb)')
 
-     # Track name listener
+    # Track name listener
     def add_trname_listener(self, tid, track, ret=0):
         cb = lambda: self.trname_changestate(tid, track, ret)
         if ret == 1:
@@ -746,8 +751,8 @@ class MackieC4(object):
                 pass
 
     def slot_changestate(self, slot, tid, cid):
-        tmptrack = LiveUtils.getTrack(tid)
-        armed = tmptrack.arm and 1 or 0
+        # tmptrack = Live.getTrack(tid)
+        # armed = tmptrack.arm and 1 or 0
         if slot.clip is not None:
             self.add_cliplistener(slot.clip, tid, cid)
             playing = 1
@@ -809,7 +814,7 @@ class MackieC4(object):
         if r == 1:
             pass
         else:
-            self.trBlock(0, len(LiveUtils.getTracks()))
+            self.trBlock(0, len(self.song().visible_tracks))
 
     def meter_changestate(self, tid, track, lr, r=0):
         if r == 2:
