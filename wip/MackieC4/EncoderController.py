@@ -132,7 +132,6 @@ class EncoderController(MackieC4Component):
 
     def destroy(self):
         # self.destroy()
-        self.__encoders.unlight_vpot_leds(self)
         MackieC4Component.destroy(self)
 
     def request_rebuild_midi_map(self):
