@@ -286,6 +286,8 @@ class MackieC4(object):
         self.rem_device_listeners()
         self.rem_transport_listener()
         self.song().remove_visible_tracks_listener(self.refresh_state)
+        for c in self.__components:
+            c.destroy()
 
     def build_midi_map(self, midi_map_handle):
 

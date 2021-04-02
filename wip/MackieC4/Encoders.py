@@ -32,11 +32,13 @@ class Encoders(MackieC4Component):
         return
 
     # function provided by MackieC4Component super
-    # def destroy(self):
-    #     # self.destroy()
-    #     self.within_destroy = True
-    #     MackieC4Component.destroy(self)
-    #     self.within_destroy = False
+    def destroy(self):
+        # self.destroy()
+        self.within_destroy = True
+        self.unlight_vpot_leds()
+        self.refresh_state()
+        MackieC4Component.destroy(self)
+        self.within_destroy = False
 
     def set_encoder_controller(self, encoder_controller):
         self.__encoder_controller = encoder_controller

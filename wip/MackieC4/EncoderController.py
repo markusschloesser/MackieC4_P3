@@ -7,6 +7,8 @@ from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 import sys
 
+# from Encoders import Encoders
+
 if sys.version_info[0] >= 3:  # Live 11
     from past.utils import old_div
     from builtins import range
@@ -130,6 +132,7 @@ class EncoderController(MackieC4Component):
 
     def destroy(self):
         # self.destroy()
+        self.__encoders.unlight_vpot_leds(self)
         MackieC4Component.destroy(self)
 
     def request_rebuild_midi_map(self):
@@ -495,7 +498,7 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         # else don't update because nothing changed here
 
-    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently half broken, only works for normal devices, not grouped devices and not if m4l device involved
+    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently half broken, only works for normal devices, not grouped devices
         """ "slot navigation" only functions if the current mode is C4M_PLUGINS """
         if self.__assignment_mode == button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
             current_trk_device_index = self.t_d_current[self.t_current]
@@ -614,7 +617,7 @@ class EncoderController(MackieC4Component):
 
                 device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
                 device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
-                if len(self.selected_track.devices) > device_offset: # if the calculated offset is valid device index
+                if len(self.selected_track.devices) > device_offset:  # if the calculated offset is valid device index
                     self.__chosen_plugin = self.selected_track.devices[device_offset]
                     self.__reorder_parameters()
                     self.t_d_current[self.t_current] = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
