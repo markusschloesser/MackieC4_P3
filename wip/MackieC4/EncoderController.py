@@ -873,7 +873,10 @@ class EncoderController(MackieC4Component):
                             format_nbr += NUM_ENCODERS_ONE_ROW
                         # encoder 17 index is (16 % 8) = send 0
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
-                        vpot_display_text.set_text(send_param[0], send_param[1])
+                        if send_param[0] is not None:
+                            vpot_display_text.set_text(send_param[0], send_param[1])
+                        else:
+                            vpot_display_text.set_text('mmmmm', 'oooooo')
                     # else:
                     #     vpot_display_text = default
                     #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
@@ -941,7 +944,7 @@ class EncoderController(MackieC4Component):
                 #     Only display text
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
-                        vpot_display_text.set_text('Device', ' None ')
+                        vpot_display_text.set_text('Device', 'EditMe')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
                         vpot_display_text.set_text('<<  - ', 'PrvBnk')
@@ -967,7 +970,10 @@ class EncoderController(MackieC4Component):
                     if plugin_param is not None:
                         vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
                         # parameter name in top display row, param value in bottom row
-                        vpot_display_text.set_text(plugin_param[0], plugin_param[1])
+                        if plugin_param[0] is not None:
+                            vpot_display_text.set_text(plugin_param[0], plugin_param[1])
+                        else:
+                            vpot_display_text.set_text('PPPPP', 'dddddd')
                     else:
                         vpot_display_text.set_text('Param', ' No ')
 
