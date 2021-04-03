@@ -7,6 +7,8 @@ from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 import sys
 
+# from Encoders import Encoders
+
 if sys.version_info[0] >= 3:  # Live 11
     from past.utils import old_div
     from builtins import range
@@ -495,7 +497,7 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         # else don't update because nothing changed here
 
-    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently half broken, only works for normal devices, not grouped devices and not if m4l device involved
+    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently half broken, only works for normal devices, not grouped devices
         """ "slot navigation" only functions if the current mode is C4M_PLUGINS """
         if self.__assignment_mode == button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
             current_trk_device_index = self.t_d_current[self.t_current]
@@ -614,7 +616,7 @@ class EncoderController(MackieC4Component):
 
                 device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
                 device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
-                if len(self.selected_track.devices) > device_offset: # if the calculated offset is valid device index
+                if len(self.selected_track.devices) > device_offset:  # if the calculated offset is valid device index
                     self.__chosen_plugin = self.selected_track.devices[device_offset]
                     self.__reorder_parameters()
                     self.t_d_current[self.t_current] = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
@@ -743,7 +745,7 @@ class EncoderController(MackieC4Component):
             return (p, p.name)
         else:
             # The Song doesn't have this many sends
-            return None, '{{{}}}' # remove this text after you see it in the LCD, just use blanks
+            return None, '      '  # remove this text after you see it in the LCD, just use blanks
 
     def __plugin_parameter(self, vpot_index):
         """ Return the plugin parameter that is assigned to the given encoder as a tuple (param, param.name)
@@ -764,7 +766,7 @@ class EncoderController(MackieC4Component):
                 self.main_script().log_message("vpot_index + preset_bank_index == invalid parameter index")
 
             # The device doesn't have this many parameters
-            return None, '[[[]]]'  # remove this text after you see it in the LCD, just use blanks
+            return None, '      '  # remove this text after you see it in the LCD, just use blanks
 
     def __on_parameter_list_of_chosen_plugin_changed(self):
         assert self.__chosen_plugin is not None
@@ -873,7 +875,10 @@ class EncoderController(MackieC4Component):
                             format_nbr += NUM_ENCODERS_ONE_ROW
                         # encoder 17 index is (16 % 8) = send 0
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
-                        vpot_display_text.set_text(send_param[0], send_param[1])
+                        if send_param[0] is not None:
+                            vpot_display_text.set_text(send_param[0], send_param[1])
+                        else:
+                            vpot_display_text.set_text('mmmmm', 'oooooo')
                     # else:
                     #     vpot_display_text = default
                     #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
@@ -941,7 +946,7 @@ class EncoderController(MackieC4Component):
                 #     Only display text
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
-                        vpot_display_text.set_text('Device', ' None ')
+                        vpot_display_text.set_text('Device', 'EditMe')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
                         vpot_display_text.set_text('<<  - ', 'PrvBnk')
@@ -967,7 +972,10 @@ class EncoderController(MackieC4Component):
                     if plugin_param is not None:
                         vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
                         # parameter name in top display row, param value in bottom row
-                        vpot_display_text.set_text(plugin_param[0], plugin_param[1])
+                        if plugin_param[0] is not None:
+                            vpot_display_text.set_text(plugin_param[0], plugin_param[1])
+                        else:
+                            vpot_display_text.set_text('PPPPP', 'dddddd')
                     else:
                         vpot_display_text.set_text('Param', ' No ')
 
@@ -1265,7 +1273,7 @@ class EncoderController(MackieC4Component):
                 if display_string.find('.') != -1:
                     display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_'):  # MS had to revert filtering . and - cos otherwise param values with decimals or negative are not shown properly, ideally we should only filter param names but now param values
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1284,7 +1292,7 @@ class EncoderController(MackieC4Component):
             return '      '
 
         if len(display_string) > 20:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_'):
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-'):
                 while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
