@@ -39,27 +39,22 @@ import Live
 """
 from __future__ import absolute_import, print_function, unicode_literals
 import sys
+import Live
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
     from builtins import range
     from builtins import object
     import logging
     import time
-#    from . LiveUtils import *
     from .consts import *
     from .Encoders import Encoders
     from .EncoderController import EncoderController
-    from _Framework.ControlSurface import ControlSurface  # MS
-    import Live
 else:  # Live 10
-    from _Framework.ControlSurface import ControlSurface
     import logging, time
-#    from . LiveUtils import *
     from .consts import *
     from .Encoders import Encoders
     from .EncoderController import EncoderController
     import MidiRemoteScript
-    import Live
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +76,8 @@ class MackieC4(object):
     dlisten = {}
     '''dlisten is "Device Listener'''
 
-    clisten = {}
-    '''clisten is "Clip" Listener'''
+    # clisten = {}
+    # '''clisten is "Clip" Listener'''
 
     slisten = {}
     '''slisten is "Slot Listener'''
@@ -92,11 +87,11 @@ class MackieC4(object):
     pplisten = {}
     '''pplisten is "Playing Position" Listener'''
 
-    cnlisten = {}
-    '''cnlisten is "Clip Listener'''
-
-    cclisten = {}
-    '''cclisten is "Clip Color" Listener'''
+    # cnlisten = {}
+    # '''cnlisten is "Clip Listener'''
+    #
+    # cclisten = {}
+    # '''cclisten is "Clip Color" Listener'''
 
     mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'oml': {}, 'omr': {}, 'color': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
     '''oml is "output_meter_left, omr is output_meter_right'''
@@ -257,13 +252,13 @@ class MackieC4(object):
         """returns a handle to the c_interface that is needed when forwarding MIDI events via the MIDI map"""
         return self.__c_instance.handle()
 
-    def getslots(self):
-        tracks = self.song().visible_tracks
-        clipSlots = []
-        for track in tracks:
-            clipSlots.append(track.clip_slots)
-
-        return clipSlots
+    # def getslots(self):
+    #     tracks = self.song().visible_tracks
+    #     clipSlots = []
+    #     for track in tracks:
+    #         clipSlots.append(track.clip_slots)
+    #
+    #     return clipSlots
 
     def trBlock(self, trackOffset, blocksize):
         block = []
@@ -277,7 +272,7 @@ class MackieC4(object):
                 block.extend(['fake Track NAME'])  # MS lets try
 
     def disconnect(self):
-        self.rem_clip_listeners()
+        # self.rem_clip_listeners()
         self.rem_mixer_listeners()
         self.rem_scene_listeners()
         self.rem_tempo_listener()
@@ -316,7 +311,7 @@ class MackieC4(object):
         return result
 
     def refresh_state(self):
-        self.add_clip_listeners()
+        # self.add_clip_listeners()
         self.add_mixer_listeners()
         self.add_tempo_listener()
         self.add_overdub_listener()
@@ -366,7 +361,7 @@ class MackieC4(object):
         if self.track_count > len(tracks) + 1:
             self.__encoder_controller.track_deleted(selected_index - 1)
         elif self.track_count < len(tracks) + 1:
-            self.__encoder_controller.track_added(selected_index - 1)
+            self.__encoder_controller.track_added(selected_index - 1)  # MS this get called when moving clip to another existing track, why?
             self.return_resetter = 1
         else:
             self.__encoder_controller.track_changed(selected_index - 1)
@@ -433,83 +428,83 @@ class MackieC4(object):
     def tracks_change(self):
         self.request_rebuild_midi_map()
 
-    def rem_clip_listeners(self):
-        self.log_message("** Remove Listeners **")
-
-        for slot in self.slisten:
-            if slot is not None:
-                if slot.has_clip_has_listener(self.slisten[slot]) == 1:  # MS HAD a KeyError when deleting a track, referring to ClipSlot.ClipSlot, fixed in LiveUtils
-                    slot.remove_has_clip_listener(self.slisten[slot])
-
-        self.slisten = {}
-
-        for slot in self.sslisten:
-            if slot is not None:
-                if slot.has_stop_button_has_listener(self.sslisten[slot]) == 1:
-                    slot.remove_has_stop_button_listener(self.sslisten[slot])
-
-        self.sslisten = {}
-
-        for clip in self.clisten:
-            if clip is not None:
-                if clip.playing_status_has_listener(self.clisten[clip]) == 1:  # MS KeyError when clip move across tracks, was 6 lines above, now here
-                    clip.remove_playing_status_listener(self.clisten[clip])
-
-        self.clisten = {}
-        for clip in self.pplisten:
-            if clip is not None:
-                if clip.playing_position_has_listener(self.pplisten[clip]) == 1:
-                    clip.remove_playing_position_listener(self.pplisten[clip])
-
-        self.pplisten = {}
-        for clip in self.cnlisten:
-            if clip is not None:
-                if clip.name_has_listener(self.cnlisten[clip]) == 1:
-                    clip.remove_name_listener(self.cnlisten[clip])
-
-        self.cnlisten = {}
-        for clip in self.cclisten:
-            if clip is not None:
-                if clip.color_has_listener(self.cclisten[clip]) == 1:
-                    clip.remove_color_listener(self.cclisten[clip])
-
-        self.cclisten = {}
-        return
-
-    def add_clip_listeners(self):
-        self.rem_clip_listeners()
-        tracks = self.getslots()
-        for track in range(len(tracks)):
-            for clip in range(len(tracks[track])):
-                c = tracks[track][clip]
-                if c.clip is not None:
-                    self.add_cliplistener(c.clip, track, clip)
-                self.add_slotlistener(c, track, clip)
-
-        return
-
-    def add_cliplistener(self, clip, tid, cid):
-        cb = lambda: self.clip_changestate(clip, tid, cid)
-        if (clip in self.clisten) != 1:
-            clip.add_playing_status_listener(cb)
-            self.clisten[clip] = cb
-        cb2 = lambda: self.clip_position(clip, tid, cid)
-        if (clip in self.pplisten) != 1:
-            clip.add_playing_position_listener(cb2)
-            self.pplisten[clip] = cb2
-        cb3 = lambda: self.clip_name(clip, tid, cid)
-        if (clip in self.cnlisten) != 1:
-            clip.add_name_listener(cb3)
-            self.cnlisten[clip] = cb3
-        if (clip in self.cclisten) != 1:
-            clip.add_color_listener(cb3)
-            self.cclisten[clip] = cb3
-
-    def add_slotlistener(self, slot, tid, cid):
-        cb = lambda : self.slot_changestate(slot, tid, cid)
-        if (slot in self.slisten) != 1:
-            slot.add_has_clip_listener(cb)
-            self.slisten[slot] = cb
+    # def rem_clip_listeners(self):
+    #     self.log_message("** Remove Listeners **")
+    #
+    #     for slot in self.slisten:
+    #         if slot is not None:
+    #             if slot.has_clip_has_listener(self.slisten[slot]) == 1:  # MS HAD a KeyError when deleting a track, referring to ClipSlot.ClipSlot, fixed in LiveUtils
+    #                 slot.remove_has_clip_listener(self.slisten[slot])
+    #
+    #     self.slisten = {}
+    #
+    #     for slot in self.sslisten:
+    #         if slot is not None:
+    #             if slot.has_stop_button_has_listener(self.sslisten[slot]) == 1:
+    #                 slot.remove_has_stop_button_listener(self.sslisten[slot])
+    #
+    #     self.sslisten = {}
+    #
+    #     for clip in self.clisten:
+    #         if clip is not None:
+    #             if clip.playing_status_has_listener(self.clisten[clip]) == 1:  # MS KeyError when clip move across tracks, was 6 lines above, now here
+    #                 clip.remove_playing_status_listener(self.clisten[clip])
+    #
+    #     self.clisten = {}
+    #     for clip in self.pplisten:
+    #         if clip is not None:
+    #             if clip.playing_position_has_listener(self.pplisten[clip]) == 1:
+    #                 clip.remove_playing_position_listener(self.pplisten[clip])
+    #
+    #     self.pplisten = {}
+    #     for clip in self.cnlisten:
+    #         if clip is not None:
+    #             if clip.name_has_listener(self.cnlisten[clip]) == 1:
+    #                 clip.remove_name_listener(self.cnlisten[clip])
+    #
+    #     self.cnlisten = {}
+    #     for clip in self.cclisten:
+    #         if clip is not None:
+    #             if clip.color_has_listener(self.cclisten[clip]) == 1:
+    #                 clip.remove_color_listener(self.cclisten[clip])
+    #
+    #     self.cclisten = {}
+    #     return
+    #
+    # def add_clip_listeners(self):
+    #     self.rem_clip_listeners()
+    #     tracks = self.getslots()
+    #     for track in range(len(tracks)):
+    #         for clip in range(len(tracks[track])):
+    #             c = tracks[track][clip]
+    #             if c.clip is not None:
+    #                 self.add_cliplistener(c.clip, track, clip)
+    #             self.add_slotlistener(c, track, clip)
+    #
+    #     return
+    #
+    # def add_cliplistener(self, clip, tid, cid):
+    #     cb = lambda: self.clip_changestate(clip, tid, cid)
+    #     if (clip in self.clisten) != 1:
+    #         clip.add_playing_status_listener(cb)
+    #         self.clisten[clip] = cb
+    #     cb2 = lambda: self.clip_position(clip, tid, cid)
+    #     if (clip in self.pplisten) != 1:
+    #         clip.add_playing_position_listener(cb2)
+    #         self.pplisten[clip] = cb2
+    #     cb3 = lambda: self.clip_name(clip, tid, cid)
+    #     if (clip in self.cnlisten) != 1:
+    #         clip.add_name_listener(cb3)
+    #         self.cnlisten[clip] = cb3
+    #     if (clip in self.cclisten) != 1:
+    #         clip.add_color_listener(cb3)
+    #         self.cclisten[clip] = cb3
+    #
+    # def add_slotlistener(self, slot, tid, cid):
+    #     cb = lambda : self.slot_changestate(slot, tid, cid)
+    #     if (slot in self.slisten) != 1:
+    #         slot.add_has_clip_listener(cb)
+    #         self.slisten[slot] = cb
 
     def rem_mixer_listeners(self):
         # Master Track
@@ -744,55 +739,55 @@ class MackieC4(object):
             self.mlisten['omr'][track] = cb
         track.add_output_meter_right_listener(cb)
 
-    def clip_name(self, clip, tid, cid):
-        pass
-
-    def clip_position(self, clip, tid, cid):
-        if self.check_md(1):
-            if clip.is_playing:
-                pass
-
-    def slot_changestate(self, slot, tid, cid):
-        # tmptrack = Live.getTrack(tid)
-        # armed = tmptrack.arm and 1 or 0
-        if slot.clip is not None:
-            self.add_cliplistener(slot.clip, tid, cid)
-            playing = 1
-            if slot.clip.is_playing == 1:
-                playing = 2
-            if slot.clip.is_triggered == 1:
-                playing = 3
-            length = slot.clip.loop_end - slot.clip.loop_start
-        elif (slot.clip in self.clisten) == 1:
-            slot.clip.remove_playing_status_listener(self.clisten[slot.clip])
-        else:
-            if (slot.clip in self.pplisten) == 1:
-                slot.clip.remove_playing_position_listener(self.pplisten[slot.clip])  # MS something's wrong here, according to LOM only clip.clip has pplisten,but not slot.clip
-            if (slot.clip in self.cnlisten) == 1:
-                slot.clip.remove_name_listener(self.cnlisten[slot.clip])
-            if (slot.clip in self.cclisten) == 1:
-                slot.clip.remove_color_listener(self.cclisten[slot.clip])
-
-        return
-
-    def clip_changestate(self, clip, x, y):
-        playing = 0
-
-        if clip.is_playing == 1:
-            playing = 1
-            if clip.is_recording == 1:
-                playing = 3
-            if self.song().tracks[x].arm == 1 and clip.is_audio_clip == 0:
-                if self.song().overdub == 1:
-                    playing = 3
-                else:
-                    playing = 1
-        else:
-            pass
-        if clip.is_triggered == 1:
-            playing = 2
-        else:
-            pass
+    # def clip_name(self, clip, tid, cid):
+    #     pass
+    #
+    # def clip_position(self, clip, tid, cid):
+    #     if self.check_md(1):
+    #         if clip.is_playing:
+    #             pass
+    #
+    # def slot_changestate(self, slot, tid, cid):
+    #     # tmptrack = Live.getTrack(tid)
+    #     # armed = tmptrack.arm and 1 or 0
+    #     if slot.clip is not None:
+    #         self.add_cliplistener(slot.clip, tid, cid)
+    #         playing = 1
+    #         if slot.clip.is_playing == 1:
+    #             playing = 2
+    #         if slot.clip.is_triggered == 1:
+    #             playing = 3
+    #         length = slot.clip.loop_end - slot.clip.loop_start
+    #     elif (slot.clip in self.clisten) == 1:
+    #         slot.clip.remove_playing_status_listener(self.clisten[slot.clip])
+    #     else:
+    #         if (slot.clip in self.pplisten) == 1:
+    #             slot.clip.remove_playing_position_listener(self.pplisten[slot.clip])  # MS something's wrong here, according to LOM only clip.clip has pplisten,but not slot.clip
+    #         if (slot.clip in self.cnlisten) == 1:
+    #             slot.clip.remove_name_listener(self.cnlisten[slot.clip])
+    #         if (slot.clip in self.cclisten) == 1:
+    #             slot.clip.remove_color_listener(self.cclisten[slot.clip])
+    #
+    #     return
+    #
+    # def clip_changestate(self, clip, x, y):
+    #     playing = 0
+    #
+    #     if clip.is_playing == 1:
+    #         playing = 1
+    #         if clip.is_recording == 1:
+    #             playing = 3
+    #         if self.song().tracks[x].arm == 1 and clip.is_audio_clip == 0:
+    #             if self.song().overdub == 1:
+    #                 playing = 3
+    #             else:
+    #                 playing = 1
+    #     else:
+    #         pass
+    #     if clip.is_triggered == 1:
+    #         playing = 2
+    #     else:
+    #         pass
 
     def mixerv_changestate(self, type, tid, track, r=0):
         val = eval('track.mixer_device.' + type + '.value')

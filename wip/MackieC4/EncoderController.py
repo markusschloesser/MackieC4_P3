@@ -7,6 +7,9 @@ from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 import sys
 
+from ableton.v2.base import listenable_property
+from . import track_util
+
 # from Encoders import Encoders
 
 if sys.version_info[0] >= 3:  # Live 11
@@ -546,7 +549,7 @@ class EncoderController(MackieC4Component):
         # i.e. when you rotate encoder 32 in C4M_CHANNEL_STRIP mode, the "level number" updates itself via the
         # midi mapping through Live (see Encoders.build_midi_map()), not via code here
         is_not_master_track_selected = self.selected_track != self.song().master_track
-        is_armable_track_selected = self.selected_track.can_be_armed
+        is_armable_track_selected = track_util.can_be_armed(self.selected_track)
         self.main_script().log_message("potIndex<{}> cc_value<{}> received".format(vpot_index, cc_value))
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             # encoder = self.__encoders[vpot_index]
@@ -586,9 +589,15 @@ class EncoderController(MackieC4Component):
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             if encoder_index in row_00_encoders:
                 # only "top row" encoders 7 and 8 are mapped in C4M_CHANNEL_STRIP mode
+                encoder_04_index = 3
                 encoder_07_index = 6
                 encoder_08_index = 7
                 update_self = False
+
+                # group track fold toggle, also groups from within
+                if encoder_index == encoder_04_index:
+                    track_util.toggle_fold(self.selected_track)
+
                 if encoder_index == encoder_07_index:
                     if selected_device_bank_index > 0:
                         selected_device_bank_index -= 1
@@ -892,10 +901,10 @@ class EncoderController(MackieC4Component):
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm:
                                 s.show_full_enlighted_poti()
-                                vpot_display_text.set_text(' Off   ', 'RecArm ')
+                                vpot_display_text.set_text(' Offbla   ', 'RecArm ')
                             else:
                                 s.unlight_vpot_leds()
-                                vpot_display_text.set_text('  ON   ', 'RecArm ')
+                                vpot_display_text.set_text('  ONbla   ', 'RecArm ')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
@@ -1070,10 +1079,19 @@ class EncoderController(MackieC4Component):
         encoder_32_index = 31
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             # This text 'covers' display segments over the first 6 encoders in top row (half is blanks)
-            upper_string1 += '-------Track--------                      '
+
+            # shows "fold" or "unfold" or nothing depending on if group or grouped
+            if track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track)):
+                if track_util.is_folded(self.selected_track):
+                    upper_string1 += '-------Track--------' + ' unfold----------'
+                elif not track_util.is_folded(self.selected_track):
+                    upper_string1 += '-------Track--------' + ' fold------------'
+            else:
+                upper_string1 += '-------Track--------       ----------'
+
             # "selected track's name, centered over roughly the first 3 encoders in top row
-            lower_string1 += self.__generate_20_char_string(self.selected_track.name)
-            lower_string1 = lower_string1.center(20)
+            lower_string1 += (self.__generate_20_char_string(self.selected_track.name)) + (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '')
+            # lower_string1 = lower_string1.center(20)
             lower_string1 += '                      '
 
             # This text 'covers' display segments over all 8 encoders in the second row
@@ -1273,7 +1291,7 @@ class EncoderController(MackieC4Component):
                 if display_string.find('.') != -1:
                     display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_'):  # MS had to revert filtering . and - cos otherwise param values with decimals or negative are not shown properly, ideally we should only filter param names but now param values
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', ','):  # MS had to revert filtering . and - cos otherwise param values with decimals or negative are not shown properly, ideally we should only filter param names but now param values. Added comma
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1292,7 +1310,7 @@ class EncoderController(MackieC4Component):
             return '      '
 
         if len(display_string) > 20:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-'):
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-', ','):  # MS added comma
                 while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
