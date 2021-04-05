@@ -50,6 +50,7 @@ def toggle_fold(track):
 def is_folded(track):
     if is_group_track(track):
         return track.fold_state
+    return False
 
 
 def can_be_armed(track):

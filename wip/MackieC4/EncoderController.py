@@ -549,7 +549,7 @@ class EncoderController(MackieC4Component):
         # i.e. when you rotate encoder 32 in C4M_CHANNEL_STRIP mode, the "level number" updates itself via the
         # midi mapping through Live (see Encoders.build_midi_map()), not via code here
         is_not_master_track_selected = self.selected_track != self.song().master_track
-        is_armable_track_selected = track_util.can_be_armed(self)
+        is_armable_track_selected = track_util.can_be_armed(self.selected_track)
         self.main_script().log_message("potIndex<{}> cc_value<{}> received".format(vpot_index, cc_value))
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             # encoder = self.__encoders[vpot_index]
@@ -1079,7 +1079,16 @@ class EncoderController(MackieC4Component):
         encoder_32_index = 31
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             # This text 'covers' display segments over the first 6 encoders in top row (half is blanks)
-            upper_string1 += '-------Track--------' + ('(Un)Fold' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '')
+
+            # shows "fold" or "unfold" or nothing depending on if group or grouped
+            if track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track)):
+                if track_util.is_folded(self.selected_track):
+                    upper_string1 += '-------Track--------' + ' unfold----------'
+                elif not track_util.is_folded(self.selected_track):
+                    upper_string1 += '-------Track--------' + ' fold------------'
+            else:
+                upper_string1 += '-------Track--------       ----------'
+
             # "selected track's name, centered over roughly the first 3 encoders in top row
             lower_string1 += (self.__generate_20_char_string(self.selected_track.name)) + (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '')
             # lower_string1 = lower_string1.center(20)
@@ -1282,7 +1291,7 @@ class EncoderController(MackieC4Component):
                 if display_string.find('.') != -1:
                     display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_'):  # MS had to revert filtering . and - cos otherwise param values with decimals or negative are not shown properly, ideally we should only filter param names but now param values
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', ','):  # MS had to revert filtering . and - cos otherwise param values with decimals or negative are not shown properly, ideally we should only filter param names but now param values. Added comma
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
@@ -1301,7 +1310,7 @@ class EncoderController(MackieC4Component):
             return '      '
 
         if len(display_string) > 20:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-'):
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-', ','):  # MS added comma
                 while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
