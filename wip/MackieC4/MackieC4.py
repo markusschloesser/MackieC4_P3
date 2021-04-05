@@ -39,6 +39,7 @@ import Live
 """
 from __future__ import absolute_import, print_function, unicode_literals
 import sys
+import Live
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
     from builtins import range
@@ -48,14 +49,12 @@ if sys.version_info[0] >= 3:  # Live 11
     from .consts import *
     from .Encoders import Encoders
     from .EncoderController import EncoderController
-    import Live
 else:  # Live 10
     import logging, time
     from .consts import *
     from .Encoders import Encoders
     from .EncoderController import EncoderController
     import MidiRemoteScript
-    import Live
 
 logger = logging.getLogger(__name__)
 

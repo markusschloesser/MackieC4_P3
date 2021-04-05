@@ -56,7 +56,7 @@ class EncoderDisplaySegment(MackieC4Component):
         # self.__encoder = encdr
 
         self.__encoder = next(x for x in self.__encoder_controller.get_encoders() if x.vpot_index() == self.__vpot_index)
-        #self.__encoder = self.__encoder_controller.get_encoders()[self.__vpot_index]
+        # self.__encoder = self.__encoder_controller.get_encoders()[self.__vpot_index]
 
     def vpot_index(self):
         """ The zero based index (0 - 31) of the LCD screen space over the encoder at the same index"""
