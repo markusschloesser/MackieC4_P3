@@ -230,8 +230,21 @@ class EncoderController(MackieC4Component):
             self.__chosen_plugin = None
             self.__reorder_parameters()
         else:
-            self.__chosen_plugin = self.selected_track.devices[self.t_d_current[self.t_current]]
-            self.__reorder_parameters()
+            if len(self.t_d_current) > self.t_current:
+                if len(self.selected_track.devices) > self.t_d_current[self.t_current]:
+                    self.__chosen_plugin = self.selected_track.devices[self.t_d_current[self.t_current]]
+                    self.__reorder_parameters()
+                else:
+                    # something isn't getting updated correctly at startup and/or when devices are deleted
+                    self.main_script().log_message(
+                        "len(self.selected_track.devices) <= self.t_d_current[self.t_current]")
+                    self.main_script().log_message(
+                        "{0} <= {1}".format(len(self.selected_track.devices), self.t_d_current[self.t_current]))
+            else:
+                # something isn't getting updated correctly at startup and/or when devices are deleted
+                self.main_script().log_message("len(self.t_d_current) <= self.t_current")
+                self.main_script().log_message("{0} <= {1}".format(len(self.t_d_current), self.t_current))
+
         self.__reassign_encoder_parameters(for_display_only=False)
         self.request_rebuild_midi_map()
         return
