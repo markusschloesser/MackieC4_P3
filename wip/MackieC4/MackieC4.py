@@ -855,7 +855,11 @@ class MackieC4(object):
 
     def rem_device_listeners(self):
         for pr in self.prlisten:
-            ocb = self.prlisten[pr]  # KeyError when exchanging M4L device, KeyError when closing Live after deleting last device, ref to disconnect
+            try:
+                ocb = self.prlisten[pr]  # KeyError when exchanging M4L device, KeyError when closing Live after deleting last device, ref to disconnect
+            except KeyError:
+                pr = None
+
             if pr is not None:
                 if pr.value_has_listener(ocb) == 1:
                     pr.remove_value_listener(ocb)
@@ -912,20 +916,20 @@ class MackieC4(object):
             self.dlisten[track] = cb
 
     def device_changestate(self, track, tid, type):  # MS THIS is the origin of shit, is it?
-        did = self.tuple_idx(track.devices, track.view.selected_device)
+        # did = self.tuple_idx(track.devices, track.view.selected_device)
         self.__encoder_controller.device_added_deleted_or_changed()
-        if type == 2:
-            pass
-        elif type == 1:
-            pass
+        # if type == 2:
+        #     pass
+        # elif type == 1:
+        #     pass
 
-    def tuple_idx(self, tuple, obj):
-        for i in range(0, len(tuple)):
-            if tuple[i] == obj:
-                return i
+    # def tuple_idx(self, tuple, obj):
+    #     for i in range(0, len(tuple)):
+    #         if tuple[i] == obj:
+    #             return i
 
     def track_inc_dec(self, note):
-        # self.log_message("handling note <{}> for track inc dec".format(note))  # MS logging for track changes currently not needed
+        # self.log_message("handling note <{}> for track inc dec".format(note))
         selected_track = self.song().view.selected_track
         tracks = self.song().visible_tracks + self.song().return_tracks
         index = 0
@@ -940,7 +944,7 @@ class MackieC4(object):
             for track in tracks:
                 index = index + 1
                 if track == selected_track:
-                    self.log_message("found selected_track <{}>".format(track.name))
+                    self.log_message("current selected_track <{}>".format(track.name))
                     if note == C4SID_TRACK_LEFT:
                         if index > 1:  # can't move selection left of track 0
                             selected_index = index - 2
