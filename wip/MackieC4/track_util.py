@@ -6,7 +6,12 @@
 # Size of source mod 2**32: 6989 bytes
 from __future__ import absolute_import, print_function, unicode_literals
 from itertools import chain
-from ableton.v2.base import const, compose, depends, find_if, liveobj_valid, old_hasattr
+import sys
+from ableton.v2.base import const, compose, depends, find_if, liveobj_valid
+
+if sys.version_info[0] >= 3:  # Live 11
+    from ableton.v2.base import old_hasattr
+
 from ableton.v2.control_surface import Component, find_instrument_devices
 import Live
 

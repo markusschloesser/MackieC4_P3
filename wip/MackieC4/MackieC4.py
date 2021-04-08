@@ -940,21 +940,21 @@ class MackieC4(object):
             for track in tracks:
                 index = index + 1
                 if track == selected_track:
-                    self.log_message("found selected_track <{}>".format(track))
+                    self.log_message("found selected_track <{}>".format(track.name))
                     if note == C4SID_TRACK_LEFT:
                         if index > 1:  # can't move selection left of track 0
                             selected_index = index - 2
                             self.song().view.selected_track = tracks[selected_index]
-                            self.log_message("new selected_track <{}>".format(tracks[selected_index]))
+                            self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
                     elif note == C4SID_TRACK_RIGHT:
                         if index < len(tracks):  # right of last return track goes to master track
                             selected_index = index
                             self.song().view.selected_track = tracks[index]
-                            self.log_message("new selected_track <{}>".format(tracks[selected_index]))
+                            self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
                         else:
                             selected_index = self.__encoder_controller.master_track_index()
                             self.song().view.selected_track = self.song().master_track
-                            self.log_message("new selected_track <{}>".format(self.song().master_track))
+                            self.log_message("new selected_track <{}>".format(self.song().master_track.name))
 
             self.track = selected_index
 

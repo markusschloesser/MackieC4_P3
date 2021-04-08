@@ -900,7 +900,7 @@ class EncoderController(MackieC4Component):
                         if send_param[0] is not None:
                             vpot_display_text.set_text(send_param[0], send_param[1])
                         else:
-                            vpot_display_text.set_text('mmmmm', 'oooooo')
+                            vpot_display_text.set_text('cowcow', 'mooooo')
                     # else:
                     #     vpot_display_text = default
                     #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
@@ -997,7 +997,7 @@ class EncoderController(MackieC4Component):
                         if plugin_param[0] is not None:
                             vpot_display_text.set_text(plugin_param[0], plugin_param[1])
                         else:
-                            vpot_display_text.set_text('PPPPP', 'dddddd')
+                            vpot_display_text.set_text('Mooooo', 'cowsays')
                     else:
                         vpot_display_text.set_text('Param', ' No ')
 
