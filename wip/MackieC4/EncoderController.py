@@ -7,6 +7,7 @@ from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 import sys
 
+from Push2.model import DeviceParameter
 from ableton.v2.base import listenable_property
 from ableton.v2.control_surface.components import undo_redo
 from . import track_util
@@ -901,6 +902,10 @@ class EncoderController(MackieC4Component):
                         # encoder 17 index is (16 % 8) = send 0
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
                         if send_param[0] is not None:
+                            # if send_param[0] is DeviceParameter:
+                            #     param = send_param[0]
+                            #     vpot_display_text.set_text(param.name, send_param[1])
+                            # else:
                             vpot_display_text.set_text(send_param[0], send_param[1])
                         else:
                             vpot_display_text.set_text('cowcow', 'mooooo')

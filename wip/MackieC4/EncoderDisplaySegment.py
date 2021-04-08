@@ -8,7 +8,8 @@ from .MackieC4Component import *
 from ableton.v2.base import liveobj_valid  # MS
 
 import sys
-from Live import DeviceParameter
+# from Live import DeviceParameter
+from Push2.model import DeviceParameter
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
 
@@ -41,21 +42,7 @@ class EncoderDisplaySegment(MackieC4Component):
         self.__set_encoder()
 
     def __set_encoder(self):
-        # # "assigning" a lambda is an anti-pattern
-        # var = lambda x: self.__vpot_index == x.vpot_index()
-        # # filter returns a list - theoretically the list only contains one Encoders object
-        # encoders_at_index = filter(var, self.__encoder_controller.__encoders)
-        # encdr = None
-        # if len(encoders_at_index) > 0:
-        #     if len(encoders_at_index) > 1:
-        #         self.main_script().log_message("more than one Encoder object found for Encoder index, using first")
-        #     encdr = encoders_at_index[0]
-        # else:
-        #     self.main_script().log_message("No Encoder object found for Encoder index, using None")
-        # self.__encoder = encdr
-
         self.__encoder = next(x for x in self.__encoder_controller.get_encoders() if x.vpot_index() == self.__vpot_index)
-        # self.__encoder = self.__encoder_controller.get_encoders()[self.__vpot_index]
 
     def vpot_index(self):
         """ The zero based index (0 - 31) of the LCD screen space over the encoder at the same index"""
@@ -85,4 +72,9 @@ class EncoderDisplaySegment(MackieC4Component):
         return self.__upper_text
 
     def get_lower_text(self):
-        return self.__lower_text
+        try:
+            ascii_encoded = self.__lower_text.encode('ascii','ignore')
+        except AttributeError:  # DeviceParameter
+            ascii_encoded = str(self.__lower_text).encode('ascii',errors = 'ignore')
+
+        return ascii_encoded.decode()
