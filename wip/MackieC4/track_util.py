@@ -6,6 +6,7 @@
 # Size of source mod 2**32: 6989 bytes
 from __future__ import absolute_import, print_function, unicode_literals
 from itertools import chain
+
 import sys
 from ableton.v2.base import const, compose, depends, find_if, liveobj_valid
 
@@ -45,10 +46,10 @@ def grouped_tracks(track, song=None):
 def toggle_fold(track):
     if is_group_track(track):
         track.fold_state = not track.fold_state
+        # track.view.is_collapsed = not track.view.is_collapsed  # MS for later. for collapsing tracks in Arrange view
         return True
     elif is_grouped(track):
         toggle_fold(track.group_track)
-
     return False
 
 

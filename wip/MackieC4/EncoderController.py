@@ -8,6 +8,7 @@ from __future__ import division
 import sys
 
 from ableton.v2.base import listenable_property
+from ableton.v2.control_surface.components import undo_redo
 from . import track_util
 
 # from Encoders import Encoders
@@ -290,7 +291,7 @@ class EncoderController(MackieC4Component):
             self.t_d_p_bank_current[track_index][d] = 0
 
         # self.refresh_state() #MS out-commented, copy from Leigh on next line
-        self._MackieC4Component__main_script.refresh_state()  # MS why do we delegate to component, which in turn delegates to main??
+        MackieC4Component.refresh_state(self)  # MS why do we delegate to component, which in turn delegates to main??
         if self.t_d_count[track_index] == 0:
             self.__chosen_plugin = None
             self.__reorder_parameters()
@@ -380,7 +381,7 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         elif device_was_removed:
             # MS this is  where things currently really break when last device delete.
-            # Update: Bit better now, as C4 switches, but selecting again still causes major on_display error
+            # Update: deleting and undoing still throws (different) errors "Not enough devices loaded and __chosen_device is not None:"
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
@@ -603,6 +604,8 @@ class EncoderController(MackieC4Component):
             if encoder_index in row_00_encoders:
                 # only "top row" encoders 7 and 8 are mapped in C4M_CHANNEL_STRIP mode
                 encoder_04_index = 3
+                encoder_05_index = 4
+                encoder_06_index = 5
                 encoder_07_index = 6
                 encoder_08_index = 7
                 update_self = False
@@ -803,7 +806,7 @@ class EncoderController(MackieC4Component):
 
             # if a default Live device is chosen, iterate the DEVICE_DICT constant
             # to reorder the local list of plugin parameters
-            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():
+            if self.__chosen_plugin.class_name in list(DEVICE_DICT.keys()):  # MS "list comes from Mackie
                 device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
                 for bank in device_banks:
                     for param_name in bank:
@@ -914,7 +917,7 @@ class EncoderController(MackieC4Component):
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm:
                                 s.show_full_enlighted_poti()
-                                vpot_display_text.set_text(' Offbla   ', 'RecArm ')
+                                vpot_display_text.set_text(' Offbla   ', 'RecArm ')  # MS this obviously does not work
                             else:
                                 s.unlight_vpot_leds()
                                 vpot_display_text.set_text('  ONbla   ', 'RecArm ')
@@ -1096,11 +1099,11 @@ class EncoderController(MackieC4Component):
             # shows "fold" or "unfold" or nothing depending on if group or grouped
             if track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track)):
                 if track_util.is_folded(self.selected_track):
-                    upper_string1 += '-------Track--------' + ' unfold----------'
+                    upper_string1 += '-------Track--------' + ' unfold---------------'
                 elif not track_util.is_folded(self.selected_track):
-                    upper_string1 += '-------Track--------' + ' fold------------'
+                    upper_string1 += '-------Track--------' + ' fold-----------------'
             else:
-                upper_string1 += '-------Track--------       ----------'
+                upper_string1 += '-------Track--------       ---------------'
 
             # "selected track's name, centered over roughly the first 3 encoders in top row
             lower_string1 += (self.__generate_20_char_string(self.selected_track.name)) + (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '')
