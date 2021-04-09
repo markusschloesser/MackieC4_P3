@@ -718,32 +718,46 @@ class EncoderController(MackieC4Component):
             encoder_08_index = 7
             current_device_track = self.t_d_current[self.t_current]
             current_parameter_bank_track = self.t_d_p_bank_current[self.t_current]
-            stop = len(self.__display_parameters) + SETUP_DB_DEVICE_BANK_SIZE
-            display_params_range = range(SETUP_DB_DEVICE_BANK_SIZE, stop)
+            self.main_script().log_message("current_parameter_bank_track: {0}".format(current_parameter_bank_track))
+            stop = len(self.__display_parameters) + SETUP_DB_DEVICE_BANK_SIZE  # always 40?
+            display_params_range = range(SETUP_DB_DEVICE_BANK_SIZE, stop)  # display_params_range always 8 - 39?
+            # suspect display_params_range is supposed to protect against "short" parameter lists < 24
+            # when self.__display_parameters is always 32 EncoderDisplaySegments now
+            # we might need to check the length of the actual parameter list of the selected device
             update_self = False
             if encoder_index == encoder_07_index:
                 if current_parameter_bank_track[current_device_track] > 0:
                     current_parameter_bank_track[current_device_track] -= 1
+                    self.main_script().log_message(
+                        "self.t_d_p_bank_current[self.t_current]: {0}".format(self.t_d_p_bank_current[self.t_current]))
                     update_self = True
                 else:
                     self.main_script().log_message("can't decrement current_parameter_bank_track: already bank 0")
             elif encoder_index == encoder_08_index:
                 current_track_device_preset_bank = current_parameter_bank_track[current_device_track]
+                self.main_script().log_message("current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
                 track_device_preset_bank_count = self.t_d_p_bank_count[self.t_current][current_device_track]
+                self.main_script().log_message("track_device_preset_bank_count: {0}".format(track_device_preset_bank_count))
                 if current_track_device_preset_bank < track_device_preset_bank_count - 1:
                     current_parameter_bank_track[current_device_track] += 1
+                    self.main_script().log_message(
+                        "self.t_d_p_bank_current[self.t_current]: {0}".format(self.t_d_p_bank_current[self.t_current]))
                     update_self = True
                 else:
                     self.main_script().log_message("can't increment current_parameter_bank_track: already last bank")
-            elif encoder_index in display_params_range:  # could be encoders 9 - 32 (on each param page), but "stops"
+            # should be encoders 9 - 32 (on each param page), but stopping short on last/only (short is < 24) parameter page
+            elif encoder_index in display_params_range:
+                # if a device has less than 24 parameters exposed on this page, param will be (None, '    ')
                 param = self.__encoders[encoder_index].v_pot_parameter()
-                try:
-                    param.value = param.default_value  # button press == jump to default value of device parameter?
-                except (RuntimeError, AttributeError):
-                    # There is no default value available for this type of parameter
-                    # 'NoneType' object has no attribute 'default_value'
-                    pass
-            # else encoder_index points to an encoder that is "unmapped" for selected device
+                if param is not None:
+                    if param is not tuple:
+                        try:
+                            param.value = param.default_value  # button press == jump to default value of device parameter?
+                        except (RuntimeError, AttributeError):
+                            # There is no default value available for this type of parameter
+                            # 'NoneType' object has no attribute 'default_value'
+                            pass
+
 
             if update_self:
                 self.__reassign_encoder_parameters(for_display_only=False)
@@ -825,6 +839,22 @@ class EncoderController(MackieC4Component):
 
         self.__ordered_plugin_parameters = result # these are tuples where index 0 is a DeviceParameter object
         count = 0
+
+        # also update parameter page count?
+        # self.t_d_current[self.t_current] == index of current/selected device on track
+        # self.t_d_p_bank_count[self.t_current] == parameter page/bank max count of current/selected device on track
+        # self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]] == parameter page/bank max of current/selected device on track?
+        nbr_of_full_pages = int(len(self.__ordered_plugin_parameters) / SETUP_DB_PARAM_BANK_SIZE)  #  len() / 24
+        nbr_of_remainders = int(len(self.__ordered_plugin_parameters) % SETUP_DB_PARAM_BANK_SIZE)  #  len() % 24
+        if nbr_of_full_pages >= SETUP_DB_MAX_PARAM_BANKS:
+            nbr_of_full_pages = SETUP_DB_MAX_PARAM_BANKS
+        elif nbr_of_full_pages == 0 and nbr_of_remainders > 0:
+            nbr_of_full_pages = 1
+        elif nbr_of_remainders > 0:
+            nbr_of_full_pages += 1  # 0 < nbr_of_full_pages < SETUP_DB_MAX_PARAM_BANKS
+
+        # Note: see above handle_pressed_vpot(encoder 8 click in device mode)
+        self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]] = nbr_of_full_pages
         for p in self.__ordered_plugin_parameters:
             # log the param names to the Live log in order
             self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
