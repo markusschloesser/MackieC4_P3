@@ -1039,8 +1039,8 @@ class EncoderController(MackieC4Component):
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
                         if send_param[0] is not None:
                             vpot_display_text.set_text(send_param[0], send_param[1])
-                        else:
-                            vpot_display_text.set_text('cowcow', 'mooooo')
+                        #else:
+                            #vpot_display_text.set_text('cowcow', 'mooooo')
                     # else:
                     #     vpot_display_text = default
                     #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
@@ -1136,8 +1136,8 @@ class EncoderController(MackieC4Component):
                         # parameter name in top display row, param value in bottom row
                         if plugin_param[0] is not None:  # then it is a DeviceParameter object
                             vpot_display_text.set_text(plugin_param[0], plugin_param[1])
-                        else:
-                            vpot_display_text.set_text('Mooooo', 'cowsays')
+                        # else:
+                        #     vpot_display_text.set_text('Mooooo', 'cowsays')
                     else:
                         vpot_display_text.set_text('Param', ' No ')
 
