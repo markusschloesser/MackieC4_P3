@@ -1342,7 +1342,7 @@ class EncoderController(MackieC4Component):
                 if display_string.find('.') != -1:
                     display_string = display_string[:-2]
         if len(display_string) > 6:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', ','):  # MS had to revert filtering . and - cos otherwise param values with decimals or negative are not shown properly, ideally we should only filter param names but now param values. Added comma
+            for um in (' ', '_', ',', '/', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):  # MS had to revert filtering . and - cos otherwise param values with decimals or negative are not shown properly, ideally we should only filter param names but now param values. Added comma
                 while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
                     um_pos = display_string.rfind(um, 1)
                     display_string = display_string[:um_pos] + display_string[um_pos + 1:]
