@@ -333,12 +333,25 @@ class EncoderController(MackieC4Component):
 
     def device_added_deleted_or_changed(self):
 
+        new_device_count_track = len(self.selected_track.devices)
+        self.main_script().log_message("track device list size <{0}> BEFORE device update".format(new_device_count_track))
+        for device in self.selected_track.devices:
+            if device is not None:
+                self.main_script().log_message("before <{0}>".format(device.name))
+            else:
+                self.main_script().log_message("after <None>")
+
         # this is the "old count"
         device_count_track = self.t_d_count[self.t_current]
-        new_device_count_track = len(self.selected_track.devices)
         device_was_added = new_device_count_track > device_count_track
         device_was_removed = new_device_count_track < device_count_track
+        selected_device_was_changed = new_device_count_track == device_count_track
         no_devices_on_track = new_device_count_track == 0
+
+        self.main_script().log_message("no devices currently on track <{0}>".format(no_devices_on_track))
+
+        self.main_script().log_message("add event <{0}> delete event <{1}> change event <{2}>"
+                                       .format(device_was_added, device_was_removed, selected_device_was_changed))
 
         index = 0
         new_device_index = 0
@@ -352,10 +365,12 @@ class EncoderController(MackieC4Component):
                 new_device_index = index
                 deleted_device_index = index
                 changed_device_index = index
+                self.main_script().log_message("found event index <{0}> and device <{1}>".format(index, device.name))
             else:
                 index += 1
 
         if device_was_added:
+            self.main_script().log_message("for 'add' device event handling")
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
@@ -381,6 +396,7 @@ class EncoderController(MackieC4Component):
             self.__reassign_encoder_parameters(for_display_only=False)
             self.request_rebuild_midi_map()
         elif device_was_removed:
+            self.main_script().log_message("for 'delete' device event handling")
             # MS this is  where things currently really break when last device delete.
             # Update: deleting and undoing still throws (different) errors "Not enough devices loaded and __chosen_device is not None:"
             param_count_track = self.t_d_p_count[self.t_current]
@@ -403,6 +419,7 @@ class EncoderController(MackieC4Component):
             else:
                 self.t_d_current[self.t_current] = deleted_device_index
                 # index of deleted device is now index of current device
+
                 # set the current "parameter bank" page number of new current device
                 # calculate the current bank page number of the new current device by adding 1 to
                 # the value of the deleted device index (this is index of device on "right" of deleted device because
@@ -425,17 +442,55 @@ class EncoderController(MackieC4Component):
                 self.main_script().log_message("reassigning __chosen_plugin to device at index {0}"
                                                .format(deleted_device_index))
                 self.__chosen_plugin = self.selected_track.devices[deleted_device_index]
+                if self.__chosen_plugin is not None:
+                    self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+                else:
+                    self.main_script().log_message("__chosen_plugin is now None")
             else:
                 self.__chosen_plugin = None
+                self.main_script().log_message("__chosen_plugin is now None")
 
             self.__reorder_parameters()
             self.__reassign_encoder_parameters(for_display_only=False)
             self.request_rebuild_midi_map()
         else:  # selected device changed
-            self.__chosen_plugin = self.selected_track.devices[changed_device_index]
+            self.main_script().log_message("for 'change selected' device event handling")
+            if self.__chosen_plugin is not None:
+                self.main_script().log_message("switching __chosen_plugin {0} to device at index {1}"
+                                               .format(self.__chosen_plugin.name, changed_device_index))
+                if len(self.selected_track.devices) < changed_device_index:
+                    self.__chosen_plugin = self.selected_track.devices[changed_device_index]
+                    self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+                else:
+                    self.__chosen_plugin = None
+                    self.main_script().log_message("__chosen_plugin is now None")
+
+            else:
+                self.main_script().log_message("switching __chosen_plugin None to device at index {0}"
+                                               .format(changed_device_index))
+                if len(self.selected_track.devices) < changed_device_index:
+                    self.__chosen_plugin = self.selected_track.devices[changed_device_index]
+                else:
+                    self.__chosen_plugin = None
+                    self.main_script().log_message("__chosen_plugin is now None")
+
+                if self.__chosen_plugin is not None:
+                    self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+                else:
+                    self.main_script().log_message("__chosen_plugin remains None")
+
             self.__reorder_parameters()
             self.__reassign_encoder_parameters(for_display_only=False)
             self.request_rebuild_midi_map()
+
+        new_device_count_track = len(self.selected_track.devices)
+        self.main_script().log_message(
+            "track device list size <{0}> AFTER device update".format(new_device_count_track))
+        for device in self.selected_track.devices:
+            if device is not None:
+                self.main_script().log_message("after <{0}>".format(device.name))
+            else:
+                self.main_script().log_message("after <None>")
 
     def assignment_mode(self):
         return self.__assignment_mode
@@ -823,15 +878,26 @@ class EncoderController(MackieC4Component):
             # to reorder the local list of plugin parameters
             if self.__chosen_plugin.class_name in DEVICE_DICT.keys():
                 device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
+                device_bank_index = 0
                 for bank in device_banks:
+                    param_bank_index = 0
                     for param_name in bank:
                         parameter_name = ''
                         parameter = get_parameter_by_name(self.__chosen_plugin, param_name)
                         if parameter:
                             parameter_name = parameter.name
-                        else:
-                            parameter = None
+                        else:  # get parameter by index if possible
+                            param_index = param_bank_index + (SETUP_DB_DEVICE_BANK_SIZE * device_bank_index)
+                            if len(self.__chosen_plugin.parameters) > param_index:
+                                parameter = self.__chosen_plugin.parameters[param_index]
+                                parameter_name = parameter.name
+                            else:
+                                parameter = None
+
                         result.append((parameter, parameter_name))
+                        param_bank_index += 1
+
+                    device_bank_index += 1
 
             # otherwise reorder the local list to the order provided by the parameter itself
             else:
@@ -886,8 +952,31 @@ class EncoderController(MackieC4Component):
         encoder_31_index = 30
         encoder_32_index = 31
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
+            #
+            current_nbr_of_devices_on_selected_track = len(self.selected_track.devices)
+            # self.t_d_count[self.t_current] is the max device count for the track (which better be <= 128?)
+            self.t_d_count[self.t_current] = current_nbr_of_devices_on_selected_track
+
+            nbr_of_full_device_pages = int(current_nbr_of_devices_on_selected_track / SETUP_DB_DEVICE_BANK_SIZE)  # / 16
+            nbr_of_remainder_devices = int(current_nbr_of_devices_on_selected_track % SETUP_DB_DEVICE_BANK_SIZE)
+            if nbr_of_full_device_pages >= SETUP_DB_MAX_DEVICE_BANKS:
+                nbr_of_full_device_pages = SETUP_DB_MAX_DEVICE_BANKS
+            elif nbr_of_full_device_pages < 0:
+                nbr_of_full_device_pages = 0
+                self.main_script().log_message("Not possible, right? and yet I am logged")
+
+            if nbr_of_full_device_pages == 0 and nbr_of_remainder_devices > 0:
+                nbr_of_full_device_pages = 1
+            elif nbr_of_remainder_devices > 0:  # 0 < nbr_of_full_device_pages < SETUP_DB_MAX_DEVICE_BANKS
+                nbr_of_full_device_pages += 1
+
+            # this is the max (channel mode) device page count
+            # (based on the current number of devices on the selected track)
+            self.t_d_bank_count[self.t_current] = nbr_of_full_device_pages
+
+            # the current selected bank should already be updated (and accurate)?
             current_device_bank_track = self.t_d_bank_current[self.t_current]
-            max_device_bank_track = self.t_d_bank_count[self.t_current]
+
 
             for s in self.__encoders:
                 s_index = s.vpot_index()
@@ -905,21 +994,32 @@ class EncoderController(MackieC4Component):
                         else:
                             s.unlight_vpot_leds()
                     elif s_index == encoder_08_index:
-                        if current_device_bank_track < max_device_bank_track - 1:
+                        if current_device_bank_track < nbr_of_full_device_pages - 1:
                             vpot_display_text.set_text('Bank>>', 'Device')
                             s.show_full_enlighted_poti()
                         else:
                             s.unlight_vpot_leds()
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index in row_01_encoders:
-                    count = s_index - SETUP_DB_DEVICE_BANK_SIZE
-                    current_encoder_offset = current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE
-                    if count + current_encoder_offset < self.t_d_count[self.t_current]:
+
+                    row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
+                    current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
+                    self.main_script().log_message("(ch mode) device row row_index {0} current bank offset <{1}>"
+                                                   .format(row_index, current_encoder_bank_offset))
+
+                    # watch out for 'no device on track' when row_index = 0 and current bank = 0
+                    # if row_index = 0 and current bank = 0, then encoder is mapped to 1st device on track
+                    # if row_index = 1 and current bank = 0, then encoder is mapped to 2nd device on track
+                    # if row_index = 7 and current bank = 0, then encoder is mapped to 8th device on track
+                    # if row_index = 0 and current bank = 1, then encoder is mapped to 9th device on track
+                    # if row_index = 1 and current bank = 1, then encoder is mapped to 10th device on track
+                    # if row_index = 7 and current bank = 1, then encoder is mapped to 16th device on track
+                    if row_index + current_encoder_bank_offset < self.t_d_count[self.t_current]:
                         s.show_full_enlighted_poti()
-                        encoder_in_row_count = count + int(current_encoder_offset)
-                        if len(self.selected_track.devices) > encoder_in_row_count:
-                            device_name = self.selected_track.devices[encoder_in_row_count].name
-                            # device_name in bottom row, blanks on top
+                        encoder_index_in_row = row_index + int(current_encoder_bank_offset)
+                        if  encoder_index_in_row < len(self.selected_track.devices):
+                            device_name = self.selected_track.devices[encoder_index_in_row].name
+                            # device_name in bottom row, blanks on top (top text blocked across full LCD)
                             vpot_display_text.set_text(device_name, '')
                         else:
                             vpot_display_text.set_text('dvcNme', 'No')  # could just leave as default blank spaces
@@ -938,10 +1038,6 @@ class EncoderController(MackieC4Component):
                         # encoder 17 index is (16 % 8) = send 0
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
                         if send_param[0] is not None:
-                            # if send_param[0] is DeviceParameter:
-                            #     param = send_param[0]
-                            #     vpot_display_text.set_text(param.name, send_param[1])
-                            # else:
                             vpot_display_text.set_text(send_param[0], send_param[1])
                         else:
                             vpot_display_text.set_text('cowcow', 'mooooo')
@@ -958,7 +1054,7 @@ class EncoderController(MackieC4Component):
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm:
                                 s.show_full_enlighted_poti()
-                                vpot_display_text.set_text(' Offbla   ', 'RecArm ')  # MS this obviously does not work
+                                vpot_display_text.set_text(' Offbla   ', 'RecArm ')  # overwritten in on_display_update()
                             else:
                                 s.unlight_vpot_leds()
                                 vpot_display_text.set_text('  ONbla   ', 'RecArm ')
