@@ -936,7 +936,7 @@ class EncoderController(MackieC4Component):
                             #     param = send_param[0]
                             #     vpot_display_text.set_text(param.name, send_param[1])
                             # else:
-                            vpot_display_text.set_text(str(send_param[0]), send_param[1])
+                            vpot_display_text.set_text(send_param[0], send_param[1])
                         else:
                             vpot_display_text.set_text('cowcow', 'mooooo')
                     # else:
@@ -975,7 +975,7 @@ class EncoderController(MackieC4Component):
                 elif s_index == encoder_31_index:
                     if self.selected_track.has_audio_output:
                         # lower == value, upper == value label
-                        vpot_display_text.set_text(str(self.selected_track.mixer_device.panning), 'Pan')
+                        vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')
                         vpot_param = (self.selected_track.mixer_device.panning, VPOT_DISPLAY_BOOST_CUT)
                     #else:
                         # plain midi tracks for example don't have audio output, no "Pan" per se
@@ -985,7 +985,7 @@ class EncoderController(MackieC4Component):
                 elif s_index == encoder_32_index:
                     if self.selected_track.has_audio_output:
                         # lower == value, upper == value label)
-                        vpot_display_text.set_text(str(self.selected_track.mixer_device.volume), 'Volume')
+                        vpot_display_text.set_text(self.selected_track.mixer_device.volume, 'Volume')
                         vpot_param = (self.selected_track.mixer_device.volume, VPOT_DISPLAY_WRAP)
                     else:
                         # plain midi tracks do NOT have "Volumn Sliders", so KEEP MOVING, NOTHING TO SHOW HERE
@@ -1033,7 +1033,7 @@ class EncoderController(MackieC4Component):
                         vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
                         # parameter name in top display row, param value in bottom row
                         if plugin_param[0] is not None:  # then it is a DeviceParameter object
-                            vpot_display_text.set_text(str(plugin_param[0]), plugin_param[1])
+                            vpot_display_text.set_text(plugin_param[0], plugin_param[1])
                         else:
                             vpot_display_text.set_text('Mooooo', 'cowsays')
                     else:
