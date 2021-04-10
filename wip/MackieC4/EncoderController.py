@@ -840,20 +840,26 @@ class EncoderController(MackieC4Component):
         self.__ordered_plugin_parameters = result # these are tuples where index 0 is a DeviceParameter object
         count = 0
 
-        # also update parameter page count?
-        # self.t_d_current[self.t_current] == index of current/selected device on track
-        # self.t_d_p_bank_count[self.t_current] == parameter page/bank max count of current/selected device on track
-        # self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]] == parameter page/bank max of current/selected device on track?
         nbr_of_full_pages = int(len(self.__ordered_plugin_parameters) / SETUP_DB_PARAM_BANK_SIZE)  #  len() / 24
         nbr_of_remainders = int(len(self.__ordered_plugin_parameters) % SETUP_DB_PARAM_BANK_SIZE)  #  len() % 24
         if nbr_of_full_pages >= SETUP_DB_MAX_PARAM_BANKS:
             nbr_of_full_pages = SETUP_DB_MAX_PARAM_BANKS
-        elif nbr_of_full_pages == 0 and nbr_of_remainders > 0:
+        elif nbr_of_full_pages < 0:
+            nbr_of_full_pages = 0
+            self.main_script().log_message("Not possible, right? and yet I am logged")
+
+        if nbr_of_full_pages == 0 and nbr_of_remainders > 0:
             nbr_of_full_pages = 1
-        elif nbr_of_remainders > 0:
-            nbr_of_full_pages += 1  # 0 < nbr_of_full_pages < SETUP_DB_MAX_PARAM_BANKS
+        elif nbr_of_remainders > 0:  # 0 < nbr_of_full_pages < SETUP_DB_MAX_PARAM_BANKS
+            nbr_of_full_pages += 1
 
         # Note: see above handle_pressed_vpot(encoder 8 click in device mode)
+        # self.t_d_current[self.t_current]
+        #                              == index of current/selected device on track
+        # self.t_d_p_bank_count[self.t_current]
+        #                              == index of parameter page/bank max value of current/selected device on track
+        # self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]]
+        #                              == parameter page/bank max value of current/selected device on track
         self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]] = nbr_of_full_pages
         for p in self.__ordered_plugin_parameters:
             # log the param names to the Live log in order
