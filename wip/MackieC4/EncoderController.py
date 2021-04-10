@@ -821,7 +821,7 @@ class EncoderController(MackieC4Component):
 
             # if a default Live device is chosen, iterate the DEVICE_DICT constant
             # to reorder the local list of plugin parameters
-            if self.__chosen_plugin.class_name in list(DEVICE_DICT.keys()):  # MS "list comes from Mackie
+            if self.__chosen_plugin.class_name in DEVICE_DICT.keys():
                 device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
                 for bank in device_banks:
                     for param_name in bank:
@@ -830,7 +830,7 @@ class EncoderController(MackieC4Component):
                         if parameter:
                             parameter_name = parameter.name
                         else:
-                            parameter = ''
+                            parameter = None
                         result.append((parameter, parameter_name))
 
             # otherwise reorder the local list to the order provided by the parameter itself

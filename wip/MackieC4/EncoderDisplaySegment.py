@@ -75,6 +75,6 @@ class EncoderDisplaySegment(MackieC4Component):
         try:
             ascii_encoded = self.__lower_text.encode('ascii','ignore')
         except AttributeError:  # DeviceParameter
-            ascii_encoded = str(self.__lower_text).encode('ascii',errors = 'ignore')
+            ascii_encoded = unicode(self.__lower_text).encode('ascii',errors = 'ignore')
 
         return ascii_encoded.decode()
