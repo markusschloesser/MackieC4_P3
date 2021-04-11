@@ -339,7 +339,7 @@ class EncoderController(MackieC4Component):
             if device is not None:
                 self.main_script().log_message("before <{0}>".format(device.name))
             else:
-                self.main_script().log_message("after <None>")
+                self.main_script().log_message("before <None>")
 
         # this is the "old count"
         device_count_track = self.t_d_count[self.t_current]
@@ -369,6 +369,8 @@ class EncoderController(MackieC4Component):
             else:
                 index += 1
 
+        # FROM HERE: "found event index <{0}> and device <{1}>".format(index, device.name)
+        # represent "source of truth"   device == self.selected_track.devices[index]
         if device_was_added:
             self.main_script().log_message("for 'add' device event handling")
             param_count_track = self.t_d_p_count[self.t_current]
@@ -455,29 +457,41 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         else:  # selected device changed
             self.main_script().log_message("for 'change selected' device event handling")
-            if self.__chosen_plugin is not None:
+
+            # "source of truth"   device == self.selected_track.devices[index]
+            # "source of truth"   device == self.selected_track.devices[changed_device_index]
+            if self.__chosen_plugin is None:
+                self.main_script().log_message("switching __chosen_plugin <None> to device at index {0}"
+                                               .format(changed_device_index))
+            else:
                 self.main_script().log_message("switching __chosen_plugin {0} to device at index {1}"
                                                .format(self.__chosen_plugin.name, changed_device_index))
-                if len(self.selected_track.devices) < changed_device_index:
-                    self.__chosen_plugin = self.selected_track.devices[changed_device_index]
-                    self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
-                else:
-                    self.__chosen_plugin = None
-                    self.main_script().log_message("__chosen_plugin is now None")
 
-            else:
-                self.main_script().log_message("switching __chosen_plugin None to device at index {0}"
-                                               .format(changed_device_index))
-                if len(self.selected_track.devices) < changed_device_index:
-                    self.__chosen_plugin = self.selected_track.devices[changed_device_index]
-                else:
-                    self.__chosen_plugin = None
-                    self.main_script().log_message("__chosen_plugin is now None")
-
-                if self.__chosen_plugin is not None:
-                    self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
-                else:
-                    self.main_script().log_message("__chosen_plugin remains None")
+            self.__chosen_plugin = self.selected_track.devices[changed_device_index]  # == new selected device
+            self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+            # if self.__chosen_plugin is not None:
+            #     self.main_script().log_message("switching __chosen_plugin {0} to device at index {1}"
+            #                                    .format(self.__chosen_plugin.name, changed_device_index))
+            #     if len(self.selected_track.devices) < changed_device_index:
+            #         self.__chosen_plugin = self.selected_track.devices[changed_device_index]
+            #         self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+            #     else:
+            #         self.__chosen_plugin = None
+            #         self.main_script().log_message("__chosen_plugin is now None")
+            #
+            # else:
+            #     self.main_script().log_message("switching __chosen_plugin None to device at index {0}"
+            #                                    .format(changed_device_index))
+            #     if len(self.selected_track.devices) < changed_device_index:
+            #         self.__chosen_plugin = self.selected_track.devices[changed_device_index]
+            #     else:
+            #         self.__chosen_plugin = None
+            #         self.main_script().log_message("__chosen_plugin is now None")
+            #
+            #     if self.__chosen_plugin is not None:
+            #         self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+            #     else:
+            #         self.main_script().log_message("__chosen_plugin remains None")
 
             self.__reorder_parameters()
             self.__reassign_encoder_parameters(for_display_only=False)
@@ -1243,9 +1257,12 @@ class EncoderController(MackieC4Component):
                 upper_string1 += '-------Track--------       ---------------'
 
             # "selected track's name, centered over roughly the first 3 encoders in top row
-            lower_string1 += (self.__generate_20_char_string(self.selected_track.name)) + (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '')
-            # lower_string1 = lower_string1.center(20)
-            lower_string1 += '                      '
+            lower_string1 += self.__generate_20_char_string(self.selected_track.name)
+            lower_string1 += (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '       ')
+            if self.selected_track.view.selected_device is not None:
+                lower_string1 += self.__generate_15_char_string(self.selected_track.view.selected_device.name)
+            else:
+                lower_string1 += '                      '
 
             # This text 'covers' display segments over all 8 encoders in the second row
             upper_string2 += '------------------------Devices------------------------'
@@ -1475,6 +1492,25 @@ class EncoderController(MackieC4Component):
             ret += display_string[i]
 
         assert len(ret) == 20
+        return ret
+
+    def __generate_15_char_string(self, display_string):
+        if not display_string:
+            return '      '
+
+        if len(display_string) > 15:
+            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-', ','):  # MS added comma
+                while len(display_string) > 15 and display_string.rfind(um, 1) != -1:
+                    um_pos = display_string.rfind(um, 1)
+                    display_string = display_string[:um_pos] + display_string[um_pos + 1:]
+
+        else:
+            display_string = display_string.center(15)
+        ret = ''
+        for i in range(15):
+            ret += display_string[i]
+
+        assert len(ret) == 15
         return ret
 
     def __transform_to_size(self, raw_text, new_size):
