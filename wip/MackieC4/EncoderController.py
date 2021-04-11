@@ -469,29 +469,6 @@ class EncoderController(MackieC4Component):
 
             self.__chosen_plugin = self.selected_track.devices[changed_device_index]  # == new selected device
             self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
-            # if self.__chosen_plugin is not None:
-            #     self.main_script().log_message("switching __chosen_plugin {0} to device at index {1}"
-            #                                    .format(self.__chosen_plugin.name, changed_device_index))
-            #     if len(self.selected_track.devices) < changed_device_index:
-            #         self.__chosen_plugin = self.selected_track.devices[changed_device_index]
-            #         self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
-            #     else:
-            #         self.__chosen_plugin = None
-            #         self.main_script().log_message("__chosen_plugin is now None")
-            #
-            # else:
-            #     self.main_script().log_message("switching __chosen_plugin None to device at index {0}"
-            #                                    .format(changed_device_index))
-            #     if len(self.selected_track.devices) < changed_device_index:
-            #         self.__chosen_plugin = self.selected_track.devices[changed_device_index]
-            #     else:
-            #         self.__chosen_plugin = None
-            #         self.main_script().log_message("__chosen_plugin is now None")
-            #
-            #     if self.__chosen_plugin is not None:
-            #         self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
-            #     else:
-            #         self.main_script().log_message("__chosen_plugin remains None")
 
             self.__reorder_parameters()
             self.__reassign_encoder_parameters(for_display_only=False)
@@ -517,6 +494,14 @@ class EncoderController(MackieC4Component):
     # stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
+        self.main_script().log_message("self.__assignment_mode == C4M_CHANNEL_STRIP is <{0}>"
+                                       .format(self.__assignment_mode == C4M_CHANNEL_STRIP))
+        # self.t_d_current[self.t_current]
+        #                              == index of current/selected device on track
+        # self.t_d_p_bank_count[self.t_current]
+        #                              == index of parameter page/bank max value of current/selected device on track
+        # self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]]
+        #                              == parameter page/bank max value of current/selected device on track
         current_bank_nbr = self.t_d_p_bank_current[self.t_current][self.t_d_current[self.t_current]]
         update_self = False
         if switch_id == C4SID_BANK_LEFT:
@@ -528,6 +513,55 @@ class EncoderController(MackieC4Component):
             if current_bank_nbr < max_bank_nbr:
                 current_bank_nbr += 1
                 update_self = True
+        elif self.__assignment_mode == C4M_CHANNEL_STRIP:
+
+            if len(self.t_d_current) > self.t_current:
+
+                selected_device_index = self.t_d_current[self.t_current]
+                self.main_script().log_message("selected device index before <{0}>".format(selected_device_index))
+
+                if switch_id == C4SID_SINGLE_LEFT:  # previous device
+                    selected_device_index -= 1
+                    self.main_script().log_message("selected device left")
+                elif switch_id == C4SID_SINGLE_RIGHT:  # next device
+                    self.main_script().log_message("selected device right")
+                    selected_device_index += 1
+
+                self.main_script().log_message("selected device index after <{0}>".format(selected_device_index))
+                nbr_devices = len(self.selected_track.devices)
+                if nbr_devices > 0 and nbr_devices > selected_device_index:
+                    self.t_d_current[self.t_current] = selected_device_index
+                    current_selected_device = self.selected_track.devices[selected_device_index]
+                    self.song().view.select_device(current_selected_device)
+                    self.__chosen_plugin = current_selected_device
+                    self.__reorder_parameters()
+                    self.__reassign_encoder_parameters(for_display_only=False)
+                    self.request_rebuild_midi_map()
+                    self.main_script().log_message("new selected device <{0}>".format(self.__chosen_plugin.name))
+                else:
+                    # something isn't getting updated correctly at startup and/or when devices are deleted
+                    self.main_script().log_message("nbr_devices <= self.t_d_current[self.t_current]")
+                    self.main_script().log_message("{0} <= {1}".format(nbr_devices, self.t_d_current[self.t_current]))
+            else:
+                # something isn't getting updated correctly at startup and/or when devices are deleted
+                self.main_script().log_message("len(self.t_d_current) <= self.t_current")
+                self.main_script().log_message("{0} <= {1}".format(len(self.t_d_current), self.t_current))
+
+
+                # device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
+                # device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
+                # if len(self.selected_track.devices) > device_offset:  # if the calculated offset is valid device index
+                #     self.__chosen_plugin = self.selected_track.devices[device_offset]
+                #     self.__reorder_parameters()
+                #     self.t_d_current[self.t_current] = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
+                #     self.song().view.select_device(self.selected_track.devices[device_offset])
+                #     self.__reassign_encoder_parameters(for_display_only=False)
+                #     self.request_rebuild_midi_map()
+                # else:
+                #     msg = "can't update __chosen_plugin: the calculated device_offset {0} is NOT a valid device index"\
+                #         .format(device_offset)
+                #     self.main_script().log_message(msg)
+                #     self.__chosen_plugin = None
 
         if update_self:
             self.t_d_p_bank_current[self.t_current][self.t_d_current[self.t_current]] = current_bank_nbr
@@ -1018,8 +1052,8 @@ class EncoderController(MackieC4Component):
 
                     row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
                     current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
-                    self.main_script().log_message("(ch mode) device row row_index {0} current bank offset <{1}>"
-                                                   .format(row_index, current_encoder_bank_offset))
+                    # self.main_script().log_message("(ch mode) device row row_index {0} current bank offset <{1}>"
+                    #                                .format(row_index, current_encoder_bank_offset))
 
                     # watch out for 'no device on track' when row_index = 0 and current bank = 0
                     # if row_index = 0 and current bank = 0, then encoder is mapped to 1st device on track

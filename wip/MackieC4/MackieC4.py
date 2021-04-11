@@ -210,7 +210,7 @@ class MackieC4(object):
             if note in range(C4SID_FIRST, C4SID_LAST + 1) and ignore_note_offs:
                 if note in track_nav_switch_ids:
                     self.track_inc_dec(note)
-                elif note in bank_switch_ids:
+                elif note in bank_switch_ids or note in single_switch_ids:
                     self.__encoder_controller.handle_bank_switch_ids(note)
                 elif note in slot_nav_switch_ids:
                     self.__encoder_controller.handle_slot_nav_switch_ids(note)
