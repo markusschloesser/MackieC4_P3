@@ -45,7 +45,7 @@ What doesn't work / ToDo:
     3. for the other stuff, see "Issues" here
    
 How to use it?
-See Jon's Wiki entry https://github.com/markusschloesser/MackieC4_P3/wiki/How-To-download-and-use-this-Mackie-C4-Remote-Script-in-Ableton-Live
+See the Wiki https://github.com/markusschloesser/MackieC4_P3/wiki 
 
 Any help is welcome! 
 I also uploaded the decompiled Ableton Live 11 / Python 3 remote scripts in a separate repository. If you want access to those, write me
