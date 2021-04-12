@@ -36,17 +36,19 @@ What works:
 			4. Parameter names get properly shortened.  
 			5. "Sends" etc also work in track mode, BUT always show 12 "Sends", even if there are less
 			6. Grouptrack folding/unfolding
-			7. lots more, see Project Board https://github.com/markusschloesser/MackieC4_P3/projects and Issues https://github.com/markusschloesser/MackieC4_P3/issues	
+			7. lots more, 
+			8. see Project Board https://github.com/markusschloesser/MackieC4_P3/projects and 
+			9. Issues https://github.com/markusschloesser/MackieC4_P3/issues	
  
 
 What doesn't work / ToDo:
 
-    1. last device deletion causes error #1 https://github.com/markusschloesser/MackieC4_P3/issues/1
-    3. for the other stuff, see "Issues" here
+    1. undoing certain things can cause errors see #1 https://github.com/markusschloesser/MackieC4_P3/issues/1
+    2. for the other stuff, see "Issues" here
    
 How to use it?
 See the Wiki https://github.com/markusschloesser/MackieC4_P3/wiki 
 
-Any help is welcome! 
+Any help is welcome! Suggestions, Ideas for enhancement, bug reports, especially code contributions. Please check, if we already thought about it, and it's in issues 😉 
 I also uploaded the decompiled Ableton Live 11 / Python 3 remote scripts in a separate repository. If you want access to those, write me
 
