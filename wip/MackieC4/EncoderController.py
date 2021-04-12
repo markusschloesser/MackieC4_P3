@@ -11,6 +11,7 @@ from Push2.model import DeviceParameter
 from ableton.v2.base import listenable_property
 from ableton.v2.control_surface.components import undo_redo
 from . import track_util
+from . import song_util
 
 # from Encoders import Encoders
 
@@ -866,11 +867,85 @@ class EncoderController(MackieC4Component):
                 self.__reassign_encoder_parameters(for_display_only=False)
                 self.request_rebuild_midi_map()
 
-        elif self.__assignment_mode == C4M_FUNCTION: # seems to be simply Start/Stop playback
+        elif self.__assignment_mode == C4M_FUNCTION:
             # encoder 25 is bottom row left "Stop Playback"
             # encoder 26 is bottom row second from left "Start Playback"
+            encoder_01_index = 0
+            encoder_02_index = 1
+            encoder_03_index = 2
+            encoder_04_index = 3
+            encoder_05_index = 4
+            encoder_06_index = 5
+            encoder_07_index = 6
+            encoder_08_index = 7
             encoder_25_index = 24
             encoder_26_index = 25
+            if encoder_index == encoder_01_index:
+                song_util.toggle_follow(self)
+                if self.song().view.follow_song:
+                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_1, 0x43)
+                    self.send_midi(turn_on_encoder_led_msg)
+                else:
+                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_1, 0x06)
+                    self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_02_index:
+                song_util.toggle_loop(self)
+                if self.song().loop:
+                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_2, 0x43)
+                    self.send_midi(turn_on_encoder_led_msg)
+                else:
+                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_2, 0x06)
+                    self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_03_index:
+                song_util.toggle_detail_sub_view(self)
+                if self.application().view.is_view_visible('Detail/Clip'):
+                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_3, 0x43)
+                    self.send_midi(turn_on_encoder_led_msg)
+                else:
+                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_3, 0x06)
+                    self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_04_index:
+                song_util.toggle_session_arranger_is_visible(self)
+                if song_util.toggle_session_arranger_is_visible:
+                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_4, 0x43)
+                    self.send_midi(turn_on_encoder_led_msg)
+                else:
+                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_4, 0x06)
+                    self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_05_index:
+                song_util.toggle_browser_is_visible(self)
+                if song_util.toggle_browser_is_visible:
+                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_5, 0x43)
+                    self.send_midi(turn_on_encoder_led_msg)
+                else:
+                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_5, 0x06)
+                    self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_06_index:
+                song_util.unsolo_all(self)
+                for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
+                    if track.solo:
+                        turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_6, 0x43)
+                        self.send_midi(turn_on_encoder_led_msg)
+                    else:
+                        turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_6, 0x06)
+                        self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_07_index:
+                song_util.unmute_all(self)
+                for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
+                    if track.mute:
+                        turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_7, 0x43)
+                        self.send_midi(turn_on_encoder_led_msg)
+                    else:
+                        turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_7, 0x06)
+                        self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_08_index:
+                song_util.toggle_back_to_arranger(self)
+                if song_util.toggle_back_to_arranger:
+                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_8, 0x43)
+                    self.send_midi(turn_on_encoder_led_msg)
+                else:
+                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_8, 0x06)
+                    self.send_midi(turn_off_encoder_led_msg)
             if encoder_index == encoder_25_index:
                 self.song().stop_playing()
                 turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_26, 0x06)
@@ -1444,8 +1519,8 @@ class EncoderController(MackieC4Component):
                         lower_string4 += ' '
 
         elif self.__assignment_mode == C4M_FUNCTION:
-            upper_string1 += so_many_spaces
-            lower_string1 += so_many_spaces
+            upper_string1 += 'follow  Loop   CLip/ Sessn  Browsr unsolo unmute  BTA '
+            lower_string1 += 'unfllw on/off Detail Arrang on/off  all    all        '
             upper_string2 += so_many_spaces
             lower_string2 += so_many_spaces
             upper_string3 += so_many_spaces

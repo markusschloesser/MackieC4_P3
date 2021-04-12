@@ -75,9 +75,9 @@ class EncoderDisplaySegment(MackieC4Component):
         try:
             ascii_encoded = self.__lower_text.encode('ascii', 'ignore')
         except AttributeError:  # DeviceParameter
-            try:
-                ascii_encoded = unicode(self.__lower_text).encode('ascii', errors='ignore')  # for Py2/Live10
-            except NameError:
+            if sys.version_info[0] >= 3:
                 ascii_encoded = str(self.__lower_text).encode('ascii', errors='ignore')  # for Py3/Live11
+            else:
+                ascii_encoded = unicode(self.__lower_text).encode('ascii', errors='ignore')  # for Py2/Live10
 
         return ascii_encoded.decode()
