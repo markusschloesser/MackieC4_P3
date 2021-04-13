@@ -46,7 +46,7 @@ def toggle_browser_is_visible(self):  # works
 
 
 # back to arrangement / BTA
-def toggle_back_to_arranger(self):
+def toggle_back_to_arranger(self, name='BTA'):
     self.song().back_to_arranger = not self.song().back_to_arranger
     
     
@@ -62,3 +62,13 @@ def unmute_all(self):  # works
     for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
         if track.mute:
             track.mute = False
+
+
+def redo(self):
+    if self.song().can_redo:
+        self.song().redo()
+
+
+def undo(self):
+    if self.song().can_undo:
+        self.song().undo()

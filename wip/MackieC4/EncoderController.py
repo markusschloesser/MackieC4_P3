@@ -862,7 +862,6 @@ class EncoderController(MackieC4Component):
                             # 'NoneType' object has no attribute 'default_value'
                             pass
 
-
             if update_self:
                 self.__reassign_encoder_parameters(for_display_only=False)
                 self.request_rebuild_midi_map()
@@ -878,6 +877,8 @@ class EncoderController(MackieC4Component):
             encoder_06_index = 5
             encoder_07_index = 6
             encoder_08_index = 7
+            encoder_09_index = 8
+            encoder_10_index = 9
             encoder_25_index = 24
             encoder_26_index = 25
             if encoder_index == encoder_01_index:
@@ -945,6 +946,22 @@ class EncoderController(MackieC4Component):
                     self.send_midi(turn_on_encoder_led_msg)
                 else:
                     turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_8, 0x06)
+                    self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_09_index:
+                song_util.undo(self)
+                if self.song().can_undo:
+                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_9, 0x43)
+                    self.send_midi(turn_on_encoder_led_msg)
+                else:
+                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_9, 0x06)
+                    self.send_midi(turn_off_encoder_led_msg)
+            if encoder_index == encoder_10_index:
+                song_util.redo(self)
+                if self.song().can_redo:
+                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_10, 0x43)
+                    self.send_midi(turn_on_encoder_led_msg)
+                else:
+                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_10, 0x06)
                     self.send_midi(turn_off_encoder_led_msg)
             if encoder_index == encoder_25_index:
                 self.song().stop_playing()
@@ -1099,7 +1116,6 @@ class EncoderController(MackieC4Component):
 
             # the current selected bank should already be updated (and accurate)?
             current_device_bank_track = self.t_d_bank_current[self.t_current]
-
 
             for s in self.__encoders:
                 s_index = s.vpot_index()
@@ -1521,7 +1537,7 @@ class EncoderController(MackieC4Component):
         elif self.__assignment_mode == C4M_FUNCTION:
             upper_string1 += 'follow  Loop   CLip/ Sessn  Browsr unsolo unmute  BTA '
             lower_string1 += 'unfllw on/off Detail Arrang on/off  all    all        '
-            upper_string2 += so_many_spaces
+            upper_string2 += ' undo ' if self.song().can_undo else '------' + '  redo ' if self.song().can_redo else '------'
             lower_string2 += so_many_spaces
             upper_string3 += so_many_spaces
             lower_string3 += so_many_spaces
