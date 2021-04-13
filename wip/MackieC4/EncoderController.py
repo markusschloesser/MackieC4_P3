@@ -138,6 +138,19 @@ class EncoderController(MackieC4Component):
 
     def destroy(self):
         # self.destroy()
+        so_many_spaces = '                                                       '
+        self.send_display_string1(LCD_ANGLED_ADDRESS, '                     Ableton Live                      ', LCD_TOP_ROW_OFFSET)
+        self.send_display_string2(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
+        self.send_display_string3(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
+        self.send_display_string4(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
+        self.send_display_string1(LCD_ANGLED_ADDRESS, '                   Device is offline                   ', LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string2(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string3(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string4(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
+        for note in system_switch_ids:
+            self.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
+        for note in assignment_mode_switch_ids:
+            self.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
         MackieC4Component.destroy(self)
 
     def request_rebuild_midi_map(self):
