@@ -869,11 +869,20 @@ class EncoderController(MackieC4Component):
                 if param is not None:
                     if param is not tuple:
                         try:
-                            param.value = param.default_value  # button press == jump to default value of device parameter?
+                            if param.is_enabled:
+                                if param.is_quantized:
+                                    if param.value + 1 > param.max:
+                                        param.value = param.min
+                                    else:
+                                        param.value = param.value + 1
+                                else:
+                                    param.value = param.default_value
+                            # param.value = param.default_value  # button press == jump to default value of device parameter?
                         except (RuntimeError, AttributeError):
                             # There is no default value available for this type of parameter
                             # 'NoneType' object has no attribute 'default_value'
                             pass
+
 
             if update_self:
                 self.__reassign_encoder_parameters(for_display_only=False)
