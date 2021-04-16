@@ -113,15 +113,15 @@ FID_PANNING_BASE = 0
 Encoder Knobs and Encoder Buttons are addressed by the same byte values, but prefixed by a 
 different control message category
 
-- Encoder Buttons are midi Note messages (0x80, 0x20, velocity, channel) (NOTE_ON_STATUS, C4SID_VPOT_PUSH_1, velocity, channel)
+- Encoder Buttons are midi Note messages (0x80, 0x20, velocity) (NOTE_ON_STATUS, C4SID_VPOT_PUSH_1, velocity)
  -- Coming from the C4 device, a Button message's note velocity value is always 127 or 7F 
- -- Coming from the C4 device, a Button message's channel value is always 0x01
+ -- Coming from the C4 device, a Button message's channel value is always 0x00 (channel 1)
  
-- Encoder Knobs are midi CC messages (0xB0, 0x20, data, channel) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data, channel)
+- Encoder Knobs are midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
  -- Turning encoder knobs faster increases the data increment amount
  --- clockwise turns increase increment amount over the range 0x01 - 0x0F
  --- anti-clockwise turns increase decrement amount over the range 0x40 - 0x4F
- -- Coming from the C4 device, a Knob message's channel value is always 0x01
+ -- Coming from the C4 device, a Knob message's channel value is always 0x00 (channel 1)
 
 
 These CC messages are from Commander out to the C4 (DATA2 values between 00 and 3F are found outbound to C4) 
@@ -162,8 +162,6 @@ In Live terms (this midi script)
    0xB0        is CC_STATUS   
    0x20 - 0x3F is C4SID_VPOT_CC_ADDRESS_1 - C4SID_VPOT_CC_ADDRESS_32  (one of 32 encoders)
    0x00 - 0x3F is the data value range
-   0x01        is the channel 
-
 """
 
 VPOT_DISPLAY_SINGLE_DOT = 0  #
