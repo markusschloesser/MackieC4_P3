@@ -1557,9 +1557,12 @@ class EncoderController(MackieC4Component):
                         lower_string4 += ' '
 
         elif self.__assignment_mode == C4M_FUNCTION:
+            # these could be upper and lower text in EncoderDisplaySegment objects
+            # set in __reassign_encoder_parameters
             upper_string1 += 'follow  Loop   CLip/ Sessn  Browsr unsolo unmute  BTA '
             lower_string1 += 'unfllw on/off Detail Arrang on/off  all    all        '
             upper_string2 += ' undo ' if self.song().can_undo else '------' + '  redo ' if self.song().can_redo else '------'
+            upper_string2 += so_many_spaces  # clear out any previous text from display, extra spaces truncated
             lower_string2 += so_many_spaces
             upper_string3 += so_many_spaces
             lower_string3 += so_many_spaces
