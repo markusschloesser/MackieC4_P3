@@ -58,7 +58,7 @@ class Encoders(MackieC4Component):
     def unlight_vpot_leds(self):
         data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][0]
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
-        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2))
+        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, RING_LED_ALL_OFF))
 
     def show_full_enlighted_poti(self):
         data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][1]
@@ -90,6 +90,7 @@ class Encoders(MackieC4Component):
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
+            self.main_script().log_message("potIndex<{}> nothing mapped".format(encoder))
             # does this even work? what happens without it
             # when the param is None, what have we mapped? what are we forwarding?
             # channel = 0

@@ -903,96 +903,79 @@ class EncoderController(MackieC4Component):
             encoder_10_index = 9
             encoder_25_index = 24
             encoder_26_index = 25
+            s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
+
             if encoder_index == encoder_01_index:
                 song_util.toggle_follow(self)
                 if self.song().view.follow_song:
-                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_1, 0x43)
-                    self.send_midi(turn_on_encoder_led_msg)
+                    s.show_full_enlighted_poti()
                 else:
-                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_1, 0x06)
-                    self.send_midi(turn_off_encoder_led_msg)
+                    s.unlight_vpot_leds()
             if encoder_index == encoder_02_index:
-                song_util.toggle_loop(self)
                 if self.song().loop:
-                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_2, 0x43)
-                    self.send_midi(turn_on_encoder_led_msg)
+                    song_util.toggle_loop(self)
+                    s.unlight_vpot_leds()
                 else:
-                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_2, 0x06)
-                    self.send_midi(turn_off_encoder_led_msg)
+                    song_util.toggle_loop(self)
+                    s.show_full_enlighted_poti()
+
             if encoder_index == encoder_03_index:
                 song_util.toggle_detail_sub_view(self)
                 if self.application().view.is_view_visible('Detail/Clip'):
-                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_3, 0x43)
-                    self.send_midi(turn_on_encoder_led_msg)
+                    s.show_full_enlighted_poti()
                 else:
-                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_3, 0x06)
-                    self.send_midi(turn_off_encoder_led_msg)
+                    s.unlight_vpot_leds()
             if encoder_index == encoder_04_index:
                 song_util.toggle_session_arranger_is_visible(self)
                 if song_util.toggle_session_arranger_is_visible:
-                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_4, 0x43)
-                    self.send_midi(turn_on_encoder_led_msg)
+                    s.show_full_enlighted_poti()
                 else:
-                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_4, 0x06)
-                    self.send_midi(turn_off_encoder_led_msg)
+                    s.unlight_vpot_leds()
             if encoder_index == encoder_05_index:
                 song_util.toggle_browser_is_visible(self)
                 if song_util.toggle_browser_is_visible:
-                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_5, 0x43)
-                    self.send_midi(turn_on_encoder_led_msg)
+                    s.show_full_enlighted_poti()
                 else:
-                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_5, 0x06)
-                    self.send_midi(turn_off_encoder_led_msg)
+                    s.unlight_vpot_leds()
             if encoder_index == encoder_06_index:
                 song_util.unsolo_all(self)
                 for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
                     if track.solo:
-                        turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_6, 0x43)
-                        self.send_midi(turn_on_encoder_led_msg)
+                        s.show_full_enlighted_poti()
                     else:
-                        turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_6, 0x06)
-                        self.send_midi(turn_off_encoder_led_msg)
+                        s.unlight_vpot_leds()
             if encoder_index == encoder_07_index:
                 song_util.unmute_all(self)
                 for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
                     if track.mute:
-                        turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_7, 0x43)
-                        self.send_midi(turn_on_encoder_led_msg)
+                        s.show_full_enlighted_poti()
                     else:
-                        turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_7, 0x06)
-                        self.send_midi(turn_off_encoder_led_msg)
+                        s.unlight_vpot_leds()
             if encoder_index == encoder_08_index:
                 song_util.toggle_back_to_arranger(self)
                 if song_util.toggle_back_to_arranger:
-                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_8, 0x43)
-                    self.send_midi(turn_on_encoder_led_msg)
+                    s.show_full_enlighted_poti()
                 else:
-                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_8, 0x06)
-                    self.send_midi(turn_off_encoder_led_msg)
+                    s.unlight_vpot_leds()
             if encoder_index == encoder_09_index:
                 song_util.undo(self)
                 if self.song().can_undo:
-                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_9, 0x43)
-                    self.send_midi(turn_on_encoder_led_msg)
+                    s.show_full_enlighted_poti()
                 else:
-                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_9, 0x06)
-                    self.send_midi(turn_off_encoder_led_msg)
+                    s.unlight_vpot_leds()
             if encoder_index == encoder_10_index:
                 song_util.redo(self)
                 if self.song().can_redo:
-                    turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_10, 0x43)
-                    self.send_midi(turn_on_encoder_led_msg)
+                    s.show_full_enlighted_poti()
                 else:
-                    turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_10, 0x06)
-                    self.send_midi(turn_off_encoder_led_msg)
+                    s.unlight_vpot_leds()
             if encoder_index == encoder_25_index:
                 self.song().stop_playing()
-                turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_26, 0x06)
-                self.send_midi(turn_off_encoder_led_msg)
+                s = next(x for x in self.__encoders if x.vpot_index() == encoder_26_index)
+                s.unlight_vpot_leds()
             if encoder_index == encoder_26_index:
                 self.song().start_playing()
-                turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_26, 0x43)
-                self.send_midi(turn_on_encoder_led_msg)
+                s.show_full_enlighted_poti()
 
     def __send_parameter(self, vpot_index):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
