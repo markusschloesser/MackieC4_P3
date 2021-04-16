@@ -179,6 +179,13 @@ encoder_ring_led_mode_cc_values = {VPOT_DISPLAY_SINGLE_DOT: (0x01, 0x0B),  # 01 
                                    VPOT_DISPLAY_WRAP: (0x21, 0x2B),  # 21 - 2B
                                    VPOT_DISPLAY_SPREAD: (0x31, 0x36),  # 31 - 36
                                    VPOT_DISPLAY_BOOLEAN: (0x20, 0x2B)}  # 20 - 2B  -- goes to ON in about 6 steps
+
+encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x01,
+                                VPOT_DISPLAY_BOOST_CUT: 0x16,
+                                VPOT_DISPLAY_WRAP: 0x26,
+                                VPOT_DISPLAY_SPREAD: 0x33,
+                                VPOT_DISPLAY_BOOLEAN: 0x2B}
+
 RING_LED_ALL_OFF = 0  # encoder disable?
 
 LED_ON_DATA = 0x7F  # any value 40 - 4F?
@@ -381,8 +388,3 @@ C4SID_VPOT_CC_ADDRESS_32 = 0x3F  # 63
 encoder_cc_ids = range(C4SID_VPOT_CC_ADDRESS_1, C4SID_VPOT_CC_ADDRESS_32 + 1)
 encoder_cw_values = range(0x01, 0x10)  # larger values means knob is turning faster / bigger CW increments
 encoder_ccw_values = range(0x41, 0x50)  # larger values means knob is turning faster / bigger CCW increments
-encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x06,
-                                VPOT_DISPLAY_BOOST_CUT: 0x16,
-                                VPOT_DISPLAY_WRAP: 0x26,
-                                VPOT_DISPLAY_SPREAD: 0x33,
-                                VPOT_DISPLAY_BOOLEAN: 0x2B}
