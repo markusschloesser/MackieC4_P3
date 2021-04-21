@@ -946,11 +946,7 @@ class EncoderController(MackieC4Component):
                         s.unlight_vpot_leds()
             if encoder_index == encoder_07_index:
                 song_util.unmute_all(self)
-                for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
-                    if track.mute:
-                        s.show_full_enlighted_poti()
-                    else:
-                        s.unlight_vpot_leds()
+                s.unlight_vpot_leds()
             if encoder_index == encoder_08_index:
                 song_util.toggle_back_to_arranger(self)
                 if song_util.toggle_back_to_arranger:
@@ -1551,6 +1547,13 @@ class EncoderController(MackieC4Component):
             lower_string3 += so_many_spaces
             upper_string4 += ' STOP   PLAY                                           '
             lower_string4 += so_many_spaces
+
+            unmute_all_encoder_index = 6
+            unmute_all_encoder = self.__encoders[unmute_all_encoder_index]
+            if song_util.any_muted_track(self):
+                unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
+            else:
+                unmute_all_encoder.unlight_vpot_leds()  # no tracks are muted
 
         elif self.__assignment_mode == C4M_USER:
             for s in self.__encoders:

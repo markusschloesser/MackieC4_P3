@@ -57,6 +57,13 @@ def unsolo_all(self):  # works
             track.solo = False
 
 
+def any_muted_track(self):
+    tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
+    exists = next((x for x in tracks if x.mute), None)
+    if exists is not None:
+        return True
+    return False
+
 # unmute all
 def unmute_all(self):  # works
     for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
