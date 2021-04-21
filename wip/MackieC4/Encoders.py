@@ -97,6 +97,9 @@ class Encoders(MackieC4Component):
             # cc_no = self.__vpot_cc_nbr
             # Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
 
+    def assigned_track(self):
+        return self._Encoders__assigned_track
+
     def __assigned_track_index(self):  # MS new from Mackie Control.ChannelStrip
         index = 0
         for t in chain(self.song().visible_tracks, self.song().return_tracks):

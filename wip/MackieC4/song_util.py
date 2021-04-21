@@ -16,12 +16,12 @@ def toggle_follow(self):
 
 
 # loop on/off
-def toggle_loop(self):  # works
+def toggle_loop(self):
     self.song().loop = not self.song().loop
 
 
 # toggle arrange/session mode
-def toggle_session_arranger_is_visible(self):  # works
+def toggle_session_arranger_is_visible(self):
     if self.application().view.is_view_visible('Session'):
         self.application().view.focus_view('Arranger')
     else:
@@ -29,15 +29,14 @@ def toggle_session_arranger_is_visible(self):  # works
 
 
 # toggle clip / Device view
-def toggle_detail_sub_view(self):  # works
+def toggle_detail_sub_view(self):
     if self.application().view.is_view_visible('Detail/Clip'):
         self.application().view.show_view('Detail/DeviceChain')
     else:
         self.application().view.show_view('Detail/Clip')
 
 
-# show / hide browser
-def toggle_browser_is_visible(self):  # works
+def toggle_browser_is_visible(self):
     if self.application().view.is_view_visible('Browser'):
         self.application().view.hide_view('Browser')
     else:
@@ -77,3 +76,13 @@ def redo(self):
 def undo(self):
     if self.song().can_undo:
         self.song().undo()
+
+
+def metronome_button(self, toggled):
+    self.song.metronome = toggled
+
+
+def unarm_all_button(self):
+    for track in self.song().tracks:
+        if track.can_be_armed and track.arm:
+            track.arm = False

@@ -27,19 +27,13 @@ This script is based off the Ableton Live supplied MIDI Remote Scripts.
 
 This is the second file that is loaded, by way of being instantiated through
 __init__.py
-
-from _Framework.ControlSurface import ControlSurface
-import logging, time, LiveUtils
-from consts import *
-from Encoder import Encoder
-from EncoderController import EncoderController
-import MidiRemoteScript
-import Live
-
 """
+
 from __future__ import absolute_import, print_function, unicode_literals
 import sys
 import Live
+from ableton.v2.base import liveobj_valid
+
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
     from builtins import range
@@ -232,7 +226,7 @@ class MackieC4(object):
                 self.__encoder_controller.handle_vpot_rotation(vpot_index, cc_value)
 
     def can_lock_to_devices(self):
-        return False
+        return True
 
     def suggest_input_port(self):
         return ''
@@ -361,7 +355,7 @@ class MackieC4(object):
         if self.track_count > len(tracks) + 1:
             self.__encoder_controller.track_deleted(selected_index - 1)
         elif self.track_count < len(tracks) + 1:
-            self.__encoder_controller.track_added(selected_index - 1)  # MS this get called when moving clip to another existing track, why?
+            self.__encoder_controller.track_added(selected_index - 1)  # MS this get called when moving clip to another existing track, why? Also gets called for other non-adding stuff
             self.return_resetter = 1
         else:
             self.__encoder_controller.track_changed(selected_index - 1)
@@ -505,6 +499,18 @@ class MackieC4(object):
     #     if (slot in self.slisten) != 1:
     #         slot.add_has_clip_listener(cb)
     #         self.slisten[slot] = cb
+
+
+    # def rem_mixer_listeners(self, track):
+    #     if liveobj_valid(track):
+    #         if track.can_be_armed:
+    #             self.__remove_listener(track, 'arm', self.__update_arm_led)
+    #         self.__remove_listener(track, 'mute', self.__update_mute_led)
+    #         self.__remove_listener(track, 'solo', self.__update_solo_led)
+    #
+    # def __remove_listener(self, object, property, listener):
+    #     if getattr(object, '{}_has_listener'.format(property))(listener):
+    #         getattr(object, 'remove_{}_listener'.format(property))(listener)
 
     def rem_mixer_listeners(self):
         # Master Track
