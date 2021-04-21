@@ -805,10 +805,10 @@ class EncoderController(MackieC4Component):
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm is not True:
                                 self.selected_track.arm = True
-                                s.unlight_vpot_leds()
+                                s.show_full_enlighted_poti()
                             else:
                                 self.selected_track.arm = False
-                                s.show_full_enlighted_poti()
+                                s.unlight_vpot_leds()
                         # else the selected track can't be armed
                     # else __filter_mst_trk == false, so 29 is not Record Arm, but some master track param?
                 elif encoder_index == encoder_30_index:
@@ -1545,9 +1545,9 @@ class EncoderController(MackieC4Component):
             upper_string1 += 'follow  Loop  CLip/  Sessn  Browsr unsolo unmute  BTA  '
             lower_string1 += 'unfllw on/off Detail Arrang on/off  all    all         '
 
-            upper_string2 += ' undo ' if self.song().can_undo else '------' + '  redo ' if self.song().can_redo else '------' + ' unarm' + so_many_spaces
+            upper_string2 += (' undo ' if self.song().can_undo else '------') + ('  redo ' if self.song().can_redo else '------') + '  unarm' + so_many_spaces
             # upper_string2 +=   # clear out any previous text from display, extra spaces truncated
-            lower_string2 += '                all  '
+            lower_string2 += '               all  '
 
             upper_string3 += so_many_spaces
             lower_string3 += so_many_spaces

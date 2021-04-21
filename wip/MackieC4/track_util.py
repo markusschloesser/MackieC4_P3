@@ -57,7 +57,7 @@ def toggle_fold(track):
     elif is_grouped(track):
         toggle_fold(track.group_track)
     else:
-        track.view.is_collapsed = not track.view.is_collapsed  # MS for later. for collapsing tracks in Arrange view
+        track.view.is_collapsed = not track.view.is_collapsed  # for collapsing tracks in Arrange view
     return False
 
 
