@@ -789,6 +789,7 @@ class EncoderController(MackieC4Component):
                 # encoder 30 is "Mute"
                 encoder_29_index = 28
                 encoder_30_index = 29
+                s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
                 if encoder_index < encoder_29_index:
                     # these encoders are the four < encoder_29_index, left half of bottom row, sends 9 - 12
                     param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
@@ -804,24 +805,20 @@ class EncoderController(MackieC4Component):
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm is not True:
                                 self.selected_track.arm = True
-                                turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_29, 0x43)  # any value 40 - 4F?
-                                self.send_midi(turn_on_encoder_led_msg)
+                                s.unlight_vpot_leds()
                             else:
                                 self.selected_track.arm = False
-                                turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_29, 0x06)  # any value 00 - 0F?
-                                self.send_midi(turn_off_encoder_led_msg)
+                                s.show_full_enlighted_poti()
                         # else the selected track can't be armed
                     # else __filter_mst_trk == false, so 29 is not Record Arm, but some master track param?
                 elif encoder_index == encoder_30_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.mute:
                             self.selected_track.mute = False
-                            turn_off_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_30, 0x06)
-                            self.send_midi(turn_off_encoder_led_msg)
+                            s.unlight_vpot_leds()
                         else:
                             self.selected_track.mute = True
-                            turn_on_encoder_led_msg = (CC_STATUS, C4SID_VPOT_PUSH_30, 0x43)
-                            self.send_midi(turn_on_encoder_led_msg)
+                            s.show_full_enlighted_poti()
                         # else the selected track can't be muted
                     # else __filter_mst_trk == false, so 30 is not mute, but some master track param?
                 elif encoder_index > encoder_30_index:
@@ -870,19 +867,17 @@ class EncoderController(MackieC4Component):
                     if param is not tuple:
                         try:
                             if param.is_enabled:
-                                if param.is_quantized:
+                                if param.is_quantized:  # for stepped params or those that only have a limited range
                                     if param.value + 1 > param.max:
                                         param.value = param.min
                                     else:
                                         param.value = param.value + 1
                                 else:
-                                    param.value = param.default_value
-                            # param.value = param.default_value  # button press == jump to default value of device parameter?
+                                    param.value = param.default_value  # button press == jump to default value of device parameter
                         except (RuntimeError, AttributeError):
                             # There is no default value available for this type of parameter
                             # 'NoneType' object has no attribute 'default_value'
                             pass
-
 
             if update_self:
                 self.__reassign_encoder_parameters(for_display_only=False)
@@ -901,6 +896,7 @@ class EncoderController(MackieC4Component):
             encoder_08_index = 7
             encoder_09_index = 8
             encoder_10_index = 9
+            encoder_11_index = 10
             encoder_25_index = 24
             encoder_26_index = 25
             s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
@@ -954,17 +950,21 @@ class EncoderController(MackieC4Component):
                 else:
                     s.unlight_vpot_leds()
             if encoder_index == encoder_09_index:
-                song_util.undo(self)
                 if self.song().can_undo:
                     s.show_full_enlighted_poti()
+                    song_util.undo(self)
                 else:
                     s.unlight_vpot_leds()
             if encoder_index == encoder_10_index:
-                song_util.redo(self)
                 if self.song().can_redo:
                     s.show_full_enlighted_poti()
+                    song_util.redo(self)
                 else:
                     s.unlight_vpot_leds()
+            if encoder_index == encoder_11_index:
+                if song_util.unarm_all_button(self):
+                    s.show_full_enlighted_poti()
+                    song_util.unsolo_all(self)
             if encoder_index == encoder_25_index:
                 self.song().stop_playing()
                 s = next(x for x in self.__encoders if x.vpot_index() == encoder_26_index)
@@ -1044,11 +1044,11 @@ class EncoderController(MackieC4Component):
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
 
-        self.__ordered_plugin_parameters = result # these are tuples where index 0 is a DeviceParameter object
+        self.__ordered_plugin_parameters = result  # these are tuples where index 0 is a DeviceParameter object
         count = 0
 
-        nbr_of_full_pages = int(len(self.__ordered_plugin_parameters) / SETUP_DB_PARAM_BANK_SIZE)  #  len() / 24
-        nbr_of_remainders = int(len(self.__ordered_plugin_parameters) % SETUP_DB_PARAM_BANK_SIZE)  #  len() % 24
+        nbr_of_full_pages = int(len(self.__ordered_plugin_parameters) / SETUP_DB_PARAM_BANK_SIZE)  # len() / 24
+        nbr_of_remainders = int(len(self.__ordered_plugin_parameters) % SETUP_DB_PARAM_BANK_SIZE)  # len() % 24
         if nbr_of_full_pages >= SETUP_DB_MAX_PARAM_BANKS:
             nbr_of_full_pages = SETUP_DB_MAX_PARAM_BANKS
         elif nbr_of_full_pages < 0:
@@ -1157,7 +1157,7 @@ class EncoderController(MackieC4Component):
                     if row_index + current_encoder_bank_offset < self.t_d_count[self.t_current]:
                         s.show_full_enlighted_poti()
                         encoder_index_in_row = row_index + int(current_encoder_bank_offset)
-                        if  encoder_index_in_row < len(self.selected_track.devices):
+                        if encoder_index_in_row < len(self.selected_track.devices):
                             device_name = self.selected_track.devices[encoder_index_in_row].name
                             # device_name in bottom row, blanks on top (top text blocked across full LCD)
                             vpot_display_text.set_text(device_name, '')
@@ -1371,20 +1371,24 @@ class EncoderController(MackieC4Component):
         encoder_31_index = 30
         encoder_32_index = 31
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
-            # This text 'covers' display segments over the first 6 encoders in top row (half is blanks)
 
             # shows "fold" or "unfold" or nothing depending on if group or grouped
             if track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track)):
                 if track_util.is_folded(self.selected_track):
                     upper_string1 += '-------Track--------' + ' unfold---------------'
                 elif not track_util.is_folded(self.selected_track):
-                    upper_string1 += '-------Track--------' + ' fold-----------------'
+                    upper_string1 += '-------Track--------' + ' fold  -----------------'
             else:
                 upper_string1 += '-------Track--------       ---------------'
 
             # "selected track's name, centered over roughly the first 3 encoders in top row
             lower_string1 += self.__generate_20_char_string(self.selected_track.name)
-            lower_string1 += (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '       ')
+
+            if self.application().view.is_view_visible('Session'):
+                lower_string1 += (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '       ')
+            elif self.application().view.is_view_visible('Arranger'):
+                lower_string1 += ' Track '
+
             if self.selected_track.view.selected_device is not None:
                 lower_string1 += self.__generate_15_char_string(self.selected_track.view.selected_device.name)
             else:
@@ -1538,22 +1542,18 @@ class EncoderController(MackieC4Component):
         elif self.__assignment_mode == C4M_FUNCTION:
             # these could be upper and lower text in EncoderDisplaySegment objects
             # set in __reassign_encoder_parameters
-            upper_string1 += 'follow  Loop   CLip/ Sessn  Browsr unsolo unmute  BTA '
-            lower_string1 += 'unfllw on/off Detail Arrang on/off  all    all        '
-            upper_string2 += ' undo ' if self.song().can_undo else '------' + '  redo ' if self.song().can_redo else '------'
-            upper_string2 += so_many_spaces  # clear out any previous text from display, extra spaces truncated
-            lower_string2 += so_many_spaces
+            upper_string1 += 'follow  Loop  CLip/  Sessn  Browsr unsolo unmute  BTA  '
+            lower_string1 += 'unfllw on/off Detail Arrang on/off  all    all         '
+
+            upper_string2 += ' undo ' if self.song().can_undo else '------' + '  redo ' if self.song().can_redo else '------' + ' unarm' + so_many_spaces
+            # upper_string2 +=   # clear out any previous text from display, extra spaces truncated
+            lower_string2 += '                all  '
+
             upper_string3 += so_many_spaces
             lower_string3 += so_many_spaces
+
             upper_string4 += ' STOP   PLAY                                           '
             lower_string4 += so_many_spaces
-
-            unmute_all_encoder_index = 6
-            unmute_all_encoder = self.__encoders[unmute_all_encoder_index]
-            if song_util.any_muted_track(self):
-                unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
-            else:
-                unmute_all_encoder.unlight_vpot_leds()  # no tracks are muted
 
         elif self.__assignment_mode == C4M_USER:
             for s in self.__encoders:
@@ -1686,7 +1686,7 @@ class EncoderController(MackieC4Component):
         is_stale = self.__display_repeat_count % self.__display_repeat_timer == 3
         if is_update or is_stale:  # don't send the same sysex message back-to-back unless the repeat timer pops
             self.__last_send_messages1[display_address][display_row_offset] = ascii_text_sysex_ints
-            sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints)   + \
+            sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + \
                         (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)
 

@@ -11,7 +11,6 @@ from ableton.v2.control_surface import Component, find_instrument_devices
 import Live
 
 
-# toggle follow song
 def toggle_follow(self):
     self.song().view.follow_song = not self.song().view.follow_song
 
@@ -49,9 +48,8 @@ def toggle_browser_is_visible(self):  # works
 def toggle_back_to_arranger(self, name='BTA'):
     self.song().back_to_arranger = not self.song().back_to_arranger
     
-    
-# unsolo all
-def unsolo_all(self):  # works
+
+def unsolo_all(self):
     for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
         if track.solo:
             track.solo = False
@@ -64,8 +62,8 @@ def any_muted_track(self):
         return True
     return False
 
-# unmute all
-def unmute_all(self):  # works
+
+def unmute_all(self):
     for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
         if track.mute:
             track.mute = False
