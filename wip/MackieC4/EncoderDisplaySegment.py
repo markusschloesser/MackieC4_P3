@@ -32,7 +32,9 @@ class EncoderDisplaySegment(MackieC4Component):
         # self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
 
         self.__upper_text = '      '  # top line of the LCD display over the encoder at __vpot_index
+        self.__upper_alt_text = '------|'
         self.__lower_text = '      '  # bottom line
+        self.__lower_alt_text = '------|'
 
         return
 
@@ -65,11 +67,25 @@ class EncoderDisplaySegment(MackieC4Component):
     def set_lower_text(self, lower):
         self.__lower_text = lower
 
+    def set_lower_text_and_alt(self, lower, alt_txt):
+        self.__lower_text = lower
+        self.__lower_alt_text = alt_txt
+
     def set_upper_text(self, upper):
         self.__upper_text = upper
 
+    def set_upper_text_and_alt(self, upper, alt_txt):
+        self.__upper_text = upper
+        self.__upper_alt_text = alt_txt
+
     def get_upper_text(self):
         return self.__upper_text
+    
+    def alter_upper_text(self, alter_text=True):
+        if alter_text:
+            return self.__upper_alt_text
+        else:
+            return self.__upper_text
 
     def get_lower_text(self):
         try:
@@ -81,3 +97,9 @@ class EncoderDisplaySegment(MackieC4Component):
                 ascii_encoded = unicode(self.__lower_text).encode('ascii', errors='ignore')  # for Py2/Live10
 
         return ascii_encoded.decode()
+
+    def alter_lower_text(self, alter_text=True):
+        if alter_text:
+            return self.__lower_alt_text
+        else:
+            return self.get_lower_text()

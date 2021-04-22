@@ -1287,24 +1287,63 @@ class EncoderController(MackieC4Component):
         elif self.__assignment_mode == C4M_FUNCTION:
             # ????  in the "button pressed" method, "Play" and "Stop" are different encoder buttons ????
             # here if the song is playing or stopped is written over just encoder 26
+            encoder_01_index = 0
+            encoder_02_index = 1
+            encoder_03_index = 2
+            encoder_04_index = 3
+            encoder_05_index = 4
+            encoder_06_index = 5
+            encoder_07_index = 6
+            encoder_08_index = 7
+            encoder_09_index = 8
+            encoder_10_index = 9
+            encoder_11_index = 10
+            encoder_25_index = 24
+            encoder_26_index = 25
             for s in self.__encoders:
                 s_index = s.vpot_index()
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
                 vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
-                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+                # this is where a "placeholder" internal_parameter object could replace None
+                dummy_param = (None, VPOT_DISPLAY_BOOLEAN)
 
-                # if s_index < encoder_26_index:
-                #     Only default display text
-                if s.vpot_index() == encoder_26_index:
-                    vpot_param = (None, VPOT_DISPLAY_WRAP)
+                if s.vpot_index() == encoder_01_index:
+                    vpot_display_text.set_text('unfllw', 'follow')
+                elif s.vpot_index() == encoder_02_index:
+                    vpot_display_text.set_text('on/off', 'loop')
+                elif s.vpot_index() == encoder_03_index:
+                    vpot_display_text.set_text('detail', 'Clip/')
+                elif s.vpot_index() == encoder_04_index:
+                    vpot_display_text.set_text('Arrang', 'Sessn')
+                elif s.vpot_index() == encoder_05_index:
+                    vpot_display_text.set_text('on/off', 'Browsr')
+                elif s.vpot_index() == encoder_06_index:
+                    vpot_display_text.set_text('all', 'unsolo')
+                elif s.vpot_index() == encoder_07_index:
+                    vpot_display_text.set_text('all', 'unmute')
+                elif s.vpot_index() == encoder_08_index:
+                    vpot_display_text.set_text('arrang', 'Back2')
+                elif s.vpot_index() == encoder_09_index:
+                    vpot_display_text.set_upper_text_and_alt('undo', '------')
+                elif s.vpot_index() == encoder_10_index:
+                    vpot_display_text.set_upper_text_and_alt('redo', '------')
+                elif s.vpot_index() == encoder_11_index:
+                    vpot_display_text.set_text('all', 'unarm')
+
+                elif s.vpot_index() == encoder_25_index:
+                    dummy_param = (None, VPOT_DISPLAY_WRAP)
                     if self.song().is_playing:
                         vpot_display_text.set_text(' Play ', ' Song ')
-                        s.show_full_enlighted_poti()
                     else:
                         vpot_display_text.set_text(' Stop ', ' Song ')
-                        s.unlight_vpot_leds()
+                elif s.vpot_index() == encoder_26_index:
+                    dummy_param = (None, VPOT_DISPLAY_WRAP)
+                    if not self.song().is_playing:
+                        vpot_display_text.set_text(' Play ', ' Song ')
+                    else:
+                        vpot_display_text.set_text(' Stop ', ' Song ')
 
-                s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+                s.set_v_pot_parameter(dummy_param[0], dummy_param[1])
                 self.__display_parameters.append(vpot_display_text)
 
         elif self.__assignment_mode == C4M_USER:
@@ -1540,20 +1579,35 @@ class EncoderController(MackieC4Component):
                         lower_string4 += ' '
 
         elif self.__assignment_mode == C4M_FUNCTION:
-            # these could be upper and lower text in EncoderDisplaySegment objects
-            # set in __reassign_encoder_parameters
-            upper_string1 += 'follow  Loop  CLip/  Sessn  Browsr unsolo unmute  BTA  '
-            lower_string1 += 'unfllw on/off Detail Arrang on/off  all    all         '
 
-            upper_string2 += (' undo ' if self.song().can_undo else '------') + ('  redo ' if self.song().can_redo else '------') + '  unarm' + so_many_spaces
-            # upper_string2 +=   # clear out any previous text from display, extra spaces truncated
-            lower_string2 += '               all  '
+            encoder_09_index = 8
+            encoder_10_index = 9
+            encoder_25_index = 24
+            encoder_26_index = 25
+            for e in self.__encoders:
 
-            upper_string3 += so_many_spaces
-            lower_string3 += so_many_spaces
+                dspl_sgmt = next(x for x in self.__display_parameters if x.vpot_index() == e.vpot_index())
+                if e.vpot_index() in row_00_encoders:
+                    upper_string1 += self.__generate_6_char_string(dspl_sgmt.get_upper_text()) + ' '
+                    lower_string1 += self.__generate_6_char_string(dspl_sgmt.get_lower_text()) + ' '
+                elif e.vpot_index() in row_01_encoders:
+                    if e.vpot_index() == encoder_09_index:
+                        upper_string2 += \
+                            self.__generate_6_char_string(dspl_sgmt.alter_upper_text(self.song().can_undo)) + ' '
+                    elif e.vpot_index() == encoder_10_index:
+                        upper_string2 += \
+                            self.__generate_6_char_string(dspl_sgmt.alter_upper_text(self.song().can_redo)) + ' '
+                    else:
+                        upper_string2 += self.__generate_6_char_string(dspl_sgmt.get_upper_text()) + ' '
 
-            upper_string4 += ' STOP   PLAY                                           '
-            lower_string4 += so_many_spaces
+                    lower_string2 += self.__generate_6_char_string(dspl_sgmt.get_lower_text()) + ' '
+                elif e.vpot_index() in row_02_encoders:
+                    upper_string3 += self.__generate_6_char_string(dspl_sgmt.get_upper_text()) + ' '
+                    lower_string3 += self.__generate_6_char_string(dspl_sgmt.get_lower_text()) + ' '
+                elif e.vpot_index() in row_03_encoders:
+                    upper_string4 += self.__generate_6_char_string(dspl_sgmt.get_upper_text()) + ' '
+                    lower_string4 += self.__generate_6_char_string(dspl_sgmt.get_lower_text()) + ' '
+
 
             unmute_all_encoder_index = 6
             unmute_all_encoder = self.__encoders[unmute_all_encoder_index]
