@@ -1555,6 +1555,13 @@ class EncoderController(MackieC4Component):
             upper_string4 += ' STOP   PLAY                                           '
             lower_string4 += so_many_spaces
 
+            unmute_all_encoder_index = 6
+            unmute_all_encoder = self.__encoders[unmute_all_encoder_index]
+            if song_util.any_muted_track(self):
+                unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
+            else:
+                unmute_all_encoder.unlight_vpot_leds()  # no tracks are muted
+
         elif self.__assignment_mode == C4M_USER:
             for s in self.__encoders:
                 s_index = s.vpot_index()
