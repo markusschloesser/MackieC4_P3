@@ -69,7 +69,12 @@ class EncoderController(MackieC4Component):
 
         # track device count -- the count of devices loaded on the t_current track
         # see device_counter(self, t, d):
-        self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # MS why is "i" not used??
+
+        # MS why is "i" not used?
+        # Because 0 is a constant and i is in turn each value in the range [0, 127]
+        # self.t_d_count is initialized to a list of 128 zeroes
+        # i is "not used" in the sense that its "value" is never assigned
+        self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
         """current track device count"""
 
         # track device current -- the index of the currently selected device indexed by the t_current track
@@ -219,9 +224,9 @@ class EncoderController(MackieC4Component):
         self.t_d_bank_current[lmti] = 0
         self.t_d_current[lmti] = 0
         for j in range(len(devices_on_mstr_track)):
-            params_of_devices_on_rtn_trk = devices_on_mstr_track[j].parameters
-            self.t_d_p_count[lmti][j] = len(params_of_devices_on_rtn_trk)
-            self.t_d_p_bank_count[lmti][j] = math.ceil(len(params_of_devices_on_rtn_trk) // SETUP_DB_PARAM_BANK_SIZE)
+            params_of_devices_on_mstr_trk = devices_on_mstr_track[j].parameters
+            self.t_d_p_count[lmti][j] = len(params_of_devices_on_mstr_trk)
+            self.t_d_p_bank_count[lmti][j] = math.ceil(len(params_of_devices_on_mstr_trk) // SETUP_DB_PARAM_BANK_SIZE)
             self.t_d_p_bank_current[lmti][j] = 0
 
         devices_on_selected_trk = self.song().view.selected_track.devices
