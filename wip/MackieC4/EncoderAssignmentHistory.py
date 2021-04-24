@@ -83,60 +83,63 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_d_count[t] = d
         self.t_d_bank_count[t] = int(d // SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
-
     def build_setup_database(self):
 
         self.t_count = 0
 
         tracks_in_song = self.song().tracks
-        for i1 in range(len(tracks_in_song)):
-            devices_on_track = tracks_in_song[i1].devices
-            self.t_d_count[i1] = len(devices_on_track)
-            self.t_d_bank_count[i1] = math.ceil(len(devices_on_track) // SETUP_DB_DEVICE_BANK_SIZE)
-            self.t_d_bank_current[i1] = 0
-            self.t_d_current[i1] = 0
-            for j in range(len(devices_on_track)):
-                params_of_devices_on_trk = devices_on_track[j].parameters
-                self.t_d_p_count[i1][j] = len(params_of_devices_on_trk)
-                self.t_d_p_bank_count[i1][j] = math.ceil(len(params_of_devices_on_trk) // SETUP_DB_PARAM_BANK_SIZE)
-                self.t_d_p_bank_current[i1][j] = 0
+        for t_idx in range(len(tracks_in_song)):
+            devices_on_track = tracks_in_song[t_idx].devices
+            self.t_d_count[t_idx] = len(devices_on_track)
+            max_device_banks = math.ceil(len(devices_on_track) // SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_count[t_idx] = max_device_banks
+            self.t_d_bank_current[t_idx] = 0
+            self.t_d_current[t_idx] = 0
+            for d_idx in range(len(devices_on_track)):
+                params_of_devices_on_trk = devices_on_track[d_idx].parameters
+                self.t_d_p_count[t_idx][d_idx] = len(params_of_devices_on_trk)
+                max_param_banks = math.ceil(len(params_of_devices_on_trk) // SETUP_DB_PARAM_BANK_SIZE)
+                self.t_d_p_bank_count[t_idx][d_idx] = max_param_banks
+                self.t_d_p_bank_current[t_idx][d_idx] = 0
 
             self.t_count += 1
 
-        nbr_nrml_trks = i1  # assert nbr_nrml_trks == self.t_count
-
-        for i2 in range(len(self.song().return_tracks)):
-            devices_on_rtn_track = self.song().return_tracks[i2].devices
-            device_index = nbr_nrml_trks + i2 + 1
-            self.t_d_count[device_index] = len(devices_on_rtn_track)
-            self.t_d_bank_count[device_index] = math.ceil(len(devices_on_rtn_track) // SETUP_DB_DEVICE_BANK_SIZE)
-            self.t_d_bank_current[device_index] = 0
-            self.t_d_current[device_index] = 0
-            for j in range(len(devices_on_rtn_track)):
-                params_of_devices_on_rtn_trk = devices_on_rtn_track[j].parameters
-                self.t_d_p_count[device_index][j] = len(params_of_devices_on_rtn_trk)
-                sum_nbr = math.ceil(len(params_of_devices_on_rtn_trk) // SETUP_DB_PARAM_BANK_SIZE)
-                self.t_d_p_bank_count[device_index][j] = sum_nbr
-                self.t_d_p_bank_current[device_index][j] = 0
+        idx_nrml_trks = t_idx
+        assert idx_nrml_trks == self.t_count - 1
+        for rt_idx in range(len(self.song().return_tracks)):
+            devices_on_rtn_track = self.song().return_tracks[rt_idx].devices
+            ttl_t_idx = idx_nrml_trks + rt_idx + 1
+            self.t_d_count[ttl_t_idx] = len(devices_on_rtn_track)
+            max_device_banks = math.ceil(len(devices_on_rtn_track) // SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_count[ttl_t_idx] = max_device_banks
+            self.t_d_bank_current[ttl_t_idx] = 0
+            self.t_d_current[ttl_t_idx] = 0
+            for rt_d_idx in range(len(devices_on_rtn_track)):
+                params_of_devices_on_rtn_trk = devices_on_rtn_track[rt_d_idx].parameters
+                self.t_d_p_count[ttl_t_idx][rt_d_idx] = len(params_of_devices_on_rtn_trk)
+                max_param_banks = math.ceil(len(params_of_devices_on_rtn_trk) // SETUP_DB_PARAM_BANK_SIZE)
+                self.t_d_p_bank_count[ttl_t_idx][rt_d_idx] = max_param_banks
+                self.t_d_p_bank_current[ttl_t_idx][rt_d_idx] = 0
 
             self.t_count += 1
             self.t_r_count += 1
 
-        nbr_nrml_and_rtn_trks = device_index  # assert nbr_nrml_and_rtn_trks == self.t_count
-
-        self.__master_track_index = nbr_nrml_and_rtn_trks + 1
-        lmti = self.__master_track_index
+        idx_nrml_and_rtn_trks = ttl_t_idx
+        assert idx_nrml_and_rtn_trks == self.t_count - 1
+        self.__master_track_index = idx_nrml_and_rtn_trks + 1
+        mt_idx = self.__master_track_index
         devices_on_mstr_track = self.song().master_track.devices
-        self.t_d_count[lmti] = len(devices_on_mstr_track)
-        self.t_d_bank_count[lmti] = math.ceil(len(devices_on_mstr_track) // SETUP_DB_DEVICE_BANK_SIZE)
-        self.t_d_bank_current[lmti] = 0
-        self.t_d_current[lmti] = 0
-        for j in range(len(devices_on_mstr_track)):
-            params_of_devices_on_mstr_trk = devices_on_mstr_track[j].parameters
-            self.t_d_p_count[lmti][j] = len(params_of_devices_on_mstr_trk)
-            self.t_d_p_bank_count[lmti][j] = math.ceil(len(params_of_devices_on_mstr_trk) // SETUP_DB_PARAM_BANK_SIZE)
-            self.t_d_p_bank_current[lmti][j] = 0
-
+        self.t_d_count[mt_idx] = len(devices_on_mstr_track)
+        max_device_banks = math.ceil(len(devices_on_mstr_track) // SETUP_DB_DEVICE_BANK_SIZE)
+        self.t_d_bank_count[mt_idx] = max_device_banks
+        self.t_d_bank_current[mt_idx] = 0
+        self.t_d_current[mt_idx] = 0
+        for mt_d_idx in range(len(devices_on_mstr_track)):
+            params_of_devices_on_mstr_trk = devices_on_mstr_track[mt_d_idx].parameters
+            self.t_d_p_count[mt_idx][mt_d_idx] = len(params_of_devices_on_mstr_trk)
+            max_param_banks = math.ceil(len(params_of_devices_on_mstr_trk) // SETUP_DB_PARAM_BANK_SIZE)
+            self.t_d_p_bank_count[mt_idx][mt_d_idx] = max_param_banks
+            self.t_d_p_bank_current[mt_idx][mt_d_idx] = 0
 
     def track_added(self, track_index):
         start = self.t_count + 1
