@@ -22,14 +22,13 @@
 #
 # For questions regarding this module contact
 # Nathan Ramella <nar@remix.net> or visit http://www.remix.net
-
-This script is based off the Ableton Live supplied MIDI Remote Scripts.
-
 This is the second file that is loaded, by way of being instantiated through
 __init__.py
 """
 
 from __future__ import absolute_import, print_function, unicode_literals
+from .track_util import *
+from .device_util import SimpleDeviceParameterComponent
 import sys
 import Live
 from ableton.v2.base import liveobj_valid
@@ -94,8 +93,8 @@ class MackieC4(object):
     '''rlisten is "Returns" Listener '''
 
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
-    scenelisten = {}
-    scene = 0
+    # scenelisten = {}
+    # scene = 0
     track = 0
     track_count = 0
     surface_is_locked = 0
@@ -268,7 +267,7 @@ class MackieC4(object):
     def disconnect(self):
         # self.rem_clip_listeners()
         self.rem_mixer_listeners()
-        self.rem_scene_listeners()
+        # self.rem_scene_listeners()
         self.rem_tempo_listener()
         self.rem_overdub_listener()
         self.rem_tracks_listener()
@@ -312,67 +311,68 @@ class MackieC4(object):
         self.add_tracks_listener()
         self.add_device_listeners()
         self.add_transport_listener()
-        self.add_scene_listeners()
+        # self.add_scene_listeners()
         if self.rebuild_my_database == 0:
             self.__encoder_controller.build_setup_database()
         self.trBlock(0, len(self.song().visible_tracks))
 
-    def add_scene_listeners(self):
-        self.rem_scene_listeners()
-        if self.song().view.selected_scene_has_listener(self.scene_change) != 1:
-            self.song().view.add_selected_scene_listener(self.scene_change)
-        if self.song().view.selected_track_has_listener(self.track_change) != 1:
-            self.song().view.add_selected_track_listener(self.track_change)
+    # def add_scene_listeners(self):
+    #     self.rem_scene_listeners()
+    #     if self.song().view.selected_scene_has_listener(self.scene_change) != 1:
+    #         self.song().view.add_selected_scene_listener(self.scene_change)
+    #     if self.song().view.selected_track_has_listener(self.track_change) != 1:
+    #         self.song().view.add_selected_track_listener(self.track_change)
+    #
+    # def rem_scene_listeners(self):
+    #     if self.song().view.selected_scene_has_listener(self.scene_change) == 1:
+    #         self.song().view.remove_selected_scene_listener(self.scene_change)
+    #     if self.song().view.selected_track_has_listener(self.track_change) == 1:
+    #         self.song().view.remove_selected_track_listener(self.track_change)
 
-    def rem_scene_listeners(self):
-        if self.song().view.selected_scene_has_listener(self.scene_change) == 1:
-            self.song().view.remove_selected_scene_listener(self.scene_change)
-        if self.song().view.selected_track_has_listener(self.track_change) == 1:
-            self.song().view.remove_selected_track_listener(self.track_change)
+    def track_change(self):  # this is whats coming back from Live
+        SelectedMixerTrackProvider._on_selected_track_changed()
+        # selected_track = self.song().view.selected_track
+        # tracks = self.song().visible_tracks + self.song().return_tracks
+        # index = 0
+        # found = 0
+        # selected_index = 0
+        # for track in tracks:
+        #     index = index + 1
+        #     if track == selected_track:
+        #         selected_index = index
+        #         found = 1
+        #
+        # if found == 0:
+        #
+        #     # I think this 128 might mean use the master track index as a fallback
+        #     # but index 128 is out-of-bounds by one
+        #     # (valid track indexes inside EncoderController are 00 - 127)
+        #     selected_index = 127  # MS ok lets then try and change that to 127
+        #
+        # if selected_index != self.track:
+        #     self.track = selected_index
+        #
+        # if self.track_count > len(tracks) + 1:
+        #     self.__encoder_controller.track_deleted(selected_index - 1)
+        # elif self.track_count < len(tracks) + 1:
+        #     self.__encoder_controller.track_added(selected_index - 1)  # MS this get called when moving clip to another existing track, why? Also gets called for other non-adding stuff
+        #     self.return_resetter = 1
+        # else:
+        #     self.__encoder_controller.track_changed(selected_index - 1)
+        # self.track_count = len(tracks) + 1
 
-    def track_change(self):
-        selected_track = self.song().view.selected_track
-        tracks = self.song().visible_tracks + self.song().return_tracks
-        index = 0
-        found = 0
-        selected_index = 0
-        for track in tracks:
-            index = index + 1
-            if track == selected_track:
-                selected_index = index
-                found = 1
-
-        if found == 0:
-
-            # I think this 128 might mean use the master track index as a fallback
-            # but index 128 is out-of-bounds by one
-            # (valid track indexes inside EncoderController are 00 - 127)
-            selected_index = 127  # MS ok lets then try and change that to 127
-
-        if selected_index != self.track:
-            self.track = selected_index
-
-        if self.track_count > len(tracks) + 1:
-            self.__encoder_controller.track_deleted(selected_index - 1)
-        elif self.track_count < len(tracks) + 1:
-            self.__encoder_controller.track_added(selected_index - 1)  # MS this get called when moving clip to another existing track, why? Also gets called for other non-adding stuff
-            self.return_resetter = 1
-        else:
-            self.__encoder_controller.track_changed(selected_index - 1)
-        self.track_count = len(tracks) + 1
-
-    def scene_change(self):
-        selected_scene = self.song().view.selected_scene
-        scenes = self.song().scenes
-        index = 0
-        selected_index = 0
-        for scene in scenes:
-            index = index + 1
-            if scene == selected_scene:
-                selected_index = index
-
-        if selected_index != self.scene:
-            self.scene = selected_index
+    # def scene_change(self):
+    #     selected_scene = self.song().view.selected_scene
+    #     scenes = self.song().scenes
+    #     index = 0
+    #     selected_index = 0
+    #     for scene in scenes:
+    #         index = index + 1
+    #         if scene == selected_scene:
+    #             selected_index = index
+    #
+    #     if selected_index != self.scene:
+    #         self.scene = selected_index
 
     def add_tempo_listener(self):
         self.rem_tempo_listener()
@@ -972,6 +972,7 @@ class MackieC4(object):
         if self.surface_is_locked == 0:
             self.log_message("locking surface, led state ON")
             self.surface_is_locked = 1
+            self.device_util._on_device_lock_button_toggled()
             self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
         else:
             self.log_message("unlocking surface, led state OFF")

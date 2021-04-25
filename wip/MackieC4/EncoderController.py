@@ -572,7 +572,6 @@ class EncoderController(MackieC4Component):
                 self.main_script().log_message("len(self.t_d_current) <= self.t_current")
                 self.main_script().log_message("{0} <= {1}".format(len(self.t_d_current), self.t_current))
 
-
                 # device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
                 # device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
                 # if len(self.selected_track.devices) > device_offset:  # if the calculated offset is valid device index

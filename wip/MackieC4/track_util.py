@@ -12,10 +12,11 @@ import sys
 
 from Push2.decoration import TrackDecoratorFactory
 from ableton.v2.base import const, compose, depends, find_if, liveobj_valid, EventObject, listens, listenable_property, \
-    liveobj_changed, nop, listens_group, flatten
+    liveobj_changed, nop, listens_group, flatten, ObservablePropertyAlias
 from ableton.v2.control_surface.components.item_lister import ItemProvider
 from ableton.v2.control_surface.components.mixer import RightAlignTracksTrackAssigner
 from ableton.v2.control_surface.components.session_ring import SessionRingComponent
+from ableton.v2.control_surface.components.view_control import has_next_item, next_item, TrackScroller as TrackScrollerBase, ViewControlComponent as ViewControlComponentBase
 
 if sys.version_info[0] >= 3:  # Live 11
     from ableton.v2.base import old_hasattr
@@ -328,3 +329,59 @@ class SessionRingTrackProvider(SessionRingComponent, ItemProvider):
         if liveobj_changed(self._selected_item_when_item_artificially_selected, self.song.view.selected_track):
             self._artificially_selected_item = None
         self.notify_selected_item()
+
+
+class TrackScroller(TrackScrollerBase, EventObject):
+    __events__ = ('scrolled', )
+
+    @depends(tracks_provider=None)
+    def __init__(self, tracks_provider=None, *a, **k):
+        (super(TrackScroller, self).__init__)(*a, **k)
+        self._track_provider = tracks_provider
+
+    def _all_items(self):
+        return self._track_provider.tracks_to_use() + [self._song.master_track]
+
+    def _do_scroll(self, delta):
+        track = next_item(self._all_items(), self._track_provider.selected_item, delta)
+        self._track_provider.selected_item = track
+        if isinstance(track, Live.Track.Track):
+            self._select_scene_of_playing_clip(track)
+        self.notify_scrolled()
+
+    def _can_scroll(self, delta):
+        try:
+            return has_next_item(self._all_items(), self._track_provider.selected_item, delta)
+        except ValueError:
+            return False
+
+
+class ViewControlComponent(ViewControlComponentBase):
+    __events__ = ('selection_scrolled', )
+
+    @depends(tracks_provider=None)
+    def __init__(self, tracks_provider=None, *a, **k):
+        self._track_provider = tracks_provider
+        (super(ViewControlComponent, self).__init__)(*a, **k)
+        self._on_items_changed.subject = self._track_provider
+        self._on_selected_item_changed.subject = self._track_provider
+
+    def _create_track_scroller(self):
+        scroller = TrackScroller(tracks_provider=(self._track_provider))
+        self.register_disconnectable(ObservablePropertyAlias(self,
+          property_host=scroller,
+          property_name='scrolled',
+          alias_name='selection_scrolled'))
+        return scroller
+
+    @listens('items')
+    def _on_items_changed(self):
+        self._update_track_scroller()
+
+    @listens('selected_item')
+    def _on_selected_item_changed(self):
+        self._update_track_scroller()
+
+    def _update_track_scroller(self):
+        self._scroll_tracks.update()
+
