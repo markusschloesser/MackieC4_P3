@@ -73,19 +73,17 @@ class EncoderAssignmentHistory(MackieC4Component):
         # device on the t_current track (in banks of 24 params)
         self.t_d_p_bank_current = [[0 for i in range(SETUP_DB_DEFAULT_SIZE)] for j in range(SETUP_DB_DEFAULT_SIZE)]
 
-
     def reset_device_counter(self):
         self.t_d_count = []
         self.t_d_bank_count = []
-
 
     def device_counter(self, t, d):
         self.t_d_count[t] = d
         self.t_d_bank_count[t] = int(d // SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
     def build_setup_database(self, song_ref=None):
-        if song_ref is None:
-            song_ref = self.song()
+        # if song_ref is None:
+        #     song_ref = self.song()
 
         self.t_count = 0
 
