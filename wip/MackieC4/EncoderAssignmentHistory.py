@@ -83,11 +83,13 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_d_count[t] = d
         self.t_d_bank_count[t] = int(d // SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
-    def build_setup_database(self):
+    def build_setup_database(self, song_ref=None):
+        if song_ref is None:
+            song_ref = self.song()
 
         self.t_count = 0
 
-        tracks_in_song = self.song().tracks
+        tracks_in_song = song_ref.tracks
         for t_idx in range(len(tracks_in_song)):
             devices_on_track = tracks_in_song[t_idx].devices
             self.t_d_count[t_idx] = len(devices_on_track)
@@ -106,8 +108,8 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         idx_nrml_trks = t_idx
         assert idx_nrml_trks == self.t_count - 1
-        for rt_idx in range(len(self.song().return_tracks)):
-            devices_on_rtn_track = self.song().return_tracks[rt_idx].devices
+        for rt_idx in range(len(song_ref.return_tracks)):
+            devices_on_rtn_track = song_ref.return_tracks[rt_idx].devices
             ttl_t_idx = idx_nrml_trks + rt_idx + 1
             self.t_d_count[ttl_t_idx] = len(devices_on_rtn_track)
             max_device_banks = math.ceil(len(devices_on_rtn_track) // SETUP_DB_DEVICE_BANK_SIZE)
@@ -128,7 +130,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         assert idx_nrml_and_rtn_trks == self.t_count - 1
         self.__master_track_index = idx_nrml_and_rtn_trks + 1
         mt_idx = self.__master_track_index
-        devices_on_mstr_track = self.song().master_track.devices
+        devices_on_mstr_track = song_ref.master_track.devices
         self.t_d_count[mt_idx] = len(devices_on_mstr_track)
         max_device_banks = math.ceil(len(devices_on_mstr_track) // SETUP_DB_DEVICE_BANK_SIZE)
         self.t_d_bank_count[mt_idx] = max_device_banks
@@ -141,7 +143,22 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.t_d_p_bank_count[mt_idx][mt_d_idx] = max_param_banks
             self.t_d_p_bank_current[mt_idx][mt_d_idx] = 0
 
-    def track_added(self, track_index):
+    def track_changed(self, track_index):
+        rtn = -1
+        self.t_current = track_index
+        if len(self.t_d_current) > self.t_current:
+            rtn = self.t_d_current[self.t_current]
+        else:
+            # something isn't getting updated correctly at startup and/or when devices are deleted
+            self.main_script().log_message("len(self.t_d_current) <= self.t_current")
+            self.main_script().log_message("{0} <= {1}".format(len(self.t_d_current), self.t_current))
+
+        return rtn
+
+    def track_added(self, track_index, devices_on_selected_track=None):
+        if devices_on_selected_track is None:
+            devices_on_selected_track = []
+
         start = self.t_count + 1
         stop = track_index - 1
         track_index_range = range(start, stop, -1)
@@ -168,9 +185,9 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.t_d_bank_current[t + 1] = self.t_d_bank_current[t]
 
         self.t_current = track_index
-        self.selected_track = self.song().view.selected_track
+        # self.selected_track = count().view.selected_track
         self.t_count += 1
-        devices_on_selected_track = self.selected_track.devices
+        # devices_on_selected_track = self.selected_track.devices
         self.t_d_count[track_index] = len(devices_on_selected_track)
         self.t_d_current[track_index] = 0
         self.t_d_bank_count[track_index] = math.ceil(len(devices_on_selected_track) // SETUP_DB_DEVICE_BANK_SIZE)
@@ -196,11 +213,12 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_count -= 1
 
 
-    def device_added_deleted_or_changed(self):
+    def device_added_deleted_or_changed(self, all_devices, selected_device):
 
-        new_device_count_track = len(self.selected_track.devices)
+        # new_device_count_track = len(self.selected_track.devices)
+        new_device_count_track = len(all_devices)
         self.main_script().log_message("track device list size <{0}> BEFORE device update".format(new_device_count_track))
-        for device in self.selected_track.devices:
+        for device in all_devices:
             if device is not None:
                 self.main_script().log_message("before <{0}>".format(device.name))
             else:
@@ -222,15 +240,18 @@ class EncoderAssignmentHistory(MackieC4Component):
         new_device_index = 0
         deleted_device_index = 0
         changed_device_index = 0
+        rtn_device_index = -1
 
         # if there are no devices on track, all indexes are 0
         # which is a valid index??
-        for device in self.selected_track.devices:
-            if self.selected_track.view.selected_device == device:
+        for device in all_devices:
+            if selected_device == device:
                 new_device_index = index
                 deleted_device_index = index
                 changed_device_index = index
+                rtn_device_index = index
                 self.main_script().log_message("found event index <{0}> and device <{1}>".format(index, device.name))
+                break
             else:
                 index += 1
 
@@ -247,25 +268,26 @@ class EncoderAssignmentHistory(MackieC4Component):
                 param_bank_count_track[d] = param_bank_count_track[c]
                 param_bank_current_track[d] = param_bank_current_track[c]
 
-            param_count_track[new_device_index] = len(self.selected_track.devices[new_device_index].parameters)
-            sum_nbr = math.ceil(param_count_track[new_device_index] // SETUP_DB_PARAM_BANK_SIZE)
-            param_bank_count_track[new_device_index] = sum_nbr
+            param_count_track[new_device_index] = len(all_devices[new_device_index].parameters)
+            max_param_banks = math.ceil(param_count_track[new_device_index] // SETUP_DB_PARAM_BANK_SIZE)
+            param_bank_count_track[new_device_index] = max_param_banks
             param_bank_current_track[new_device_index] = 0
 
             self.t_d_count[self.t_current] += 1
             device_count_track = self.t_d_count[self.t_current]
 
             self.t_d_current[self.t_current] = new_device_index
-            self.t_d_bank_count[self.t_current] = math.ceil(device_count_track // SETUP_DB_DEVICE_BANK_SIZE)
-            self.t_d_bank_current[self.t_current] = math.ceil((device_count_track + 1) // SETUP_DB_DEVICE_BANK_SIZE)
-            self.__chosen_plugin = self.selected_track.devices[new_device_index]
-            self.__reorder_parameters()
-            self.__reassign_encoder_parameters(for_display_only=False)
-            self.request_rebuild_midi_map()
+            max_device_banks = math.ceil(device_count_track // SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_count[self.t_current] = max_device_banks
+            max_device_banks = math.ceil(device_count_track + 1 // SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_current[self.t_current] = max_device_banks
+            # self.__chosen_plugin = self.selected_track.devices[new_device_index]
+            # self.__reorder_parameters()
+            # self.__reassign_encoder_parameters(for_display_only=False)
+            # self.request_rebuild_midi_map()
         elif device_was_removed:
             self.main_script().log_message("for 'delete' device event handling")
-            # MS this is  where things currently really break when last device delete.
-            # Update: deleting and undoing still throws (different) errors "Not enough devices loaded and __chosen_device is not None:"
+            # still?
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
@@ -279,8 +301,8 @@ class EncoderAssignmentHistory(MackieC4Component):
                 # only decrement "current device" index if deleted device wasn't the only device
                 if deleted_device_index > 0:
                     self.t_d_current[self.t_current] -= 1
-                    sum_nbr = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
-                    self.t_d_bank_current[self.t_current] = sum_nbr
+                    max_device_banks = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
+                    self.t_d_bank_current[self.t_current] = max_device_banks
                 else:
                     self.t_d_current[self.t_current] = 0  # zero is the value all "db" lists are initialized with
             else:
@@ -295,21 +317,31 @@ class EncoderAssignmentHistory(MackieC4Component):
                 # and that is supposed to be the "selected parameter bank" of the new current device?
                 # we wouldn't do this when the only device was deleted, but when the 4th of 4 was deleted, wouldn't
                 # we also want to update the new current device's current selected parameter bank? (see change above)
-                sum_nbr = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
-                self.t_d_bank_current[self.t_current] = sum_nbr
+                max_device_banks = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
+                self.t_d_bank_current[self.t_current] = max_device_banks
 
             # decrement this track's total device count
             self.t_d_count[self.t_current] -= 1
             # set the device "bank" -- if there are more than 8 devices on a track, 9 - 16 will be in device bank 2
-            self.t_d_bank_count[self.t_current] = math.ceil(self.t_d_count[self.t_current] // SETUP_DB_DEVICE_BANK_SIZE)
+            max_device_banks = math.ceil(self.t_d_count[self.t_current] // SETUP_DB_DEVICE_BANK_SIZE)
+            self.t_d_bank_count[self.t_current] = max_device_banks
 
-    def get_current_track_device_parameter_bank_nbr(self):
-        return self.t_d_p_bank_current[self.t_current][self.t_d_current[self.t_current]]
+        return rtn_device_index
+
+    def get_current_track_device_parameter_bank_nbr(self, t_idx=None):
+        if t_idx is None:
+            t_idx = self.t_d_current[self.t_current]
+
+        return self.t_d_p_bank_current[self.t_current][t_idx]
+
     def set_current_track_device_parameter_bank_nbr(self, current_bank_nbr):
         self.t_d_p_bank_current[self.t_current][self.t_d_current[self.t_current]] = current_bank_nbr
 
-    def get_max_track_device_parameter_bank_nbr(self):
-        return self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]]
+    def get_max_track_device_parameter_bank_nbr(self, t_d_idx=None):
+        if t_d_idx is None:
+            t_d_idx = self.t_d_current[self.t_current]
+
+        return self.t_d_p_bank_count[self.t_current][t_d_idx]
 
     def get_selected_device_index(self):
         selected_device_index = -1
@@ -322,3 +354,37 @@ class EncoderAssignmentHistory(MackieC4Component):
     def set_selected_device_index(self, selected_device_index):
         self.t_d_current[self.t_current] = selected_device_index
 
+    def get_max_device_count(self):
+        max_device_count = -1
+        if len(self.t_d_count) > self.t_current:
+            max_device_count = self.t_d_count[self.t_current]
+        elif len(self.t_d_count) > 0:
+            max_device_count = 0
+        return max_device_count
+
+    def set_max_device_count(self, max_device_count):
+        self.t_d_count[self.t_current] = max_device_count
+
+    def get_selected_device_bank_index(self):
+        selected_device_bank_index = -1
+        if len(self.t_d_bank_current) > self.t_current:
+            selected_device_bank_index = self.t_d__bankcurrent[self.t_current]
+        elif len(self.t_d_current) > 0:
+            selected_device_bank_index = 0
+        return selected_device_bank_index
+
+    def set_selected_device_bank_index(self, selected_device_bank_index):
+        self.t_d_bank_current[self.t_current] = selected_device_bank_index
+
+    def get_selected_device_bank_count(self):
+        selected_device_bank_count = -1
+        if len(self.t_d_bank_count) > self.t_current:
+            selected_device_bank_count = self.t_d_bank_count[self.t_current]
+        elif len(self.t_d_bank_count) > 0:
+            selected_device_bank_count = 0
+        return selected_device_bank_count
+
+    def set_selected_device_bank_count(self, selected_device_bank_count):
+        self.t_d_bank_count[self.t_current] = selected_device_bank_count
+        
+        
