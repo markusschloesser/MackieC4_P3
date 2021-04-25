@@ -175,12 +175,13 @@ class EncoderController(MackieC4Component):
     #     self.t_d_count = []
     #     self.t_d_bank_count = []
     #
-    # def device_counter(self, t, d):
+    # def update_device_counter(self, t, d):
     #     self.t_d_count[t] = d
     #     self.t_d_bank_count[t] = int(d // SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
     def build_setup_database(self):
-        self.__eah.build_setup_database(self.song())
+        # self.__eah.build_setup_database(self.song())  <--- can't pass this reference this way
+        self.__eah.build_setup_database()
         # self.t_count = 0
         #
         # tracks_in_song = self.song().tracks
@@ -252,11 +253,13 @@ class EncoderController(MackieC4Component):
         selected_device_index = self.__eah.track_changed(track_index)
         if len(self.selected_track.devices) == 0:
             self.__chosen_plugin = None
+            self.__eah.update_device_counter(track_index, 0)
             self.__reorder_parameters()
         else:
             if selected_device_index > -1:
                 if len(self.selected_track.devices) > selected_device_index:
                     self.__chosen_plugin = self.selected_track.devices[selected_device_index]
+                    self.__eah.update_device_counter(track_index, len(self.selected_track.devices))
                     self.__reorder_parameters()
                 else:
                     # something isn't getting updated correctly at startup and/or when devices are deleted
@@ -573,7 +576,7 @@ class EncoderController(MackieC4Component):
                 update_self = True
         elif switch_id == C4SID_BANK_RIGHT:
             # max_bank_nbr = self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]] - 1
-            max_bank_nbr = self.__eah.get_max_track_device_parameter_bank_nbr() - 1
+            max_bank_nbr = self.__eah.get_max_current_track_device_parameter_bank_nbr() - 1
             if current_bank_nbr < max_bank_nbr:
                 current_bank_nbr += 1
                 update_self = True
@@ -646,9 +649,12 @@ class EncoderController(MackieC4Component):
 
                 # MS this could be something
                 # this code says only set (in Live) an updated current selected device at index 0
-                # if the current selected device index is 0 and there is actually a device on the track
-                if self.t_d_current[self.t_current] == 0 and self.t_d_count[self.t_current] != 0:
+                # if the current selected device index is 0 AND there is actually a device on the track
+                # this might be a hack working around initializing all the history values to 0
+                # if self.t_d_current[self.t_current] == 0 and self.t_d_count[self.t_current] != 0:
+                if self.__eah.get_selected_device_index() == 0 and self.__eah.get_max_device_count() > 0:
                     self.song().view.select_device(self.selected_track.devices[0])
+                # else: self.song().view.select_device() has already been correctly performed somewhere?
                 update_self = True
 
         # C4 assignment.chan_strip button == C4M_CHANNEL_STRIP mode
@@ -902,7 +908,7 @@ class EncoderController(MackieC4Component):
                 if current_parameter_bank_track > 0:
                     current_parameter_bank_track -= 1
                     self.main_script().log_message(
-                        "self.t_d_p_bank_current[self.t_current]: {0}".format(self.t_d_p_bank_current[self.t_current]))
+                        "self.t_d_p_bank_current[self.t_current]: {0}".format(self.__eah.get_selected_device_index()))
                     update_self = True
                 else:
                     self.main_script().log_message("can't decrement current_parameter_bank_track: already bank 0")
@@ -910,7 +916,7 @@ class EncoderController(MackieC4Component):
                 current_track_device_preset_bank = current_parameter_bank_track
                 self.main_script().log_message("current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
                 # track_device_preset_bank_count = self.t_d_p_bank_count[self.t_current][current_device_track]
-                track_device_preset_bank_count = self.__eah.get_max_track_device_parameter_bank_nbr(current_device_track)
+                track_device_preset_bank_count = self.__eah.get_max_current_track_device_parameter_bank_nbr(current_device_track)
                 self.main_script().log_message("track_device_preset_bank_count: {0}".format(track_device_preset_bank_count))
                 if current_track_device_preset_bank < track_device_preset_bank_count - 1:
                     current_parameter_bank_track += 1
@@ -940,7 +946,8 @@ class EncoderController(MackieC4Component):
             if update_self:
                 self.__eah.set_current_track_device_parameter_bank_nbr(current_parameter_bank_track)
                 self.main_script().log_message(
-                    "self.t_d_p_bank_current[self.t_current]: {0}".format(
+                    # "self.t_d_p_bank_current[self.t_current]: {0}".format(
+                    "self.__eah.get_current_track_device_parameter_bank_nbr(): {0}".format(
                         self.__eah.get_current_track_device_parameter_bank_nbr()))
                 self.__reassign_encoder_parameters(for_display_only=False)
                 self.request_rebuild_midi_map()
@@ -1053,7 +1060,8 @@ class EncoderController(MackieC4Component):
             # current_track_device_preset_bank = self.t_d_p_bank_current[self.t_current][self.t_d_current[self.t_current]]
             current_track_device_preset_bank = self.__eah.get_current_track_device_parameter_bank_nbr()
             preset_bank_index = current_track_device_preset_bank * SETUP_DB_PARAM_BANK_SIZE
-            is_param_index = len(parameters) > vpot_index + preset_bank_index
+            current_track_param_count = len(parameters)
+            is_param_index = current_track_param_count > vpot_index + preset_bank_index
             if is_param_index:
                 p = parameters[vpot_index + preset_bank_index]
                 try:
@@ -1062,7 +1070,11 @@ class EncoderController(MackieC4Component):
                     self.main_script().log_message("Param {0} tuple name <{1}>".format(vpot_index, p[1]))
                 return p
             else:
-                self.main_script().log_message("vpot_index + preset_bank_index == invalid parameter index")
+                # self.main_script().log_message("vpot_index + preset_bank_index == invalid parameter index")
+                # self.main_script().log_message("{0} + {1} >= {2}".format(
+                #                            vpot_index, preset_bank_index, current_track_param_count))
+                self.main_script().log_message("Param {0} + {1} not mapped".format(
+                                            vpot_index, preset_bank_index))
 
             # The device doesn't have this many parameters
             return None, '      '  # remove this text after you see it in the LCD, just use blanks
@@ -1131,7 +1143,7 @@ class EncoderController(MackieC4Component):
         # self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]]
         #                              == parameter page/bank max value of current/selected device on track
         # self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]] = nbr_of_full_pages
-        self.__eah.set_current_track_device_parameter_bank_nbr(nbr_of_full_pages)
+        self.__eah.set_max_current_track_device_parameter_bank_nbr(nbr_of_full_pages)
         for p in self.__ordered_plugin_parameters:
             # log the param names to the Live log in order
             self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
@@ -1160,7 +1172,8 @@ class EncoderController(MackieC4Component):
             #
             current_nbr_of_devices_on_selected_track = len(self.selected_track.devices)
             # self.t_d_count[self.t_current] is the max device count for the track (which better be <= 128?)
-            self.t_d_count[self.t_current] = current_nbr_of_devices_on_selected_track
+            # self.t_d_count[self.t_current] = current_nbr_of_devices_on_selected_track
+            self.__eah.set_max_device_count(current_nbr_of_devices_on_selected_track)
 
             nbr_of_full_device_pages = int(current_nbr_of_devices_on_selected_track / SETUP_DB_DEVICE_BANK_SIZE)  # / 16
             nbr_of_remainder_devices = int(current_nbr_of_devices_on_selected_track % SETUP_DB_DEVICE_BANK_SIZE)
@@ -1214,13 +1227,20 @@ class EncoderController(MackieC4Component):
                     #                                .format(row_index, current_encoder_bank_offset))
 
                     # watch out for 'no device on track' when row_index = 0 and current bank = 0
-                    # if row_index = 0 and current bank = 0, then encoder is mapped to 1st device on track
-                    # if row_index = 1 and current bank = 0, then encoder is mapped to 2nd device on track
-                    # if row_index = 7 and current bank = 0, then encoder is mapped to 8th device on track
-                    # if row_index = 0 and current bank = 1, then encoder is mapped to 9th device on track
-                    # if row_index = 1 and current bank = 1, then encoder is mapped to 10th device on track
-                    # if row_index = 7 and current bank = 1, then encoder is mapped to 16th device on track
-                    if row_index + current_encoder_bank_offset < self.t_d_count[self.t_current]:
+                    # if row_index = 0 and current bank = 0, then offset is 0
+                    #                  and encoder is mapped to 1st device on track
+                    # if row_index = 1 and current bank = 0, then offset is 0
+                    #                  and encoder is mapped to 2nd device on track
+                    # if row_index = 7 and current bank = 0, then offset is 0
+                    #                  and encoder is mapped to 8th device on track
+                    # if row_index = 0 and current bank = 1, then offset is 8
+                    #                  and encoder is mapped to 9th device on track
+                    # if row_index = 1 and current bank = 1, then offset is 8
+                    #                  and encoder is mapped to 10th device on track
+                    # if row_index = 7 and current bank = 1, then offset is 8
+                    #                  and encoder is mapped to 16th device on track
+                    # if row_index + current_encoder_bank_offset < self.t_d_count[self.t_current]:
+                    if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
                         s.show_full_enlighted_poti()
                         encoder_index_in_row = row_index + int(current_encoder_bank_offset)
                         if encoder_index_in_row < len(self.selected_track.devices):
@@ -1306,7 +1326,7 @@ class EncoderController(MackieC4Component):
             # current_device_bank_param_track = self.t_d_p_bank_current[self.t_current][self.t_d_current[self.t_current]]
             # max_device_bank_param_track = self.t_d_p_bank_count[self.t_current][self.t_d_current[self.t_current]]
             current_device_bank_param_track = self.__eah.get_current_track_device_parameter_bank_nbr()
-            max_device_bank_param_track = self.__eah.get_max_track_device_parameter_bank_nbr()
+            max_device_bank_param_track = self.__eah.get_max_current_track_device_parameter_bank_nbr()
             for s in self.__encoders:
                 s_index = s.vpot_index()
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
@@ -1572,8 +1592,10 @@ class EncoderController(MackieC4Component):
         so_many_spaces = '                                                       '
         if self.__assignment_mode == C4M_PLUGINS:
             upper_string1 += '-------Track-------- -----Device '
-            upper_string1 += str(self.t_d_current[self.t_current])
-            if self.t_d_current[self.t_current] > 9:  # allow for tens track device number digit
+            # upper_string1 += str(self.t_d_current[self.t_current])
+            upper_string1 += str(self.__eah.get_selected_device_index())
+            # if self.t_d_current[self.t_current] > 9:  # allow for tens track device number digit
+            if self.__eah.get_selected_device_index() > 9:
                 upper_string1 += '------ '
             else:
                 upper_string1 += '------- '
