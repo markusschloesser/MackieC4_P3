@@ -81,13 +81,14 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_d_count[t] = d
         self.t_d_bank_count[t] = int(d // SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
-    def build_setup_database(self):
-        # if song_ref is None:
-        #     song_ref = self.song()
+    def build_setup_database(self, song_ref=None):
+        if song_ref is None:
+            song_ref = self.song()
 
         self.t_count = 0
 
-        tracks_in_song = self.song().tracks
+        # tracks_in_song = self.song().tracks
+        tracks_in_song = song_ref.tracks
         for t_idx in range(len(tracks_in_song)):
             devices_on_track = tracks_in_song[t_idx].devices
             self.t_d_count[t_idx] = len(devices_on_track)
@@ -106,8 +107,10 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         idx_nrml_trks = t_idx
         assert idx_nrml_trks == self.t_count - 1
-        for rt_idx in range(len(self.song().return_tracks)):
-            devices_on_rtn_track = self.song().return_tracks[rt_idx].devices
+        # for rt_idx in range(len(self.song().return_tracks)):
+        #     devices_on_rtn_track = self.song().return_tracks[rt_idx].devices
+        for rt_idx in range(len(song_ref.return_tracks)):
+            devices_on_rtn_track = song_ref.return_tracks[rt_idx].devices
             ttl_t_idx = idx_nrml_trks + rt_idx + 1
             self.t_d_count[ttl_t_idx] = len(devices_on_rtn_track)
             max_device_banks = math.ceil(len(devices_on_rtn_track) // SETUP_DB_DEVICE_BANK_SIZE)
@@ -128,7 +131,8 @@ class EncoderAssignmentHistory(MackieC4Component):
         assert idx_nrml_and_rtn_trks == self.t_count - 1
         self.__master_track_index = idx_nrml_and_rtn_trks + 1
         mt_idx = self.__master_track_index
-        devices_on_mstr_track = self.song().master_track.devices
+        # devices_on_mstr_track = self.song().master_track.devices
+        devices_on_mstr_track = song_ref.master_track.devices
         self.t_d_count[mt_idx] = len(devices_on_mstr_track)
         max_device_banks = math.ceil(len(devices_on_mstr_track) // SETUP_DB_DEVICE_BANK_SIZE)
         self.t_d_bank_count[mt_idx] = max_device_banks

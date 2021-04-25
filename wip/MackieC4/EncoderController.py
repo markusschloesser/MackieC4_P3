@@ -180,8 +180,8 @@ class EncoderController(MackieC4Component):
     #     self.t_d_bank_count[t] = int(d // SETUP_DB_DEVICE_BANK_SIZE)  # no ceiling call?
 
     def build_setup_database(self):
-        # self.__eah.build_setup_database(self.song())  <--- can't pass this reference this way
-        self.__eah.build_setup_database()
+        self.__eah.build_setup_database(self.song())
+        
         # self.t_count = 0
         #
         # tracks_in_song = self.song().tracks
