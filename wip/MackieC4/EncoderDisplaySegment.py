@@ -6,7 +6,7 @@ import itertools
 
 from .MackieC4Component import *
 from ableton.v2.base import liveobj_valid  # MS
-
+from past.builtins import unicode
 import sys
 # from Live import DeviceParameter
 from Push2.model import DeviceParameter
@@ -91,11 +91,7 @@ class EncoderDisplaySegment(MackieC4Component):
         try:
             ascii_encoded = self.__lower_text.encode('ascii', 'ignore')
         except AttributeError:  # DeviceParameter
-            if sys.version_info[0] >= 3:
-                ascii_encoded = str(self.__lower_text).encode('ascii', errors='ignore')  # for Py3/Live11
-            else:
-                ascii_encoded = unicode(self.__lower_text).encode('ascii', errors='ignore')  # for Py2/Live10
-
+            ascii_encoded = unicode(self.__lower_text).encode('ascii', errors='ignore')  # for Py2/Live10 and Py3
         return ascii_encoded.decode()
 
     def alter_lower_text(self, alter_text=True):
