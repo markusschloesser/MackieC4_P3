@@ -10,6 +10,7 @@ import sys
 from Push2.model import DeviceParameter
 from ableton.v2.base import listenable_property
 from ableton.v2.control_surface.components import undo_redo
+from ableton.v2.control_surface.elements.display_data_source import adjust_string
 from . import track_util
 from . import song_util
 
@@ -1205,7 +1206,7 @@ class EncoderController(MackieC4Component):
                 upper_string1 += '-------Track--------       ---------------'
 
             # "selected track's name, centered over roughly the first 3 encoders in top row
-            lower_string1 += self.__generate_20_char_string(self.selected_track.name)
+            lower_string1 += adjust_string(self.selected_track.name, 20)
 
             if self.application().view.is_view_visible('Session'):
                 lower_string1 += (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '       ')
@@ -1213,7 +1214,7 @@ class EncoderController(MackieC4Component):
                 lower_string1 += ' Track '
 
             if self.selected_track.view.selected_device is not None:
-                lower_string1 += self.__generate_15_char_string(self.selected_track.view.selected_device.name)
+                lower_string1 += adjust_string(self.selected_track.view.selected_device.name, 15)
             else:
                 lower_string1 += '                      '
 
@@ -1231,23 +1232,23 @@ class EncoderController(MackieC4Component):
                 l_alt_text = text_for_display.get_lower_text()
 
                 if t in range(6, NUM_ENCODERS_ONE_ROW):
-                    upper_string1 += self.__generate_6_char_string(u_alt_text)
+                    upper_string1 += adjust_string(u_alt_text, 6)
                     upper_string1 += ' '
-                    lower_string1 += self.__generate_6_char_string(str(l_alt_text))
+                    lower_string1 += adjust_string(str(l_alt_text), 6)
                     lower_string1 += ' '
                 elif t in row_01_encoders:
-                    lower_string2 += self.__generate_6_char_string(str(l_alt_text))
+                    lower_string2 += adjust_string(str(l_alt_text), 6)
                     lower_string2 += ' '
                 elif t in row_02_encoders:
-                    lower_string3 += self.__generate_6_char_string(str(l_alt_text))
+                    lower_string3 += adjust_string(str(l_alt_text), 6)
                     lower_string3 += ' '
-                    upper_string3 += self.__generate_6_char_string(u_alt_text)
+                    upper_string3 += adjust_string(u_alt_text, 6)
                     upper_string3 += ' '
                 elif t in row_03_encoders:
                     if t < encoder_29_index:
-                        lower_string4 += self.__generate_6_char_string(str(l_alt_text))
+                        lower_string4 += adjust_string(str(l_alt_text), 6)
                         lower_string4 += ' '
-                        upper_string4 += self.__generate_6_char_string(u_alt_text)
+                        upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
                     elif t == encoder_29_index:
                         if self.selected_track.can_be_armed:
@@ -1271,14 +1272,14 @@ class EncoderController(MackieC4Component):
                             lower_string4 += '       '
                             upper_string4 += '       '
                     elif t == encoder_31_index:
-                        lower_string4 += self.__generate_6_char_string(str(l_alt_text))
+                        lower_string4 += adjust_string(str(l_alt_text), 6)
                         lower_string4 += ' '
                         if self.selected_track.has_audio_output:
                             upper_string4 += ' Pan   '  # refactor to DisplaySegment text?
                         else:
                             upper_string4 += '       '
                     elif t == encoder_32_index:
-                        lower_string4 += self.__generate_6_char_string(str(l_alt_text))
+                        lower_string4 += adjust_string(str(l_alt_text), 6)
                         lower_string4 += ' '
                         if self.selected_track.has_audio_output:
                             upper_string4 += 'Volume '  # refactor to DisplaySegment text?
@@ -1298,7 +1299,7 @@ class EncoderController(MackieC4Component):
 
             # upper_string1 == '-------Track-------- -----Device 10------ ' for example
 
-            lower_string1a += self.__generate_20_char_string(self.selected_track.name)
+            lower_string1a += adjust_string(self.selected_track.name, 20)
             lower_string1a = lower_string1a.center(20)  # should already be centered?
             lower_string1a += ' '
             if self.__chosen_plugin is None:
@@ -1328,7 +1329,7 @@ class EncoderController(MackieC4Component):
                     msg = "Current Track Device List length too short for index:"
                     msg += " name display blank over device index {0}"
                     self.main_script().log_message(msg.format(t_d_idx))
-                lower_string1b += self.__generate_20_char_string(str(device_name))
+                lower_string1b += adjust_string(str(device_name), 20)
                 lower_string1b = lower_string1b.center(20)
                 lower_string1 += lower_string1a
                 lower_string1 += lower_string1b
@@ -1345,24 +1346,24 @@ class EncoderController(MackieC4Component):
                     l_alt_text = text_for_display.get_lower_text()
 
                     if t in range(6, NUM_ENCODERS_ONE_ROW):
-                        lower_string1 += self.__generate_6_char_string(str(l_alt_text))
+                        lower_string1 += adjust_string(str(l_alt_text), 6)
                         lower_string1 += ' '
                     elif t in row_01_encoders:
                         # parameter name plugin_param[1] == text_for_display[1] in top display row,
                         # parameter value plugin_param[0] == text_for_display[0] in bottom row
-                        upper_string2 += self.__generate_6_char_string(u_alt_text)
+                        upper_string2 += adjust_string(u_alt_text, 6)
                         upper_string2 += ' '
-                        lower_string2 += self.__generate_6_char_string(str(l_alt_text))
+                        lower_string2 += adjust_string(str(l_alt_text), 6)
                         lower_string2 += ' '
                     elif t in row_02_encoders:
-                        upper_string3 += self.__generate_6_char_string(u_alt_text)
+                        upper_string3 += adjust_string(u_alt_text, 6)
                         upper_string3 += ' '
-                        lower_string3 += self.__generate_6_char_string(str(l_alt_text))
+                        lower_string3 += adjust_string(str(l_alt_text), 6)
                         lower_string3 += ' '
                     elif t in row_03_encoders:
-                        upper_string4 += self.__generate_6_char_string(u_alt_text)
+                        upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
-                        lower_string4 += self.__generate_6_char_string(str(l_alt_text))
+                        lower_string4 += adjust_string(str(l_alt_text), 6)
                         lower_string4 += ' '
 
         elif self.__assignment_mode == C4M_FUNCTION:
@@ -1375,26 +1376,25 @@ class EncoderController(MackieC4Component):
 
                 dspl_sgmt = next(x for x in self.__display_parameters if x.vpot_index() == e.vpot_index())
                 if e.vpot_index() in row_00_encoders:
-                    upper_string1 += self.__generate_6_char_string(dspl_sgmt.get_upper_text()) + ' '
-                    lower_string1 += self.__generate_6_char_string(dspl_sgmt.get_lower_text()) + ' '
+                    upper_string1 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
+                    lower_string1 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_01_encoders:
                     if e.vpot_index() == encoder_09_index:
                         upper_string2 += \
-                            self.__generate_6_char_string(dspl_sgmt.alter_upper_text(self.song().can_undo)) + ' '
+                            adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
                     elif e.vpot_index() == encoder_10_index:
                         upper_string2 += \
-                            self.__generate_6_char_string(dspl_sgmt.alter_upper_text(self.song().can_redo)) + ' '
+                            adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo),6) + ' '
                     else:
-                        upper_string2 += self.__generate_6_char_string(dspl_sgmt.get_upper_text()) + ' '
+                        upper_string2 += adjust_string(dspl_sgmt.get_upper_text(),6) + ' '
 
-                    lower_string2 += self.__generate_6_char_string(dspl_sgmt.get_lower_text()) + ' '
+                    lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_02_encoders:
-                    upper_string3 += self.__generate_6_char_string(dspl_sgmt.get_upper_text()) + ' '
-                    lower_string3 += self.__generate_6_char_string(dspl_sgmt.get_lower_text()) + ' '
+                    upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
+                    lower_string3 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_03_encoders:
-                    upper_string4 += self.__generate_6_char_string(dspl_sgmt.get_upper_text()) + ' '
-                    lower_string4 += self.__generate_6_char_string(dspl_sgmt.get_lower_text()) + ' '
-
+                    upper_string4 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
+                    lower_string4 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
 
             unmute_all_encoder_index = 6
             unmute_all_encoder = self.__encoders[unmute_all_encoder_index]
@@ -1435,94 +1435,6 @@ class EncoderController(MackieC4Component):
         self.send_display_string3(LCD_MDL_FLAT_ADDRESS, lower_string3, LCD_BOTTOM_ROW_OFFSET)
         self.send_display_string4(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
         return
-
-    # LOL whatever works
-    def __generate_6_char_string(self, display_string):
-        if not display_string:
-            return '      '
-        if len(display_string.strip()) > 6:
-            if display_string.endswith('dB'):
-                if display_string.find('.') != -1:
-                    display_string = display_string[:-2]
-        if len(display_string) > 6:
-            for um in (' ', '_', ',', '/', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y'):  # MS had to revert filtering . and - cos otherwise param values with decimals or negative are not shown properly, ideally we should only filter param names but now param values. Added comma
-                while len(display_string) > 6 and display_string.rfind(um, 1) != -1:
-                    um_pos = display_string.rfind(um, 1)
-                    display_string = display_string[:um_pos] + display_string[um_pos + 1:]
-
-        else:
-            display_string = display_string.center(6)
-        ret = ''
-        for i in range(6):
-            ret += display_string[i]
-
-        # assert len(ret) == 6  # range(6) always produces 6 items in the range [0, 1, 2, 3, 4, 5]
-        return ret
-
-    def __generate_20_char_string(self, display_string):
-        if not display_string:
-            return '      '
-
-        if len(display_string) > 20:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-', ','):  # MS added comma
-                while len(display_string) > 20 and display_string.rfind(um, 1) != -1:
-                    um_pos = display_string.rfind(um, 1)
-                    display_string = display_string[:um_pos] + display_string[um_pos + 1:]
-
-        else:
-            display_string = display_string.center(20)
-        ret = ''
-        for i in range(20):
-            ret += display_string[i]
-
-        assert len(ret) == 20
-        return ret
-
-    def __generate_15_char_string(self, display_string):
-        if not display_string:
-            return '      '
-
-        if len(display_string) > 15:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', 'ä', 'ö', 'ü', 'y', '_', '.', '-', ','):  # MS added comma
-                while len(display_string) > 15 and display_string.rfind(um, 1) != -1:
-                    um_pos = display_string.rfind(um, 1)
-                    display_string = display_string[:um_pos] + display_string[um_pos + 1:]
-
-        else:
-            display_string = display_string.center(15)
-        ret = ''
-        for i in range(15):
-            ret += display_string[i]
-
-        assert len(ret) == 15
-        return ret
-
-    def __transform_to_size(self, raw_text, new_size):
-        """ trim a string down to a given new_size, removing trailing or leading blank spaces first
-            followed by a trailing 'dB' substring (if a '.' is also found somewhere in string)
-            followed by spaces and lower case vowels in order [' ', 'i', 'o', 'u', 'e', 'a']
-            or center smaller length strings within the new_size
-            returns a string exactly new_size
-        """
-        if not raw_text or not isinstance(raw_text, str):
-            return ''.join(list((' ' for i in range(new_size))))  # if given nothing return blanks01
-        
-        transformed_text = raw_text.strip()
-        is_ends_db = transformed_text.endswith('dB')
-        has_dot = transformed_text.find('.') != -1
-        if len(transformed_text) > new_size and is_ends_db and has_dot:
-            transformed_text = transformed_text[:-2]  # remove the trailing 'dB'
-
-        if len(transformed_text) > new_size:
-            for um in (' ', 'i', 'o', 'u', 'e', 'a', '_', '/', 'ä', 'ö', 'ü'):
-                while len(transformed_text) > new_size and transformed_text.rfind(um, 1) != -1:
-                    um_pos = transformed_text.rfind(um, 1)
-                    transformed_text = transformed_text[:um_pos]
-                    if len(transformed_text) > um_pos + 1:  # if um_pos is last char, um_pos + 1 is OB
-                        transformed_text += transformed_text[um_pos + 1:]
-
-        transformed_text = transformed_text.center(new_size)
-        return ''.join([transformed_text[i] for i in range(new_size)])
 
     def send_display_string1(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
         """
