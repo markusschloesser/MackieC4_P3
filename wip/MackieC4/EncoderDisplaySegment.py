@@ -6,12 +6,13 @@ import itertools
 
 from .MackieC4Component import *
 from ableton.v2.base import liveobj_valid  # MS
-from past.builtins import unicode
+
 import sys
 # from Live import DeviceParameter
 from Push2.model import DeviceParameter
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
+    from past.builtins import unicode
 
 from itertools import chain
 from ableton.v2.base import liveobj_valid, listenable_property, listens  # MS not needed right now, but will in the future

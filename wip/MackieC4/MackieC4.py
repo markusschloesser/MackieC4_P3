@@ -290,7 +290,7 @@ class MackieC4(object):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
             Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
 
-        self.rebuild_my_database = 1
+        #self.rebuild_my_database = 1
         if self.return_resetter == 1:
             time.sleep(0.5)
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
@@ -315,6 +315,7 @@ class MackieC4(object):
         self.add_scene_listeners()
         if self.rebuild_my_database == 0:
             self.__encoder_controller.build_setup_database()
+            self.rebuild_my_database = 1
         self.trBlock(0, len(self.song().visible_tracks))
 
     def add_scene_listeners(self):
@@ -331,35 +332,48 @@ class MackieC4(object):
             self.song().view.remove_selected_track_listener(self.track_change)
 
     def track_change(self):
+        # need to do 2 things
+        # assign the new 'selected Index'
+        #     self.track = selected_index
+        # and
+        # figure out if a track was added, deleted, or just changed
         selected_track = self.song().view.selected_track
-        tracks = self.song().visible_tracks + self.song().return_tracks
+        self.log_message("selected track {0}".format(selected_track.name))
+        tracks = self.song().visible_tracks + self.song().return_tracks # not counting Master Track?
+        # track might have been deleted, added, or just changed (always one at a time?)
+        assert len(tracks) in range(self.track_count - 1, self.track_count + 1)
+        self.log_message("nbr visible tracks {0}".format(len(tracks)))
         index = 0
         found = 0
         selected_index = 0
         for track in tracks:
-            index = index + 1
+
             if track == selected_track:
                 selected_index = index
                 found = 1
 
+            index = index + 1
+
         if found == 0:
+            # signal that something bad happened - selected track
+            selected_index = 555
 
-            # I think this 128 might mean use the master track index as a fallback
-            # but index 128 is out-of-bounds by one
-            # (valid track indexes inside EncoderController are 00 - 127)
-            selected_index = 127  # MS ok lets then try and change that to 127
-
+        self.log_message("found selected index {0}".format(selected_index))
         if selected_index != self.track:
+            self.log_message("setting self.track {0} to selected index {1}".format(self.track, selected_index))
             self.track = selected_index
 
-        if self.track_count > len(tracks) + 1:
-            self.__encoder_controller.track_deleted(selected_index - 1)
-        elif self.track_count < len(tracks) + 1:
-            self.__encoder_controller.track_added(selected_index - 1)  # MS this get called when moving clip to another existing track, why? Also gets called for other non-adding stuff
+        if self.track_count > len(tracks):
+            self.__encoder_controller.track_deleted(selected_index)
+            self.track_count -= 1
+        elif self.track_count < len(tracks):
+            self.__encoder_controller.track_added(selected_index)
+            self.track_count += 1
             self.return_resetter = 1
         else:
-            self.__encoder_controller.track_changed(selected_index - 1)
-        self.track_count = len(tracks) + 1
+            self.__encoder_controller.track_changed(selected_index)
+
+        assert self.track_count == len(tracks)
 
     def scene_change(self):
         selected_scene = self.song().view.selected_scene
@@ -528,12 +542,20 @@ class MackieC4(object):
                      'available_output_routing_types', 'input_routing_channel', 'input_routing_type',
                      'output_routing_channel', 'output_routing_type'):
             for tr in self.mlisten[type]:
-                if tr is not None:
+                if tr is not None:  # and not tr.None:
+                    self.log_message("track <{0}> ltype <{1}>".format(tr.name, type))
                     cb = self.mlisten[type][tr]
                     if type == 'arm':
-                        if tr.can_be_armed == 1:
-                            if tr.arm_has_listener(cb) == 1:
-                                tr.remove_arm_listener(cb)
+                        try:
+                            self.log_message("track <{0}> ltype <{1}>".format(tr.name, type))
+                            if tr.can_be_armed == 1:
+                                if tr.arm_has_listener(cb) == 1:
+                                    tr.remove_arm_listener(cb)
+                        except ArgumentError:
+                            self.log_message("track <{0}> ltype <{1}>".format(tr, type))
+                            self.log_message("No listener removed from ????")
+
+
                     elif type == 'current_monitoring_state':
                         if tr.can_be_armed == 1:
                             if tr.current_monitoring_state_has_listener(cb) == 1:

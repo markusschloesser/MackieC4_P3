@@ -11,8 +11,7 @@ from Push2.model import DeviceParameter
 from ableton.v2.base import listenable_property
 from ableton.v2.control_surface.components import undo_redo
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
-from . import track_util
-from . import song_util
+
 
 # from Encoders import Encoders
 
@@ -20,7 +19,8 @@ if sys.version_info[0] >= 3:  # Live 11
     from past.utils import old_div
     from builtins import range
 
-
+from . import track_util
+from . import song_util
 from .EncoderAssignmentHistory import EncoderAssignmentHistory
 from .EncoderDisplaySegment import EncoderDisplaySegment
 from . consts import *
@@ -135,8 +135,11 @@ class EncoderController(MackieC4Component):
         return self.__encoders
 
     def build_setup_database(self):
+        self.main_script().log_message("building setup db")
+        self.__eah.build_setup_database(self.song())        # self.track_count
 
-        self.__eah.build_setup_database(self.song())
+        self.main_script().log_message("t_count after setup <{0}>".format(self.__eah.t_count))
+        self.main_script().log_message("main_script().track_count after setup <{0}>".format(self.main_script().track_count))
 
         devices_on_selected_trk = self.song().view.selected_track.devices
         if len(devices_on_selected_trk) == 0:
@@ -212,11 +215,15 @@ class EncoderController(MackieC4Component):
         return
 
     def track_deleted(self, track_index):
+        self.main_script().log_message("del tk idx b4: {0}".format(track_index))
         self.__eah.track_deleted(track_index)
         self.selected_track = self.song().view.selected_track
+        self.main_script().log_message("selected tk after: {0}".format(self.selected_track.name))
         self.refresh_state()
 
         selected_device_index = self.__eah.get_selected_device_index()
+        self.main_script().log_message("selected tk device index after: {0}".format(selected_device_index))
+        self.main_script().log_message("nbr of devices on selected track after: {0}".format(len(self.selected_track.devices)))
         if selected_device_index > -1:
             if len(self.selected_track.devices) > selected_device_index:
                 selected_device = self.selected_track.devices[selected_device_index]
