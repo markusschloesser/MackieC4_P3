@@ -315,6 +315,7 @@ class MackieC4(object):
         self.add_scene_listeners()
         if self.rebuild_my_database == 0:
             self.__encoder_controller.build_setup_database()
+            self.rebuild_my_database = 1
         self.trBlock(0, len(self.song().visible_tracks))
 
     def add_scene_listeners(self):
@@ -337,10 +338,10 @@ class MackieC4(object):
         found = 0
         selected_index = 0
         for track in tracks:
-            index = index + 1
             if track == selected_track:
                 selected_index = index
                 found = 1
+            index = index + 1
 
         if found == 0:
 
