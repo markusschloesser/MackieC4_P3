@@ -33,7 +33,7 @@ from __future__ import absolute_import, print_function, unicode_literals
 import sys
 import Live
 from ableton.v2.base import liveobj_valid
-
+from contextlib import contextmanager
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
     from builtins import range
@@ -50,17 +50,19 @@ else:  # Live 10
     from .EncoderController import EncoderController
     import MidiRemoteScript
 
+from ableton.v2.control_surface import ControlSurface
+
 logger = logging.getLogger(__name__)
 
 
-class MackieC4(object):
+class MackieC4(ControlSurface):
     """  Main class that establishes the MackieC4 Component
          --- although technically, the Mackie Control C4Pro is an "extension" of the
              Mackie Control itself (like the MackieControlXT), this script stands alone.
              It doesn't work 'with' those Midi Remote Scripts which is why is_extension()
              returns False from here
     """
-    __module__ = __name__
+    # __module__ = __name__
     prlisten = {}
     '''prlisten is "Parameter Range" Listener?'''
 
@@ -102,11 +104,14 @@ class MackieC4(object):
     rebuild_my_database = 0
     return_resetter = 0
 
-    def __init__(self, c_instance):
-        self.__c_instance = c_instance
+    def __init__(self, *a, **k):
+        (super(MackieC4, self).__init__)(*a, **k)
+        # self.__c_instance = c_instance
 
+        # ControlSurface.__init__(self, c_instance)
         # initialize the 32 encoders, their EncoderController and
         # add them as __components here
+        # with self.component_guard():
         self.__components = []
         self.__encoders = [Encoders(self, i) for i in encoder_range]
         for s in self.__encoders:
@@ -137,6 +142,28 @@ class MackieC4(object):
         # if refresh_state is not already listening for visible tracks view changes
         if self.song().visible_tracks_has_listener(self.refresh_state) != 1:
             self.song().add_visible_tracks_listener(self.refresh_state)
+
+    @contextmanager
+    def component_guard(self):
+        """
+        Context manager that guards user code.  This prevents
+        unnecessary updating and enables several optimizations.  Should
+        be used to guard calls to components or control elements.
+        """
+        if not self._in_component_guard:
+            with self._in_component_guard():
+                with self._component_guard():
+                    yield
+        else:
+            yield
+
+    @contextmanager
+    def _component_guard(self):
+        with self._control_surface_injector:
+            with self.suppressing_rebuild_requests():
+                with self.accumulating_midi_messages():
+                    yield
+                    self._ownership_handler.commit_ownership_changes()
 
     def connect_script_instances(self, instanciated_scripts):
         """
@@ -172,8 +199,9 @@ class MackieC4(object):
         listener to allow us to process incoming OSC commands as quickly as possible under
         the current listener scheme.
         """
-        for c in self.__components:
-            c.on_update_display_timer()
+        with self.component_guard():
+            for c in self.__components:
+                c.on_update_display_timer()
 
     def send_midi(self, midi_event_bytes):
         """
@@ -277,6 +305,7 @@ class MackieC4(object):
         self.song().remove_visible_tracks_listener(self.refresh_state)
         for c in self.__components:
             c.destroy()
+        super(MackieC4, self).disconnect()
 
     def build_midi_map(self, midi_map_handle):
 
@@ -499,7 +528,6 @@ class MackieC4(object):
     #     if (slot in self.slisten) != 1:
     #         slot.add_has_clip_listener(cb)
     #         self.slisten[slot] = cb
-
 
     # def rem_mixer_listeners(self, track):
     #     if liveobj_valid(track):
@@ -981,8 +1009,7 @@ class MackieC4(object):
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
         try:
-            message = '(%s) %s' % (self.__class__.__name__,
-             (' ').join(map(str, message)))
+            message = '(%s) %s' % (self.__class__.__name__, (' ').join(map(str, message)))
             logger.info(message)
         except:
             logger.info('Logging encountered illegal character(s)!')

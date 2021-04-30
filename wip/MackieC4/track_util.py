@@ -99,27 +99,27 @@ def visible_tracks(song):
     return filter(liveobj_valid, song.visible_tracks)
 
 
-def toggle_track_fold(self, track):
-    if old_hasattr(track, 'is_foldable') and track.is_foldable:
-        track.fold_state = not track.fold_state
-    else:
-        if old_hasattr(track, 'is_showing_chains') and track.can_show_chains:
-            track.is_showing_chains = not track.is_showing_chains
-        else:
-            instruments = list(find_instrument_devices(track))
-            if instruments:
-                instrument = instruments[0]
-                if old_hasattr(instrument, 'is_showing_chains'):
-                    if instrument.can_show_chains:
-                        instrument.is_showing_chains = not instrument.is_showing_chains
+# def toggle_track_fold(self, track):
+#     if old_hasattr(track, 'is_foldable') and track.is_foldable:
+#         track.fold_state = not track.fold_state
+#     else:
+#         if old_hasattr(track, 'is_showing_chains') and track.can_show_chains:
+#             track.is_showing_chains = not track.is_showing_chains
+#         else:
+#             instruments = list(find_instrument_devices(track))
+#             if instruments:
+#                 instrument = instruments[0]
+#                 if old_hasattr(instrument, 'is_showing_chains'):
+#                     if instrument.can_show_chains:
+#                         instrument.is_showing_chains = not instrument.is_showing_chains
 
 
-def find_parent_track(live_object):
-    track = live_object
-    while liveobj_valid(track):
-        track = isinstance(track, Live.Track.Track) or getattr(track, 'canonical_parent', None)
-
-    return track
+# def find_parent_track(live_object):
+#     track = live_object
+#     while liveobj_valid(track):
+#         track = isinstance(track, Live.Track.Track) or getattr(track, 'canonical_parent', None)
+#
+#     return track
 
 
 def get_chains_recursive(track_or_chain):
@@ -153,8 +153,7 @@ def get_racks_recursive(track_or_chain):
 
 
 def get_flattened_track(track):
-    flat_track = [
-     track]
+    flat_track = [track]
     if track.can_show_chains:
         if track.is_showing_chains:
             all_chains = get_chains_recursive(track)

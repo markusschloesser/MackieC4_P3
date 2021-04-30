@@ -1384,9 +1384,9 @@ class EncoderController(MackieC4Component):
                             adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
                     elif e.vpot_index() == encoder_10_index:
                         upper_string2 += \
-                            adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo),6) + ' '
+                            adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
                     else:
-                        upper_string2 += adjust_string(dspl_sgmt.get_upper_text(),6) + ' '
+                        upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
 
                     lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_02_encoders:

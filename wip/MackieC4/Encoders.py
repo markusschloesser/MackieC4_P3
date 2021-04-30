@@ -10,10 +10,7 @@ import sys
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
 
-from _Framework.ControlSurface import ControlSurface  # MS
-from _Framework.Control import Control  # MS
 from itertools import chain
-from ableton.v2.base import liveobj_valid  # MS not needed right now, but will in the future
 
 
 class Encoders(MackieC4Component):

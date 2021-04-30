@@ -71,11 +71,15 @@ def unmute_all(self):
 def redo(self):
     if self.song().can_redo:
         self.song().redo()
+        return True
+    return False
 
 
 def undo(self):
     if self.song().can_undo:
         self.song().undo()
+        return True
+    return False
 
 
 def metronome_button(self, toggled):
