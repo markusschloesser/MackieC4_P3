@@ -8,7 +8,7 @@ from __future__ import division
 import sys
 
 from Push2.model import DeviceParameter
-from ableton.v2.base import listenable_property
+from ableton.v2.base import listenable_property, liveobj_valid
 from ableton.v2.control_surface.components import undo_redo
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
@@ -188,8 +188,9 @@ class EncoderController(MackieC4Component):
         self.selected_track = self.song().view.selected_track
         self.__eah.track_added(track_index, self.selected_track.devices)
 
-        # self.refresh_state() #MS out-commented, copy from Leigh on next line
-        MackieC4Component.refresh_state(self)  # MS why do we delegate to component, which in turn delegates to main??
+        # This is a way to call a super-class method from a sub-class with
+        # a method of the same name see def refresh_state() below (way, way below)
+        MackieC4Component.refresh_state(self)
         selected_device_index = self.__eah.get_selected_device_index()
         if selected_device_index > -1:
             if len(self.selected_track.devices) > selected_device_index:
@@ -249,8 +250,8 @@ class EncoderController(MackieC4Component):
         updated_idx = self.__eah.device_added_deleted_or_changed(self.selected_track.devices,
                                                                  self.selected_track.view.selected_device)
 
-        if self.__chosen_plugin is None:
-            self.main_script().log_message("switching __chosen_plugin <None> to device at index {0}"
+        if not liveobj_valid(self.__chosen_plugin):
+            self.main_script().log_message("swiotching not liveobj_valid(__chosen_plugin) to device at index {0}"
                                            .format(updated_idx))
         else:
             self.main_script().log_message("switching __chosen_plugin {0} to device at index {1}"
@@ -277,7 +278,7 @@ class EncoderController(MackieC4Component):
         self.main_script().log_message(
             "track device list size <{0}> AFTER device update".format(new_device_count_track))
         for device in self.selected_track.devices:
-            if device is not None:
+            if liveobj_valid(device):
                 self.main_script().log_message("after <{0}>".format(device.name))
             else:
                 self.main_script().log_message("after <None>")
@@ -428,7 +429,7 @@ class EncoderController(MackieC4Component):
                     current_selected_device = None
                     self.__eah.set_selected_device_index(-1)
 
-                if current_selected_device is not None:
+                if liveobj_valid(current_selected_device):
                     self.song().view.select_device(current_selected_device)
                     self.__chosen_plugin = current_selected_device
                     self.__reorder_parameters()
@@ -554,7 +555,7 @@ class EncoderController(MackieC4Component):
             elif encoder_index in row_02_encoders:
                 # these encoders represent sends 1 - 8 (row 3 "index" is 02) in C4M_CHANNEL_STRIP mode
                 param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
-                if param is not None:
+                if liveobj_valid(param):
                     if isinstance(param, int):  # PyCharm says 'param' is an int based on the
                         #                         self.__encoders[encoder_index].v_pot_parameter() assignment above.
                         #                         int also doesn't have a default_value?
@@ -573,7 +574,7 @@ class EncoderController(MackieC4Component):
                 if encoder_index < encoder_29_index:
                     # these encoders are the four < encoder_29_index, left half of bottom row, sends 9 - 12
                     param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
-                    if param is not None:
+                    if liveobj_valid(param):
                         if isinstance(param, int):
                             param.value = 0
                         else:
@@ -645,7 +646,7 @@ class EncoderController(MackieC4Component):
             elif encoder_index in display_params_range:
                 # if a device has less than 24 parameters exposed on this page, param will be (None, '    ')
                 param = self.__encoders[encoder_index].v_pot_parameter()
-                if param is not None:
+                if liveobj_valid(param):
                     if param is not tuple:
                         try:
                             if param.is_enabled:
@@ -969,7 +970,7 @@ class EncoderController(MackieC4Component):
                             format_nbr += NUM_ENCODERS_ONE_ROW
                         # encoder 17 index is (16 % 8) = send 0
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
-                        if send_param[0] is not None:
+                        if liveobj_valid(send_param[0]):
                             vpot_display_text.set_text(send_param[0], send_param[1])
                         #else:
                             #vpot_display_text.set_text('cowcow', 'mooooo')
@@ -1066,7 +1067,7 @@ class EncoderController(MackieC4Component):
                     if plugin_param is not None:
                         vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
                         # parameter name in top display row, param value in bottom row
-                        if plugin_param[0] is not None:  # then it is a DeviceParameter object
+                        if liveobj_valid(plugin_param[0]): # then it is a DeviceParameter object
                             vpot_display_text.set_text(plugin_param[0], plugin_param[1])
                         # else:
                         #     vpot_display_text.set_text('Mooooo', 'cowsays')
@@ -1213,14 +1214,17 @@ class EncoderController(MackieC4Component):
                 upper_string1 += '-------Track--------       ---------------'
 
             # "selected track's name, centered over roughly the first 3 encoders in top row
-            lower_string1 += adjust_string(self.selected_track.name, 20)
+            if liveobj_valid(self.selected_track):
+                lower_string1 += adjust_string(self.selected_track.name, 20)
+            else:
+                lower_string1 += "---------0--------1"
 
             if self.application().view.is_view_visible('Session'):
                 lower_string1 += (' Group' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '       ')
             elif self.application().view.is_view_visible('Arranger'):
                 lower_string1 += ' Track '
 
-            if self.selected_track.view.selected_device is not None:
+            if liveobj_valid(self.selected_track) and liveobj_valid(self.selected_track.view.selected_device):
                 lower_string1 += adjust_string(self.selected_track.view.selected_device.name, 15)
             else:
                 lower_string1 += '                      '
@@ -1247,49 +1251,53 @@ class EncoderController(MackieC4Component):
                     lower_string2 += adjust_string(str(l_alt_text), 6)
                     lower_string2 += ' '
                 elif t in row_02_encoders:
-                    lower_string3 += adjust_string(str(l_alt_text), 6)
+                    lower_string3 += adjust_string(l_alt_text, 6)  # str(DeviceParameter) vomit on unicode?
                     lower_string3 += ' '
                     upper_string3 += adjust_string(u_alt_text, 6)
                     upper_string3 += ' '
                 elif t in row_03_encoders:
                     if t < encoder_29_index:
-                        lower_string4 += adjust_string(str(l_alt_text), 6)
+                        lower_string4 += adjust_string(l_alt_text, 6) # str(SendParam)
                         lower_string4 += ' '
                         upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
                     elif t == encoder_29_index:
-                        if self.selected_track.can_be_armed:
-                            if self.selected_track.arm:
-                                lower_string4 += '  ON   '  # refactor to DisplaySegment text?
-                            else:
-                                lower_string4 += ' Off   '
-                            upper_string4 += 'RecArm '
+                        if liveobj_valid(self.selected_track):
+                            if self.selected_track.can_be_armed:
+                                if self.selected_track.arm:
+                                    lower_string4 += '  ON   '  # refactor to DisplaySegment text?
+                                else:
+                                    lower_string4 += ' Off   '
+                                upper_string4 += 'RecArm '
                         else:
                             lower_string4 += '       '
                             upper_string4 += '       '
                     elif t == encoder_30_index:
                         if self.__filter_mst_trk:
-                            if self.selected_track.mute:
-                                lower_string4 += '  ON   '  # refactor to DisplaySegment text?
-                                upper_string4 += ' MUTE  '
-                            else:
-                                lower_string4 += ' Off   '
-                                upper_string4 += ' Mute  '
+                            if liveobj_valid(self.selected_track):
+                                if self.selected_track.mute:
+                                    lower_string4 += '  ON   '  # refactor to DisplaySegment text?
+                                    upper_string4 += ' MUTE  '
+                                else:
+                                    lower_string4 += ' Off   '
+                                    upper_string4 += ' Mute  '
                         else:
                             lower_string4 += '       '
                             upper_string4 += '       '
                     elif t == encoder_31_index:
                         lower_string4 += adjust_string(str(l_alt_text), 6)
                         lower_string4 += ' '
-                        if self.selected_track.has_audio_output:
-                            upper_string4 += ' Pan   '  # refactor to DisplaySegment text?
+                        if liveobj_valid(self.selected_track):
+                            if self.selected_track.has_audio_output:
+                                upper_string4 += ' Pan   '  # refactor to DisplaySegment text?
                         else:
                             upper_string4 += '       '
                     elif t == encoder_32_index:
                         lower_string4 += adjust_string(str(l_alt_text), 6)
                         lower_string4 += ' '
-                        if self.selected_track.has_audio_output:
-                            upper_string4 += 'Volume '  # refactor to DisplaySegment text?
+                        if liveobj_valid(self.selected_track):
+                            if self.selected_track.has_audio_output:
+                                upper_string4 += 'Volume '  # refactor to DisplaySegment text?
                         else:
                             upper_string4 += '       '
 
@@ -1306,10 +1314,13 @@ class EncoderController(MackieC4Component):
 
             # upper_string1 == '-------Track-------- -----Device 10------ ' for example
 
-            lower_string1a += adjust_string(self.selected_track.name, 20)
+            if liveobj_valid(self.selected_track):
+                lower_string1a += adjust_string(self.selected_track.name, 20)
+            else:
+                lower_string1a += "---------0---------1"
             lower_string1a = lower_string1a.center(20)  # should already be centered?
             lower_string1a += ' '
-            if self.__chosen_plugin is None:
+            if not liveobj_valid(self.__chosen_plugin):
                 # blank everything out
                 upper_string1 += '             '
                 lower_string1b += '                                   '
@@ -1326,11 +1337,16 @@ class EncoderController(MackieC4Component):
                 device_name = '  '
                 t_d_idx = self.__eah.get_selected_device_index()
                 if t_d_idx > -1:
-                    if len(self.selected_track.devices) > t_d_idx:
-                        device_name = self.selected_track.devices[t_d_idx].name
+                    if liveobj_valid(self.selected_track) and len(self.selected_track.devices) > t_d_idx:
+                        if liveobj_valid(self.selected_track.devices[t_d_idx]):
+                            device_name = self.selected_track.devices[t_d_idx].name
+                        else:
+                            msg = "selected track and device index were valid but the device "
+                            msg += "at index {0} is not liveobj_valid() Danger! Will Robinson! Danger!"
+                            self.main_script().log_message(msg.format(t_d_idx))
                     else:
-                        msg = "Not enough devices loaded and __chosen_device is not None:"
-                        msg += " name display blank over device index {0}"
+                        msg = "Not enough devices loaded for index and __chosen_device is liveobj_valid()"
+                        msg += " name display blank over device index {0} Danger! Will Robinson! Danger!"
                         self.main_script().log_message(msg.format(t_d_idx))
                 else:
                     msg = "Current Track Device List length too short for index:"

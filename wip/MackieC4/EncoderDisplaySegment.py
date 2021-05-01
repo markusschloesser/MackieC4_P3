@@ -89,11 +89,18 @@ class EncoderDisplaySegment(MackieC4Component):
             return self.__upper_text
 
     def get_lower_text(self):
-        try:
-            ascii_encoded = self.__lower_text.encode('ascii', 'ignore')
-        except AttributeError:  # DeviceParameter
-            ascii_encoded = unicode(self.__lower_text).encode('ascii', errors='ignore')  # for Py2/Live10 and Py3
-        return ascii_encoded.decode()
+        if liveobj_valid(self.__lower_text):  # assume unicode
+            return unicode(self.__lower_text).encode('ascii', errors='ignore').decode()
+        elif not liveobj_valid(self.__lower_text):  # assume None or lost weakref
+            return "xxXXxx"
+        else:
+            return self.__lower_text  # assume ascii/LCD safe
+
+        # try:
+        #     ascii_encoded = self.__lower_text.encode('ascii', 'ignore')
+        # except AttributeError:  # DeviceParameter
+        #     ascii_encoded = unicode(self.__lower_text).encode('ascii', errors='ignore')  # for Py2/Live10 and Py3
+        # return ascii_encoded.decode()
 
     def alter_lower_text(self, alter_text=True):
         if alter_text:

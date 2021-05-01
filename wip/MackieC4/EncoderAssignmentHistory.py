@@ -4,7 +4,7 @@ from __future__ import division
 import sys
 
 from Push2.model import DeviceParameter
-from ableton.v2.base import listenable_property
+from ableton.v2.base import listenable_property, liveobj_valid
 from ableton.v2.control_surface.components import undo_redo
 from . import track_util
 from . import song_util
@@ -257,7 +257,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         new_device_count_track = len(all_devices)
         self.main_script().log_message("track device list size <{0}> BEFORE device update".format(new_device_count_track))
         for device in all_devices:
-            if device is not None:
+            if liveobj_valid(device):
                 self.main_script().log_message("before <{0}>".format(device.name))
             else:
                 self.main_script().log_message("before <None>")
