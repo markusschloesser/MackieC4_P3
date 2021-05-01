@@ -343,11 +343,11 @@ class MackieC4(object):
         tracks = self.song().visible_tracks + self.song().return_tracks # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
-            self.log_message("nbr visible tracks (includes rtn tracks) {0} but <{1}>"
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE"
                              .format(len(tracks), self.track_count))
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
-            self.log_message("nbr visible tracks (includes rtn tracks) {0} and <{1}>"
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range"
                              .format(len(tracks), self.track_count))
 
         index = 0
