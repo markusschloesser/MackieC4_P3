@@ -96,7 +96,7 @@ class MackieC4(object):
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
     scenelisten = {}
     scene = 0
-    track = 0
+    track_index = 0
     track_count = 0
     surface_is_locked = 0
     rebuild_my_database = 0
@@ -129,7 +129,7 @@ class MackieC4(object):
         # assign track to the local index of the matching selected track in Live
         for track in tracks:
             if track == self.song().view.selected_track:
-                self.track = index
+                self.track_index = index
             index = index + 1
 
         self.track_count = len(tracks)
@@ -334,7 +334,7 @@ class MackieC4(object):
     def track_change(self):
         # need to do 2 things
         # assign the new 'selected Index'
-        #     self.track = selected_index
+        #     self.track_index = selected_index
         # and
         # figure out if a track was added, deleted, or just changed
         # then delegate to appropriate encoder controller methods
@@ -342,8 +342,14 @@ class MackieC4(object):
         self.log_message("selected track {0}".format(selected_track.name))
         tracks = self.song().visible_tracks + self.song().return_tracks # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
-        assert len(tracks) in range(self.track_count - 1, self.track_count + 1)
-        self.log_message("nbr visible tracks (includes rtn tracks) {0}".format(len(tracks)))
+        if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} but <{1}>"
+                             .format(len(tracks), self.track_count))
+        else:
+            assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} and <{1}>"
+                             .format(len(tracks), self.track_count))
+
         index = 0
         found = 0
         selected_index = 0
@@ -360,9 +366,9 @@ class MackieC4(object):
             selected_index = 555
 
         self.log_message("found selected index {0}".format(selected_index))
-        if selected_index != self.track:
-            self.log_message("setting self.track {0} to selected index {1}".format(self.track, selected_index))
-            self.track = selected_index
+        if selected_index != self.track_index:
+            self.log_message("setting self.track_index {0} to selected index {1}".format(self.track_index, selected_index))
+            self.track_index = selected_index
 
         if self.track_count > len(tracks):
             self.__encoder_controller.track_deleted(selected_index)
@@ -951,7 +957,7 @@ class MackieC4(object):
             if note == C4SID_TRACK_LEFT:  # 19: left of master track is return tracks then regular tracks
                 selected_index = len(tracks) - 1
                 self.song().view.selected_track = tracks[selected_index]
-                self.track = selected_index
+                self.track_index = selected_index
             # can't move right of master track
         else:
             for track in tracks:
@@ -973,7 +979,7 @@ class MackieC4(object):
                             self.song().view.selected_track = self.song().master_track
                             self.log_message("new selected_track <{}>".format(self.song().master_track.name))
 
-            self.track = selected_index
+            self.track_index = selected_index
 
     def lock_surface(self):
         if self.surface_is_locked == 0:
