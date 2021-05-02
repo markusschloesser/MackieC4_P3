@@ -104,7 +104,7 @@ class EncoderAssignmentHistory(MackieC4Component):
                 params_of_devices_on_trk = devices_on_track[d_idx].parameters
                 self.t_d_p_count[t_idx][d_idx] = len(params_of_devices_on_trk)
                 max_param_banks = math.ceil(len(params_of_devices_on_trk) // SETUP_DB_PARAM_BANK_SIZE)
-                self.t_d_p_bank_count[t_idx][d_idx] = max_param_banks
+                self.t_d_p_bank_count[t_idx][d_idx] = int(max_param_banks)
                 self.t_d_p_bank_current[t_idx][d_idx] = 0
 
             self.t_count += 1
@@ -118,14 +118,14 @@ class EncoderAssignmentHistory(MackieC4Component):
             ttl_t_idx = idx_nrml_trks + rt_idx + 1
             self.t_d_count[ttl_t_idx] = len(devices_on_rtn_track)
             max_device_banks = math.ceil(len(devices_on_rtn_track) // SETUP_DB_DEVICE_BANK_SIZE)
-            self.t_d_bank_count[ttl_t_idx] = max_device_banks
+            self.t_d_bank_count[ttl_t_idx] = int(max_device_banks)
             self.t_d_bank_current[ttl_t_idx] = 0
             self.t_d_current[ttl_t_idx] = 0
             for rt_d_idx in range(len(devices_on_rtn_track)):
                 params_of_devices_on_rtn_trk = devices_on_rtn_track[rt_d_idx].parameters
                 self.t_d_p_count[ttl_t_idx][rt_d_idx] = len(params_of_devices_on_rtn_trk)
                 max_param_banks = math.ceil(len(params_of_devices_on_rtn_trk) // SETUP_DB_PARAM_BANK_SIZE)
-                self.t_d_p_bank_count[ttl_t_idx][rt_d_idx] = max_param_banks
+                self.t_d_p_bank_count[ttl_t_idx][rt_d_idx] = int(max_param_banks)
                 self.t_d_p_bank_current[ttl_t_idx][rt_d_idx] = 0
 
             self.t_count += 1
@@ -140,14 +140,14 @@ class EncoderAssignmentHistory(MackieC4Component):
         # devices_on_mstr_track = song_ref.master_track.devices
         self.t_d_count[mt_idx] = len(devices_on_mstr_track)
         max_device_banks = math.ceil(len(devices_on_mstr_track) // SETUP_DB_DEVICE_BANK_SIZE)
-        self.t_d_bank_count[mt_idx] = max_device_banks
+        self.t_d_bank_count[mt_idx] = int(max_device_banks)
         self.t_d_bank_current[mt_idx] = 0
         self.t_d_current[mt_idx] = 0
         for mt_d_idx in range(len(devices_on_mstr_track)):
             params_of_devices_on_mstr_trk = devices_on_mstr_track[mt_d_idx].parameters
             self.t_d_p_count[mt_idx][mt_d_idx] = len(params_of_devices_on_mstr_trk)
             max_param_banks = math.ceil(len(params_of_devices_on_mstr_trk) // SETUP_DB_PARAM_BANK_SIZE)
-            self.t_d_p_bank_count[mt_idx][mt_d_idx] = max_param_banks
+            self.t_d_p_bank_count[mt_idx][mt_d_idx] = int(max_param_banks)
             self.t_d_p_bank_current[mt_idx][mt_d_idx] = 0
 
         self.main_script().log_message(
@@ -208,12 +208,12 @@ class EncoderAssignmentHistory(MackieC4Component):
         # devices_on_selected_track = self.selected_track.devices
         self.t_d_count[track_index] = len(devices_on_selected_track)
         self.t_d_current[track_index] = 0
-        self.t_d_bank_count[track_index] = math.ceil(len(devices_on_selected_track) // SETUP_DB_DEVICE_BANK_SIZE)
+        self.t_d_bank_count[track_index] = int(math.ceil(len(devices_on_selected_track) // SETUP_DB_DEVICE_BANK_SIZE))
         self.t_d_bank_current[track_index] = 0
         for d in range(len(devices_on_selected_track)):
             parms_of_devs_on_trk = devices_on_selected_track[d].parameters
             self.t_d_p_count[track_index][d] = len(parms_of_devs_on_trk)
-            self.t_d_p_bank_count[track_index][d] = math.ceil(len(parms_of_devs_on_trk) // SETUP_DB_PARAM_BANK_SIZE)
+            self.t_d_p_bank_count[track_index][d] = int(math.ceil(len(parms_of_devs_on_trk) // SETUP_DB_PARAM_BANK_SIZE))
             self.t_d_p_bank_current[track_index][d] = 0
 
     def track_deleted(self, track_index):
@@ -255,9 +255,9 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     def device_added_deleted_or_changed(self, all_devices, selected_device, selected_device_idx):
 
-        # new_device_count_track = len(self.selected_track.devices)
         new_device_count_track = len(all_devices)
-        self.main_script().log_message("EAH: track device list size <{0}> BEFORE device update".format(new_device_count_track))
+        self.main_script().log_message("EAH: track device list size <{0}> BEFORE device update"
+                                       .format(new_device_count_track))
         idx = 0
         for device in all_devices:
             if liveobj_valid(device):
