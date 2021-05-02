@@ -253,7 +253,7 @@ class EncoderController(MackieC4Component):
                                            .format(type, track.name, tid))
             if liveobj_changed(self.selected_track, track):
                 self.main_script()\
-                    .log_message("because liveobj_changed() updating selected track to <{0}> ".format(track.name) +
+                    .log_message("because liveobj_changed(), updating selected track to <{0}> ".format(track.name) +
                                  "and track_changed() at index {0}".format(tid))
                 self.selected_track = track
                 self.track_changed(tid)
