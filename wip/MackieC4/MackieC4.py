@@ -38,6 +38,7 @@ from ableton.v2.control_surface.device_provider import DeviceProvider as DeviceP
 from ableton.v2.control_surface import BankingInfo, ControlSurface, DeviceDecoratorFactory, Layer
 from contextlib import contextmanager
 import ableton.v2.control_surface.default_bank_definitions as DEFAULT_BANK_DEFINITIONS
+from _Generic.util import DeviceAppointer
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
     from builtins import range
@@ -58,12 +59,12 @@ else:  # Live 10
 logger = logging.getLogger(__name__)
 
 
-class DeviceProvider(DeviceProviderBase):
-
-    def _appoint_device_from_song(self):
-        if isinstance(self.device) and self.device._rack_device == self.song.appointed_device:
-            return
-        self.device = device_to_appoint(self.song.appointed_device)
+# class DeviceProvider(DeviceProviderBase):
+#
+#     def _appoint_device_from_song(self):
+#         if isinstance(self.device) and self.device._rack_device == self.song.appointed_device:
+#             return
+#         self.device = device_to_appoint(self.song.appointed_device)
 
 
 class MackieC4(ControlSurface):
@@ -156,6 +157,8 @@ class MackieC4(ControlSurface):
         # if refresh_state is not already listening for visible tracks view changes
         if self.song().visible_tracks_has_listener(self.refresh_state) != 1:
             self.song().add_visible_tracks_listener(self.refresh_state)
+
+        self._device_appointer = DeviceAppointer(song=(self.song()), appointed_device_setter=(self._set_appointed_device))
 
     @contextmanager
     def component_guard(self):
@@ -379,6 +382,7 @@ class MackieC4(ControlSurface):
         self.rem_device_listeners()
         self.rem_transport_listener()
         self.song().remove_visible_tracks_listener(self.refresh_state)
+        self._device_appointer.disconnect()
         for c in self.__components:
             c.destroy()
         super(MackieC4, self).disconnect()
@@ -395,7 +399,7 @@ class MackieC4(ControlSurface):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
             Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
 
-        #self.rebuild_my_database = 1
+        # self.rebuild_my_database = 1
         if self.return_resetter == 1:
             time.sleep(0.5)
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode

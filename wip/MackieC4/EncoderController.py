@@ -996,8 +996,8 @@ class EncoderController(MackieC4Component):
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
                         if liveobj_valid(send_param[0]):
                             vpot_display_text.set_text(send_param[0], send_param[1])
-                        #else:
-                            #vpot_display_text.set_text('cowcow', 'mooooo')
+                        # else:
+                            # vpot_display_text.set_text('cowcow', 'mooooo')
                     # else:
                     #     vpot_display_text = default
                     #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
@@ -1036,7 +1036,7 @@ class EncoderController(MackieC4Component):
                         # lower == value, upper == value label
                         vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')
                         vpot_param = (self.selected_track.mixer_device.panning, VPOT_DISPLAY_BOOST_CUT)
-                    #else:
+                    # else:
                         # plain midi tracks for example don't have audio output, no "Pan" per se
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -1091,7 +1091,7 @@ class EncoderController(MackieC4Component):
                     if plugin_param is not None:
                         vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
                         # parameter name in top display row, param value in bottom row
-                        if liveobj_valid(plugin_param[0]): # then it is a DeviceParameter object
+                        if liveobj_valid(plugin_param[0]):  # then it is a DeviceParameter object
                             vpot_display_text.set_text(plugin_param[0], plugin_param[1])
                         # else:
                         #     vpot_display_text.set_text('Mooooo', 'cowsays')
@@ -1281,7 +1281,7 @@ class EncoderController(MackieC4Component):
                     upper_string3 += ' '
                 elif t in row_03_encoders:
                     if t < encoder_29_index:
-                        lower_string4 += adjust_string(l_alt_text, 6) # str(SendParam)
+                        lower_string4 += adjust_string(l_alt_text, 6)  # str(SendParam)
                         lower_string4 += ' '
                         upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
