@@ -78,7 +78,7 @@ class EncoderController(MackieC4Component):
         self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
         self.__display_repeat_count = 0
 
-        self.__master_track_index = 0
+        # self.__master_track_index = 0
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
         tracks = self.song().visible_tracks + self.song().return_tracks
@@ -154,7 +154,7 @@ class EncoderController(MackieC4Component):
         return
 
     def master_track_index(self):
-        return self.__master_track_index
+        return self.__eah.master_track_index()
 
     def track_changed(self, track_index):
         self.selected_track = self.song().view.selected_track

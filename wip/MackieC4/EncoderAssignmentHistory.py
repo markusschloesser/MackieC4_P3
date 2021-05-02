@@ -37,7 +37,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         MackieC4Component.__init__(self, main_script)
 
         self.__my_controlling_encoder = encoderController
-
+        self.__master_track_index = 0
         self.t_count = 0  # nbr of regular tracks
         """number of regular tracks"""
 
@@ -81,6 +81,9 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_d_count[t] = d
         max_device_banks = math.ceil(d // SETUP_DB_DEVICE_BANK_SIZE)
         self.t_d_bank_count[t] = int(max_device_banks)
+
+    def master_track_index(self):
+        return self.__master_track_index
 
     def build_setup_database(self, song_ref=None):
         if song_ref is None:
@@ -161,6 +164,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.main_script().log_message(
             "t_current idx <{0}> t_count <{1}> AFTER track change".format(self.t_current, self.t_count))
         if self.t_current == self.t_count:
+            assert self.t_current == self.__master_track_index
             self.main_script().log_message("This is the index of the master Track")
         if len(self.t_d_current) > self.t_current:
             rtn = self.t_d_current[self.t_current]
@@ -205,6 +209,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_current = track_index
         # self.selected_track = self.song().view.selected_track
         self.t_count += 1
+        self.__master_track_index = self.t_count  # master track is "one past" the end of regular + return tracks
         # devices_on_selected_track = self.selected_track.devices
         self.t_d_count[track_index] = len(devices_on_selected_track)
         self.t_d_current[track_index] = 0
@@ -247,6 +252,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.t_d_bank_current[t - 1] = self.t_d_bank_current[t]
 
         self.t_count -= 1
+        self.__master_track_index = self.t_count  # master track is "one past" the end of regular + return tracks
         self.t_current = track_index
         self.main_script().log_message(
             "t_current idx <{0}> t_count <{1}> AFTER track delete device slide activity".format(self.t_current, self.t_count))
