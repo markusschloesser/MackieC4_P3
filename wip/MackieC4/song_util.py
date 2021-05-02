@@ -2,12 +2,14 @@ from __future__ import absolute_import, print_function, unicode_literals
 from itertools import chain
 
 import sys
-from ableton.v2.base import const, compose, depends, find_if, liveobj_valid
+from ableton.v2.base import const, compose, depends, find_if, liveobj_valid, listens
+from ableton.v2.control_surface import Component, find_instrument_devices
+import ableton.v2.control_surface.components as TransportComponentBase
+from ableton.v2.control_surface.control import ButtonControl, EncoderControl
 
 if sys.version_info[0] >= 3:  # Live 11
     from ableton.v2.base import old_hasattr
 
-from ableton.v2.control_surface import Component, find_instrument_devices
 import Live
 
 
@@ -57,7 +59,7 @@ def unsolo_all(self):
 def any_muted_track(self):
     tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
     exists = next((x for x in tracks if x.mute), None)
-    if exists is not None:
+    if liveobj_valid(exists):
         return True
     return False
 
@@ -90,3 +92,19 @@ def unarm_all_button(self):
     for track in self.song().tracks:
         if track.can_be_armed and track.arm:
             track.arm = False
+
+#
+# class TransportComponent(TransportComponentBase):
+#     capture_midi_button = ButtonControl(EncoderControl.vpot_pressed)
+#
+#     @capture_midi_button.pressed
+#     def capture_midi_button(self, _):
+#         try:
+#             if self.song.can_capture_midi:
+#                 self.song.capture_midi()
+#         except RuntimeError:
+#             pass
+#
+#     @listens('can_capture_midi')
+#     def __on_can_capture_midi_changed(self):
+#         self.capture_midi_button.enabled = self.song.can_capture_midi
