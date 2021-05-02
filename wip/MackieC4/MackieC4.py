@@ -934,9 +934,10 @@ class MackieC4(object):
             track.view.add_selected_device_listener(cb)
             self.dlisten[track] = cb
 
-    def device_changestate(self, track, tid, type):  # MS THIS is the origin of shit, is it?
+    def device_changestate(self, track, tid, type):  # let's see...
+        self.log_message("C4Comp: track <{0}> tidx <{1}> type <{2}>".format(track, tid, type))
         # did = self.tuple_idx(track.devices, track.view.selected_device)
-        self.__encoder_controller.device_added_deleted_or_changed()
+        self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
         # if type == 2:
         #     pass
         # elif type == 1:

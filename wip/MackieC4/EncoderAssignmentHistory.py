@@ -251,23 +251,32 @@ class EncoderAssignmentHistory(MackieC4Component):
 
 
 
-    def device_added_deleted_or_changed(self, all_devices, selected_device):
+    def device_added_deleted_or_changed(self, all_devices, selected_device, selected_device_idx):
 
         # new_device_count_track = len(self.selected_track.devices)
         new_device_count_track = len(all_devices)
-        self.main_script().log_message("track device list size <{0}> BEFORE device update".format(new_device_count_track))
+        self.main_script().log_message("EAH: track device list size <{0}> BEFORE device update".format(new_device_count_track))
+        idx = 0
         for device in all_devices:
             if liveobj_valid(device):
-                self.main_script().log_message("before <{0}>".format(device.name))
+                self.main_script().log_message("idx <{0}> before <{1}>".format(idx, device.name))
             else:
-                self.main_script().log_message("before <None>")
+                self.main_script().log_message("idx <{0}> before <None> or lost weakref".format(idx))
+            idx += 1
+
+        if liveobj_valid(selected_device) and selected_device_idx > -1:
+            self.main_script().log_message("passed idx <{0}> and device <{1}>"
+                                           .format(selected_device_idx, selected_device.name))
 
         # this is the "old count"
         device_count_track = self.t_d_count[self.t_current]
+
         device_was_added = new_device_count_track > device_count_track
         device_was_removed = new_device_count_track < device_count_track
         selected_device_was_changed = new_device_count_track == device_count_track
         no_devices_on_track = new_device_count_track == 0
+        if selected_device_idx == -1:
+            assert no_devices_on_track # == True
 
         # self.main_script().log_message("no devices currently on track <{0}>".format(no_devices_on_track))
         #
@@ -311,21 +320,31 @@ class EncoderAssignmentHistory(MackieC4Component):
             param_bank_count_track[new_device_index] = max_param_banks
             param_bank_current_track[new_device_index] = 0
 
-            self.t_d_count[self.t_current] += 1
-            device_count_track = self.t_d_count[self.t_current]
+            self.t_d_count[self.t_current] = new_device_count_track
+            incremented_device_count_track = self.t_d_count[self.t_current]
 
             self.t_d_current[self.t_current] = new_device_index
-            max_device_banks = math.ceil(device_count_track // SETUP_DB_DEVICE_BANK_SIZE)
-            self.t_d_bank_count[self.t_current] = max_device_banks
-            max_device_banks = math.ceil(device_count_track + 1 // SETUP_DB_DEVICE_BANK_SIZE)
-            self.t_d_bank_current[self.t_current] = max_device_banks
-            # self.__chosen_plugin = self.selected_track.devices[new_device_index]
-            # self.__reorder_parameters()
-            # self.__reassign_encoder_parameters(for_display_only=False)
-            # self.request_rebuild_midi_map()
+            max_needed_device_banks = int(math.ceil(incremented_device_count_track // SETUP_DB_DEVICE_BANK_SIZE))
+            if SETUP_DB_MAX_DEVICE_BANKS > max_needed_device_banks:
+                self.t_d_bank_count[self.t_current] = max_needed_device_banks
+            else:
+                self.t_d_bank_count[self.t_current] = SETUP_DB_MAX_DEVICE_BANKS
+
+            # only update the current bank if this added device goes over the current page boundary
+            # and is inside the max page boundary
+            # page 0 is devices 1 - 8  page 16 is devices 121 - 128
+            new_current_device_bank_offset = incremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
+            if incremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 1:
+                self.t_d_bank_current[self.t_current] += 1
+                self.main_script().log_message("updated current track device bank to <{0}>"
+                                               .format(self.t_d_bank_current[self.t_current]))
+            else:
+                self.main_script().log_message("not updating current track device bank from <{0}>"
+                                               .format(self.t_d_bank_current[self.t_current]))
+
         elif device_was_removed:
             self.main_script().log_message("for 'delete' device event handling")
-            # still?
+
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
@@ -338,31 +357,43 @@ class EncoderAssignmentHistory(MackieC4Component):
             if deleted_device_index == device_count_track - 1:  # "last" device in list or "only" device in list
                 # only decrement "current device" index if deleted device wasn't the only device
                 if deleted_device_index > 0:
-                    self.t_d_current[self.t_current] -= 1
-                    max_device_banks = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
-                    self.t_d_bank_current[self.t_current] = max_device_banks
+                    self.t_d_count[self.t_current] -= 1
                 else:
-                    self.t_d_current[self.t_current] = 0  # zero is the value all "db" lists are initialized with
+                    self.t_d_count[self.t_current] = 0
             else:
-                self.t_d_current[self.t_current] = deleted_device_index
-                # index of deleted device is now index of current device
+                self.t_d_count[self.t_current] -= 1
 
-                # set the current "parameter bank" page number of new current device
-                # calculate the current bank page number of the new current device by adding 1 to
-                # the value of the deleted device index (this is index of device on "right" of deleted device because
-                # inside this else condition we know there is at least one device at a higher index,
-                # "above" the deleted device's index) and then dividing by 8?
-                # and that is supposed to be the "selected parameter bank" of the new current device?
-                # we wouldn't do this when the only device was deleted, but when the 4th of 4 was deleted, wouldn't
-                # we also want to update the new current device's current selected parameter bank? (see change above)
-                max_device_banks = math.ceil((self.t_d_current[self.t_current] + 1) // SETUP_DB_DEVICE_BANK_SIZE)
-                self.t_d_bank_current[self.t_current] = max_device_banks
+            assert new_device_count_track == self.t_d_count[self.t_current]
+            decremented_device_count_track = self.t_d_count[self.t_current]
+            self.t_d_current[self.t_current] = deleted_device_index
+            max_needed_device_banks = int(math.ceil(decremented_device_count_track // SETUP_DB_DEVICE_BANK_SIZE))
+            if SETUP_DB_MAX_DEVICE_BANKS > max_needed_device_banks:
+                self.t_d_bank_count[self.t_current] = max_needed_device_banks
+            else:
+                self.t_d_bank_count[self.t_current] = SETUP_DB_MAX_DEVICE_BANKS
 
-            # decrement this track's total device count
-            self.t_d_count[self.t_current] -= 1
-            # set the device "bank" -- if there are more than 8 devices on a track, 9 - 16 will be in device bank 2
-            max_device_banks = math.ceil(self.t_d_count[self.t_current] // SETUP_DB_DEVICE_BANK_SIZE)
-            self.t_d_bank_count[self.t_current] = max_device_banks
+            # only update the current bank if this removed device puts the selected device on the previous page bank
+            # and is not the minimum page bank already
+            # page 0 is devices 1 - 8  page 16 is devices 121 - 128
+            new_current_device_bank_offset = decremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
+            if decremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
+                self.t_d_bank_current[self.t_current] -= 1
+
+        elif selected_device_was_changed:
+            self.main_script().log_message("for 'change' device event handling")
+            # param_count_track = self.t_d_p_count[self.t_current]
+            # param_bank_count_track = self.t_d_p_bank_count[self.t_current]
+            # param_bank_current_track = self.t_d_p_bank_current[self.t_current]
+
+            self.t_d_current[self.t_current] = changed_device_index
+            assert new_device_count_track == self.t_d_count[self.t_current]
+            new_current_device_bank_offset = new_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
+            if new_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
+                # changing from device 9 to device 8 decrements the current bank
+                self.t_d_bank_current[self.t_current] -= 1
+            elif new_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 1:
+                # changing from device 8 to device 9 increments the current bank
+                self.t_d_bank_current[self.t_current] += 1
 
         return rtn_device_index
 
