@@ -69,7 +69,7 @@ class Encoders(MackieC4Component):
         needs_takeover = False
         encoder = self.__vpot_index
         param = self.__v_pot_parameter
-        if param is not None:
+        if liveobj_valid(param):
 
             feedback_rule = Live.MidiMap.CCFeedbackRule()  # MS interestingly in ALL Mackie scripts this is originally "feeback_rule" without the "d"
             feedback_rule.channel = 0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
@@ -90,7 +90,10 @@ class Encoders(MackieC4Component):
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
-            self.main_script().log_message("potIndex<{}> nothing mapped".format(encoder))
+            if not liveobj_valid(param):
+                self.main_script().log_message("potIndex<{0}> nothing mapped param is None or lost weakref".format(encoder))
+            else:
+                self.main_script().log_message("potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
             # does this even work? what happens without it
             # when the param is None, what have we mapped? what are we forwarding?
             # channel = 0

@@ -96,7 +96,7 @@ class MackieC4(object):
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
     scenelisten = {}
     scene = 0
-    track = 0
+    track_index = 0
     track_count = 0
     surface_is_locked = 0
     rebuild_my_database = 0
@@ -129,7 +129,7 @@ class MackieC4(object):
         # assign track to the local index of the matching selected track in Live
         for track in tracks:
             if track == self.song().view.selected_track:
-                self.track = index
+                self.track_index = index
             index = index + 1
 
         self.track_count = len(tracks)
@@ -290,7 +290,7 @@ class MackieC4(object):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
             Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
 
-        self.rebuild_my_database = 1
+        #self.rebuild_my_database = 1
         if self.return_resetter == 1:
             time.sleep(0.5)
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
@@ -332,35 +332,55 @@ class MackieC4(object):
             self.song().view.remove_selected_track_listener(self.track_change)
 
     def track_change(self):
+        # need to do 2 things
+        # assign the new 'selected Index'
+        #     self.track_index = selected_index
+        # and
+        # figure out if a track was added, deleted, or just changed
+        # then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
-        tracks = self.song().visible_tracks + self.song().return_tracks
+        self.log_message("selected track {0}".format(selected_track.name))
+        tracks = self.song().visible_tracks + self.song().return_tracks # not counting Master Track?
+        # track might have been deleted, added, or just changed (always one at a time?)
+        if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE"
+                             .format(len(tracks), self.track_count))
+        else:
+            assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range"
+                             .format(len(tracks), self.track_count))
+
         index = 0
         found = 0
         selected_index = 0
         for track in tracks:
+
             if track == selected_track:
                 selected_index = index
                 found = 1
+
             index = index + 1
 
         if found == 0:
+            # signal that something bad happened - selected track
+            selected_index = 555
 
-            # I think this 128 might mean use the master track index as a fallback
-            # but index 128 is out-of-bounds by one
-            # (valid track indexes inside EncoderController are 00 - 127)
-            selected_index = 127  # MS ok lets then try and change that to 127
+        self.log_message("found selected index {0}".format(selected_index))
+        if selected_index != self.track_index:
+            self.log_message("setting self.track_index {0} to selected index {1}".format(self.track_index, selected_index))
+            self.track_index = selected_index
 
-        if selected_index != self.track:
-            self.track = selected_index
-
-        if self.track_count > len(tracks) + 1:
-            self.__encoder_controller.track_deleted(selected_index - 1)
-        elif self.track_count < len(tracks) + 1:
-            self.__encoder_controller.track_added(selected_index - 1)  # MS this get called when moving clip to another existing track, why? Also gets called for other non-adding stuff
+        if self.track_count > len(tracks):
+            self.__encoder_controller.track_deleted(selected_index)
+            self.track_count -= 1
+        elif self.track_count < len(tracks):
+            self.__encoder_controller.track_added(selected_index)
+            self.track_count += 1
             self.return_resetter = 1
         else:
-            self.__encoder_controller.track_changed(selected_index - 1)
-        self.track_count = len(tracks) + 1
+            self.__encoder_controller.track_changed(selected_index)
+
+        assert self.track_count == len(tracks)
 
     def scene_change(self):
         selected_scene = self.song().view.selected_scene
@@ -385,7 +405,7 @@ class MackieC4(object):
         if self.song().tempo_has_listener(self.tempo_change) == 1:
             self.song().remove_tempo_listener(self.tempo_change)
 
-    def tempo_change(self):  # MS was broken and referring to LiveUtils, fixed and requirement for LiveUtils removed
+    def tempo_change(self):
         return Live.Application.get_application().get_document().tempo
 
     def add_transport_listener(self):
@@ -408,7 +428,7 @@ class MackieC4(object):
         if self.song().overdub_has_listener(self.overdub_change) == 1:
             self.song().remove_overdub_listener(self.overdub_change)
 
-    def overdub_change(self):  # MS: removed dependency to LiveUtils
+    def overdub_change(self):
         return Live.Song.Song.overdub
 
     def add_tracks_listener(self):
@@ -428,7 +448,7 @@ class MackieC4(object):
     #
     #     for slot in self.slisten:
     #         if slot is not None:
-    #             if slot.has_clip_has_listener(self.slisten[slot]) == 1:  # MS HAD a KeyError when deleting a track, referring to ClipSlot.ClipSlot, fixed in LiveUtils
+    #             if slot.has_clip_has_listener(self.slisten[slot]) == 1:
     #                 slot.remove_has_clip_listener(self.slisten[slot])
     #
     #     self.slisten = {}
@@ -442,7 +462,7 @@ class MackieC4(object):
     #
     #     for clip in self.clisten:
     #         if clip is not None:
-    #             if clip.playing_status_has_listener(self.clisten[clip]) == 1:  # MS KeyError when clip move across tracks, was 6 lines above, now here
+    #             if clip.playing_status_has_listener(self.clisten[clip]) == 1:
     #                 clip.remove_playing_status_listener(self.clisten[clip])
     #
     #     self.clisten = {}
@@ -517,7 +537,7 @@ class MackieC4(object):
         # Master Track
         for type in ('volume', 'panning', 'crossfader'):
             for tr in self.masterlisten[type]:
-                if tr is not None:
+                if liveobj_valid(tr):
                     cb = self.masterlisten[type][tr]
                     test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
                     if test == 1:
@@ -529,12 +549,14 @@ class MackieC4(object):
                      'available_output_routing_types', 'input_routing_channel', 'input_routing_type',
                      'output_routing_channel', 'output_routing_type'):
             for tr in self.mlisten[type]:
-                if tr is not None:
+                if liveobj_valid(tr):  # and not tr.None:
+                    self.log_message("track <{0}> ltype <{1}>".format(tr.name, type))
                     cb = self.mlisten[type][tr]
                     if type == 'arm':
                         if tr.can_be_armed == 1:
                             if tr.arm_has_listener(cb) == 1:
                                 tr.remove_arm_listener(cb)
+
                     elif type == 'current_monitoring_state':
                         if tr.can_be_armed == 1:
                             if tr.current_monitoring_state_has_listener(cb) == 1:
@@ -546,28 +568,28 @@ class MackieC4(object):
 
         for type in ('volume', 'panning'):
             for tr in self.mlisten[type]:
-                if tr is not None:
+                if liveobj_valid(tr):
                     cb = self.mlisten[type][tr]
                     test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
                     if test == 1:
                         eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
 
         for tr in self.mlisten['sends']:
-            if tr is not None:
+            if liveobj_valid(tr):
                 for send in self.mlisten['sends'][tr]:
-                    if send is not None:
+                    if liveobj_valid(send):
                         cb = self.mlisten['sends'][tr][send]
                         if send.value_has_listener(cb) == 1:
                             send.remove_value_listener(cb)
 
         for tr in self.mlisten['name']:
-            if tr is not None:
+            if liveobj_valid(tr):
                 cb = self.mlisten['name'][tr]
                 if tr.name_has_listener(cb) == 1:
                     tr.remove_name_listener(cb)
 
         for tr in self.mlisten['color']:
-            if tr is not None:
+            if liveobj_valid(tr):
                 cb = self.mlisten['color'][tr]
 
                 try:
@@ -577,14 +599,14 @@ class MackieC4(object):
                     pass
 
         for tr in self.mlisten['oml']:
-            if tr is not None:
+            if liveobj_valid(tr):
                 cb = self.mlisten['oml'][tr]
 
                 if tr.output_meter_left_has_listener(cb) == 1:
                     tr.remove_output_meter_left_listener(cb)
 
         for tr in self.mlisten['omr']:
-            if tr is not None:
+            if liveobj_valid(tr):
                 cb = self.mlisten['omr'][tr]
                 if tr.output_meter_right_has_listener(cb) == 1:
                     tr.remove_output_meter_right_listener(cb)
@@ -592,7 +614,7 @@ class MackieC4(object):
         # Return Tracks
         for type in ('solo', 'mute', 'available_output_routing_channels', 'available_output_routing_types', 'output_routing_channel', 'output_routing_type'):
             for tr in self.rlisten[type]:
-                if tr is not None:
+                if liveobj_valid(tr):
                     cb = self.rlisten[type][tr]
                     test = eval('tr.' + type + '_has_listener(cb)')
                     if test == 1:
@@ -600,28 +622,28 @@ class MackieC4(object):
 
         for type in ('volume', 'panning'):
             for tr in self.rlisten[type]:
-                if tr is not None:
+                if liveobj_valid(tr):
                     cb = self.rlisten[type][tr]
                     test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
                     if test == 1:
                         eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
 
         for tr in self.rlisten['sends']:
-            if tr is not None:
+            if liveobj_valid(tr):
                 for send in self.rlisten['sends'][tr]:
-                    if send is not None:
+                    if liveobj_valid(send):
                         cb = self.rlisten['sends'][tr][send]
                         if send.value_has_listener(cb) == 1:
                             send.remove_value_listener(cb)
 
         for tr in self.rlisten['name']:
-            if tr is not None:
+            if liveobj_valid(tr):
                 cb = self.rlisten['name'][tr]
                 if tr.name_has_listener(cb) == 1:
                     tr.remove_name_listener(cb)
 
         for tr in self.rlisten['color']:
-            if tr is not None:
+            if liveobj_valid(tr):
                 cb = self.rlisten["color"][tr]
                 try:
                     if tr.color_has_listener(cb) == 1:
@@ -836,8 +858,9 @@ class MackieC4(object):
     def check_md(self, param):
         devices = self.song().master_track.devices
         if len(devices) > 0:
-            if devices[0].parameters[param].value > 0:  # MS IndexError (out of range) referring to "if self.check_md(2)" and "cb = lambda: self.meter_changestate(tid, track, 0, r)"
-                return 1
+            # is this method only called with valid master track device param index values
+            if devices[0].parameters[param].value > 0:
+                return 1  # if the first or only master track device parameter value is > 0
             else:
                 return 0
         else:
@@ -862,37 +885,26 @@ class MackieC4(object):
 
     def rem_device_listeners(self):
         for pr in self.prlisten:
-            try:
-                ocb = self.prlisten[pr]  # KeyError when exchanging M4L device, KeyError when closing Live after deleting last device, ref to disconnect
-            except KeyError:
-                pr = None
-
-            if pr is not None:
+            if liveobj_valid(pr):
+                ocb = self.prlisten[pr]
                 if pr.value_has_listener(ocb) == 1:
                     pr.remove_value_listener(ocb)
 
         self.prlisten = {}
         for tr in self.dlisten:
-            ocb = self.dlisten[tr]
-            if tr is not None:
+            if liveobj_valid(tr):
+                ocb = self.dlisten[tr]
                 if tr.view.selected_device_has_listener(ocb) == 1:
                     tr.view.remove_selected_device_listener(ocb)
 
         self.dlisten = {}
         for de in self.plisten:
-            ocb = self.plisten[de]
-            if de is not None:
+            if liveobj_valid(de):
+                ocb = self.plisten[de]
                 if de.parameters_has_listener(ocb) == 1:
                     de.remove_parameters_listener(ocb)
 
-        self.plisten = {}  # MS this produces a KeyError when closing Live with:
-        # RemoteScriptError:   File "C:\ProgramData\Ableton\Live 11 Beta\Resources\MIDI Remote Scripts\MackieC4\MackieC4.py", line 240, in disconnect
-        # RemoteScriptError: self.rem_device_listeners()
-        # RemoteScriptError:   File "C:\ProgramData\Ableton\Live 11 Beta\Resources\MIDI Remote Scripts\MackieC4\MackieC4.py", line 776, in rem_device_listeners
-        # RemoteScriptError: ocb = self.prlisten[pr]
-        # RemoteScriptError: KeyError
-        # RemoteScriptError: <DeviceParameter.DeviceParameter object at 0x0000000073D58850>
-
+        self.plisten = {}
         return
 
     def add_devpmlistener(self, device):
@@ -922,9 +934,10 @@ class MackieC4(object):
             track.view.add_selected_device_listener(cb)
             self.dlisten[track] = cb
 
-    def device_changestate(self, track, tid, type):  # MS THIS is the origin of shit, is it?
+    def device_changestate(self, track, tid, type):  # let's see...
+        self.log_message("C4Comp: track <{0}> tidx <{1}> type <{2}>".format(track, tid, type))
         # did = self.tuple_idx(track.devices, track.view.selected_device)
-        self.__encoder_controller.device_added_deleted_or_changed()
+        self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
         # if type == 2:
         #     pass
         # elif type == 1:
@@ -945,7 +958,7 @@ class MackieC4(object):
             if note == C4SID_TRACK_LEFT:  # 19: left of master track is return tracks then regular tracks
                 selected_index = len(tracks) - 1
                 self.song().view.selected_track = tracks[selected_index]
-                self.track = selected_index
+                self.track_index = selected_index
             # can't move right of master track
         else:
             for track in tracks:
@@ -967,7 +980,7 @@ class MackieC4(object):
                             self.song().view.selected_track = self.song().master_track
                             self.log_message("new selected_track <{}>".format(self.song().master_track.name))
 
-            self.track = selected_index
+            self.track_index = selected_index
 
     def lock_surface(self):
         if self.surface_is_locked == 0:

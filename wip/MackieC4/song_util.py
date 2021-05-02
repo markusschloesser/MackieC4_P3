@@ -57,7 +57,7 @@ def unsolo_all(self):
 def any_muted_track(self):
     tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
     exists = next((x for x in tracks if x.mute), None)
-    if exists is not None:
+    if liveobj_valid(exists):
         return True
     return False
 
