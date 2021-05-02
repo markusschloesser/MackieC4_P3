@@ -160,6 +160,8 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_current = track_index
         self.main_script().log_message(
             "t_current idx <{0}> t_count <{1}> AFTER track change".format(self.t_current, self.t_count))
+        if self.t_current == self.t_count:
+            self.main_script().log_message("This is the index of the master Track")
         if len(self.t_d_current) > self.t_current:
             rtn = self.t_d_current[self.t_current]
         elif len(self.t_d_current) > 0:

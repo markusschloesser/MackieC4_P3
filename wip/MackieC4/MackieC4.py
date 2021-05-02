@@ -362,8 +362,13 @@ class MackieC4(object):
             index = index + 1
 
         if found == 0:
-            # signal that something bad happened - selected track
-            selected_index = 555
+            if selected_track == self.song().master_track:
+                # index is now "one past" the last index in
+                # tracks = self.song().visible_tracks + self.song().return_tracks
+                selected_index = index
+            else:
+                # signal that something bad happened - selected track
+                selected_index = 555
 
         self.log_message("found selected index {0}".format(selected_index))
         if selected_index != self.track_index:
@@ -935,7 +940,7 @@ class MackieC4(object):
             self.dlisten[track] = cb
 
     def device_changestate(self, track, tid, type):  # let's see...
-        self.log_message("C4Comp: track <{0}> tidx <{1}> type <{2}>".format(track, tid, type))
+        self.log_message("C4Comp: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
         # did = self.tuple_idx(track.devices, track.view.selected_device)
         self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
         # if type == 2:

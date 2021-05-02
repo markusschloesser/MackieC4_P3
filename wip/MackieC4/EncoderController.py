@@ -275,13 +275,13 @@ class EncoderController(MackieC4Component):
             self.main_script().log_message("switching __chosen_plugin {0} to device at index {1}"
                                            .format(self.__chosen_plugin.name, updated_idx))
 
-        if len(self.selected_track.devices) > updated_idx:
+        if len(self.selected_track.devices) > updated_idx > -1:
             self.__chosen_plugin = self.selected_track.devices[updated_idx]  # == new selected device
-            self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+            self.main_script().log_message("updated __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
         elif len(self.selected_track.devices) > 0:
             self.__chosen_plugin = self.selected_track.devices[0]  # == new selected device
             self.__eah.set_selected_device_index(0)
-            self.main_script().log_message("__chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+            self.main_script().log_message("only device __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
         else:
             self.__chosen_plugin = None
             # might happen if track with no devices deleted, and the next selected track also has no devices?
