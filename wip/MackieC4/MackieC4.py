@@ -395,7 +395,7 @@ class MackieC4(ControlSurface):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
             Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
 
-        self.rebuild_my_database = 1
+        #self.rebuild_my_database = 1
         if self.return_resetter == 1:
             time.sleep(0.5)
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
@@ -448,20 +448,22 @@ class MackieC4(ControlSurface):
         tracks = self.song().visible_tracks + self.song().return_tracks # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
-            self.log_message("nbr visible tracks (includes rtn tracks) {0} but <{1}>"
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE"
                              .format(len(tracks), self.track_count))
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
-            self.log_message("nbr visible tracks (includes rtn tracks) {0} and <{1}>"
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range"
                              .format(len(tracks), self.track_count))
 
         index = 0
         found = 0
         selected_index = 0
         for track in tracks:
+
             if track == selected_track:
                 selected_index = index
                 found = 1
+
             index = index + 1
 
         if found == 0:
@@ -664,6 +666,7 @@ class MackieC4(ControlSurface):
                         if tr.can_be_armed == 1:
                             if tr.arm_has_listener(cb) == 1:
                                 tr.remove_arm_listener(cb)
+
                     elif type == 'current_monitoring_state':
                         if tr.can_be_armed == 1:
                             if tr.current_monitoring_state_has_listener(cb) == 1:
@@ -1102,7 +1105,8 @@ class MackieC4(ControlSurface):
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
         try:
-            message = '(%s) %s' % (self.__class__.__name__, (' ').join(map(str, message)))
+            message = '(%s) %s' % (self.__class__.__name__,
+             (' ').join(map(str, message)))
             logger.info(message)
         except:
             logger.info('Logging encountered illegal character(s)!')
