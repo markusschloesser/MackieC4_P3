@@ -19,6 +19,8 @@ class Encoders(MackieC4Component):
 
     def __init__(self, main_script, vpot_index):
         MackieC4Component.__init__(self, main_script)
+        song = self.song
+        view = song.view
         self.within_destroy = False
         self.__encoder_controller = None
         self.__vpot_index = vpot_index

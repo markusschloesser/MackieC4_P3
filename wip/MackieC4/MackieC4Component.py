@@ -6,13 +6,13 @@ from __future__ import absolute_import, print_function, unicode_literals
 import sys
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import object  # MS needed for new object at class
-
+from ableton.v2.control_surface import Component
 from .consts import *
 import Live
 import MidiRemoteScript
 
 
-class MackieC4Component(object):
+class MackieC4Component(Component):
     """Baseclass for every 'sub component' of the Mackie Control. Just offers some """
     __module__ = __name__
 
@@ -23,6 +23,8 @@ class MackieC4Component(object):
     # then passes to this __init__.
     def __init__(self, main_script):
         self.__main_script = main_script
+        song = self.song
+        view = song.view
 
     def destroy(self):
         self.__main_script = None
@@ -55,8 +57,8 @@ class MackieC4Component(object):
     def set_alt_is_pressed(self, pressed):
         self.__main_script.set_pressed = pressed
 
-    def song(self):
-        return self.__main_script.song()
+    # def song(self):
+    #     return self.__main_script.song()
 
     def script_handle(self):
         return self.__main_script.handle()

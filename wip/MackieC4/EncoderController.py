@@ -82,8 +82,8 @@ class EncoderController(MackieC4Component):
         # self.__master_track_index = 0
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
-        tracks = self.song().visible_tracks + self.song().return_tracks
-        selected_track = self.song().view.selected_track
+        tracks = self.song.visible_tracks + self.song.return_tracks
+        selected_track = self.song.view.selected_track
         self.returns_switch = 0
         index = 0
         found = 0
@@ -100,7 +100,7 @@ class EncoderController(MackieC4Component):
             # self.__eah.track_changed(index)
             self.track_changed(index)
 
-        self.selected_track = self.song().view.selected_track
+        self.selected_track = self.song.view.selected_track
         self.update_assignment_mode_leds()
         self.__last_send_messages1 = {LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
         self.__last_send_messages2 = {LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
