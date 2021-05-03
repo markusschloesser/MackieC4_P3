@@ -118,12 +118,18 @@ class MackieC4(ControlSurface):
 
     def __init__(self, *a, **k):
         (super(MackieC4, self).__init__)(*a, **k)
+        self.register_slot(self.song.view, self._on_selected_track_changed, 'selected_track')
+        self._device_decorator_factory = self._create_device_decorator_factory()
+        self.register_disconnectable(self._device_decorator_factory)
         # self.__c_instance = c_instance
 
         # ControlSurface.__init__(self, c_instance)
         # initialize the 32 encoders, their EncoderController and
         # add them as __components here
         with self.component_guard():
+            self._create_controls()
+            self._create_navigation()
+            self._create_modes()
             self._suggested_input_port = 'MackieC4'
             self._suggested_output_port = 'MackieC4'
             with inject(element_container=(const(self._elements))).everywhere():
@@ -347,7 +353,7 @@ class MackieC4(ControlSurface):
 
     def song(self):
         """returns a reference to the Live Song that we do interact with"""
-        return self.__c_instance.song()
+        return self.__c_instance.song
 
     def handle(self):
         """returns a handle to the c_interface that is needed when forwarding MIDI events via the MIDI map"""
