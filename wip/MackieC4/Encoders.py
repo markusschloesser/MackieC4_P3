@@ -91,14 +91,17 @@ class Encoders(MackieC4Component):
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
             if not liveobj_valid(param):
-                self.main_script().log_message("potIndex<{0}> nothing mapped param is None or lost weakref".format(encoder))
+                if param is None:
+                    channel = 0
+                    cc_no = self.__vpot_cc_nbr
+                    Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
+                    self.main_script().log_message(
+                        "potIndex<{0}> mapping encoder to forward CC <{1}>".format(encoder, cc_no))
+                else:
+                    self.main_script().log_message("potIndex<{0}> nothing mapped param is lost weakref".format(encoder))
             else:
                 self.main_script().log_message("potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
-            # does this even work? what happens without it
-            # when the param is None, what have we mapped? what are we forwarding?
-            # channel = 0
-            # cc_no = self.__vpot_cc_nbr
-            # Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
+
 
     def assigned_track(self):
         return self._Encoders__assigned_track
