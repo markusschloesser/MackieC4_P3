@@ -503,6 +503,9 @@ class EncoderController(MackieC4Component):
                                 self.main_script().log_message("disarming track")
                                 self.selected_track.arm = False
                                 s.unlight_vpot_leds()
+                        else:
+                            self.main_script().log_message("track not armable")
+
             elif vpot_index == encoder_30_index:
                 for s in self.__encoders:
                     is_correct_index = s.vpot_index() == encoder_30_index
@@ -611,23 +614,29 @@ class EncoderController(MackieC4Component):
                     if self.__filter_mst_trk:
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm is not True:
+                                self.main_script().log_message("arming track")
                                 self.selected_track.arm = True
-                                s.show_full_enlighted_poti()
                             else:
+                                self.main_script().log_message("disarming track")
                                 self.selected_track.arm = False
-                                s.unlight_vpot_leds()
-                        # else the selected track can't be armed
-                    # else __filter_mst_trk == false, so 29 is not Record Arm, but some master track param?
+                        else:
+                            self.main_script().log_message("track not armable")
+                            s.unlight_vpot_leds()
+
                 elif encoder_index == encoder_30_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.mute:
+                            self.main_script().log_message("unmuting track")
                             self.selected_track.mute = False
                             s.unlight_vpot_leds()
                         else:
+                            self.main_script().log_message("muting track")
                             self.selected_track.mute = True
                             s.show_full_enlighted_poti()
-                        # else the selected track can't be muted
-                    # else __filter_mst_trk == false, so 30 is not mute, but some master track param?
+                    else:
+                        self.main_script().log_message("something about master track")
+                        s.unlight_vpot_leds()
+
                 elif encoder_index > encoder_30_index:
                     #  encoder 31 is "Pan"
                     #  encoder 32 is "Volume"
@@ -709,6 +718,7 @@ class EncoderController(MackieC4Component):
             encoder_11_index = 10
             encoder_25_index = 24
             encoder_26_index = 25
+            encoder_27_index = 26
             s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
 
             if encoder_index == encoder_01_index:
@@ -717,7 +727,7 @@ class EncoderController(MackieC4Component):
                     s.show_full_enlighted_poti()
                 else:
                     s.unlight_vpot_leds()
-            if encoder_index == encoder_02_index:
+            elif encoder_index == encoder_02_index:
                 if self.song().loop:
                     song_util.toggle_loop(self)
                     s.unlight_vpot_leds()
@@ -725,63 +735,68 @@ class EncoderController(MackieC4Component):
                     song_util.toggle_loop(self)
                     s.show_full_enlighted_poti()
 
-            if encoder_index == encoder_03_index:
+            elif encoder_index == encoder_03_index:
                 song_util.toggle_detail_sub_view(self)
                 if self.application().view.is_view_visible('Detail/Clip'):
                     s.show_full_enlighted_poti()
                 else:
                     s.unlight_vpot_leds()
-            if encoder_index == encoder_04_index:
+            elif encoder_index == encoder_04_index:
                 song_util.toggle_session_arranger_is_visible(self)
-                if song_util.toggle_session_arranger_is_visible:
+                if song_util.is_arranger_visible(self):
                     s.show_full_enlighted_poti()
                 else:
                     s.unlight_vpot_leds()
-            if encoder_index == encoder_05_index:
+            elif encoder_index == encoder_05_index:
                 song_util.toggle_browser_is_visible(self)
-                if song_util.toggle_browser_is_visible:
+                if song_util.is_browser_visible(self):
                     s.show_full_enlighted_poti()
                 else:
                     s.unlight_vpot_leds()
-            if encoder_index == encoder_06_index:
+            elif encoder_index == encoder_06_index:
                 song_util.unsolo_all(self)
                 for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
                     if track.solo:
                         s.show_full_enlighted_poti()
                     else:
                         s.unlight_vpot_leds()
-            if encoder_index == encoder_07_index:
+            elif encoder_index == encoder_07_index:
                 song_util.unmute_all(self)
                 s.unlight_vpot_leds()
-            if encoder_index == encoder_08_index:
+            elif encoder_index == encoder_08_index:
                 song_util.toggle_back_to_arranger(self)
                 if song_util.toggle_back_to_arranger:
                     s.show_full_enlighted_poti()
                 else:
                     s.unlight_vpot_leds()
-            if encoder_index == encoder_09_index:
-                if self.song().can_undo:
+            elif encoder_index == encoder_09_index:
+                if self.song().can_undo:  # if you can (still) undo something, LEDs stay lit
                     s.show_full_enlighted_poti()
                     song_util.undo(self)
                 else:
                     s.unlight_vpot_leds()
-            if encoder_index == encoder_10_index:
-                if self.song().can_redo:
+            elif encoder_index == encoder_10_index:
+                if self.song().can_redo:  # if you can (still) redo something, LEDs stay lit
                     s.show_full_enlighted_poti()
                     song_util.redo(self)
                 else:
                     s.unlight_vpot_leds()
-            if encoder_index == encoder_11_index:
+            elif encoder_index == encoder_11_index:
                 if song_util.unarm_all_button(self):
                     s.show_full_enlighted_poti()
                     song_util.unsolo_all(self)
-            if encoder_index == encoder_25_index:
+            elif encoder_index == encoder_25_index:
                 self.song().stop_playing()
-                s = next(x for x in self.__encoders if x.vpot_index() == encoder_26_index)
-                s.unlight_vpot_leds()
-            if encoder_index == encoder_26_index:
+                self.__encoders[encoder_26_index].unlight_vpot_leds()
+            elif encoder_index == encoder_26_index:
                 self.song().start_playing()
                 s.show_full_enlighted_poti()
+            elif encoder_index == encoder_27_index:
+                if self.song().overdub:
+                    s.unlight_vpot_leds()  ## if lit (because overdub), turn off
+                else:
+                    s.show_full_enlighted_poti()
+                self.song().overdub = not self.song().overdub
 
     def __send_parameter(self, vpot_index):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
@@ -1007,32 +1022,37 @@ class EncoderController(MackieC4Component):
                     if self.__filter_mst_trk:
                         vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
                         if self.selected_track.can_be_armed:
-                            if self.selected_track.arm:
-                                s.show_full_enlighted_poti()
-                                vpot_display_text.set_text(' Offbla   ', 'RecArm ')
+                            is_armed = self.selected_track.arm
+                            if is_armed:
+                                # this isn't working, LEDs don't get lit when track already Armed when selected
+                                # s.show_full_enlighted_poti()
+                                vpot_display_text.set_text(is_armed, 'RecArm')  # this is static text
                             else:
-                                s.unlight_vpot_leds()
-                                vpot_display_text.set_text('  ONbla   ', 'RecArm ')
+                                # s.unlight_vpot_leds()
+                                vpot_display_text.set_text(is_armed, 'RecArm')  # text never updates from here
+                        else:
+                            # s.unlight_vpot_leds()
+                            vpot_display_text.set_text('Never', 'RecArm')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_30_index:
                     vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
                     if self.__filter_mst_trk:
-
-                        if self.selected_track.mute:
+                        is_muted = self.selected_track.mute
+                        if is_muted:
                             s.show_full_enlighted_poti()
-                            vpot_display_text.set_text(' Off  ', ' Mute ')
+                            vpot_display_text.set_text(is_muted, 'Mute')  # this is static text
                         else:
                             s.unlight_vpot_leds()
-                            vpot_display_text.set_text(' On   ', ' Mute ')
+                            vpot_display_text.set_text(is_muted, 'Mute')  # text never updates from here
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_31_index:
                     if self.selected_track.has_audio_output:
                         # lower == value, upper == value label
-                        vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')
+                        vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')  # static text
                         vpot_param = (self.selected_track.mixer_device.panning, VPOT_DISPLAY_BOOST_CUT)
                     #else:
                         # plain midi tracks for example don't have audio output, no "Pan" per se
@@ -1042,7 +1062,7 @@ class EncoderController(MackieC4Component):
                 elif s_index == encoder_32_index:
                     if self.selected_track.has_audio_output:
                         # lower == value, upper == value label)
-                        vpot_display_text.set_text(self.selected_track.mixer_device.volume, 'Volume')
+                        vpot_display_text.set_text(self.selected_track.mixer_device.volume, 'Volume')  # static text
                         vpot_param = (self.selected_track.mixer_device.volume, VPOT_DISPLAY_WRAP)
                     else:
                         # plain midi tracks do NOT have "Volumn Sliders", so KEEP MOVING, NOTHING TO SHOW HERE
@@ -1115,6 +1135,7 @@ class EncoderController(MackieC4Component):
             encoder_11_index = 10
             encoder_25_index = 24
             encoder_26_index = 25
+            encoder_27_index = 26
             for s in self.__encoders:
                 s_index = s.vpot_index()
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
@@ -1157,6 +1178,9 @@ class EncoderController(MackieC4Component):
                         vpot_display_text.set_text(' Play ', ' Song ')
                     else:
                         vpot_display_text.set_text(' Stop ', ' Song ')
+
+                elif s.vpot_index() == encoder_27_index:
+                    vpot_display_text.set_text('on/off', 'Ovrdub')
 
                 s.set_v_pot_parameter(dummy_param[0], dummy_param[1])
                 self.__display_parameters.append(vpot_display_text)
@@ -1287,41 +1311,56 @@ class EncoderController(MackieC4Component):
                         if liveobj_valid(self.selected_track):
                             if self.selected_track.can_be_armed:
                                 if self.selected_track.arm:
-                                    lower_string4 += '  ON   '  # refactor to DisplaySegment text?
+                                    l_alt_text = "ON"
+                                    self.__encoders[encoder_29_index].show_full_enlighted_poti()
                                 else:
-                                    lower_string4 += ' Off   '
-                                upper_string4 += 'RecArm '
-                        else:
-                            lower_string4 += '       '
-                            upper_string4 += '       '
+                                    l_alt_text = "OFF"
+                                    self.__encoders[encoder_29_index].unlight_vpot_leds()
+
+                        lower_string4 += adjust_string(l_alt_text, 6)  # not centered?
+                        lower_string4 += ' '
+                        upper_string4 += adjust_string(u_alt_text, 6)
+                        upper_string4 += ' '
                     elif t == encoder_30_index:
-                        if self.__filter_mst_trk:
-                            if liveobj_valid(self.selected_track):
-                                if self.selected_track.mute:
-                                    lower_string4 += '  ON   '  # refactor to DisplaySegment text?
-                                    upper_string4 += ' MUTE  '
-                                else:
-                                    lower_string4 += ' Off   '
-                                    upper_string4 += ' Mute  '
+                        if self.__filter_mst_trk and liveobj_valid(self.selected_track):
+                            l_alt_text = "ON" if self.selected_track.mute else "OFF"
+                            lower_string4 += adjust_string(l_alt_text, 6)  # not centered?
                         else:
-                            lower_string4 += '       '
-                            upper_string4 += '       '
+                            lower_string4 += adjust_string(l_alt_text, 6)
+                        lower_string4 += ' '
+                        upper_string4 += adjust_string(u_alt_text, 6)
+                        upper_string4 += ' '
+                        # if self.__filter_mst_trk:
+                        #     if liveobj_valid(self.selected_track):
+                        #         if self.selected_track.mute:
+                        #             lower_string4 += '  ON   '  # refactor to DisplaySegment text?
+                        #             upper_string4 += ' MUTE  '
+                        #         else:
+                        #             lower_string4 += ' Off   '
+                        #             upper_string4 += ' Mute  '
+                        # else:
+                        #     lower_string4 += '       '
+                        #     upper_string4 += '       '
                     elif t == encoder_31_index:
                         lower_string4 += adjust_string(str(l_alt_text), 6)
                         lower_string4 += ' '
-                        if liveobj_valid(self.selected_track):
-                            if self.selected_track.has_audio_output:
-                                upper_string4 += ' Pan   '  # refactor to DisplaySegment text?
-                        else:
-                            upper_string4 += '       '
+                        upper_string4 += adjust_string(u_alt_text, 6)
+                        upper_string4 += ' '
+                        # if liveobj_valid(self.selected_track):
+                        #     if self.selected_track.has_audio_output:
+                        #         upper_string4 += ' Pan   '  # refactor to DisplaySegment text?
+                        # else:
+                        #     upper_string4 += '       '
                     elif t == encoder_32_index:
                         lower_string4 += adjust_string(str(l_alt_text), 6)
                         lower_string4 += ' '
-                        if liveobj_valid(self.selected_track):
-                            if self.selected_track.has_audio_output:
-                                upper_string4 += 'Volume '  # refactor to DisplaySegment text?
-                        else:
-                            upper_string4 += '       '
+                        upper_string4 += adjust_string(u_alt_text, 6)
+                        upper_string4 += ' '
+                        # if liveobj_valid(self.selected_track):
+                        #     if self.selected_track.has_audio_output:
+                        #         upper_string4 += 'Volume '  # refactor to DisplaySegment text?
+                        # else:
+                        #     upper_string4 += '       '
 
         so_many_spaces = '                                                       '
         if self.__assignment_mode == C4M_PLUGINS:
@@ -1447,6 +1486,8 @@ class EncoderController(MackieC4Component):
                 unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
             else:
                 unmute_all_encoder.unlight_vpot_leds()  # no tracks are muted
+
+
 
         elif self.__assignment_mode == C4M_USER:
             for s in self.__encoders:
