@@ -94,7 +94,7 @@ class EncoderAssignmentHistory(MackieC4Component):
                                        .format(self.t_current, self.t_count))
 
         tracks_in_song = self.song().tracks
-        #tracks_in_song = song_ref.tracks
+        # tracks_in_song = song_ref.tracks
         self.main_script().log_message("nbr tracks in song {0}".format(len(tracks_in_song)))
         for t_idx in range(len(tracks_in_song)):
             devices_on_track = tracks_in_song[t_idx].devices
@@ -138,7 +138,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         assert idx_nrml_and_rtn_trks == self.t_count - 1
         self.__master_track_index = idx_nrml_and_rtn_trks + 1
         mt_idx = self.__master_track_index
-        assert mt_idx == self.t_count # the master track index == the number of tracks and returns
+        assert mt_idx == self.t_count  # the master track index == the number of tracks and returns
         devices_on_mstr_track = self.song().master_track.devices
         # devices_on_mstr_track = song_ref.master_track.devices
         self.t_d_count[mt_idx] = len(devices_on_mstr_track)
@@ -248,7 +248,7 @@ class EncoderAssignmentHistory(MackieC4Component):
                 "t <{0}> t_d_bank_count[t] <{1}> during current device slide down activity".format(t, self.t_d_bank_count[t]))
             self.t_d_bank_count[t - 1] = self.t_d_bank_count[t]
             self.main_script().log_message(
-                "t <{0}> t_d_bank_current[t] <{1}> during current device slide down activity".format(t,self.t_d_bank_current[t]))
+                "t <{0}> t_d_bank_current[t] <{1}> during current device slide down activity".format(t, self.t_d_bank_current[t]))
             self.t_d_bank_current[t - 1] = self.t_d_bank_current[t]
 
         self.t_count -= 1
@@ -256,8 +256,6 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_current = track_index
         self.main_script().log_message(
             "t_current idx <{0}> t_count <{1}> AFTER track delete device slide activity".format(self.t_current, self.t_count))
-
-
 
     def device_added_deleted_or_changed(self, all_devices, selected_device, selected_device_idx):
 
@@ -284,7 +282,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         selected_device_was_changed = new_device_count_track == device_count_track
         no_devices_on_track = new_device_count_track == 0
         if selected_device_idx == -1:
-            assert no_devices_on_track # == True
+            assert no_devices_on_track  # == True
 
         # self.main_script().log_message("no devices currently on track <{0}>".format(no_devices_on_track))
         #
@@ -466,5 +464,3 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     def set_selected_device_bank_count(self, selected_device_bank_count):
         self.t_d_bank_count[self.t_current] = selected_device_bank_count
-        
-        

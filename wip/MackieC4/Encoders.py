@@ -17,14 +17,14 @@ class Encoders(MackieC4Component):
     """ Represents one encoder of the Mackie C4 """
     __module__ = __name__
 
-    def __init__(self, main_script, vpot_index):
-        MackieC4Component.__init__(self, main_script)
-        song = self.song
-        view = song.view
+    def __init__(self,  *a, **k):
+        (super(Encoders, self).__init__)(*a, **k)
+        # song = self.song
+        # view = song.view
         self.within_destroy = False
         self.__encoder_controller = None
-        self.__vpot_index = vpot_index
-        self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
+        self.__vpot_index = self.vpot_index
+        self.__vpot_cc_nbr = self.vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
         self.__v_pot_parameter = None
         self.__v_pot_display_mode = VPOT_DISPLAY_SINGLE_DOT
         self._Encoders__assigned_track = None

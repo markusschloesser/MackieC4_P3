@@ -169,7 +169,7 @@ def get_all_mixer_tracks(song):
     return tracks + list(song.return_tracks)
 
 
-class SelectedMixerTrackProvider(EventObject):
+class SelectedMixerTrackProvider(EventObject):  # MS from Push2
 
     @depends(song=None)
     def __init__(self, song=None, *a, **k):
@@ -215,7 +215,7 @@ class SelectedMixerTrackProvider(EventObject):
         return self._view.selected_track
 
 
-class SessionRingTrackProvider(SessionRingComponent, ItemProvider):
+class SessionRingTrackProvider(SessionRingComponent, ItemProvider):  # MS from Push2
 
     @depends(set_session_highlight=(const(nop)))
     def __init__(self, set_session_highlight=nop, *a, **k):

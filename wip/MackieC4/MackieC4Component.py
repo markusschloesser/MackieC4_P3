@@ -1,4 +1,4 @@
-# was originally Python bytecode 2.5 (62131)
+# was originally Python bytecode 2.5 (62131), not anymore ;-)
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/MackieC4Component.py
 # Compiled at: 2011-01-12 12:23:43
 # Decompiled by https://python-decompiler.com
@@ -21,10 +21,11 @@ class MackieC4Component(Component):
     # passing self and the list of initialized controllers, and then see inside
     # EncoderController __init__ where it names that second parameter main_script
     # then passes to this __init__.
-    def __init__(self, main_script):
-        self.__main_script = main_script
-        song = self.song
-        view = song.view
+    def __init__(self, *a, **k):
+        (super(MackieC4Component, self).__init__)(*a, **k)
+        # self.__main_script = main_script
+        # song = self.song
+        # view = song.view
 
     def destroy(self):
         self.__main_script = None

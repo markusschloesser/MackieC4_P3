@@ -455,7 +455,7 @@ class MackieC4(ControlSurface):
         # then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
         self.log_message("selected track {0}".format(selected_track.name))
-        tracks = self.song().visible_tracks + self.song().return_tracks # not counting Master Track?
+        tracks = self.song().visible_tracks + self.song().return_tracks  # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
             self.log_message("nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE"
