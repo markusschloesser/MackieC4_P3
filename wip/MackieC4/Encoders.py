@@ -32,11 +32,13 @@ class Encoders(MackieC4Component):
         return
 
     # function provided by MackieC4Component super
-    # def destroy(self):
-    #     # self.destroy()
-    #     self.within_destroy = True
-    #     MackieC4Component.destroy(self)
-    #     self.within_destroy = False
+    def destroy(self):
+        # self.destroy()
+        self.within_destroy = True
+        self.unlight_vpot_leds()
+        self.refresh_state()
+        MackieC4Component.destroy(self)
+        self.within_destroy = False
 
     def set_encoder_controller(self, encoder_controller):
         self.__encoder_controller = encoder_controller
@@ -47,31 +49,27 @@ class Encoders(MackieC4Component):
     def v_pot_parameter(self):
         return self.__v_pot_parameter
 
-    def set_v_pot_parameter(self, parameter, display_mode=VPOT_DISPLAY_SINGLE_DOT):
+    def set_v_pot_parameter(self, parameter, display_mode=VPOT_DISPLAY_BOOLEAN):
         self.__v_pot_display_mode = display_mode
         self.__v_pot_parameter = parameter
         if not parameter:
             self.unlight_vpot_leds()
 
     def unlight_vpot_leds(self):
-        data2 = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode]
-        # .send_midi((CC_STATUS, self.__vpot_cc_nbr, data2[0]))  # mode
-        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, LED_OFF_DATA))  # full off - encoder disable?
+        data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][0]
+        # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
+        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, RING_LED_ALL_OFF))
 
     def show_full_enlighted_poti(self):
-        data2 = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode]
-        # self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2[0]))  # mode
-        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2[1]))  # full on
+        data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][1]
+        # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
+        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2))
 
     def build_midi_map(self, midi_map_handle):
         needs_takeover = False
         encoder = self.__vpot_index
         param = self.__v_pot_parameter
-        if param is not None:
-            # if self.__v_pot_display_mode == VPOT_DISPLAY_SPREAD:
-            #     range_end = encoder_ring_spread_range.stop
-            # else:
-            #     range_end = encoder_ring_value_range.stop
+        if liveobj_valid(param):
 
             feedback_rule = Live.MidiMap.CCFeedbackRule()  # MS interestingly in ALL Mackie scripts this is originally "feeback_rule" without the "d"
             feedback_rule.channel = 0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
@@ -81,7 +79,7 @@ class Encoders(MackieC4Component):
             feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
             feedback_rule.delay_in_ms = -1.0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
-            self.main_script().log_message("potIndex<{}> cc_value<{}> received".format(encoder, param))
+            self.main_script().log_message("potIndex<{}> feedback<{}> mapped".format(encoder, param))
             #  MS: now wtf does the line give a Boost Error with:
             #  RemoteScriptError: Python argument types in
             #  MidiMap.map_midi_cc_with_feedback_map(int, DeviceParameter, int, int, MapMode, CCFeedbackRule, bool)
@@ -92,9 +90,21 @@ class Encoders(MackieC4Component):
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
-            channel = 0
-            cc_no = self.__vpot_cc_nbr
-            Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
+            if not liveobj_valid(param):
+                if param is None:
+                    channel = 0
+                    cc_no = self.__vpot_cc_nbr
+                    Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
+                    self.main_script().log_message(
+                        "potIndex<{0}> mapping encoder to forward CC <{1}>".format(encoder, cc_no))
+                else:
+                    self.main_script().log_message("potIndex<{0}> nothing mapped param is lost weakref".format(encoder))
+            else:
+                self.main_script().log_message("potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
+
+
+    def assigned_track(self):
+        return self._Encoders__assigned_track
 
     def __assigned_track_index(self):  # MS new from Mackie Control.ChannelStrip
         index = 0

@@ -10,10 +10,9 @@ if sys.version_info[0] >= 3:  # Live 11
 from .consts import *
 import Live
 import MidiRemoteScript
-from _Framework.ControlSurface import ControlSurface
 
 
-class MackieC4Component(object):  # MS lets try this with "(Object)", also in new Mackie control scripts
+class MackieC4Component(object):
     """Baseclass for every 'sub component' of the Mackie Control. Just offers some """
     __module__ = __name__
 
