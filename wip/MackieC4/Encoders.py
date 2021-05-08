@@ -80,13 +80,6 @@ class Encoders(MackieC4Component):
             feedback_rule.delay_in_ms = -1.0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
             self.main_script().log_message("potIndex<{}> feedback<{}> mapped".format(encoder, param))
-            #  MS: now wtf does the line give a Boost Error with:
-            #  RemoteScriptError: Python argument types in
-            #  MidiMap.map_midi_cc_with_feedback_map(int, DeviceParameter, int, int, MapMode, CCFeedbackRule, bool)
-            #  did not match C++ signature:
-            #  map_midi_cc_with_feedback_map(unsigned int midi_map_handle, class TPyHandle<class ATimeableValue> parameter, int midi_channel, int controller_number, enum NRemoteMapperTypes::TControllerMapMode map_mode, class NPythonMidiMap::TCCFeedbackRule feedback_rule, bool avoid_takeover, float sensitivity=1.0)
-            #  maybe LOM thing??
-            # _Framework.ControlSurface first does an "installmapping" and then uses that to do a "buildmidimap"
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
@@ -101,7 +94,6 @@ class Encoders(MackieC4Component):
                     self.main_script().log_message("potIndex<{0}> nothing mapped param is lost weakref".format(encoder))
             else:
                 self.main_script().log_message("potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
-
 
     def assigned_track(self):
         return self._Encoders__assigned_track

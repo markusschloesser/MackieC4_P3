@@ -8,10 +8,3 @@ from .MackieC4 import MackieC4
 
 def create_instance(c_instance):
     return MackieC4(c_instance)
-
-
-from _Framework.Capabilities import *
-
-
-# def get_capabilities():
-#    return {GENERIC_SCRIPT_KEY: True}

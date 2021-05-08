@@ -158,12 +158,6 @@ class MackieC4(object):
         your build_midi_map function. For performance reasons this is only
         called once per GUI frame.
         """
-    # MS: _Framework.ControlSurface does the following codeblock
-    # def request_rebuild_midi_map(self):
-    #     if self._suppress_requests_counter > 0:
-    #         self._rebuild_requests_during_suppression += 1
-    #     else:
-    #         self._c_instance.request_rebuild_midi_map()
         self.__c_instance.request_rebuild_midi_map()
 
     def update_display(self):
@@ -229,10 +223,10 @@ class MackieC4(object):
         return True
 
     def suggest_input_port(self):
-        return ''
+        return 'MackieC4'
 
     def suggest_output_port(self):
-        return ''
+        return 'MackieC4'
 
     def application(self):
         """returns a reference to the application that we are running in"""

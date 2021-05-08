@@ -94,7 +94,7 @@ class EncoderAssignmentHistory(MackieC4Component):
                                        .format(self.t_current, self.t_count))
 
         tracks_in_song = self.song().tracks
-        #tracks_in_song = song_ref.tracks
+        # tracks_in_song = song_ref.tracks
         self.main_script().log_message("nbr tracks in song {0}".format(len(tracks_in_song)))
         for t_idx in range(len(tracks_in_song)):
             devices_on_track = tracks_in_song[t_idx].devices
@@ -256,8 +256,6 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_current = track_index
         self.main_script().log_message(
             "t_current idx <{0}> t_count <{1}> AFTER track delete device slide activity".format(self.t_current, self.t_count))
-
-
 
     def device_added_deleted_or_changed(self, all_devices, selected_device, selected_device_idx):
 
@@ -466,5 +464,3 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     def set_selected_device_bank_count(self, selected_device_bank_count):
         self.t_d_bank_count[self.t_current] = selected_device_bank_count
-        
-        
