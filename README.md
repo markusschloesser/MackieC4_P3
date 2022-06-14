@@ -6,20 +6,6 @@ I suggest though to open the Live logfile to monitor what's going on, as there's
 What is it?
 A midi remote script for Ableton Live 10 and 11 for the Mackie C4 controller in Python 3 with backwards compatibility to Py2.7 for Live 10.
 
-
-What we did in the last months:
-
-  1. Been using Pycharm with proper syntax checking.
-  2. Got rid of LiveUtils
-  3. By hand did the Py2 -> Py3 conversion by looking at what was in the code that looked like Py2 and converted that the Py3 (stuff like utf, long int, xrange > range etc)
-  4. Managed to decompile the new Live11/Py3 scripts by using uncomyple6 and using the resulting code as a reference. Not everything was decompiled successfully but most of it
-  5- Worked and commented a lot in the code
-  6. Opened a repository here
-  7. fixed a tremendous amount of ugly errors
-  8. Integrated liveobj_valid and liveobj_changed
-  9. introduced new functionality 
-
-
 What works:
 
 			1. Script gets detected in Live 10 and 11
@@ -55,8 +41,19 @@ Old Status:
 3. Was obviously written in Py2
  
  
-What we did last year:
+What we did 2020:
   1. First I decompiled the scripts using an online converter, with mixed results.
   2. Jon did lots of work to that, fixed, commented, streamlined, adapted. 
   3. I then decompiled using a better online decompiler.
 
+What we did in 2021:
+
+  1. using Pycharm with proper syntax checking.
+  2. Got rid of LiveUtils
+  3. By hand did the Py2 -> Py3 conversion by looking at what was in the code that looked like Py2 and converted that the Py3 (stuff like utf, long int, xrange > range etc)
+  4. Managed to decompile the new Live11/Py3 scripts by using uncomyple6 and using the resulting code as a reference. Not everything was decompiled successfully but most of it
+  5- Worked and commented a lot in the code
+  6. Opened a repository here
+  7. fixed a tremendous amount of ugly errors
+  8. Integrated liveobj_valid and liveobj_changed
+  9. introduced lots of new functionality 
