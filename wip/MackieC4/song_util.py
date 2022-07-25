@@ -31,6 +31,7 @@ def toggle_session_arranger_is_visible(self):
 def is_arranger_visible(self):
     return self.application().view.is_view_visible('Arranger')
 
+
 # toggle clip / Device view
 def toggle_detail_sub_view(self):
     if self.application().view.is_view_visible('Detail/Clip'):
@@ -45,8 +46,10 @@ def toggle_browser_is_visible(self):
     else:
         self.application().view.show_view('Browser')
 
+
 def is_browser_visible(self):
     return self.application().view.is_view_visible('Browser')
+
 
 # back to arrangement / BTA
 def toggle_back_to_arranger(self, name='BTA'):

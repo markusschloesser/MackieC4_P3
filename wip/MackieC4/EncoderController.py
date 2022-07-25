@@ -1109,7 +1109,7 @@ class EncoderController(MackieC4Component):
                     if plugin_param is not None:
                         vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
                         # parameter name in top display row, param value in bottom row
-                        if liveobj_valid(plugin_param[0]): # then it is a DeviceParameter object
+                        if liveobj_valid(plugin_param[0]):  # then it is a DeviceParameter object
                             vpot_display_text.set_text(plugin_param[0], plugin_param[1])
                         # else:
                         #     vpot_display_text.set_text('Mooooo', 'cowsays')

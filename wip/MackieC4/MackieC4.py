@@ -27,6 +27,8 @@ This script is based off the Ableton Live supplied MIDI Remote Scripts.
 
 This is the second file that is loaded, by way of being instantiated through
 __init__.py
+
+MS Nov 1st: this version fixes fuck up vomit in the meter things in "Lichtsegel" (track of mine)
 """
 
 from __future__ import absolute_import, print_function, unicode_literals
@@ -290,7 +292,7 @@ class MackieC4(object):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
             Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
 
-        #self.rebuild_my_database = 1
+        # self.rebuild_my_database = 1
         if self.return_resetter == 1:
             time.sleep(0.5)
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
@@ -339,7 +341,7 @@ class MackieC4(object):
         # figure out if a track was added, deleted, or just changed
         # then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
-        self.log_message("selected track {0}".format(selected_track.name))
+        #  self.log_message("selected track {0}".format(selected_track.name))
         tracks = self.song().visible_tracks + self.song().return_tracks # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
@@ -387,7 +389,7 @@ class MackieC4(object):
 
         assert self.track_count == len(tracks)
 
-    def scene_change(self):
+    def scene_change(self):   # do we need scenes? imho no
         selected_scene = self.song().view.selected_scene
         scenes = self.song().scenes
         index = 0
@@ -525,7 +527,6 @@ class MackieC4(object):
     #     if (slot in self.slisten) != 1:
     #         slot.add_has_clip_listener(cb)
     #         self.slisten[slot] = cb
-
 
     # def rem_mixer_listeners(self, track):
     #     if liveobj_valid(track):
@@ -673,13 +674,13 @@ class MackieC4(object):
         for type in ('volume', 'panning', 'crossfader'):
             self.add_master_listener(0, type, tr)
 
-        self.add_meter_listener(0, tr, 2)
+        # self.add_meter_listener(0, tr, 2)
         tracks = self.song().visible_tracks
         for track in range(len(tracks)):
             tr = tracks[track]
             self.add_trname_listener(track, tr, 0)
-            if tr.has_audio_output:
-                self.add_meter_listener(track, tr)
+            # if tr.has_audio_output:
+            #     self.add_meter_listener(track, tr)
             for type in ('arm', 'solo', 'mute'):
                 if type == 'arm':
                     if tr.can_be_armed == 1:
@@ -697,7 +698,7 @@ class MackieC4(object):
         for track in range(len(tracks)):
             tr = tracks[track]
             self.add_trname_listener(track, tr, 1)
-            self.add_meter_listener(track, tr, 1)
+            # self.add_meter_listener(track, tr, 1)
             for type in ('solo', 'mute'):
                 self.add_retmixert_listener(track, type, tr)
 
@@ -763,15 +764,15 @@ class MackieC4(object):
             self.mlisten['name'][track] = cb
         track.add_name_listener(cb)
 
-    def add_meter_listener(self, tid, track, r=0):
-        cb = lambda: self.meter_changestate(tid, track, 0, r)
-        if (track in self.mlisten['oml']) != 1:
-            self.mlisten['oml'][track] = cb
-        track.add_output_meter_left_listener(cb)
-        cb = lambda: self.meter_changestate(tid, track, 1, r)
-        if (track in self.mlisten['omr']) != 1:
-            self.mlisten['omr'][track] = cb
-        track.add_output_meter_right_listener(cb)
+    # def add_meter_listener(self, tid, track, r=0):  ## not needed for the C4
+    #     cb = lambda: self.meter_changestate(tid, track, 0, r)
+    #     if (track in self.mlisten['oml']) != 1:
+    #         self.mlisten['oml'][track] = cb
+    #     track.add_output_meter_left_listener(cb)
+    #     cb = lambda: self.meter_changestate(tid, track, 1, r)
+    #     if (track in self.mlisten['omr']) != 1:
+    #         self.mlisten['omr'][track] = cb
+    #     track.add_output_meter_right_listener(cb)
 
     # def clip_name(self, clip, tid, cid):
     #     pass
@@ -847,24 +848,24 @@ class MackieC4(object):
         else:
             self.trBlock(0, len(self.song().visible_tracks))
 
-    def meter_changestate(self, tid, track, lr, r=0):
-        if r == 2:
-            if self.check_md(2):
-                if lr == 0:
-                    pass
-        elif r == 1:
-            if self.check_md(3):
-                if lr == 0:
-                    pass
-        elif self.check_md(4):
-            if lr == 0:
-                pass
+    # def meter_changestate(self, tid, track, lr, r=0):
+    #     if r == 2:
+    #         if self.check_md(2):
+    #             if lr == 0:
+    #                 pass
+    #     elif r == 1:
+    #         if self.check_md(3):
+    #             if lr == 0:
+    #                 pass
+    #     elif self.check_md(4):
+    #         if lr == 0:
+    #             pass
 
     def check_md(self, param):
         devices = self.song().master_track.devices
         if len(devices) > 0:
             # is this method only called with valid master track device param index values
-            if devices[0].parameters[param].value > 0:
+            if liveobj_valid(devices[0].parameters[param].value):
                 return 1  # if the first or only master track device parameter value is > 0
             else:
                 return 0

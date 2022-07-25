@@ -257,8 +257,6 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.main_script().log_message(
             "t_current idx <{0}> t_count <{1}> AFTER track delete device slide activity".format(self.t_current, self.t_count))
 
-
-
     def device_added_deleted_or_changed(self, all_devices, selected_device, selected_device_idx):
 
         new_device_count_track = len(all_devices)

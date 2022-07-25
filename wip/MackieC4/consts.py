@@ -203,7 +203,7 @@ C4M_FUNCTION = 3  # == the C4SID_FUNCTION button = 0x08  # 8  G#-1
 ENCODER_BASE = 0
 NUM_ENCODERS_ONE_ROW = 8
 NUM_ENCODERS = NUM_ENCODERS_ONE_ROW * 4
-encoder_range = range(ENCODER_BASE, NUM_ENCODERS)  # MS do we need to change "range" cos of Py3? see https://python-future.org/compatible_idioms.html#range
+encoder_range = range(ENCODER_BASE, NUM_ENCODERS)
 row_00_encoders = range(ENCODER_BASE, NUM_ENCODERS_ONE_ROW)
 row_01_encoders = range(NUM_ENCODERS_ONE_ROW, NUM_ENCODERS_ONE_ROW * 2)  # [8,9,10,11,12,13,14,15]
 row_02_encoders = range(NUM_ENCODERS_ONE_ROW * 2, NUM_ENCODERS_ONE_ROW * 3)  # [16,17,18,19,20,21,22,23]

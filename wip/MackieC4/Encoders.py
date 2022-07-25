@@ -4,7 +4,6 @@
 # Decompiled by https://python-decompiler.com
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from . MackieC4Component import *
-from ableton.v2.base import liveobj_valid  # MS
 
 import sys
 if sys.version_info[0] >= 3:  # Live 11
@@ -13,7 +12,7 @@ if sys.version_info[0] >= 3:  # Live 11
 from _Framework.ControlSurface import ControlSurface  # MS
 from _Framework.Control import Control  # MS
 from itertools import chain
-from ableton.v2.base import liveobj_valid  # MS not needed right now, but will in the future
+from ableton.v2.base import liveobj_valid
 
 
 class Encoders(MackieC4Component):
@@ -80,13 +79,6 @@ class Encoders(MackieC4Component):
             feedback_rule.delay_in_ms = -1.0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
             self.main_script().log_message("potIndex<{}> feedback<{}> mapped".format(encoder, param))
-            #  MS: now wtf does the line give a Boost Error with:
-            #  RemoteScriptError: Python argument types in
-            #  MidiMap.map_midi_cc_with_feedback_map(int, DeviceParameter, int, int, MapMode, CCFeedbackRule, bool)
-            #  did not match C++ signature:
-            #  map_midi_cc_with_feedback_map(unsigned int midi_map_handle, class TPyHandle<class ATimeableValue> parameter, int midi_channel, int controller_number, enum NRemoteMapperTypes::TControllerMapMode map_mode, class NPythonMidiMap::TCCFeedbackRule feedback_rule, bool avoid_takeover, float sensitivity=1.0)
-            #  maybe LOM thing??
-            # _Framework.ControlSurface first does an "installmapping" and then uses that to do a "buildmidimap"
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
@@ -95,13 +87,12 @@ class Encoders(MackieC4Component):
                     channel = 0
                     cc_no = self.__vpot_cc_nbr
                     Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
-                    self.main_script().log_message(
-                        "potIndex<{0}> mapping encoder to forward CC <{1}>".format(encoder, cc_no))
+                    #  self.main_script().log_message(
+                    #    "potIndex<{0}> mapping encoder to forward CC <{1}>".format(encoder, cc_no))
                 else:
                     self.main_script().log_message("potIndex<{0}> nothing mapped param is lost weakref".format(encoder))
             else:
                 self.main_script().log_message("potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
-
 
     def assigned_track(self):
         return self._Encoders__assigned_track
@@ -117,8 +108,6 @@ class Encoders(MackieC4Component):
             pass
 
     def __select_track(self):
-        #  pass  # MS: SISSY put this pass in, and commented everything following out, why? lets try reversing that
-        #  lots of changes here, trying to do what mackie control does
         if self._Encoders__assigned_track:
             all_tracks = tuple(self.song().visible_tracks) + tuple(self.song().return_tracks)  # MS tuple is new and from Mackie script
             if self.song().view.selected_track != all_tracks[self.__assigned_track_index()]:  # MS new but seems to work
