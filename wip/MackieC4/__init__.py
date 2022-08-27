@@ -2,7 +2,7 @@
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/__init__.py
 # Compiled at: 2011-01-12 06:17:37
 # Decompiled by https://python-decompiler.com
-from __future__ import absolute_import, print_function, unicode_literals  # MS
+from __future__ import absolute_import, print_function, unicode_literals
 from .MackieC4 import MackieC4
 
 

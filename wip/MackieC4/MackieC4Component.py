@@ -13,7 +13,7 @@ import MidiRemoteScript
 
 
 class MackieC4Component(object):
-    """Baseclass for every 'sub component' of the Mackie Control. Just offers some """
+    """Baseclass for every 'subcomponent' of the Mackie Control. Just offers some """
     __module__ = __name__
 
     # main_script is the MackieC4 "main class instance" that interacts with Live

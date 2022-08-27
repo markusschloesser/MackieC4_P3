@@ -34,7 +34,7 @@ import Live
 
 class EncoderController(MackieC4Component):
     """
-     Controls all encoders of the Mackie C4pro controller extension
+     Controls all encoders of the Mackie C4 Pro controller extension
   """
     __module__ = __name__
 
@@ -425,7 +425,7 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         # else don't update because nothing changed here
 
-    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently half broken, only works for normal devices, not grouped devices
+    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently only half working, only works for normal devices, not grouped devices
         """ "slot navigation" only functions if the current mode is C4M_PLUGINS """
         if self.__assignment_mode == button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
             current_trk_device_index = self.__eah.get_selected_device_index()
@@ -793,7 +793,7 @@ class EncoderController(MackieC4Component):
                 s.show_full_enlighted_poti()
             elif encoder_index == encoder_27_index:
                 if self.song().overdub:
-                    s.unlight_vpot_leds()  ## if lit (because overdub), turn off
+                    s.unlight_vpot_leds()  # if lit (because overdub), turn off
                 else:
                     s.show_full_enlighted_poti()
                 self.song().overdub = not self.song().overdub
@@ -1009,12 +1009,6 @@ class EncoderController(MackieC4Component):
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
                         if liveobj_valid(send_param[0]):
                             vpot_display_text.set_text(send_param[0], send_param[1])
-                        #else:
-                            #vpot_display_text.set_text('cowcow', 'mooooo')
-                    # else:
-                    #     vpot_display_text = default
-                    #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-                    #
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_29_index:
@@ -1111,8 +1105,6 @@ class EncoderController(MackieC4Component):
                         # parameter name in top display row, param value in bottom row
                         if liveobj_valid(plugin_param[0]):  # then it is a DeviceParameter object
                             vpot_display_text.set_text(plugin_param[0], plugin_param[1])
-                        # else:
-                        #     vpot_display_text.set_text('Mooooo', 'cowsays')
                     else:
                         vpot_display_text.set_text('Param', ' No ')
 
@@ -1297,13 +1289,13 @@ class EncoderController(MackieC4Component):
                     lower_string2 += adjust_string(str(l_alt_text), 6)
                     lower_string2 += ' '
                 elif t in row_02_encoders:
-                    lower_string3 += adjust_string(l_alt_text, 6)  # str(DeviceParameter) vomit on unicode?
+                    lower_string3 += adjust_string(l_alt_text, 6)
                     lower_string3 += ' '
                     upper_string3 += adjust_string(u_alt_text, 6)
                     upper_string3 += ' '
                 elif t in row_03_encoders:
                     if t < encoder_29_index:
-                        lower_string4 += adjust_string(l_alt_text, 6) # str(SendParam)
+                        lower_string4 += adjust_string(l_alt_text, 6)
                         lower_string4 += ' '
                         upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
@@ -1317,7 +1309,7 @@ class EncoderController(MackieC4Component):
                                     l_alt_text = "OFF"
                                     self.__encoders[encoder_29_index].unlight_vpot_leds()
 
-                        lower_string4 += adjust_string(l_alt_text, 6)  # not centered?
+                        lower_string4 += adjust_string(l_alt_text, 6)
                         lower_string4 += ' '
                         upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
@@ -1379,7 +1371,7 @@ class EncoderController(MackieC4Component):
                 lower_string1a += adjust_string(self.selected_track.name, 20)
             else:
                 lower_string1a += "---------0---------1"
-            lower_string1a = lower_string1a.center(20)  # should already be centered?
+            lower_string1a = lower_string1a.center(20)
             lower_string1a += ' '
             if not liveobj_valid(self.__chosen_plugin):
                 # blank everything out
