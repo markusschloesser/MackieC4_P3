@@ -342,15 +342,15 @@ class MackieC4(object):
         # then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
         #  self.log_message("selected track {0}".format(selected_track.name))
-        tracks = self.song().visible_tracks + self.song().return_tracks # not counting Master Track?
+        tracks = self.song().visible_tracks + self.song().return_tracks  # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
             self.log_message("nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE"
                              .format(len(tracks), self.track_count))
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
-            self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range"
-                             .format(len(tracks), self.track_count))
+            #  self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range"
+            #                   .format(len(tracks), self.track_count))
 
         index = 0
         found = 0
@@ -970,21 +970,21 @@ class MackieC4(object):
             for track in tracks:
                 index = index + 1
                 if track == selected_track:
-                    self.log_message("current selected_track <{}>".format(track.name))
+                    #  self.log_message("current selected_track <{}>".format(track.name))
                     if note == C4SID_TRACK_LEFT:
                         if index > 1:  # can't move selection left of track 0
                             selected_index = index - 2
                             self.song().view.selected_track = tracks[selected_index]
-                            self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
+                            #  self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
                     elif note == C4SID_TRACK_RIGHT:
                         if index < len(tracks):  # right of last return track goes to master track
                             selected_index = index
                             self.song().view.selected_track = tracks[index]
-                            self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
+                            #  self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
                         else:
                             selected_index = self.__encoder_controller.master_track_index()
                             self.song().view.selected_track = self.song().master_track
-                            self.log_message("new selected_track <{}>".format(self.song().master_track.name))
+                            #  self.log_message("new selected_track <{}>".format(self.song().master_track.name))
 
             self.track_index = selected_index
 

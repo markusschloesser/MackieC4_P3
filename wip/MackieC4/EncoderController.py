@@ -216,7 +216,7 @@ class EncoderController(MackieC4Component):
         return
 
     def track_deleted(self, track_index):
-        self.main_script().log_message("del tk idx b4: {0}".format(track_index))
+        self.main_script().log_message("del tk idx before deleted track: {0}".format(track_index))
         self.__eah.track_deleted(track_index)
         self.selected_track = self.song().view.selected_track
         self.main_script().log_message("selected tk after: {0}".format(self.selected_track.name))
@@ -277,7 +277,7 @@ class EncoderController(MackieC4Component):
 
         if len(self.selected_track.devices) > updated_idx > -1:
             self.__chosen_plugin = self.selected_track.devices[updated_idx]  # == new selected device
-            self.main_script().log_message("updated __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+            #  self.main_script().log_message("updated __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
         elif len(self.selected_track.devices) > 0:
             self.__chosen_plugin = self.selected_track.devices[0]  # == new selected device
             self.__eah.set_selected_device_index(0)
@@ -332,13 +332,13 @@ class EncoderController(MackieC4Component):
         elif self.__assignment_mode == C4M_CHANNEL_STRIP:
             selected_device_index = self.__eah.get_selected_device_index()
             if selected_device_index > -1:
-                self.main_script().log_message("selected device index before <{0}>".format(selected_device_index))
+                #  self.main_script().log_message("selected device index before <{0}>".format(selected_device_index))
 
                 if switch_id == C4SID_SINGLE_LEFT:  # to previous device
                     selected_device_index -= 1
-                    self.main_script().log_message("selected device left")
+                    #  self.main_script().log_message("selected device left")
                 elif switch_id == C4SID_SINGLE_RIGHT:  # to next device
-                    self.main_script().log_message("selected device right")
+                    #  self.main_script().log_message("selected device right")
                     selected_device_index += 1
 
                 self.main_script().log_message("selected device index after <{0}>".format(selected_device_index))
@@ -496,11 +496,11 @@ class EncoderController(MackieC4Component):
                     if is_correct_index and is_not_master_track_selected:  # and cc_value >= 0x44:
                         if is_armable_track_selected:
                             if cc_value in encoder_cw_values:  # if cc_value is in the range 01 - 0F
-                                self.main_script().log_message("arming track")
+                                #  self.main_script().log_message("arming track")
                                 self.selected_track.arm = True
                                 s.show_full_enlighted_poti()
                             elif cc_value in encoder_ccw_values:  # if cc_value is in the range 41 - 4F
-                                self.main_script().log_message("disarming track")
+                                #  self.main_script().log_message("disarming track")
                                 self.selected_track.arm = False
                                 s.unlight_vpot_leds()
                         else:
@@ -511,11 +511,11 @@ class EncoderController(MackieC4Component):
                     is_correct_index = s.vpot_index() == encoder_30_index
                     if is_correct_index and is_not_master_track_selected:  # and cc_value >= 0x44:
                         if cc_value in encoder_cw_values:  # if cc_value is in the range 01 - 0F
-                            self.main_script().log_message("muting track")
+                            #  self.main_script().log_message("muting track")
                             self.selected_track.mute = True
                             s.show_full_enlighted_poti()
                         elif cc_value in encoder_ccw_values:  # if cc_value is in the range 41 - 4F
-                            self.main_script().log_message("un-muting track")
+                            #  self.main_script().log_message("un-muting track")
                             self.selected_track.mute = False
                             s.unlight_vpot_leds()
 
@@ -614,10 +614,10 @@ class EncoderController(MackieC4Component):
                     if self.__filter_mst_trk:
                         if self.selected_track.can_be_armed:
                             if self.selected_track.arm is not True:
-                                self.main_script().log_message("arming track")
+                                #  self.main_script().log_message("arming track")
                                 self.selected_track.arm = True
                             else:
-                                self.main_script().log_message("disarming track")
+                                #  self.main_script().log_message("disarming track")
                                 self.selected_track.arm = False
                         else:
                             self.main_script().log_message("track not armable")
@@ -626,11 +626,11 @@ class EncoderController(MackieC4Component):
                 elif encoder_index == encoder_30_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.mute:
-                            self.main_script().log_message("unmuting track")
+                            #  self.main_script().log_message("unmuting track")
                             self.selected_track.mute = False
                             s.unlight_vpot_leds()
                         else:
-                            self.main_script().log_message("muting track")
+                            #  self.main_script().log_message("muting track")
                             self.selected_track.mute = True
                             s.show_full_enlighted_poti()
                     else:
@@ -802,15 +802,15 @@ class EncoderController(MackieC4Component):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
         if vpot_index < len(self.song().view.selected_track.mixer_device.sends):
             p = self.song().view.selected_track.mixer_device.sends[vpot_index]
-            self.main_script().log_message("Param name <{0}>".format(p.name))
+            #  self.main_script().log_message("Param name <{0}>".format(p.name))
             return (p, p.name)
         else:
             # The Song doesn't have this many sends
             return None, '      '  # remove this text after you see it in the LCD, just use blanks
 
     def __plugin_parameter(self, vpot_index):
-        """ Return the plugin parameter that is assigned to the given encoder as a tuple (param, param.name)
-    """
+        """ Return the plugin parameter that is assigned to the given encoder as a tuple (param, param.name) """
+
         parameters = self.__ordered_plugin_parameters
         if vpot_index in encoder_range:
             current_track_device_preset_bank = self.__eah.get_current_track_device_parameter_bank_nbr()
@@ -1323,7 +1323,7 @@ class EncoderController(MackieC4Component):
                         upper_string4 += ' '
                     elif t == encoder_30_index:
                         if self.__filter_mst_trk and liveobj_valid(self.selected_track):
-                            l_alt_text = "ON" if self.selected_track.mute else "OFF"
+                            l_alt_text = "ON" if liveobj_valid(self.selected_track.mute) else "OFF"  # additional liveobj_valid prevents mute on master_track error vomit
                             lower_string4 += adjust_string(l_alt_text, 6)  # not centered?
                         else:
                             lower_string4 += adjust_string(l_alt_text, 6)
