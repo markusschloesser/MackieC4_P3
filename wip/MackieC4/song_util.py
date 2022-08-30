@@ -54,7 +54,15 @@ def is_browser_visible(self):
 # back to arrangement / BTA
 def toggle_back_to_arranger(self, name='BTA'):
     self.song().back_to_arranger = not self.song().back_to_arranger
-    
+
+
+def any_soloed_track(self):
+    tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
+    exists = next((x for x in tracks if x.solo), None)
+    if liveobj_valid(exists):
+        return True
+    return False
+
 
 def unsolo_all(self):
     for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):

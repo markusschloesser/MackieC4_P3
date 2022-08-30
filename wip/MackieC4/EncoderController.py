@@ -626,11 +626,11 @@ class EncoderController(MackieC4Component):
                 elif encoder_index == encoder_30_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.mute:
-                            #  self.main_script().log_message("unmuting track")
+                            self.main_script().log_message("unmuting track")
                             self.selected_track.mute = False
                             s.unlight_vpot_leds()
                         else:
-                            #  self.main_script().log_message("muting track")
+                            self.main_script().log_message("muting track")
                             self.selected_track.mute = True
                             s.show_full_enlighted_poti()
                     else:
@@ -1314,7 +1314,7 @@ class EncoderController(MackieC4Component):
                         upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
                     elif t == encoder_30_index:
-                        if self.__filter_mst_trk and liveobj_valid(self.selected_track):
+                        if self.selected_track != self.song().master_track and liveobj_valid(self.selected_track):
                             l_alt_text = "ON" if liveobj_valid(self.selected_track.mute) else "OFF"  # additional liveobj_valid prevents mute on master_track error vomit
                             lower_string4 += adjust_string(l_alt_text, 6)  # not centered?
                         else:
@@ -1471,6 +1471,13 @@ class EncoderController(MackieC4Component):
                 elif e.vpot_index() in row_03_encoders:
                     upper_string4 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string4 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+
+            unsolo_all_encoder_index = 5
+            unsolo_all_encoder = self.__encoders[unsolo_all_encoder_index]
+            if song_util.any_soloed_track(self):
+                unsolo_all_encoder.show_full_enlighted_poti()  # some track is soloed (unsolo has something to do)
+            else:
+                unsolo_all_encoder.unlight_vpot_leds()  # no tracks are muted
 
             unmute_all_encoder_index = 6
             unmute_all_encoder = self.__encoders[unmute_all_encoder_index]
