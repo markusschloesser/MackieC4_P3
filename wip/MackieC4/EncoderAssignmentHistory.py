@@ -3,27 +3,18 @@ from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 import sys
 
-from Push2.model import DeviceParameter
-from ableton.v2.base import listenable_property, liveobj_valid
-from ableton.v2.control_surface.components import undo_redo
-from . import track_util
-from . import song_util
+from ableton.v2.base import liveobj_valid
 
 # from Encoders import Encoders
 
 if sys.version_info[0] >= 3:  # Live 11
-    from past.utils import old_div
     from builtins import range
 
 
 # from .EncoderController import EncoderController
-from . consts import *
 from . MackieC4Component import *
 from _Generic.Devices import *
 import math
-import time
-from itertools import chain
-import Live
 
 
 class EncoderAssignmentHistory(MackieC4Component):

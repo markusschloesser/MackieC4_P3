@@ -2,8 +2,6 @@
 #
 from __future__ import absolute_import, print_function, unicode_literals
 
-import itertools
-
 from .MackieC4Component import *
 from ableton.v2.base import liveobj_valid  # MS
 
@@ -14,9 +12,7 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
     from past.builtins import unicode
 
-from itertools import chain
-from ableton.v2.base import liveobj_valid, listenable_property, listens  # MS not needed right now, but will in the future
-from ableton.v2.control_surface import InternalParameterBase, ParameterInfo, PitchParameter
+from ableton.v2.base import liveobj_valid, listens  # MS not needed right now, but will in the future
 
 
 class EncoderDisplaySegment(MackieC4Component):

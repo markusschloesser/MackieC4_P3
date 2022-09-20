@@ -30,6 +30,7 @@ from __future__ import absolute_import, print_function, unicode_literals
 import sys
 import Live
 from ableton.v2.base import liveobj_valid
+from .TimeDisplay import TimeDisplay
 
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
@@ -127,6 +128,10 @@ class MackieC4(object):
         # if refresh_state is not already listening for visible tracks view changes
         if self.song().visible_tracks_has_listener(self.refresh_state) != 1:
             self.song().add_visible_tracks_listener(self.refresh_state)
+
+        # To display song position pointer or beats on display
+        self.__time_display = TimeDisplay(self)
+        self.__components.append(self.__time_display)
 
     def connect_script_instances(self, instanciated_scripts):
         """
@@ -361,7 +366,7 @@ class MackieC4(object):
 
         assert self.track_count == len(tracks)
 
-    def scene_change(self):   # do we need scenes? imho no
+    def scene_change(self):   # do we need scenes? TESTED, without scene stuff, display on C4 doesn't get updated (WTF??)'
         selected_scene = self.song().view.selected_scene
         scenes = self.song().scenes
         index = 0
