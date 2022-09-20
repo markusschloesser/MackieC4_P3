@@ -218,7 +218,7 @@ C4SID_FIRST = 0
 # while 1/3 would mean apply the "current layout" to the top row of encoders (and the angled display) only
 # and then apply the "next layout loaded" to the other three rows of encoders (and their associated displays)
 #
-# these are Note messages so they correspond to midi notes
+# these are Note messages, so they correspond to midi notes
 C4SID_SPLIT = 0  # C -1
 C4SID_LOCK = 0x03  # 3  Eb-1
 C4SID_SPLIT_ERASE = 0x04  # 4 E -1
@@ -265,14 +265,15 @@ C4SID_SINGLE_RIGHT = 0x0C  # 12   C 0
 
 # buttons inside the 'Parameter' box on the C4 graphics
 single_switch_ids = range(C4SID_SINGLE_LEFT, C4SID_SINGLE_RIGHT + 1)
-C4SID_SHIFT = 0x0D  # 13  C# 0
-C4SID_OPTION = 0x0E  # 14  D  0
 
 # control functions just like the channel button: toggles between bottom row LCD displays
+
+
 C4SID_CONTROL = 0x0F  # 15  Eb 0
 C4SID_ALT = 0x10  # 16  E  0
-
-# buttons inside the 'Modifiers' box on the C4 graphics
+C4SID_SHIFT = 0x0D  # 13  C# 0
+C4SID_OPTION = 0x0E  # 14  D  0
+# buttons inside the 'Modifiers' box on the C4 graphics (MackieControl calls them software_controls_switch_ids)
 modifier_switch_ids = range(C4SID_SHIFT, C4SID_ALT + 1)
 
 # if Commander and the C4 are communicating, then you can move up and down

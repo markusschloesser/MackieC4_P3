@@ -132,6 +132,10 @@ class MackieC4(object):
         # To display song position pointer or beats on display
         self.__time_display = TimeDisplay(self)
         self.__components.append(self.__time_display)
+        self.__shift_is_pressed = False
+        self.__option_is_pressed = False
+        self.__ctrl_is_pressed = False
+        self.__alt_is_pressed = False
 
     def connect_script_instances(self, instanciated_scripts):
         """
@@ -185,11 +189,9 @@ class MackieC4(object):
             channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
             note = midi_bytes[1]  # data1
             velocity = midi_bytes[2]  # data2
-
             # self.log_message("note<{}> velo<{}> received".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
-            """   Any button on the C4 falls into this range
-                             G#-1   up to Eb 4  [00 - 3F]          """
+            """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
             if note in range(C4SID_FIRST, C4SID_LAST + 1) and ignore_note_offs:
                 if note in track_nav_switch_ids:
                     self.track_inc_dec(note)
@@ -203,6 +205,8 @@ class MackieC4(object):
                     self.__encoder_controller.handle_assignment_switch_ids(note)
                 elif note in encoder_switch_ids:  # this is just the 'encoder switches'
                     self.__encoder_controller.handle_pressed_v_pot(note)
+            elif note in modifier_switch_ids:
+                self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
         if is_cc_msg:  # 240 == CC_STATUS:
 
             # channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
@@ -222,6 +226,30 @@ class MackieC4(object):
 
     def suggest_output_port(self):
         return ''
+
+    def shift_is_pressed(self):
+        return self.__shift_is_pressed
+
+    def set_shift_is_pressed(self, pressed):
+        self.__shift_is_pressed = pressed
+
+    def option_is_pressed(self):
+        return self.__option_is_pressed
+
+    def set_option_is_pressed(self, pressed):
+        self.__option_is_pressed = pressed
+
+    def ctrl_is_pressed(self):
+        return self.__ctrl_is_pressed
+
+    def set_ctrl_is_pressed(self, pressed):
+        self.__ctrl_is_pressed = pressed
+
+    def alt_is_pressed(self):
+        return self.__alt_is_pressed
+
+    def set_alt_is_pressed(self, pressed):
+        self.__alt_is_pressed = pressed
 
     def application(self):
         """returns a reference to the application that we are running in"""

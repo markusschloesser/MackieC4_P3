@@ -12,7 +12,7 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
     from past.builtins import unicode
 
-from ableton.v2.base import liveobj_valid, listens  # MS not needed right now, but will in the future
+from ableton.v2.base import liveobj_valid, listens  # MS not needed right now, but will be in the future
 
 
 class EncoderDisplaySegment(MackieC4Component):
