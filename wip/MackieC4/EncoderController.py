@@ -11,7 +11,7 @@ from itertools import chain
 import sys
 # from _multiprocessing import send
 
-from ableton.v2.base import liveobj_valid, liveobj_changed, move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
+from ableton.v2.base import liveobj_valid, liveobj_changed, # move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
 
