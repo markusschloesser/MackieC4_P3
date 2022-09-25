@@ -61,3 +61,11 @@ class TimeDisplay(MackieC4Component):
     # @property
     def _TimeDisplay__show_beat_time(self):
         return self._TimeDisplay__show_beat_time
+
+    @property
+    def TimeDisplay__show_beat_time(self):
+        return self._TimeDisplay__show_beat_time
+
+    @property
+    def TimeDisplay__smpt_format(self):
+        return self._TimeDisplay__smpt_format

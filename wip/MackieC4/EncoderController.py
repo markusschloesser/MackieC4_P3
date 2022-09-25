@@ -5,6 +5,9 @@
 # Decompiled by https://python-decompiler.com
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
+
+from itertools import chain
+
 import sys
 # from _multiprocessing import send
 
@@ -28,7 +31,7 @@ from .TimeDisplay import TimeDisplay
 
 class EncoderController(MackieC4Component):
     """
-     Controls all encoders of the Mackie C4 Pro controller extension
+     Controls all (the sum) encoders of the Mackie C4 Pro controller extension
   """
     __module__ = __name__
 
@@ -468,8 +471,10 @@ class EncoderController(MackieC4Component):
         # sends for example (90, 05, 7F, channel)
         self.send_midi((NOTE_ON_STATUS, assignment_mode_to_button_id[self.__assignment_mode], BUTTON_STATE_ON))
 
-    def handle_vpot_rotation(self, vpot_index, cc_value):  # MS: I suspect, that this is unnecessary, it SHOULD handle vpot rotation, but it doesn't, instead there are only 2 things light up vport ring
-        """ "vpot rotation" only functions if the current mode is C4M_CHANNEL_STRIP """
+    def handle_vpot_rotation(self, vpot_index, cc_value):
+        """ "vpot rotation" only functions if the current mode is C4M_CHANNEL_STRIP
+         MS: NOT true, doesn't work with that either. In MackieControl script is says "forwarded to us by the channel_strips", same for vpot press, but this works
+         Is all vpot rotation handled by __reassign_encoder_parameters ? """
         # coming from the C4 these midi messages look like: B0  20  01  1 or B0  21  01  1 where vpot_index here would be 00 or 01 (after subtracting 0x20 from 0x20 or 0x21),
         # and cc_value would be 01 in both examples but could be any value 01 - 0x7F, however in here (because coming from the C4) if cc_value is in the range 01 - 0F,
         # the encoder is being turned clockwise, and if cc_value is in the range 41 - 4F, the encoder is being turned counter-clockwise the higher the value,
@@ -478,39 +483,49 @@ class EncoderController(MackieC4Component):
         # midi mapping through Live (see Encoders.build_midi_map()), not via code here
         is_not_master_track_selected = self.selected_track != self.song().master_track
         is_armable_track_selected = track_util.can_be_armed(self.selected_track)
-        # self.main_script().log_message("potIndex<{0}> cc_value<{1}> received".format(vpot_index, cc_value))
-        if self.__assignment_mode == C4M_CHANNEL_STRIP:
-            # encoder = self.__encoders[vpot_index]
-            encoder_29_index = 28
-            encoder_30_index = 29
-            if vpot_index == encoder_29_index:  #
-                for s in self.__encoders:
-                    is_correct_index = s.vpot_index() == encoder_29_index
-                    if is_correct_index and is_not_master_track_selected:  # and cc_value >= 0x44:
-                        if is_armable_track_selected:
-                            if cc_value in encoder_cw_values:  # if cc_value is in the range 01 - 0F
-                                #  self.main_script().log_message("arming track")
-                                self.selected_track.arm = True
-                                s.show_full_enlighted_poti()
-                            elif cc_value in encoder_ccw_values:  # if cc_value is in the range 41 - 4F
-                                #  self.main_script().log_message("disarming track")
-                                self.selected_track.arm = False
-                                s.unlight_vpot_leds()
-                        else:
-                            self.main_script().log_message("track not armable")
+        self.main_script().log_message("potIndex<{0}> cc_value<{1}> received".format(vpot_index, cc_value))
+        self.__display_parameters = []
+        encoder_01_index = 0
+        encoder_02_index = 1
+        encoder_03_index = 2
+        encoder_04_index = 3
+        encoder_05_index = 4
+        encoder_06_index = 5
+        encoder_07_index = 6
+        encoder_08_index = 7
+        encoder_09_index = 8
+        encoder_10_index = 9
+        encoder_11_index = 10
+        encoder_12_index = 11
+        encoder_25_index = 24
+        encoder_26_index = 25
+        encoder_27_index = 26
+        encoder_28_index = 27
+        encoder_29_index = 28
+        encoder_30_index = 29
+        encoder_31_index = 30
+        encoder_32_index = 31
 
-            elif vpot_index == encoder_30_index:
-                for s in self.__encoders:
-                    is_correct_index = s.vpot_index() == encoder_30_index
-                    if is_correct_index and is_not_master_track_selected:  # and cc_value >= 0x44:
-                        if cc_value in encoder_cw_values:  # if cc_value is in the range 01 - 0F
-                            #  self.main_script().log_message("muting track")
-                            self.selected_track.mute = True
-                            s.show_full_enlighted_poti()
-                        elif cc_value in encoder_ccw_values:  # if cc_value is in the range 41 - 4F
-                            #  self.main_script().log_message("un-muting track")
-                            self.selected_track.mute = False
-                            s.unlight_vpot_leds()
+        if self.__assignment_mode == C4M_FUNCTION:
+            for s in self.__encoders:
+                s_index = s.vpot_index()
+                # vpot_display_text = EncoderDisplaySegment(self, s_index)
+                # vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
+                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+
+                if s_index == encoder_12_index:
+                    self.main_script().log_message("cc_nbr<{}> cc_value<{}> received".format(vpot_index, cc_value))
+                    if cc_value == encoder_ccw_values:
+                        vpot_param = (self.song().jump_by(-1), VPOT_DISPLAY_WRAP)
+
+                    elif cc_value == encoder_cw_values:
+                        vpot_param = (self.song().jump_by(1), VPOT_DISPLAY_WRAP)
+
+                    # for Live 11.0 and below
+                    # vpot_param = ((move_current_song_time((self.song()), (-1 if backwards else 1), truncate_to_beat=False)), VPOT_DISPLAY_WRAP)  # for Live 11.1
+                    # time display was moved to on_update_display_timer because song position needs to be updated in real-time
+
+                s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
 
     def handle_pressed_v_pot(self, vpot_index):
         """ 'encoder button' clicks are not handled in C4M_USER assignment mode  """
@@ -519,6 +534,8 @@ class EncoderController(MackieC4Component):
         old_selected_bank = selected_device_bank_index
         max_device_bank_index = self.__eah.get_selected_device_bank_count() - 1
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
+            is_armable_track_selected = track_util.can_be_armed(self.selected_track)
+
             if encoder_index in row_00_encoders:
                 # only "top row" encoders 7 and 8 are mapped in C4M_CHANNEL_STRIP mode
                 encoder_04_index = 3
@@ -587,10 +604,12 @@ class EncoderController(MackieC4Component):
             elif encoder_index in row_03_encoders:
                 # encoder 29 is "Rec Arm" encoder in C4M_CHANNEL_STRIP mode
                 # encoder 30 is "Mute"
+                encoder_28_index = 27
                 encoder_29_index = 28
                 encoder_30_index = 29
                 s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
-                if encoder_index < encoder_29_index:
+
+                if encoder_index < encoder_28_index:
                     # these encoders are the four < encoder_29_index, left half of bottom row, sends 9 - 12
                     param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
                     if liveobj_valid(param):
@@ -600,9 +619,20 @@ class EncoderController(MackieC4Component):
                             param.value = param.default_value  # button press == jump to default value of Send?
                     else:
                         self.main_script().log_message("can't update param.value to default: param not liveobj_valid()")
+
+                elif encoder_index == encoder_28_index:
+                    if self.__filter_mst_trk:
+                        if self.selected_track.solo is not True:
+                            self.selected_track.solo = True
+                        else:
+                            self.selected_track.solo = False
+                    else:
+                        self.main_script().log_message("track not soloable")
+                        s.unlight_vpot_leds()
+
                 elif encoder_index == encoder_29_index:
                     if self.__filter_mst_trk:
-                        if self.selected_track.can_be_armed:
+                        if is_armable_track_selected:
                             if self.selected_track.arm is not True:
                                 #  self.main_script().log_message("arming track")
                                 self.selected_track.arm = True
@@ -616,13 +646,9 @@ class EncoderController(MackieC4Component):
                 elif encoder_index == encoder_30_index:
                     if self.__filter_mst_trk:
                         if self.selected_track.mute:
-                            self.main_script().log_message("unmuting track")
                             self.selected_track.mute = False
-                            s.unlight_vpot_leds()
                         else:
-                            self.main_script().log_message("muting track")
                             self.selected_track.mute = True
-                            s.show_full_enlighted_poti()
                     else:
                         self.main_script().log_message("something about master track")
                         s.unlight_vpot_leds()
@@ -788,8 +814,8 @@ class EncoderController(MackieC4Component):
             elif encoder_index == encoder_25_index:
                 self.song().stop_playing()
                 self.__encoders[encoder_26_index].unlight_vpot_leds()
+                self.__encoders[encoder_27_index].unlight_vpot_leds()
             elif encoder_index == encoder_26_index:
-                # self.song().start_playing()
                 self.song().is_playing = True
                 s.show_full_enlighted_poti()
             elif encoder_index == encoder_27_index:
@@ -901,7 +927,7 @@ class EncoderController(MackieC4Component):
             count += 1
 
     def __reassign_encoder_parameters(self, for_display_only):  # this is where the real assignment is going on, not vpot_rotation
-        """ Reevaluate all v-pot parameter assignments """
+        """ Reevaluate all v-pot -> parameter assignments """
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
         self.__current_track_name = self.selected_track.name
@@ -923,6 +949,7 @@ class EncoderController(MackieC4Component):
         encoder_10_index = 9
         encoder_11_index = 10
         encoder_12_index = 11
+        encoder_24_index = 23
         encoder_25_index = 24
         encoder_26_index = 25
         encoder_27_index = 26
@@ -932,7 +959,7 @@ class EncoderController(MackieC4Component):
         encoder_31_index = 30
         encoder_32_index = 31
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
-            #
+            is_armable_track_selected = track_util.can_be_armed(self.selected_track)
             current_nbr_of_devices_on_selected_track = len(self.selected_track.devices)
             self.__eah.set_max_device_count(current_nbr_of_devices_on_selected_track)
 
@@ -1012,7 +1039,10 @@ class EncoderController(MackieC4Component):
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
-                elif s_index < encoder_29_index:
+
+                elif s_index < encoder_28_index:
+                    # changed from 29, which means that the 12th send will not be shown on the C4, but who needs 12 sends that anyway?
+                    # if you wanna get back to 12 sends being shown, out-comment all encoder_28_index stuff and change "elif s_index < encoder_28_index" to 29
                     if self.__filter_mst_trk_allow_audio:
                         send_param = self.__send_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE * 2)
                         vpot_param = (send_param[0], VPOT_DISPLAY_WRAP)
@@ -1025,34 +1055,46 @@ class EncoderController(MackieC4Component):
                             vpot_display_text.set_text(send_param[0], send_param[1])
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
+
+                elif s_index == encoder_28_index:
+                    self.returns_switch = 0
+                    if self.__filter_mst_trk:
+                        if self.selected_track.solo is not True:
+                            vpot_display_text.set_text(None, 'Solo')  # this is static text
+                        else:
+                            vpot_display_text.set_text(None, 'Solo')  # text never updates from here
+
+                    elif not self.__filter_mst_trk:
+                        vpot_display_text.set_text(None, 'Master')
+
+                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+                    self.__display_parameters.append(vpot_display_text)
+
                 elif s_index == encoder_29_index:
                     self.returns_switch = 0
                     if self.__filter_mst_trk:
                         vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
-                        if self.selected_track.can_be_armed:
+                        if is_armable_track_selected:
                             is_armed = self.selected_track.arm
                             if is_armed:
-                                # this isn't working, LEDs don't get lit when track already Armed when selected
-                                # s.show_full_enlighted_poti()
                                 vpot_display_text.set_text(is_armed, 'RecArm')  # this is static text
                             else:
-                                # s.unlight_vpot_leds()
                                 vpot_display_text.set_text(is_armed, 'RecArm')  # text never updates from here
                         else:
-                            # s.unlight_vpot_leds()
                             vpot_display_text.set_text('Never', 'RecArm')
+                    elif not self.__filter_mst_trk:
+                        vpot_display_text.set_text(None, 'Master')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
+
                 elif s_index == encoder_30_index:
                     vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
                     if self.__filter_mst_trk:
                         is_muted = self.selected_track.mute
                         if is_muted:
-                            s.show_full_enlighted_poti()
                             vpot_display_text.set_text(is_muted, 'Mute')  # this is static text
                         else:
-                            s.unlight_vpot_leds()
                             vpot_display_text.set_text(is_muted, 'Mute')  # text never updates from here
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -1158,12 +1200,17 @@ class EncoderController(MackieC4Component):
                     vpot_display_text.set_upper_text_and_alt('redo', '------')
                 elif s.vpot_index() == encoder_11_index:
                     vpot_display_text.set_text('all', 'unarm')
-                elif s.vpot_index() == encoder_12_index:
-                    backwards = encoder_ccw_values
-                    forwards = encoder_cw_values
-                    vpot_param = (self.song().jump_by(-1) if backwards else self.song().jump_by(1), VPOT_DISPLAY_WRAP)  # for Live 11.0 and below
-                    # vpot_param = (move_current_song_time((self.song()), (-1 if backwards else 1), truncate_to_beat=False), VPOT_DISPLAY_WRAP) ## for Live 11.1
-                    # time display was moved to on_update_display_timer because song position needs to be updated in real-time
+                # elif s.vpot_index() == encoder_12_index:
+                    # self.main_script().log_message("cc_nbr<{}> cc_value<{}> received".format(vpot_index, cc_value))
+                    # backwards = encoder_ccw_values  # the whole encoder_ccw_values shit doesn't, same for in vpot_rotation
+                    # forwards = encoder_cw_values
+                    # if backwards:
+                    #    vpot_param = (self.song().jump_by(-1), VPOT_DISPLAY_WRAP)
+                    # else:
+                    #    vpot_param = (self.song().jump_by(1), VPOT_DISPLAY_WRAP)
+                #     # vpot_param = (self.song().jump_by(-1) if backwards else self.song().jump_by(1), VPOT_DISPLAY_WRAP)  # for Live 11.0 and below
+                #     vpot_param = (move_current_song_time((self.song()), (-1 if backwards else 1), truncate_to_beat=False), VPOT_DISPLAY_WRAP)  # for Live 11.1
+                #     # time display was moved to on_update_display_timer because song position needs to be updated in real-time
 
                 elif s.vpot_index() == encoder_25_index:
                     dummy_param = (None, VPOT_DISPLAY_WRAP)
@@ -1223,6 +1270,7 @@ class EncoderController(MackieC4Component):
         return
 
     def on_update_display_timer(self):
+        """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
         upper_string1 = ''
         lower_string1 = ''
         lower_string1a = ''
@@ -1247,7 +1295,7 @@ class EncoderController(MackieC4Component):
         # if dsply_sgmts != encdr_range:
         #     self.main_script().log_message("display segments loaded {0} encoder range {1}"
         #                                    .format(dsply_sgmts, encdr_range))
-
+        encoder_28_index = 27
         encoder_29_index = 28
         encoder_30_index = 29
         encoder_31_index = 30
@@ -1306,11 +1354,29 @@ class EncoderController(MackieC4Component):
                     upper_string3 += adjust_string(u_alt_text, 6)
                     upper_string3 += ' '
                 elif t in row_03_encoders:
-                    if t < encoder_29_index:
+                    if t < encoder_28_index:
                         lower_string4 += adjust_string(l_alt_text, 6)
                         lower_string4 += ' '
                         upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
+
+                    if t == encoder_28_index:
+                        if liveobj_valid(self.selected_track):
+                            if self.__filter_mst_trk:
+                                if self.selected_track.solo:
+                                    l_alt_text = "ON"
+                                    self.__encoders[encoder_28_index].show_full_enlighted_poti()
+                                else:
+                                    l_alt_text = "OFF"
+                                    self.__encoders[encoder_28_index].unlight_vpot_leds()
+                            else:
+                                l_alt_text = "NoSolo"
+
+                        lower_string4 += adjust_string(l_alt_text, 6)
+                        lower_string4 += ' '
+                        upper_string4 += adjust_string(u_alt_text, 6)
+                        upper_string4 += ' '
+
                     elif t == encoder_29_index:
                         if liveobj_valid(self.selected_track):
                             if self.selected_track.can_be_armed:
@@ -1320,6 +1386,8 @@ class EncoderController(MackieC4Component):
                                 else:
                                     l_alt_text = "OFF"
                                     self.__encoders[encoder_29_index].unlight_vpot_leds()
+                            else:
+                                l_alt_text = "No Arm"
 
                         lower_string4 += adjust_string(l_alt_text, 6)
                         lower_string4 += ' '
@@ -1327,8 +1395,13 @@ class EncoderController(MackieC4Component):
                         upper_string4 += ' '
                     elif t == encoder_30_index:
                         if self.selected_track != self.song().master_track and liveobj_valid(self.selected_track):
-                            l_alt_text = "ON" if self.selected_track.mute else "OFF"
-                            lower_string4 += adjust_string(l_alt_text, 6)  # not centered?
+                            if self.selected_track.mute:
+                                l_alt_text = "ON"
+                                self.__encoders[encoder_30_index].show_full_enlighted_poti()
+                            else:
+                                l_alt_text = "OFF"
+                            lower_string4 += adjust_string(l_alt_text, 6)
+                            self.__encoders[encoder_30_index].unlight_vpot_leds()
                         else:
                             lower_string4 += adjust_string(l_alt_text, 6)
                         lower_string4 += ' '
@@ -1477,12 +1550,13 @@ class EncoderController(MackieC4Component):
 
                     # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
                     elif e.vpot_index() == encoder_12_index:
-                        if self.__time_display._TimeDisplay__show_beat_time:
+                        if self.__time_display.TimeDisplay__show_beat_time:
                             time_string = str(self.song().get_current_beats_song_time())
                             upper_string2 += 'Bar:Bt:Sb:Tik'
                             lower_string2 += time_string
                         else:
-                            time_string = str(self.song().get_current_smpte_song_time(self.__time_display._TimeDisplay__smpt_format))
+                            time_string = str(self.song().get_current_smpte_song_time(
+                                self.__time_display.TimeDisplay__smpt_format))
                             upper_string2 += 'Hrs:Mn:Sc:Fra'
                             lower_string2 += time_string
                     else:

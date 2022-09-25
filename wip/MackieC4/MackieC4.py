@@ -53,10 +53,12 @@ logger = logging.getLogger(__name__)
 
 class MackieC4(object):
     """  Main class that establishes the MackieC4 Component
-         --- although technically, the Mackie Control C4Pro is an "extension" of the
-             Mackie Control itself (like the MackieControlXT), this script stands alone.
-             It doesn't work 'with' those Midi Remote Scripts which is why is_extension()
-             returns False from here
+         --- although technically, the Mackie Control C4Pro is an "extension" of the Mackie Control itself (like the MackieControlXT), this script stands alone.
+             It doesn't work 'with' those Midi Remote Scripts which is why is_extension() returns False from here
+       Main class that establishes the Mackie Control <-> Live interaction. It acts as a container/manager for all the
+       Mackie C4 subcomponents like Encoders, Displays and so on.
+       Further it is glued to Lives MidiRemoteScript C instance, which will forward some notifications to us,
+       and lets us forward some requests that are needed beside the general Live API (see 'send_midi' or 'request_rebuild_midi_map').
     """
     __module__ = __name__
     prlisten = {}
@@ -139,9 +141,8 @@ class MackieC4(object):
 
     def connect_script_instances(self, instanciated_scripts):
         """
-        Called by the Application as soon as all scripts are initialized.
-        You can connect yourself to other running scripts here, as we do it
-        connect the extension modules
+        Called by the Application as soon as all scripts are initialized. You can connect yourself to other running
+        scripts here, as we do it connect the extension modules
         """
         pass
 
@@ -151,11 +152,9 @@ class MackieC4(object):
     def request_rebuild_midi_map(self):
         """
         To be called from any components, as soon as their internal state changed in a
-        way, that we do need to remap the mappings that are processed directly by the
-        Live engine.
+        way, that we do need to remap the mappings that are processed directly by the Live engine.
         Don't assume that the request will immediately result in a call to
-        your build_midi_map function. For performance reasons this is only
-        called once per GUI frame.
+        your build_midi_map function. For performance reasons this is only called once per GUI frame.
         """
         self.__c_instance.request_rebuild_midi_map()
 
@@ -170,13 +169,12 @@ class MackieC4(object):
 
     def send_midi(self, midi_event_bytes):
         """
-        Use this function to send MIDI events through Live to the _real_ MIDI devices
-        that this script is assigned to.
+        Use this function to send MIDI events through Live to the _real_ MIDI devices that this script is assigned to.
         """
         self.__c_instance.send_midi(midi_event_bytes)
 
     def receive_midi(self, midi_bytes):
-
+        """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'.      """
         # coming from C4 midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
         # C4 always sends and receives on channel 1
@@ -215,16 +213,18 @@ class MackieC4(object):
 
             # self.log_message("cc_nbr<{}> cc_value<{}> received".format(cc_nbr, cc_value))
             if cc_nbr in encoder_cc_ids:  # 0x20 - 0x3F
-                vpot_index = cc_nbr & 0x0F  # & 0F preserves only vpot_index related bits)
+                vpot_index = cc_nbr & 0x0F  # & 0F preserves only vpot_index related bits
                 self.__encoder_controller.handle_vpot_rotation(vpot_index, cc_value)
 
     def can_lock_to_devices(self):
         return True
 
     def suggest_input_port(self):
+        """Live -> Script   Live can ask the script for an input port name to find a suitable one.    """
         return ''
 
     def suggest_output_port(self):
+        """Live -> Script        Live can ask the script for an output port name to find a suitable one.        """
         return ''
 
     def shift_is_pressed(self):
@@ -275,6 +275,7 @@ class MackieC4(object):
                 block.extend(['fake Track NAME'])  # MS lets try
 
     def disconnect(self):
+        """Live -> Script        Called right before we get disconnected from Live. """
         self.rem_mixer_listeners()
         self.rem_scene_listeners()
         self.rem_tempo_listener()
@@ -287,15 +288,23 @@ class MackieC4(object):
             c.destroy()
 
     def build_midi_map(self, midi_map_handle):
+        """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
+        explicitly to our receive_midi_functions. Which means that when you are not forwarding MIDI, nor mapping parameters, you will
+        never get any MIDI messages at all.        """
 
         # build the relationships between info in Live and each __encoder
         for s in self.__encoders:
             s.build_midi_map(midi_map_handle)
 
-        # ask Live to forward all midi note messages here
+        # ask Live to forward all midi note messages here.
         # cc's come automatically?
+        # MS: they don't, that's why handle vpot_rotation doesn't work. don't know wtf it works in plugin mode are for e.g. mixer_device things like volume, pan and send
+        # probably cos mixer things come mapped by script
         for i in range(C4SID_FIRST, C4SID_LAST + 1):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
+            Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
+
+        for i in range(C4SID_VPOT_CC_ADDRESS_1, C4SID_VPOT_CC_ADDRESS_32 + 1):  # MS: thought this would enable vpot_rotation but even without this, CCs are received
             Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
 
         # self.rebuild_my_database = 1
@@ -304,7 +313,9 @@ class MackieC4(object):
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
             self.return_resetter = 0
 
-    def suggest_map_mode(self, cc_no, channel=0):  # MS identical to what MackieControlXT does
+    def suggest_map_mode(self, cc_no, channel=0):
+        """  Live -> Script   Live can ask the script for a suitable mapping mode for a given CC.    """
+
         result = Live.MidiMap.MapMode.absolute
 
         # if cc_no in range(FID_PANNING_BASE, FID_PANNING_BASE + NUM_ENCODERS):
@@ -313,6 +324,10 @@ class MackieC4(object):
         return result
 
     def refresh_state(self):
+        """Live -> Script
+        Send out MIDI to completely update the attached MIDI controller. Will be called when requested by the user,
+        after for example having reconnecting the MIDI cables...
+        """
         self.add_mixer_listeners()
         self.add_tempo_listener()
         self.add_overdub_listener()

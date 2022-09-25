@@ -16,7 +16,7 @@ from ableton.v2.base import liveobj_valid, listens  # MS not needed right now, b
 
 
 class EncoderDisplaySegment(MackieC4Component):
-    """ Represents what to display on the LCD over one encoder of the Mackie C4 """
+    """ Represents what to display on the LCD over ONE encoder of the Mackie C4 """
     __module__ = __name__
 
     def __init__(self, main_script, vpot_index):

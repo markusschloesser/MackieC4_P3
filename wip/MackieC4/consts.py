@@ -329,7 +329,7 @@ C4SID_VPOT_PUSH_29 = 0x3C  # 60  C  4
 C4SID_VPOT_PUSH_30 = 0x3D  # 61  C# 4
 C4SID_VPOT_PUSH_31 = 0x3E  # 62  D  4
 C4SID_VPOT_PUSH_32 = 0x3F  # 63  Eb 4
-encoder_switch_ids = range(C4SID_VPOT_PUSH_1, C4SID_VPOT_PUSH_32 + 1)
+encoder_switch_ids = range(C4SID_VPOT_PUSH_1, C4SID_VPOT_PUSH_32 + 1)  # sum of all vpot push
 C4SID_LAST = 0x3F  # 63
 
 """

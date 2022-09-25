@@ -64,21 +64,25 @@ class Encoders(MackieC4Component):
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
         self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2))
 
-    def build_midi_map(self, midi_map_handle):
+    def build_midi_map(self, midi_map_handle):  # why do we have an additional build_midi_map here in Encoders?? Already in MackieC4
+        """Live -> Script
+        Build DeviceParameter Mappings, that are processed in Audio time, or forward MIDI messages explicitly to our receive_midi_functions.
+        Which means that when you are not forwarding MIDI, nor mapping parameters, you will never get any MIDI messages at all.
+        """
         needs_takeover = False
         encoder = self.__vpot_index
         param = self.__v_pot_parameter
         if liveobj_valid(param):
 
             feedback_rule = Live.MidiMap.CCFeedbackRule()  # MS interestingly in ALL Mackie scripts this is originally "feeback_rule" without the "d"
-            feedback_rule.channel = 0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
-            feedback_rule.cc_no = self.__vpot_cc_nbr  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
+            feedback_rule.channel = 0
+            feedback_rule.cc_no = self.__vpot_cc_nbr
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
             range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
-            feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
-            feedback_rule.delay_in_ms = -1.0  # MS now with the stub installed, pycharm says that according to Live this "cannot be set", lets try without. Doesn't make a difference
+            feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
+            feedback_rule.delay_in_ms = -1.0
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
-            #  self.main_script().log_message("potIndex<{}> feedback<{}> mapped".format(encoder, param))
+            self.main_script().log_message("potIndex<{}> feedback<{}> mapped".format(encoder, param))
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
         else:
@@ -87,8 +91,7 @@ class Encoders(MackieC4Component):
                     channel = 0
                     cc_no = self.__vpot_cc_nbr
                     Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
-                    #  self.main_script().log_message(
-                    #    "potIndex<{0}> mapping encoder to forward CC <{1}>".format(encoder, cc_no))
+                    self.main_script().log_message("potIndex<{0}> mapping encoder to forward CC <{1}>".format(encoder, cc_no))
                 else:
                     self.main_script().log_message("potIndex<{0}> nothing mapped param is lost weakref".format(encoder))
             else:
@@ -96,6 +99,10 @@ class Encoders(MackieC4Component):
 
     def assigned_track(self):
         return self._Encoders__assigned_track
+
+    def handle_vpot_rotation(self, vpot_index, cc_value):
+        if vpot_index is self.__vpot_index and self.__encoder_controller is not None:
+            self.__encoder_controller.handle_vpot_rotation(self.__vpot_index, cc_value)
 
     def __assigned_track_index(self):  # MS new from Mackie Control.ChannelStrip
         index = 0
