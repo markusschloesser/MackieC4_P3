@@ -3,7 +3,6 @@
 from __future__ import absolute_import, print_function, unicode_literals
 
 from .MackieC4Component import *
-from ableton.v2.base import liveobj_valid  # MS
 
 import sys
 # from Live import DeviceParameter
@@ -36,7 +35,7 @@ class EncoderDisplaySegment(MackieC4Component):
         return
 
     def set_encoder_controller(self, encoder_controller):
-        """ The EncoderController that controls the Encoders should also control these EncoderDisplayParameters"""
+        """ The EncoderController that controls the Encoders, should also control these EncoderDisplayParameters"""
         self.__encoder_controller = encoder_controller
         self.__set_encoder()
 

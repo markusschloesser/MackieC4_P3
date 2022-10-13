@@ -472,17 +472,13 @@ class EncoderController(MackieC4Component):
         self.send_midi((NOTE_ON_STATUS, assignment_mode_to_button_id[self.__assignment_mode], BUTTON_STATE_ON))
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
-        """ "vpot rotation" only functions if the current mode is C4M_CHANNEL_STRIP
-         MS: NOT true, doesn't work with that either. In MackieControl script is says "forwarded to us by the channel_strips", same for vpot press, but this works
-         Is all vpot rotation handled by __reassign_encoder_parameters ? """
-        # coming from the C4 these midi messages look like: B0  20  01  1 or B0  21  01  1 where vpot_index here would be 00 or 01 (after subtracting 0x20 from 0x20 or 0x21),
-        # and cc_value would be 01 in both examples but could be any value 01 - 0x7F, however in here (because coming from the C4) if cc_value is in the range 01 - 0F,
-        # the encoder is being turned clockwise, and if cc_value is in the range 41 - 4F, the encoder is being turned counter-clockwise the higher the value,
+        """ currently does nothing. If we want something done here, it needs to be forwarded by MackieC4/receive_midi """
+        # coming from the C4 these midi messages look like: B0  20  01  1 or B0  21  01  1, where vpot_index here would be 00 or 01 (after subtracting 0x20 from 0x20 or 0x21),
+        # and cc_value would be 01 in both examples but could be any value 01 - 0x7F, however in here (because coming from the C4) if cc_value is in the range 01 - 0F (0-64),
+        # the encoder is being turned clockwise, and if cc_value is in the range 41 - 4F (65-128), the encoder is being turned counter-clockwise the higher the value,
         # the faster the knob is turning, so theoretically 16 steps of "knob twisting speed" in either direction. Suspect this is because other encoder rotation messages
         # are "midi mapped" through Live with feedback i.e. when you rotate encoder 32 in C4M_CHANNEL_STRIP mode, the "level number" updates itself via the
-        # midi mapping through Live (see Encoders.build_midi_map()), not via code here
-        is_not_master_track_selected = self.selected_track != self.song().master_track
-        is_armable_track_selected = track_util.can_be_armed(self.selected_track)
+        # midi mapping through Live (see Encoders.build_midi_map()), not via code here. MS: correct! :-)
         self.main_script().log_message("potIndex<{0}> cc_value<{1}> received".format(vpot_index, cc_value))
         self.__display_parameters = []
         encoder_01_index = 0
@@ -509,19 +505,19 @@ class EncoderController(MackieC4Component):
         if self.__assignment_mode == C4M_FUNCTION:
             for s in self.__encoders:
                 s_index = s.vpot_index()
-                # vpot_display_text = EncoderDisplaySegment(self, s_index)
-                # vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
+                vpot_display_text = EncoderDisplaySegment(self, s_index)  # MS moved to on_update_display_timer
+                vpot_display_text.set_encoder_controller(self)
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
                 if s_index == encoder_12_index:
-                    self.main_script().log_message("cc_nbr<{}> cc_value<{}> received".format(vpot_index, cc_value))
+                    self.main_script().log_message("cc_nbr<{}> cc_value<{}> received in handle_vpot_rotation".format(vpot_index, cc_value))
                     if cc_value == encoder_ccw_values:
                         vpot_param = (self.song().jump_by(-1), VPOT_DISPLAY_WRAP)
 
                     elif cc_value == encoder_cw_values:
                         vpot_param = (self.song().jump_by(1), VPOT_DISPLAY_WRAP)
 
-                    # for Live 11.0 and below
+                    # for Live 11.1 and above one can use move_current_song_time
                     # vpot_param = ((move_current_song_time((self.song()), (-1 if backwards else 1), truncate_to_beat=False)), VPOT_DISPLAY_WRAP)  # for Live 11.1
                     # time display was moved to on_update_display_timer because song position needs to be updated in real-time
 
@@ -634,10 +630,8 @@ class EncoderController(MackieC4Component):
                     if self.__filter_mst_trk:
                         if is_armable_track_selected:
                             if self.selected_track.arm is not True:
-                                #  self.main_script().log_message("arming track")
                                 self.selected_track.arm = True
                             else:
-                                #  self.main_script().log_message("disarming track")
                                 self.selected_track.arm = False
                         else:
                             self.main_script().log_message("track not armable")
@@ -651,7 +645,7 @@ class EncoderController(MackieC4Component):
                             self.selected_track.mute = True
                     else:
                         self.main_script().log_message("something about master track")
-                        s.unlight_vpot_leds()
+                        # s.unlight_vpot_leds()
 
                 elif encoder_index > encoder_30_index:
                     #  encoder 31 is "Pan"
@@ -1201,15 +1195,6 @@ class EncoderController(MackieC4Component):
                 elif s.vpot_index() == encoder_11_index:
                     vpot_display_text.set_text('all', 'unarm')
                 # elif s.vpot_index() == encoder_12_index:
-                    # self.main_script().log_message("cc_nbr<{}> cc_value<{}> received".format(vpot_index, cc_value))
-                    # backwards = encoder_ccw_values  # the whole encoder_ccw_values shit doesn't, same for in vpot_rotation
-                    # forwards = encoder_cw_values
-                    # if backwards:
-                    #    vpot_param = (self.song().jump_by(-1), VPOT_DISPLAY_WRAP)
-                    # else:
-                    #    vpot_param = (self.song().jump_by(1), VPOT_DISPLAY_WRAP)
-                #     # vpot_param = (self.song().jump_by(-1) if backwards else self.song().jump_by(1), VPOT_DISPLAY_WRAP)  # for Live 11.0 and below
-                #     vpot_param = (move_current_song_time((self.song()), (-1 if backwards else 1), truncate_to_beat=False), VPOT_DISPLAY_WRAP)  # for Live 11.1
                 #     # time display was moved to on_update_display_timer because song position needs to be updated in real-time
 
                 elif s.vpot_index() == encoder_25_index:
@@ -1438,8 +1423,8 @@ class EncoderController(MackieC4Component):
                         #         upper_string4 += 'Volume '  # refactor to DisplaySegment text?
                         # else:
                         #     upper_string4 += '       '
-
         so_many_spaces = '                                                       '
+
         if self.__assignment_mode == C4M_PLUGINS:
             upper_string1 += '-------Track-------- -----Device '
             # upper_string1 += str(self.t_d_current[self.t_current])
@@ -1575,10 +1560,11 @@ class EncoderController(MackieC4Component):
             if song_util.any_soloed_track(self):
                 unsolo_all_encoder.show_full_enlighted_poti()  # some track is soloed (unsolo has something to do)
             else:
-                unsolo_all_encoder.unlight_vpot_leds()  # no tracks are muted
+                unsolo_all_encoder.unlight_vpot_leds()  # no tracks are soloed
 
             unmute_all_encoder_index = 6
             unmute_all_encoder = self.__encoders[unmute_all_encoder_index]
+
             if song_util.any_muted_track(self):
                 unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
             else:

@@ -31,21 +31,19 @@ import sys
 import Live
 from ableton.v2.base import liveobj_valid
 from .TimeDisplay import TimeDisplay
+from . import song_util
+import logging
+import time
+from .consts import *
+from .Encoders import Encoders
+from .EncoderController import EncoderController
 
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
     from builtins import range
     from builtins import object
-    import logging
-    import time
-    from .consts import *
-    from .Encoders import Encoders
-    from .EncoderController import EncoderController
+
 else:  # Live 10
-    import logging, time
-    from .consts import *
-    from .Encoders import Encoders
-    from .EncoderController import EncoderController
     import MidiRemoteScript
 
 logger = logging.getLogger(__name__)
@@ -151,18 +149,19 @@ class MackieC4(object):
 
     def request_rebuild_midi_map(self):
         """
-        To be called from any components, as soon as their internal state changed in a
-        way, that we do need to remap the mappings that are processed directly by the Live engine.
-        Don't assume that the request will immediately result in a call to
-        your build_midi_map function. For performance reasons this is only called once per GUI frame.
+        To be called from any components, as soon as their internal state changed in a way, that we do need to remap the
+        mappings that are processed directly by the Live engine. Don't assume that the request will immediately result in
+        a call to your build_midi_map function. For performance reasons this is only called once per GUI frame.
+
+        When the internal MIDI controller has changed in a way that you need to rebuild the MIDI mappings, request a rebuild
+        by calling this function. This is processed as a request, to be sure that it's not too often called, because it's
+        time-critical.
         """
         self.__c_instance.request_rebuild_midi_map()
 
     def update_display(self):
         """
-        This function is run every 100ms, so we use it to initiate our Song.current_song_time
-        listener to allow us to process incoming OSC commands as quickly as possible under
-        the current listener scheme.
+        Aka on_timer. Called every 100 ms and should be used to update display relevant parts of the controller.
         """
         for c in self.__components:
             c.on_update_display_timer()
@@ -173,6 +172,26 @@ class MackieC4(object):
         """
         self.__c_instance.send_midi(midi_event_bytes)
 
+    def build_midi_map(self, midi_map_handle):
+        """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
+        explicitly to our receive_midi_functions. Which means that when you are not forwarding MIDI, nor mapping parameters, you will
+        never get any MIDI messages at all.        """
+
+        # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
+        for s in self.__encoders:
+            s.build_midi_map(midi_map_handle)
+
+        # ask Live to forward all midi note messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
+        for i in range(C4SID_FIRST, C4SID_LAST + 1):
+            Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
+            Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
+
+        # self.rebuild_my_database = 1
+        if self.return_resetter == 1:
+            time.sleep(0.5)
+            self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
+            self.return_resetter = 0
+
     def receive_midi(self, midi_bytes):
         """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'.      """
         # coming from C4 midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
@@ -182,12 +201,12 @@ class MackieC4(object):
         is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
         is_cc_msg = midi_bytes[0] & 0xF0 == CC_STATUS
 
-        # self.log_message("noteON<{}> noteOFF<{}> cc<{}> received".format(is_note_on_msg, is_note_off_msg, is_cc_msg))
+        # self.log_message("noteON<{}> noteOFF<{}> cc<{}> received MS:from receive_midi in MackieC4".format(is_note_on_msg, is_note_off_msg, is_cc_msg))
         if is_note_on_msg or is_note_off_msg:  # it will never be a note off message
             channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
             note = midi_bytes[1]  # data1
             velocity = midi_bytes[2]  # data2
-            # self.log_message("note<{}> velo<{}> received".format(note, velocity))
+            # self.log_message("note<{}> velo<{}> received MS:from is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
             if note in range(C4SID_FIRST, C4SID_LAST + 1) and ignore_note_offs:
@@ -205,18 +224,28 @@ class MackieC4(object):
                     self.__encoder_controller.handle_pressed_v_pot(note)
             elif note in modifier_switch_ids:
                 self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
-        if is_cc_msg:  # 240 == CC_STATUS:
 
-            # channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
-            cc_nbr = midi_bytes[1]  # data1
-            cc_value = midi_bytes[2]  # data2
+        else:  # here one can use vpot_rotation to forward to a function
 
-            # self.log_message("cc_nbr<{}> cc_value<{}> received".format(cc_nbr, cc_value))
-            if cc_nbr in encoder_cc_ids:  # 0x20 - 0x3F
-                vpot_index = cc_nbr & 0x0F  # & 0F preserves only vpot_index related bits
-                self.__encoder_controller.handle_vpot_rotation(vpot_index, cc_value)
+            if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
+                self.log_message("potIndex<{0}> receiving MIDI encoder from FORWARD CC in MackieC4 coming from receive_midi".format(midi_bytes))
+                if midi_bytes[0] & 240 == CC_STATUS:
+                    cc_no = midi_bytes[1]
+                    cc_value = midi_bytes[2]
+                    if cc_no == 11:  # is vpot 12
+                        self.handle_jog_wheel_rotation(cc_value)
+
+    def handle_jog_wheel_rotation(self, cc_value):
+        """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
+        if cc_value >= 64:
+            self.song().jump_by(-(cc_value - 64))
+        if cc_value <= 64:
+            self.song().jump_by(cc_value)
 
     def can_lock_to_devices(self):
+        """Live -> Script
+            Should return True, if the ControlSurface can lock a device.
+            "SimpleControlSurface" does not support controlling devices, so it will always be False."""
         return True
 
     def suggest_input_port(self):
@@ -275,7 +304,10 @@ class MackieC4(object):
                 block.extend(['fake Track NAME'])  # MS lets try
 
     def disconnect(self):
-        """Live -> Script        Called right before we get disconnected from Live. """
+        """Live -> Script        Called right before we get disconnected from Live.
+        Is called by Live when the script is unloaded. This happens when the script gets unselected from the preferences,
+        automatically when the corresponding MIDI ports are gone or Live is shut down. All listeners to the Live API need
+        to be removed. Cyclic dependencies should be broken, so the control surface can be garbage collected."""
         self.rem_mixer_listeners()
         self.rem_scene_listeners()
         self.rem_tempo_listener()
@@ -286,32 +318,6 @@ class MackieC4(object):
         self.song().remove_visible_tracks_listener(self.refresh_state)
         for c in self.__components:
             c.destroy()
-
-    def build_midi_map(self, midi_map_handle):
-        """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
-        explicitly to our receive_midi_functions. Which means that when you are not forwarding MIDI, nor mapping parameters, you will
-        never get any MIDI messages at all.        """
-
-        # build the relationships between info in Live and each __encoder
-        for s in self.__encoders:
-            s.build_midi_map(midi_map_handle)
-
-        # ask Live to forward all midi note messages here.
-        # cc's come automatically?
-        # MS: they don't, that's why handle vpot_rotation doesn't work. don't know wtf it works in plugin mode are for e.g. mixer_device things like volume, pan and send
-        # probably cos mixer things come mapped by script
-        for i in range(C4SID_FIRST, C4SID_LAST + 1):
-            Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
-            Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
-
-        for i in range(C4SID_VPOT_CC_ADDRESS_1, C4SID_VPOT_CC_ADDRESS_32 + 1):  # MS: thought this would enable vpot_rotation but even without this, CCs are received
-            Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
-
-        # self.rebuild_my_database = 1
-        if self.return_resetter == 1:
-            time.sleep(0.5)
-            self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
-            self.return_resetter = 0
 
     def suggest_map_mode(self, cc_no, channel=0):
         """  Live -> Script   Live can ask the script for a suitable mapping mode for a given CC.    """
@@ -326,7 +332,7 @@ class MackieC4(object):
     def refresh_state(self):
         """Live -> Script
         Send out MIDI to completely update the attached MIDI controller. Will be called when requested by the user,
-        after for example having reconnecting the MIDI cables...
+        after for example having reconnecting the MIDI cables or when exiting MIDI map mode
         """
         self.add_mixer_listeners()
         self.add_tempo_listener()
@@ -369,8 +375,7 @@ class MackieC4(object):
                              .format(len(tracks), self.track_count))
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
-            #  self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range"
-            #                   .format(len(tracks), self.track_count))
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range".format(len(tracks), self.track_count))
 
         index = 0
         found = 0

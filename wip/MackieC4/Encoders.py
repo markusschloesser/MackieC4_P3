@@ -82,16 +82,17 @@ class Encoders(MackieC4Component):
             feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
             feedback_rule.delay_in_ms = -1.0
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
-            self.main_script().log_message("potIndex<{}> feedback<{}> mapped".format(encoder, param))
+            # self.main_script().log_message("potIndex<{}> feedback<{}> MAPPED, coming from build_midi_map in __encoders".format(encoder, param))
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
+
         else:
             if not liveobj_valid(param):
                 if param is None:
                     channel = 0
                     cc_no = self.__vpot_cc_nbr
                     Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
-                    self.main_script().log_message("potIndex<{0}> mapping encoder to forward CC <{1}>".format(encoder, cc_no))
+                    # self.main_script().log_message("potIndex<{0}> mapping encoder to FORWARD CC <{1}> MS: coming from build_midi_map in __encoders".format(encoder, cc_no))
                 else:
                     self.main_script().log_message("potIndex<{0}> nothing mapped param is lost weakref".format(encoder))
             else:

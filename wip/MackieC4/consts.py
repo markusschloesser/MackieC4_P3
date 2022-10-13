@@ -29,7 +29,7 @@ assert SETUP_DB_PARAM_BANK_SIZE * SETUP_DB_MAX_PARAM_BANKS == SETUP_DB_DEFAULT_S
 NOTE_OFF_STATUS = 0x80  # 128  0x80 - 0x8F represent the 16 channels a NOTE_OFF message can be sent to (noteNbr, noteVelocity)
 NOTE_ON_STATUS = 0x90  # 144  0x90 - 0x9F represent the 16 channels a NOTE_ON message can be sent to (noteNbr, noteVelocity)
 PAT_STATUS = 0xA0  # 160  0xA0 - 0xAF represent the 16 channels a POLYPHONIC AFTERTOUCH message can be sent to (noteNbr, aftertouchPressure)
-CC_STATUS = 0xB0  # 176  0xB0 - 0xBF represent the 16 channels a CC message can be sent to (ccParamNbr, ccParamData)
+CC_STATUS = 0xB0  # equals 176  0xB0 - 0xBF represent the 16 channels a CC message can be sent to (ccParamNbr, ccParamData)
 PGM_CHG_STATUS = 0xC0  # 192  0xC0 - 0xCF represent the 16 channels a Program Change message can be sent to (pgmNbr)
 CAT_STATUS = 0xD0  # 208  0xD0 - 0xDF represent the 16 channels a CHANNEL AFTERTOUCH message can be sent to (aftertouchPressure)
 PB_STATUS = 0xE0  # 224  0xE0 - 0xEF represent the 16 channels a PITCHBEND message can be sent to (pbLSB, pbMSB)
@@ -384,6 +384,7 @@ C4SID_VPOT_CC_ADDRESS_29 = 0x3C  # 60
 C4SID_VPOT_CC_ADDRESS_30 = 0x3D  # 61
 C4SID_VPOT_CC_ADDRESS_31 = 0x3E  # 62
 C4SID_VPOT_CC_ADDRESS_32 = 0x3F  # 63
+
 encoder_cc_ids = range(C4SID_VPOT_CC_ADDRESS_1, C4SID_VPOT_CC_ADDRESS_32 + 1)
 encoder_cw_values = range(0x01, 0x10)  # larger values means knob is turning faster / bigger CW increments
 encoder_ccw_values = range(0x41, 0x50)  # larger values means knob is turning faster / bigger CCW increments
