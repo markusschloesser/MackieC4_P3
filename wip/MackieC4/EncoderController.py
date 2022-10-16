@@ -511,14 +511,6 @@ class EncoderController(MackieC4Component):
 
                 if s_index == encoder_12_index:
                     self.main_script().log_message("cc_nbr<{}> cc_value<{}> received in handle_vpot_rotation".format(vpot_index, cc_value))
-                    if cc_value == encoder_ccw_values:
-                        vpot_param = (self.song().jump_by(-1), VPOT_DISPLAY_WRAP)
-
-                    elif cc_value == encoder_cw_values:
-                        vpot_param = (self.song().jump_by(1), VPOT_DISPLAY_WRAP)
-
-                    # for Live 11.1 and above one can use move_current_song_time
-                    # vpot_param = ((move_current_song_time((self.song()), (-1 if backwards else 1), truncate_to_beat=False)), VPOT_DISPLAY_WRAP)  # for Live 11.1
                     # time display was moved to on_update_display_timer because song position needs to be updated in real-time
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -645,7 +637,7 @@ class EncoderController(MackieC4Component):
                             self.selected_track.mute = True
                     else:
                         self.main_script().log_message("something about master track")
-                        # s.unlight_vpot_leds()
+                        # s.unlight_vpot_leds()  # moved to on_update_display_timer
 
                 elif encoder_index > encoder_30_index:
                     #  encoder 31 is "Pan"
@@ -714,9 +706,9 @@ class EncoderController(MackieC4Component):
         elif self.__assignment_mode == C4M_FUNCTION:
             # encoder 25 is bottom row left "Stop Playback"
             # encoder 26 is bottom row second from left "Start Playback"
-            encoder_01_index = 0
-            encoder_02_index = 1
-            encoder_03_index = 2
+            encoder_01_index = 0  # follow
+            encoder_02_index = 1  # loop
+            encoder_03_index = 2  # Detail / Clip
             encoder_04_index = 3
             encoder_05_index = 4
             encoder_06_index = 5
@@ -725,11 +717,13 @@ class EncoderController(MackieC4Component):
             encoder_09_index = 8
             encoder_10_index = 9
             encoder_11_index = 10
-            encoder_12_index = 11
-            encoder_25_index = 24
-            encoder_26_index = 25
-            encoder_27_index = 26
-            encoder_28_index = 27
+            encoder_12_index = 11  # SPP
+            # encoder_13_index is covered / occupied by SPP from 12
+            encoder_14_index = 13
+            encoder_25_index = 24  # Stop
+            encoder_26_index = 25  # Play
+            encoder_27_index = 26  # continue play
+            encoder_28_index = 27  # overdub
             s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
 
             if encoder_index == encoder_01_index:
@@ -800,10 +794,7 @@ class EncoderController(MackieC4Component):
             # toggle between BEAT and SMPTE mode for SPP
             elif encoder_index == encoder_12_index:
                 self.__time_display.toggle_mode()
-                # if self.__time_display.show_beats():
-                #     s.unlight_vpot_leds()
-                # else:
-                #     s.show_full_enlighted_poti()
+                # displaying part moved to on_update_display_timer, also for vpot lights
 
             elif encoder_index == encoder_25_index:
                 self.song().stop_playing()
@@ -1175,9 +1166,9 @@ class EncoderController(MackieC4Component):
                 if s.vpot_index() == encoder_01_index:
                     vpot_display_text.set_text('unfllw', 'follow')
                 elif s.vpot_index() == encoder_02_index:
-                    vpot_display_text.set_text('on/off', 'loop')
+                    vpot_display_text.set_text('on/off', 'Loop')
                 elif s.vpot_index() == encoder_03_index:
-                    vpot_display_text.set_text('detail', 'Clip/')
+                    vpot_display_text.set_text('Detail', 'Clip/')
                 elif s.vpot_index() == encoder_04_index:
                     vpot_display_text.set_text('Arrang', 'Sessn')
                 elif s.vpot_index() == encoder_05_index:
@@ -1187,7 +1178,7 @@ class EncoderController(MackieC4Component):
                 elif s.vpot_index() == encoder_07_index:
                     vpot_display_text.set_text('all', 'unmute')
                 elif s.vpot_index() == encoder_08_index:
-                    vpot_display_text.set_text('arrang', 'Back2')
+                    vpot_display_text.set_text('Arrang', 'Back 2')
                 elif s.vpot_index() == encoder_09_index:
                     vpot_display_text.set_upper_text_and_alt('undo', '------')
                 elif s.vpot_index() == encoder_10_index:
@@ -1517,6 +1508,8 @@ class EncoderController(MackieC4Component):
             encoder_09_index = 8
             encoder_10_index = 9
             encoder_12_index = 11
+            # encoder_13_index is covered / occupied by SPP from 12
+            encoder_14_index = 12  # because 12 is occupied, we still need 12 otherwise everything be shifted over
             encoder_25_index = 24
             encoder_26_index = 25
             for e in self.__encoders:
@@ -1527,27 +1520,32 @@ class EncoderController(MackieC4Component):
                     lower_string1 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_01_encoders:
                     if e.vpot_index() == encoder_09_index:
-                        upper_string2 += \
-                            adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
+                        upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
+                        lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                     elif e.vpot_index() == encoder_10_index:
-                        upper_string2 += \
-                            adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
+                        upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
+                        lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
 
                     # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
                     elif e.vpot_index() == encoder_12_index:
                         if self.__time_display.TimeDisplay__show_beat_time:
-                            time_string = str(self.song().get_current_beats_song_time())
-                            upper_string2 += 'Bar:Bt:Sb:Tik'
+                            time_string = str(self.song().get_current_beats_song_time()) + ' '
+                            upper_string2 += 'Bar:Bt:Sb:Tik '
                             lower_string2 += time_string
                         else:
-                            time_string = str(self.song().get_current_smpte_song_time(
-                                self.__time_display.TimeDisplay__smpt_format))
-                            upper_string2 += 'Hrs:Mn:Sc:Fra'
+                            time_string = str(self.song().get_current_smpte_song_time(self.__time_display.TimeDisplay__smpt_format)) + ' '
+                            upper_string2 += 'Hrs:Mn:Sc:Fra '
                             lower_string2 += time_string
+
+                    # show loop length
+                    elif e.vpot_index() == encoder_14_index:
+                        get_loop_length = str(self.song().loop_length)
+                        upper_string2 += 'LoopLg'
+                        lower_string2 += get_loop_length
+
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
-
-                    lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+                        lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_02_encoders:
                     upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string3 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '

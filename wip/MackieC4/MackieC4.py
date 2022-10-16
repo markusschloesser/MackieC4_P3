@@ -29,7 +29,7 @@ __init__.py
 from __future__ import absolute_import, print_function, unicode_literals
 import sys
 import Live
-from ableton.v2.base import liveobj_valid
+from ableton.v2.base import liveobj_valid, clamp
 from .TimeDisplay import TimeDisplay
 from . import song_util
 import logging
@@ -232,8 +232,10 @@ class MackieC4(object):
                 if midi_bytes[0] & 240 == CC_STATUS:
                     cc_no = midi_bytes[1]
                     cc_value = midi_bytes[2]
-                    if cc_no == 11:  # is vpot 12
+                    if cc_no == 11:  # is vpot 12. 11 is the binary value received from encoder 12, question is why referencing C4SID_VPOT_CC_ADDRESS_12 doesn't work?
                         self.handle_jog_wheel_rotation(cc_value)
+                    if cc_no == 13:
+                        self.set_loop_length(cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -241,6 +243,12 @@ class MackieC4(object):
             self.song().jump_by(-(cc_value - 64))
         if cc_value <= 64:
             self.song().jump_by(cc_value)
+
+    def set_loop_length(self, cc_value):
+        if cc_value >= 64:
+            self.song().loop_length = clamp(self.song().loop_length - (4 * (cc_value - 64)), 4, 10000)
+        if cc_value <= 64:
+            self.song().loop_length = (self.song().loop_length + (clamp(4 * (cc_value), 4, 10000)))
 
     def can_lock_to_devices(self):
         """Live -> Script
