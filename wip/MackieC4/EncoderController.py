@@ -1510,6 +1510,7 @@ class EncoderController(MackieC4Component):
             encoder_12_index = 11
             # encoder_13_index is covered / occupied by SPP from 12
             encoder_14_index = 12  # because 12 is occupied, we still need 12 otherwise everything be shifted over
+            encoder_15_index = 13
             encoder_25_index = 24
             encoder_26_index = 25
             for e in self.__encoders:
@@ -1540,8 +1541,14 @@ class EncoderController(MackieC4Component):
                     # show loop length
                     elif e.vpot_index() == encoder_14_index:
                         get_loop_length = str(self.song().loop_length)
-                        upper_string2 += 'LoopLg'
-                        lower_string2 += get_loop_length
+                        upper_string2 += 'LoopLg '
+                        lower_string2 += adjust_string(get_loop_length, 6) + ' '
+
+                    # show loop start
+                    elif e.vpot_index() == encoder_15_index:
+                        get_loop_start = str(self.song().loop_start)
+                        upper_string2 += 'LoopSt '
+                        lower_string2 += adjust_string(get_loop_start, 6) + ' '
 
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '

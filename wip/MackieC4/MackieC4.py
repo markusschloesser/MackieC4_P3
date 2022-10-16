@@ -236,6 +236,8 @@ class MackieC4(object):
                         self.handle_jog_wheel_rotation(cc_value)
                     if cc_no == 13:
                         self.set_loop_length(cc_value)
+                    if cc_no == 14:
+                        self.set_loop_start(cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -249,6 +251,12 @@ class MackieC4(object):
             self.song().loop_length = clamp(self.song().loop_length - (4 * (cc_value - 64)), 4, 10000)
         if cc_value <= 64:
             self.song().loop_length = (self.song().loop_length + (clamp(4 * (cc_value), 4, 10000)))
+
+    def set_loop_start(self, cc_value):
+        if cc_value >= 64:
+            self.song().loop_start = clamp(self.song().loop_start - (cc_value - 64), 0, 10000)
+        if cc_value <= 64:
+            self.song().loop_start = (self.song().loop_start + (clamp((cc_value), 1, 10000)))
 
     def can_lock_to_devices(self):
         """Live -> Script
