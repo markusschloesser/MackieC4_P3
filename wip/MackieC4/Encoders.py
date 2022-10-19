@@ -64,6 +64,13 @@ class Encoders(MackieC4Component):
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
         self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2))
 
+    def show_vpot_ring_spread(self):
+        data1 = 0x31
+        data2 = 0x36 - 0x31
+        data3 = tuple(data1 + x for x in range(data2))
+        # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
+        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data3))
+
     def build_midi_map(self, midi_map_handle):  # why do we have an additional build_midi_map here in Encoders?? Already in MackieC4
         """Live -> Script
         Build DeviceParameter Mappings, that are processed in Audio time, or forward MIDI messages explicitly to our receive_midi_functions.
@@ -74,7 +81,7 @@ class Encoders(MackieC4Component):
         param = self.__v_pot_parameter
         if liveobj_valid(param):
 
-            feedback_rule = Live.MidiMap.CCFeedbackRule()  # MS interestingly in ALL Mackie scripts this is originally "feeback_rule" without the "d"
+            feedback_rule = Live.MidiMap.CCFeedbackRule()
             feedback_rule.channel = 0
             feedback_rule.cc_no = self.__vpot_cc_nbr
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]

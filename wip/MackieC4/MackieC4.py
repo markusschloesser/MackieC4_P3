@@ -238,6 +238,8 @@ class MackieC4(object):
                         self.set_loop_length(cc_value)
                     if cc_no == 14:
                         self.set_loop_start(cc_value)
+                    if cc_no == 15:
+                        self.zoom_or_scroll(cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -257,6 +259,14 @@ class MackieC4(object):
             self.song().loop_start = clamp(self.song().loop_start - (cc_value - 64), 0, 10000)
         if cc_value <= 64:
             self.song().loop_start = (self.song().loop_start + (clamp((cc_value), 1, 10000)))
+
+    def zoom_or_scroll(self, cc_value):
+        """ Scroll in Session view or Zoom in Arrange view with vpot_rotation encoder rotation"""
+        nav = Live.Application.Application.View.NavDirection
+        if cc_value >= 64:
+            self.application().view.zoom_view(nav.left, '', self.alt_is_pressed())
+        if cc_value <= 64:
+            self.application().view.zoom_view(nav.right, '', self.alt_is_pressed())
 
     def can_lock_to_devices(self):
         """Live -> Script

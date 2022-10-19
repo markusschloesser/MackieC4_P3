@@ -934,6 +934,9 @@ class EncoderController(MackieC4Component):
         encoder_10_index = 9
         encoder_11_index = 10
         encoder_12_index = 11
+        encoder_13_index = 12
+        encoder_14_index = 13
+        encoder_15_index = 14
         encoder_24_index = 23
         encoder_25_index = 24
         encoder_26_index = 25
@@ -1187,6 +1190,10 @@ class EncoderController(MackieC4Component):
                     vpot_display_text.set_text('all', 'unarm')
                 # elif s.vpot_index() == encoder_12_index:
                 #     # time display was moved to on_update_display_timer because song position needs to be updated in real-time
+                # elif s.vpot_index() == encoder_14_index:
+                #     vpot_param = (None, VPOT_DISPLAY_SPREAD)
+                elif s.vpot_index() == encoder_15_index:
+                    vpot_display_text.set_text('/ Zoom', 'Scroll')
 
                 elif s.vpot_index() == encoder_25_index:
                     dummy_param = (None, VPOT_DISPLAY_WRAP)
@@ -1543,6 +1550,8 @@ class EncoderController(MackieC4Component):
                         get_loop_length = str(self.song().loop_length)
                         upper_string2 += 'LoopLg '
                         lower_string2 += adjust_string(get_loop_length, 6) + ' '
+                        data2 = get_loop_length
+                        self.__encoders[encoder_15_index].show_vpot_ring_spread()
 
                     # show loop start
                     elif e.vpot_index() == encoder_15_index:
