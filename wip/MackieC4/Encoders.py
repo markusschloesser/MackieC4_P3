@@ -28,6 +28,20 @@ class Encoders(MackieC4Component):
         self.__v_pot_parameter = None
         self.__v_pot_display_mode = VPOT_DISPLAY_SINGLE_DOT
         self._Encoders__assigned_track = None
+
+        self.__v_pot_display_memory = {VPOT_CURRENT_CC_VALUE: [], VPOT_NEXT_CC_VALUE: []}
+
+        # forward sequence VPOT_DISPLAY_WRAP: (0x21, 0x2B) == 21, 22, 23, 24, 25...2B
+        display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
+        range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
+        self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] = [display_mode_cc_base + x for x in range(range_end)]
+
+        # reverse transformation sequence VPOT_DISPLAY_WRAP: (0x21, 0x2B) == 2B, 2A, 29, 28, 27...21
+        self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE] = self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE][:]
+        self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE].reverse()
+
+        self.v_pot_display_frame_count = 0
+        self.v_pot_display_memory_len = len(self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE])
         return
 
     # function provided by MackieC4Component super
@@ -48,21 +62,32 @@ class Encoders(MackieC4Component):
     def v_pot_parameter(self):
         return self.__v_pot_parameter
 
+    def animate_v_pot_led_ring(self, frame, reverse=False):
+        remainder = frame % self.v_pot_display_memory_len
+        if reverse:
+            update_value = self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE][remainder]
+        else:
+            update_value = self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE][remainder]
+
+        self.update_led_ring(update_value)
+
     def set_v_pot_parameter(self, parameter, display_mode=VPOT_DISPLAY_BOOLEAN):
         self.__v_pot_display_mode = display_mode
         self.__v_pot_parameter = parameter
         if not parameter:
             self.unlight_vpot_leds()
 
+    def update_led_ring(self, update_value):
+        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
     def unlight_vpot_leds(self):
         data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][0]
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
-        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, RING_LED_ALL_OFF))
+        self.update_led_ring(RING_LED_ALL_OFF)
 
     def show_full_enlighted_poti(self):
         data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][1]
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
-        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data2))
+        self.update_led_ring(data2)
 
     def build_midi_map(self, midi_map_handle):  # why do we have an additional build_midi_map here in Encoders?? Already in MackieC4
         """Live -> Script

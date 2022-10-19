@@ -184,6 +184,16 @@ encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x01,
                                 VPOT_DISPLAY_SPREAD: 0x33,
                                 VPOT_DISPLAY_BOOLEAN: 0x2B}
 
+
+# When an encoder is set for a "wrap" style LED ring display
+# encoder_ring_led_mode_values[VPOT_DISPLAY_WRAP] == 0x26, for example
+# then the VPOT_CURRENT_CC_VALUE list is directly populated with the associated forward sequence "wrapping values"
+# VPOT_DISPLAY_WRAP: == 21, 22, 23, 24, 25...2B
+# and the VPOT_NEXT_CC_VALUE list is populated with the reversed "wrapping values"
+# VPOT_DISPLAY_WRAP: == 2B, 2A, 29, 28, 27...21
+VPOT_CURRENT_CC_VALUE = 0
+VPOT_NEXT_CC_VALUE = 1
+
 RING_LED_ALL_OFF = 0  # encoder disable?
 
 LED_ON_DATA = 0x7F  # any value 40 - 4F?

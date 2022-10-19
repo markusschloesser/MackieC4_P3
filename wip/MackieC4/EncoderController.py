@@ -72,6 +72,9 @@ class EncoderController(MackieC4Component):
         # and the C4 itself can't be asked "what are you displaying right now?". So we just blast the display sysex
         # from here about every 5 seconds to overwrite any possible "other change".  (each LCD is "refreshed" in turn
         # each time this timer "pops" (every 4th pop per LCD))
+        # turn this off to let the C4 LEDs and LCDs "go to sleep" after nothing changes for 15 or 20 minutes
+        # If you randomly see the standard C4 welcome message (because of the rogue SYSEX message)
+        # a "real" display update from Live always removes a standard C4 welcome message
         self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
         self.__display_repeat_count = 0
 
@@ -1227,18 +1230,34 @@ class EncoderController(MackieC4Component):
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 0'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     vpot_display_text.set_text(bottom_line, top_line)
+                    if s_index < row_00_encoders[4]:
+                        vpot_param = (None, VPOT_DISPLAY_BOOST_CUT)
+                    else:
+                        vpot_param = (None, VPOT_DISPLAY_WRAP)
                 elif s_index == row_01_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 1'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     vpot_display_text.set_text(bottom_line, top_line)
+                    if s_index < row_01_encoders[4]:
+                        vpot_param = (None, VPOT_DISPLAY_SPREAD)
+                    else:
+                        vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
                 elif s_index == row_02_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 2'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     vpot_display_text.set_text(bottom_line, top_line)
+                    if s_index < row_02_encoders[4]:
+                        vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+                    else:
+                        vpot_param = (None, VPOT_DISPLAY_BOOST_CUT)
                 elif s_index == row_03_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 3'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     vpot_display_text.set_text(bottom_line, top_line)
+                    if s_index < row_03_encoders[4]:
+                        vpot_param = (None, VPOT_DISPLAY_WRAP)
+                    else:
+                        vpot_param = (None, VPOT_DISPLAY_SPREAD)
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                 self.__display_parameters.append(vpot_display_text)
@@ -1575,9 +1594,14 @@ class EncoderController(MackieC4Component):
             else:
                 unmute_all_encoder.unlight_vpot_leds()  # no tracks are muted
 
-
         elif self.__assignment_mode == C4M_USER:
+
+            this_pass = self.__display_repeat_count + 1  # + 1 so we don't begin at zero
             for s in self.__encoders:
+
+                reverse = this_pass % self.__display_repeat_timer == 4
+                s.animate_v_pot_led_ring(this_pass, reverse)
+
                 s_index = s.vpot_index()
                 try:
                     text_for_display = self.__display_parameters[s_index]  # assumes there are always 32
