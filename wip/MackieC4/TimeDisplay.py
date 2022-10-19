@@ -5,8 +5,9 @@
 # Compiled at: 2022-04-21 16:02:21
 # Size of source mod 2**32: 4062 bytes
 from __future__ import absolute_import, print_function, unicode_literals
-from builtins import range, str
 from .MackieC4Component import *
+if sys.version_info[0] >= 3:  # Live 11
+    from builtins import range, str
 
 
 class TimeDisplay(MackieC4Component):

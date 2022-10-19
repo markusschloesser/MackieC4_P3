@@ -17,6 +17,7 @@ $LIVE_VERSION = 10
 $MIDI_REMOTE_SCRIPT_NAME = "MarkusC4test"   # the name to add to a "remote script slot" in Live midi options
                                             # This "folder" should already exist empty at $dest before the script first runs
 $QUIET = $false   # make $true to silence console output
+$WHISPER = $true  # make $false to see all not-quiet console output
 
 
 # set source dir
@@ -49,8 +50,11 @@ Foreach($file in $filesAtTestSource) {
     {
         if ($false -eq $QUIET)
         {
-            $msg = "no changes to file <{0}>" -f $destFile.FullName
-            Write-Output $msg
+            if ($false -eq $WHISPER)
+            {
+                $msg = "no changes to file <{0}>" -f $destFile.FullName
+                Write-Output $msg
+            }
         }
     }
 }
