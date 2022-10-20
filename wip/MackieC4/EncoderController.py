@@ -1230,34 +1230,34 @@ class EncoderController(MackieC4Component):
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 0'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     vpot_display_text.set_text(bottom_line, top_line)
-                    if s_index < row_00_encoders[4]:
-                        vpot_param = (None, VPOT_DISPLAY_BOOST_CUT)
-                    else:
-                        vpot_param = (None, VPOT_DISPLAY_WRAP)
+                elif s_index < row_00_encoders[4]:
+                    vpot_param = (None, VPOT_DISPLAY_BOOST_CUT)
+                elif s_index < row_01_encoders[0]:
+                    vpot_param = (None, VPOT_DISPLAY_WRAP)
                 elif s_index == row_01_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 1'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     vpot_display_text.set_text(bottom_line, top_line)
-                    if s_index < row_01_encoders[4]:
-                        vpot_param = (None, VPOT_DISPLAY_SPREAD)
-                    else:
-                        vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
+                elif s_index < row_01_encoders[4]:
+                    vpot_param = (None, VPOT_DISPLAY_SPREAD)
+                elif s_index < row_02_encoders[0]:
+                    vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
                 elif s_index == row_02_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 2'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     vpot_display_text.set_text(bottom_line, top_line)
-                    if s_index < row_02_encoders[4]:
-                        vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-                    else:
-                        vpot_param = (None, VPOT_DISPLAY_BOOST_CUT)
+                elif s_index < row_02_encoders[4]:
+                    vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+                elif s_index < row_03_encoders[0]:
+                    vpot_param = (None, VPOT_DISPLAY_BOOST_CUT)
                 elif s_index == row_03_encoders[0]:
                     top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     bottom_line = 'USER mode row 3'.center(NUM_CHARS_PER_DISPLAY_LINE)
                     vpot_display_text.set_text(bottom_line, top_line)
-                    if s_index < row_03_encoders[4]:
-                        vpot_param = (None, VPOT_DISPLAY_WRAP)
-                    else:
-                        vpot_param = (None, VPOT_DISPLAY_SPREAD)
+                elif s_index < row_03_encoders[4]:
+                    vpot_param = (None, VPOT_DISPLAY_WRAP)
+                else:
+                    vpot_param = (None, VPOT_DISPLAY_SPREAD)
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                 self.__display_parameters.append(vpot_display_text)
