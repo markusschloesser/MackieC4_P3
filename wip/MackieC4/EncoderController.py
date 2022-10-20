@@ -1599,7 +1599,7 @@ class EncoderController(MackieC4Component):
             this_pass = self.__display_repeat_count + 1  # + 1 so we don't begin at zero
             for s in self.__encoders:
 
-                reverse = this_pass % self.__display_repeat_timer == 4
+                reverse = (this_pass % self.__display_repeat_timer) % 2 > 0
                 s.animate_v_pot_led_ring(this_pass, reverse)
 
                 s_index = s.vpot_index()
