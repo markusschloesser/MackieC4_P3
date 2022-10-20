@@ -26,19 +26,10 @@ class Encoders(MackieC4Component):
         self.__vpot_index = vpot_index
         self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
         self.__v_pot_parameter = None
-        self.__v_pot_display_mode = VPOT_DISPLAY_SINGLE_DOT
         self._Encoders__assigned_track = None
 
         self.__v_pot_display_memory = {VPOT_CURRENT_CC_VALUE: [], VPOT_NEXT_CC_VALUE: []}
-
-        # forward sequence VPOT_DISPLAY_WRAP: (0x21, 0x2B) == 21, 22, 23, 24, 25...2B
-        display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
-        range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
-        self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] = [display_mode_cc_base + x for x in range(range_end)]
-
-        # reverse transformation sequence VPOT_DISPLAY_WRAP: (0x21, 0x2B) == 2B, 2A, 29, 28, 27...21
-        self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE] = self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE][:]
-        self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE].reverse()
+        self.__update_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
 
         self.v_pot_display_frame_count = 0
         self.v_pot_display_memory_len = len(self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE])
@@ -72,10 +63,28 @@ class Encoders(MackieC4Component):
         self.update_led_ring(update_value)
 
     def set_v_pot_parameter(self, parameter, display_mode=VPOT_DISPLAY_BOOLEAN):
-        self.__v_pot_display_mode = display_mode
+        self.__update_led_ring_display_mode(display_mode)
         self.__v_pot_parameter = parameter
         if not parameter:
             self.unlight_vpot_leds()
+
+    def __update_led_ring_display_mode(self, display_mode=VPOT_DISPLAY_BOOLEAN):
+
+        self.__v_pot_display_mode = display_mode
+
+        # when mode is boost-cut VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B)
+        # the list self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] should contain ten elements
+        # 0x11, 0x12, 0x13...0x1A
+        # at least that's IMHO, my Python Fu is rusty
+        display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
+        range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base + 1
+        self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] = [display_mode_cc_base + x for x in range(range_end)]
+
+        #  [:] is the default "slicing operator" operation. a list copy assignment operation here
+        self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE] = self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE][:]
+        self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE].reverse()
+
+        self.v_pot_display_memory_len = len(self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE])
 
     def update_led_ring(self, update_value):
         self.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
