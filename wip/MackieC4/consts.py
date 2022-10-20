@@ -195,7 +195,6 @@ VPOT_CURRENT_CC_VALUE = 0
 VPOT_NEXT_CC_VALUE = 1
 
 RING_LED_ALL_OFF = 0  # encoder disable?
-VPOT_DISPLAY_SPREAD_range = range(0x31, 0x36)
 
 LED_ON_DATA = 0x7F  # any value 40 - 4F?
 LED_OFF_DATA = 0x00  # any value 00 - 0F?

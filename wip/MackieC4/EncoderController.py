@@ -1569,8 +1569,6 @@ class EncoderController(MackieC4Component):
                         get_loop_length = str(self.song().loop_length)
                         upper_string2 += 'LoopLg '
                         lower_string2 += adjust_string(get_loop_length, 6) + ' '
-                        data2 = get_loop_length
-                        self.__encoders[encoder_15_index].show_vpot_ring_spread()
 
                     # show loop start
                     elif e.vpot_index() == encoder_15_index:
