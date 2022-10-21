@@ -72,3 +72,18 @@ class MackieC4Component(object):
 
     def refresh_state(self):
         self.__main_script.refresh_state()
+
+
+def make_interpolater(Live_value_min, Live_value_max, C4_min, C4_max):
+    # Figure out how 'wide' each range is
+    LiveSpan = Live_value_max - Live_value_min
+    C4_Span = C4_max - C4_min
+
+    # Compute the scale factor between left and right values
+    scaleFactor = float(C4_Span) / float(LiveSpan)
+
+    # create interpolation function using pre-calculated scaleFactor
+    def interp_fn(value):
+        return C4_min + (value - Live_value_min) * scaleFactor
+
+    return interp_fn

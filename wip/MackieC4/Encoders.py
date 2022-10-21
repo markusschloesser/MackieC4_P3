@@ -88,6 +88,7 @@ class Encoders(MackieC4Component):
 
     def update_led_ring(self, update_value):
         self.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
+
     def unlight_vpot_leds(self):
         data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][0]
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
@@ -98,6 +99,7 @@ class Encoders(MackieC4Component):
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
         self.update_led_ring(data2)
 
+    # to be deleted!?
     def show_vpot_ring_spread(self):
         data1 = 0x31
         data2 = 0x36 - 0x31

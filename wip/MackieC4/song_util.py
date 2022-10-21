@@ -94,10 +94,6 @@ def undo(self):
         self.song().undo()
 
 
-def metronome_button(self, toggled):
-    self.song.metronome = toggled
-
-
 def unarm_all_button(self):
     for track in self.song().tracks:
         if track.can_be_armed and track.arm:

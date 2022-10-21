@@ -723,6 +723,7 @@ class EncoderController(MackieC4Component):
             encoder_12_index = 11  # SPP
             # encoder_13_index is covered / occupied by SPP from 12
             encoder_14_index = 13
+            encoder_17_index = 16  # Metronome
             encoder_25_index = 24  # Stop
             encoder_26_index = 25  # Play
             encoder_27_index = 26  # continue play
@@ -798,6 +799,9 @@ class EncoderController(MackieC4Component):
             elif encoder_index == encoder_12_index:
                 self.__time_display.toggle_mode()
                 # displaying part moved to on_update_display_timer, also for vpot lights
+
+            elif encoder_index == encoder_17_index:
+                self.song().metronome = not self.song().metronome
 
             elif encoder_index == encoder_25_index:
                 self.song().stop_playing()
@@ -940,6 +944,7 @@ class EncoderController(MackieC4Component):
         encoder_13_index = 12
         encoder_14_index = 13
         encoder_15_index = 14
+        encoder_17_index = 16  # Metronome
         encoder_24_index = 23
         encoder_25_index = 24
         encoder_26_index = 25
@@ -1197,6 +1202,9 @@ class EncoderController(MackieC4Component):
                 #     vpot_param = (None, VPOT_DISPLAY_SPREAD)
                 elif s.vpot_index() == encoder_15_index:
                     vpot_display_text.set_text('/ Zoom', 'Scroll')
+
+                elif s.vpot_index() == encoder_17_index:
+                    vpot_display_text.set_text('nome  ', 'Metro ')
 
                 elif s.vpot_index() == encoder_25_index:
                     dummy_param = (None, VPOT_DISPLAY_WRAP)
@@ -1563,18 +1571,22 @@ class EncoderController(MackieC4Component):
                             time_string = str(self.song().get_current_smpte_song_time(self.__time_display.TimeDisplay__smpt_format)) + ' '
                             upper_string2 += 'Hrs:Mn:Sc:Fra '
                             lower_string2 += time_string
+                        # scaler = make_interpolater(0, Live.Song.Song.last_event_time, self.__encoders.v_pot_display_memory_len)
+                    # current_song_time
 
                     # show loop length
                     elif e.vpot_index() == encoder_14_index:
                         get_loop_length = str(self.song().loop_length)
                         upper_string2 += 'LoopLg '
                         lower_string2 += adjust_string(get_loop_length, 6) + ' '
+                        # scaler = make_interpolater(1, )
 
                     # show loop start
                     elif e.vpot_index() == encoder_15_index:
                         get_loop_start = str(self.song().loop_start)
                         upper_string2 += 'LoopSt '
                         lower_string2 += adjust_string(get_loop_start, 6) + ' '
+                        # scaler = make_interpolater(self.song().start, )
 
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
