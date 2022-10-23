@@ -77,8 +77,8 @@ class Encoders(MackieC4Component):
         # 0x11, 0x12, 0x13...0x1A
         # at least that's IMHO, my Python Fu is rusty
         display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
-        range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base + 1
-        self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] = [display_mode_cc_base + x for x in range(range_end)]
+        range_len = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base + 1
+        self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] = [display_mode_cc_base + x for x in range(range_len)]
 
         #  [:] is the default "slicing operator" operation. a list copy assignment operation here
         self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE] = self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE][:]
@@ -121,8 +121,8 @@ class Encoders(MackieC4Component):
             feedback_rule.channel = 0
             feedback_rule.cc_no = self.__vpot_cc_nbr
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
-            range_end = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
-            feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(range_end)])
+            feedback_val_range_len = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
+            feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(feedback_val_range_len)])
             feedback_rule.delay_in_ms = -1.0
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
             # self.main_script().log_message("potIndex<{}> feedback<{}> MAPPED, coming from build_midi_map in __encoders".format(encoder, param))
