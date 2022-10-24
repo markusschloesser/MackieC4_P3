@@ -1563,6 +1563,7 @@ class EncoderController(MackieC4Component):
 
                     # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
                     elif e.vpot_index() == encoder_12_index:
+
                         if self.__time_display.TimeDisplay__show_beat_time:
                             time_string = str(self.song().get_current_beats_song_time()) + ' '
                             upper_string2 += 'Bar:Bt:Sb:Tik '
@@ -1571,8 +1572,16 @@ class EncoderController(MackieC4Component):
                             time_string = str(self.song().get_current_smpte_song_time(self.__time_display.TimeDisplay__smpt_format)) + ' '
                             upper_string2 += 'Hrs:Mn:Sc:Fra '
                             lower_string2 += time_string
-                        # scaler = make_interpolater(0, Live.Song.Song.last_event_time, self.__encoders.v_pot_display_memory_len)
-                    # current_song_time
+
+                        display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][0]
+                        display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][1]
+
+                        scaler = make_interpolater(0, self.song().last_event_time, display_mode_cc_first, display_mode_cc_last)
+                        play_head = int(self.song().current_song_time)
+                        led_ring_val = int(scaler(play_head))
+                        spp_vpot_index = 11
+                        spp_vpot = self.__encoders[spp_vpot_index]
+                        spp_vpot.update_led_ring(led_ring_val)
 
                     # show loop length
                     elif e.vpot_index() == encoder_14_index:
