@@ -1573,6 +1573,7 @@ class EncoderController(MackieC4Component):
                             upper_string2 += 'Hrs:Mn:Sc:Fra '
                             lower_string2 += time_string
 
+                        # vpot ring light
                         display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][0]
                         display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][1]
 
@@ -1588,14 +1589,34 @@ class EncoderController(MackieC4Component):
                         get_loop_length = str(self.song().loop_length)
                         upper_string2 += 'LoopLg '
                         lower_string2 += adjust_string(get_loop_length, 6) + ' '
-                        # scaler = make_interpolater(1, )
+
+                        # vpot ring light
+                        display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_SPREAD][0]
+                        display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_SPREAD][1]
+
+                        scaler = make_interpolater(1, self.song().last_event_time, display_mode_cc_first,display_mode_cc_last)
+                        loop_length = int(self.song().loop_length)
+                        led_ring_val = int(scaler(loop_length))
+                        spp_vpot_index = 13
+                        spp_vpot = self.__encoders[spp_vpot_index]
+                        spp_vpot.update_led_ring(led_ring_val)
 
                     # show loop start
                     elif e.vpot_index() == encoder_15_index:
                         get_loop_start = str(self.song().loop_start)
                         upper_string2 += 'LoopSt '
                         lower_string2 += adjust_string(get_loop_start, 6) + ' '
-                        # scaler = make_interpolater(self.song().start, )
+
+                        # vpot ring light
+                        display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][0]
+                        display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][1]
+
+                        scaler = make_interpolater(0, self.song().last_event_time, display_mode_cc_first, display_mode_cc_last)
+                        loop_start = int(self.song().loop_start)
+                        led_ring_val = int(scaler(loop_start))
+                        spp_vpot_index = 14
+                        spp_vpot = self.__encoders[spp_vpot_index]
+                        spp_vpot.update_led_ring(led_ring_val)
 
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
