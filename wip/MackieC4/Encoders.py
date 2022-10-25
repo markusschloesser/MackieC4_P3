@@ -72,11 +72,14 @@ class Encoders(MackieC4Component):
 
         self.__v_pot_display_mode = display_mode
 
-        # when mode is boost-cut VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B)
-        # the list self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] should contain ten elements
-        # 0x11, 0x12, 0x13...0x1A
-        # at least that's IMHO, my Python Fu is rusty
+        # when mode is boost-cut VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B), the C4 allows
+        # both 0x11 and 0x1B as valid "Boost Cut" values
+        # the list: self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE]
+        # should contain element 0x1B == eleven elements
+        # 0x11, 0x12, 0x13...0x1B
         display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
+        # for "Boost Cut": self.__v_pot_display_mode][1] - display_mode_cc_base == 0x1B - 0x11 == 0x0A == ten elements
+        # that's why +1 here
         range_len = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base + 1
         self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] = [display_mode_cc_base + x for x in range(range_len)]
 
@@ -103,6 +106,9 @@ class Encoders(MackieC4Component):
     def show_vpot_ring_spread(self):
         data1 = 0x31
         data2 = 0x36 - 0x31
+        # data3 = a tuple of (0x31, 0x32, 0x33, 0x34, 0x35) when data2 = 0x36 - 0x31 == 0x05
+        # since VPOT_DISPLAY_SPREAD: (0x31, 0x36)
+        data2 = data2 + 1  # to include the last valid "spread" value
         data3 = tuple(data1 + x for x in range(data2))
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
         self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data3))
@@ -121,7 +127,8 @@ class Encoders(MackieC4Component):
             feedback_rule.channel = 0
             feedback_rule.cc_no = self.__vpot_cc_nbr
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
-            feedback_val_range_len = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1] - display_mode_cc_base
+            feedback_val_range_len = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][1]
+            feedback_val_range_len = feedback_val_range_len - display_mode_cc_base + 1
             feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(feedback_val_range_len)])
             feedback_rule.delay_in_ms = -1.0
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
