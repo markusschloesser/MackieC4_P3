@@ -943,7 +943,7 @@ class EncoderController(MackieC4Component):
         encoder_12_index = 11
         encoder_13_index = 12
         encoder_14_index = 13
-        encoder_15_index = 14
+        encoder_16_index = 14
         encoder_17_index = 16  # Metronome
         encoder_24_index = 23
         encoder_25_index = 24
@@ -1198,10 +1198,6 @@ class EncoderController(MackieC4Component):
                     vpot_display_text.set_text('all', 'unarm')
                 # elif s.vpot_index() == encoder_12_index:
                 #     # time display was moved to on_update_display_timer because song position needs to be updated in real-time
-                # elif s.vpot_index() == encoder_14_index:
-                #     vpot_param = (None, VPOT_DISPLAY_SPREAD)
-                elif s.vpot_index() == encoder_15_index:
-                    vpot_display_text.set_text('/ Zoom', 'Scroll')
 
                 elif s.vpot_index() == encoder_17_index:
                     vpot_display_text.set_text('nome  ', 'Metro ')
@@ -1545,6 +1541,7 @@ class EncoderController(MackieC4Component):
             # encoder_13_index is covered / occupied by SPP from 12
             encoder_14_index = 12  # because 12 is occupied, we still need 12 otherwise everything be shifted over
             encoder_15_index = 13
+            encoder_16_index = 14
             encoder_25_index = 24
             encoder_26_index = 25
             for e in self.__encoders:
@@ -1561,9 +1558,8 @@ class EncoderController(MackieC4Component):
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
                         lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
 
-                    # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
                     elif e.vpot_index() == encoder_12_index:
-
+                        # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
                         if self.__time_display.TimeDisplay__show_beat_time:
                             time_string = str(self.song().get_current_beats_song_time()) + ' '
                             upper_string2 += 'Bar:Bt:Sb:Tik '
@@ -1618,10 +1614,19 @@ class EncoderController(MackieC4Component):
                         spp_vpot = self.__encoders[spp_vpot_index]
                         spp_vpot.update_led_ring(led_ring_val)
 
+                    elif e.vpot_index() == encoder_16_index:
+                        # show if Session or Arrange view in upper and selected track name in lower
+                        upper_string2 += ('Scroll' if self.application().view.is_view_visible('Session') else 'Zoom  ')
+                        lower_string2 += adjust_string(self.selected_track.name, 6)
+
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                         lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_02_encoders:
+                    # if e.vpot_index() == encoder_16_index:
+                    #     if self.song().metronome:
+                    # self.song().BeatTime.beats
+
                     upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string3 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_03_encoders:
