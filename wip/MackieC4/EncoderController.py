@@ -6,7 +6,7 @@
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 
-from itertools import chain
+import itertools
 
 import sys
 # from _multiprocessing import send
@@ -19,6 +19,7 @@ from ableton.v2.control_surface.elements.display_data_source import adjust_strin
 
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
+    from ableton.v2.base import old_hasattr
 
 from . import track_util
 from . import song_util
@@ -593,14 +594,14 @@ class EncoderController(MackieC4Component):
                 else:
                     self.main_script().log_message("can't update param.value to default: None object")
             elif encoder_index in row_03_encoders:
-                # encoder 29 is "Rec Arm" encoder in C4M_CHANNEL_STRIP mode
-                # encoder 30 is "Mute"
-                encoder_28_index = 27
-                encoder_29_index = 28
-                encoder_30_index = 29
+
+                encoder_27_index = 26  # X-Fade
+                encoder_28_index = 27  # Solo
+                encoder_29_index = 28  # Rec Arm
+                encoder_30_index = 29  # Mute
                 s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
 
-                if encoder_index < encoder_28_index:
+                if encoder_index < encoder_27_index:
                     # these encoders are the four < encoder_29_index, left half of bottom row, sends 9 - 12
                     param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
                     if liveobj_valid(param):
@@ -610,6 +611,11 @@ class EncoderController(MackieC4Component):
                             param.value = param.default_value  # button press == jump to default value of Send?
                     else:
                         self.main_script().log_message("can't update param.value to default: param not liveobj_valid()")
+
+                # elif encoder_index == encoder_27_index:
+                #     if self.__filter_mst_trk:
+
+
 
                 elif encoder_index == encoder_28_index:
                     if self.__filter_mst_trk:
@@ -723,6 +729,7 @@ class EncoderController(MackieC4Component):
             encoder_12_index = 11  # SPP
             # encoder_13_index is covered / occupied by SPP from 12
             encoder_14_index = 13
+            encoder_16_index = 15
             encoder_17_index = 16  # Metronome
             encoder_25_index = 24  # Stop
             encoder_26_index = 25  # Play
@@ -799,6 +806,11 @@ class EncoderController(MackieC4Component):
             elif encoder_index == encoder_12_index:
                 self.__time_display.toggle_mode()
                 # displaying part moved to on_update_display_timer, also for vpot lights
+
+            elif encoder_index == encoder_16_index:
+                nav = Live.Application.Application.View.NavDirection
+                if self.application().view.is_view_visible('Arranger'):
+                    self.application().view.zoom_view(nav.left, '', self.alt_is_pressed())
 
             elif encoder_index == encoder_17_index:
                 self.song().metronome = not self.song().metronome
@@ -1036,7 +1048,7 @@ class EncoderController(MackieC4Component):
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
 
-                elif s_index < encoder_28_index:
+                elif s_index < encoder_27_index:
                     # changed from 29, which means that the 12th send will not be shown on the C4, but who needs 12 sends that anyway?
                     # if you wanna get back to 12 sends being shown, out-comment all encoder_28_index stuff and change "elif s_index < encoder_28_index" to 29
                     if self.__filter_mst_trk_allow_audio:
@@ -1049,6 +1061,18 @@ class EncoderController(MackieC4Component):
                         # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
                         if liveobj_valid(send_param[0]):
                             vpot_display_text.set_text(send_param[0], send_param[1])
+                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+                    self.__display_parameters.append(vpot_display_text)
+
+                elif s_index == encoder_27_index:
+                    if self.selected_track.has_audio_output:
+                        if self.__filter_mst_trk:
+                            vpot_display_text.set_text(self.selected_track.mixer_device.crossfade_assignments, 'X-Fade')  # static text
+                            vpot_param = (self.selected_track.mixer_device.crossfade_assignments.values(), VPOT_DISPLAY_BOOST_CUT)  # the actual param
+                        else:
+                            vpot_display_text.set_text(self.selected_track.mixer_device.crossfader,'X-Fade')  # static text
+                            vpot_param = (self.selected_track.mixer_device.crossfader, VPOT_DISPLAY_BOOST_CUT)
+
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
 
