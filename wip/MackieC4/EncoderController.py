@@ -529,7 +529,6 @@ class EncoderController(MackieC4Component):
             is_armable_track_selected = track_util.can_be_armed(self.selected_track)
 
             if encoder_index in row_00_encoders:
-                # only "top row" encoders 7 and 8 are mapped in C4M_CHANNEL_STRIP mode
                 encoder_04_index = 3
                 encoder_05_index = 4
                 encoder_06_index = 5
@@ -612,9 +611,9 @@ class EncoderController(MackieC4Component):
                     else:
                         self.main_script().log_message("can't update param.value to default: param not liveobj_valid()")
 
-                # elif encoder_index == encoder_27_index:
-                #     if self.__filter_mst_trk:
-
+                elif encoder_index == encoder_27_index:
+                    if self.__filter_mst_trk:
+                        track_util._crossfade_toggle_value(0, 1)
 
 
                 elif encoder_index == encoder_28_index:
@@ -652,7 +651,7 @@ class EncoderController(MackieC4Component):
                     #  encoder 31 is "Pan"
                     #  encoder 32 is "Volume"
                     param = self.__encoders[encoder_index].v_pot_parameter()
-                    param.value = param.default_value  # button press == jump to default value of Pan or Vol?
+                    param.value = param.default_value  # button press == jump to default value of Pan or Vol
 
         elif self.__assignment_mode == C4M_PLUGINS:
             encoder_07_index = 6
@@ -1067,8 +1066,8 @@ class EncoderController(MackieC4Component):
                 elif s_index == encoder_27_index:
                     if self.selected_track.has_audio_output:
                         if self.__filter_mst_trk:
-                            vpot_display_text.set_text(self.selected_track.mixer_device.crossfade_assignments, 'X-Fade')  # static text
-                            vpot_param = (self.selected_track.mixer_device.crossfade_assignments.values(), VPOT_DISPLAY_BOOST_CUT)  # the actual param
+                            vpot_display_text.set_text(None, 'X-Fade')  # static text
+                            # vpot_param = (self.selected_track.mixer_device.crossfade_assignments.values(), VPOT_DISPLAY_BOOST_CUT)  # the actual param
                         else:
                             vpot_display_text.set_text(self.selected_track.mixer_device.crossfader,'X-Fade')  # static text
                             vpot_param = (self.selected_track.mixer_device.crossfader, VPOT_DISPLAY_BOOST_CUT)
