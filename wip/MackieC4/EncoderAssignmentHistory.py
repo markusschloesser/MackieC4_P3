@@ -87,6 +87,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         tracks_in_song = self.song().tracks
         #tracks_in_song = song_ref.tracks
         self.main_script().log_message("nbr tracks in song {0}".format(len(tracks_in_song)))
+        loop_index_tracker = 0
         for t_idx in range(len(tracks_in_song)):
             devices_on_track = tracks_in_song[t_idx].devices
             self.t_d_count[t_idx] = len(devices_on_track)
@@ -102,8 +103,9 @@ class EncoderAssignmentHistory(MackieC4Component):
                 self.t_d_p_bank_current[t_idx][d_idx] = 0
 
             self.t_count += 1
+            loop_index_tracker = t_idx
 
-        idx_nrml_trks = t_idx  # this throws an error in Live because referenced before assignment, indenting doesn't work
+        idx_nrml_trks = loop_index_tracker
         assert idx_nrml_trks == self.t_count - 1
         for rt_idx in range(len(self.song().return_tracks)):
             devices_on_rtn_track = self.song().return_tracks[rt_idx].devices
@@ -124,8 +126,9 @@ class EncoderAssignmentHistory(MackieC4Component):
 
             self.t_count += 1
             self.t_r_count += 1
+            loop_index_tracker = ttl_t_idx
 
-        idx_nrml_and_rtn_trks = ttl_t_idx  # this throws an error in Live because referenced before assignment, indenting doesn't work
+        idx_nrml_and_rtn_trks = loop_index_tracker
         assert idx_nrml_and_rtn_trks == self.t_count - 1
         self.__master_track_index = idx_nrml_and_rtn_trks + 1
         mt_idx = self.__master_track_index
