@@ -40,7 +40,12 @@ class TimeDisplay(MackieC4Component):
         self.show_beats()
         self._TimeDisplay__last_send_time = []
 
-    def on_update_display_timer(self):  # needed? should be covered by on_update_display_timer in EncoderController
+    # if a TimeDisplay object gets "registered" as the same kind of "Listener" as EncoderController does, AND this
+    # on_update_display_timer() method is supplied as the "callback method" during "registration", then BOTH
+    # on_update_display_timer() methods would run whenever Live "notifies all Listeners" by executing all registered
+    # callback methods.  The answer to "Is this method needed?" depends on circumstances.  Being "covered by
+    # on_update_display_timer in EncoderController" now, doesn't also mean covered forever.
+    def on_update_display_timer(self):
         if self._TimeDisplay__show_beat_time:
             time_string = str(self.song().get_current_beats_song_time())
         else:
