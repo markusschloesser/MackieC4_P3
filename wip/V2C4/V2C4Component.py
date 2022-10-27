@@ -12,6 +12,7 @@ class V2C4Component(ControlSurfaceComponent):
     # don't really know what these pointers represent, but all the
     # _Framework classes pass them around
     def __init__(self, *a, **k):
+        ControlSurfaceComponent.__init__(*a, **k)
         self.__a = a
         self.__k = k
 
