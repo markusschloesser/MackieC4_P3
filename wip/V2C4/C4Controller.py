@@ -1,5 +1,4 @@
 
-from __future__ import absolute_import, print_function, unicode_literals
 from .V2C4Component import *
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range, str
