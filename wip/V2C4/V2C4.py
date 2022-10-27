@@ -20,6 +20,6 @@ class V2C4(ControlSurface):
     __module__ = __name__
 
     def __init__(self, c_instance, *a, **k):
-        super(V2C4, self).__init__(c_instance)
+        ControlSurface(c_instance, *a, **k)
         self.__c_instance = c_instance
         self.__controller = C4Controller(self, *a, **k)
