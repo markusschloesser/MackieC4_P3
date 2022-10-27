@@ -109,7 +109,9 @@ class LCDLogicalSegment(object):
         self.__logicalDisplay = LogicalDisplaySegment(width, self.__on_display_text_changed(), *a, **k)
         self.__logicalDisplay.set_data_source(self.__data_source)
         #  Giant SWAG - "position identifier" could be used to construct the full two-rows-of-text needed
-        # to make a full LCD screen SYSEX message from these logical parts
+        # to make a full LCD screen SYSEX message from these "chunks" of logical display
+        # offset of 0, then 8 row indexes;
+        # offset of 53, then 8 row indexes is how we want this tuple interpreted
         self.__logicalDisplay.set_position_identifier(tuple([display_row_offset, encoder_row_index]))
 
     def __on_display_text_changed(self):
