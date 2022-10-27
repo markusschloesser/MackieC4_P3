@@ -39,7 +39,7 @@ class C4Model(V2C4Component):
     __module__ = __name__
 
     def __init__(self, *a, **k):
-        V2C4Component.__init__(self, *a, **k)
+        V2C4Component.__init__(*a, **k)
 
         self.LCD_display = {
             LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
