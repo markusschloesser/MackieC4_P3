@@ -247,14 +247,13 @@ class MackieC4(object):
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_16:
                     self.zoom_or_scroll(cc_value)
 
-
     """
     # For each of these "encoder rotation" handlers
     # if we want to get more fancy with conditions...
     # The C4 actually sends "accelerating values"
     # from consts:
     # encoder_cw_values = range(0x01, 0x10)  # larger values means knob is turning faster / bigger CW increments
-    # encoder_ccw_values = range(0x40, 0x50) # larger values means knob is turning faster / bigger CCW increments
+    # encoder_ccw_values = range(0x41, 0x50) # larger values means knob is turning faster / bigger CCW increments
         # 0x40 == 64 and fifteen levels of acceleration in each direction (CW, CCW)
     # encoder_cw_values = [0x01, 0x02, ..., 0x0E, 0x0F] length 15
         
