@@ -13,10 +13,10 @@ class C4Controller(V2C4Component):
     __module__ = __name__
 
     def __init__(self, *a, **k):
-        V2C4Component.__init__(*a, **k)
-        self.__lcd_00 = PhysicalDisplayElement(*a, **k)
-        self.__lcd_01 = PhysicalDisplayElement(*a, **k)
-        self.__lcd_02 = PhysicalDisplayElement(*a, **k)
-        self.__lcd_03 = PhysicalDisplayElement(*a, **k)
-        self.__model = C4Model(*a, **k)
+        V2C4Component.__init__(self, *a, **k)
+        # self.__lcd_00 = PhysicalDisplayElement(*a, **k)
+        # self.__lcd_01 = PhysicalDisplayElement(*a, **k)
+        # self.__lcd_02 = PhysicalDisplayElement(*a, **k)
+        # self.__lcd_03 = PhysicalDisplayElement(*a, **k)
+
 
