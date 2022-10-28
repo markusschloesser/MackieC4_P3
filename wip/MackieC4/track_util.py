@@ -170,5 +170,6 @@ def get_all_mixer_tracks(song):
 
 
 def _crossfade_toggle_value(self, value):
-    if liveobj_valid(self._track):
-        self._track.mixer_device.crossfade_assign = value != 0 or self._crossfade_toggle.is_momentary() or (self._track.mixer_device.crossfade_assign - 1) % len(self._track.mixer_device.crossfade_assignments.values)
+    if liveobj_valid(self.selected_track):
+        # self.selected_track.mixer_device.crossfade_assign = value != 0 or self._crossfade_toggle.is_momentary() or (self.selected_track.mixer_device.crossfade_assign - 1) % len(self.selected_track.mixer_device.crossfade_assignments.values)  # this only switches assignments OFF, but it's a start
+        self.selected_track.mixer_device.crossfade_assign = (self.selected_track.mixer_device.crossfade_assign - 1) % len(self.selected_track.mixer_device.crossfade_assignments.values)

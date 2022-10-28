@@ -614,7 +614,18 @@ class EncoderController(MackieC4Component):
                 elif encoder_index == encoder_27_index:
                     if self.selected_track.has_audio_output:
                         if self.__filter_mst_trk:
-                            track_util._crossfade_toggle_value(0, 1)  # vpot push for Crossfade assign on Audio or Return tracks, currently neither vpot rotation not vpot push works
+                            state = self.selected_track.mixer_device.crossfade_assign
+                            value_to_send = None
+                            if state == 0:
+                                value_to_send = 'Mixer.Crossfade.A'
+                            elif state == 1:
+                                value_to_send = 'Mixer.Crossfade.Off'
+                            elif state == 2:
+                                value_to_send = 'Mixer.Crossfade.B'
+                            track_util._crossfade_toggle_value(self, value_to_send)  # vpot push for Crossfade assign A/B/off on Audio or Return tracks
+                        else:
+                            param = self.__encoders[encoder_index].v_pot_parameter()
+                            param.value = param.default_value  # button press == jump to default value for Crossfader on Master track
 
 
                 elif encoder_index == encoder_28_index:
@@ -1325,6 +1336,7 @@ class EncoderController(MackieC4Component):
         # if dsply_sgmts != encdr_range:
         #     self.main_script().log_message("display segments loaded {0} encoder range {1}"
         #                                    .format(dsply_sgmts, encdr_range))
+        encoder_27_index = 26
         encoder_28_index = 27
         encoder_29_index = 28
         encoder_30_index = 29
@@ -1389,6 +1401,12 @@ class EncoderController(MackieC4Component):
                         lower_string4 += ' '
                         upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
+
+                    # if t == encoder_27_index:
+                    #     if liveobj_valid(self.selected_track):
+                    #         if self.selected_track.has_audio_output:
+                    #             if self.__filter_mst_trk:
+                    #                 lower_string4 += str(self.selected_track.mixer_device.crossfade_assignments)
 
                     if t == encoder_28_index:
                         if liveobj_valid(self.selected_track):
@@ -1666,7 +1684,6 @@ class EncoderController(MackieC4Component):
 
             unmute_all_encoder_index = 6
             unmute_all_encoder = self.__encoders[unmute_all_encoder_index]
-
             if song_util.any_muted_track(self):
                 unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
             else:
