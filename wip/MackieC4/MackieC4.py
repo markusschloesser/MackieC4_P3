@@ -206,7 +206,7 @@ class MackieC4(object):
             channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
             note = midi_bytes[1]  # data1
             velocity = midi_bytes[2]  # data2
-            # self.log_message("note<{}> velo<{}> received MS:from is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
+            #self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
             if note in range(C4SID_FIRST, C4SID_LAST + 1) and ignore_note_offs:
@@ -225,21 +225,27 @@ class MackieC4(object):
             elif note in modifier_switch_ids:
                 self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
 
-        else:  # here one can use vpot_rotation to forward to a function
+        elif is_cc_msg:
+            """here one can use vpot_rotation to forward CC data to a function"""
+            cc_no = midi_bytes[1]
+            cc_value = midi_bytes[2]
+            #self.log_message("CCnbr<{}> CCval<{}> logged because is_cc_msg in receive_midi in MackieC4".format(cc_no, cc_value))
 
             if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
-                self.log_message("potIndex<{0}> receiving MIDI encoder from FORWARD CC in MackieC4 coming from receive_midi".format(midi_bytes))
-                if midi_bytes[0] & 240 == CC_STATUS:
-                    cc_no = midi_bytes[1]
-                    cc_value = midi_bytes[2]
-                    if cc_no == 11:  # is vpot 12. 11 is the binary value received from encoder 12, question is why referencing C4SID_VPOT_CC_ADDRESS_12 doesn't work?
-                        self.handle_jog_wheel_rotation(cc_value)
-                    if cc_no == 13:
-                        self.set_loop_length(cc_value)
-                    if cc_no == 14:
-                        self.set_loop_start(cc_value)
-                    if cc_no == 15:
-                        self.zoom_or_scroll(cc_value)
+                #self.log_message("rawMidiMsg<{0}> receiving MIDI encoder from FORWARD CC in MackieC4 coming from receive_midi".format(midi_bytes))
+
+                # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
+                # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
+                vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
+
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_12:
+                    self.handle_jog_wheel_rotation(cc_value)
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_14:  # skip encoder 13 (display space occupied)
+                    self.set_loop_length(cc_value)
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_15:
+                    self.set_loop_start(cc_value)
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_16:
+                    self.zoom_or_scroll(cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
