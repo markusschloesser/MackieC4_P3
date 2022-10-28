@@ -612,8 +612,9 @@ class EncoderController(MackieC4Component):
                         self.main_script().log_message("can't update param.value to default: param not liveobj_valid()")
 
                 elif encoder_index == encoder_27_index:
-                    if self.__filter_mst_trk:
-                        track_util._crossfade_toggle_value(0, 1)
+                    if self.selected_track.has_audio_output:
+                        if self.__filter_mst_trk:
+                            track_util._crossfade_toggle_value(0, 1)  # vpot push for Crossfade assign on Audio or Return tracks, currently neither vpot rotation not vpot push works
 
 
                 elif encoder_index == encoder_28_index:
@@ -728,7 +729,7 @@ class EncoderController(MackieC4Component):
             encoder_12_index = 11  # SPP
             # encoder_13_index is covered / occupied by SPP from 12
             encoder_14_index = 13
-            encoder_16_index = 15
+            encoder_16_index = 15  # Scroll / Zoom
             encoder_17_index = 16  # Metronome
             encoder_25_index = 24  # Stop
             encoder_26_index = 25  # Play
@@ -1066,10 +1067,10 @@ class EncoderController(MackieC4Component):
                 elif s_index == encoder_27_index:
                     if self.selected_track.has_audio_output:
                         if self.__filter_mst_trk:
-                            vpot_display_text.set_text(None, 'X-Fade')  # static text
+                            vpot_display_text.set_text(None, 'XAssgn')  # Crossfade assign on Audio or Return tracks, currently neither vpot rotation not vpot push works
                             # vpot_param = (self.selected_track.mixer_device.crossfade_assignments.values(), VPOT_DISPLAY_BOOST_CUT)  # the actual param
                         else:
-                            vpot_display_text.set_text(self.selected_track.mixer_device.crossfader,'X-Fade')  # static text
+                            vpot_display_text.set_text(self.selected_track.mixer_device.crossfader,'X-Fade')  # Crossfader on Master track
                             vpot_param = (self.selected_track.mixer_device.crossfader, VPOT_DISPLAY_BOOST_CUT)
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
