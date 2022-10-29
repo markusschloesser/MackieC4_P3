@@ -3,6 +3,8 @@ import sys
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import object
 
+from .C4_DEFINES import *
+
 from _Framework.ControlSurfaceComponent import ControlSurfaceComponent
 
 class V2C4Component(ControlSurfaceComponent):

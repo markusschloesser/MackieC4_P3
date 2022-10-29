@@ -43,60 +43,60 @@ class C4Model(V2C4Component):
 
     __module__ = __name__
 
-    def on_display_text_changed(self):
-        """callback method, called when the display text changes"""
-        # alert the Physical Display to send midi?
-        pass
+    # def on_display_text_changed(self):
+    #     """callback method, called when the display text changes"""
+    #     # alert the Physical Display to send midi?
+    #     pass
 
     def __init__(self, *a, **k):
         V2C4Component.__init__(self, *a, **k)
 
-        self.LCD_display = {
-            LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
-                                 LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)},
-            LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
-                                   LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)},
-            LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
-                                   LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)},
-            LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
-                                   LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)}}
-
-        lcd_00_up_sgmts = []
-        lcd_00_dn_sgmts = []
-        lcd_01_up_sgmts = []
-        lcd_01_dn_sgmts = []
-        lcd_02_up_sgmts = []
-        lcd_02_dn_sgmts = []
-        lcd_03_up_sgmts = []
-        lcd_03_dn_sgmts = []
-        width = int(LCD_BOTTOM_ROW_OFFSET / ENCODER_BANK_SIZE) # == 7
-        separator = "I"
-        for i in range(ENCODER_BANK_SIZE):
-            lcd_00_up_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
-            lcd_00_up_sgmts[-1].set_data_source(DisplayDataSource("000000", separator))
-            lcd_00_up_sgmts[-1].set_position_identifier(tuple([LCD_TOP_ROW_OFFSET, i]))
-            lcd_00_dn_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
-            lcd_00_dn_sgmts[-1].set_data_source(DisplayDataSource("11111", separator))
-            lcd_00_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
-            lcd_01_up_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
-            lcd_01_up_sgmts[-1].set_data_source(DisplayDataSource("222222", separator))
-            lcd_01_up_sgmts[-1].set_position_identifier(tuple([LCD_TOP_ROW_OFFSET, i]))
-            lcd_01_dn_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
-            lcd_01_dn_sgmts[-1].set_data_source(DisplayDataSource("333333", separator))
-            lcd_01_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
-
-            lcd_02_up_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
-            lcd_02_up_sgmts[-1].set_data_source(DisplayDataSource("444444", separator))
-            lcd_02_up_sgmts[-1].set_position_identifier(tuple([LCD_TOP_ROW_OFFSET, i]))
-            lcd_02_dn_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
-            lcd_02_dn_sgmts[-1].set_data_source(DisplayDataSource("555555", separator))
-            lcd_02_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
-            lcd_03_up_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
-            lcd_03_up_sgmts[-1].set_data_source(DisplayDataSource("666666", separator))
-            lcd_03_up_sgmts[-1].set_position_identifier(tuple([LCD_TOP_ROW_OFFSET, i]))
-            lcd_03_dn_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
-            lcd_03_dn_sgmts[-1].set_data_source(DisplayDataSource("777777", separator))
-            lcd_03_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
+        # self.LCD_display = {
+        #     LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
+        #                          LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)},
+        #     LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
+        #                            LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)},
+        #     LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
+        #                            LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)},
+        #     LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
+        #                            LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)}}
+        #
+        # lcd_00_up_sgmts = []
+        # lcd_00_dn_sgmts = []
+        # lcd_01_up_sgmts = []
+        # lcd_01_dn_sgmts = []
+        # lcd_02_up_sgmts = []
+        # lcd_02_dn_sgmts = []
+        # lcd_03_up_sgmts = []
+        # lcd_03_dn_sgmts = []
+        # width = int(LCD_BOTTOM_ROW_OFFSET / ENCODER_BANK_SIZE) # == 7
+        # separator = "I"
+        # for i in range(ENCODER_BANK_SIZE):
+        #     lcd_00_up_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
+        #     lcd_00_up_sgmts[-1].set_data_source(DisplayDataSource("000000", separator))
+        #     lcd_00_up_sgmts[-1].set_position_identifier(tuple([LCD_TOP_ROW_OFFSET, i]))
+        #     lcd_00_dn_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
+        #     lcd_00_dn_sgmts[-1].set_data_source(DisplayDataSource("11111", separator))
+        #     lcd_00_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
+        #     lcd_01_up_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
+        #     lcd_01_up_sgmts[-1].set_data_source(DisplayDataSource("222222", separator))
+        #     lcd_01_up_sgmts[-1].set_position_identifier(tuple([LCD_TOP_ROW_OFFSET, i]))
+        #     lcd_01_dn_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
+        #     lcd_01_dn_sgmts[-1].set_data_source(DisplayDataSource("333333", separator))
+        #     lcd_01_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
+        #
+        #     lcd_02_up_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
+        #     lcd_02_up_sgmts[-1].set_data_source(DisplayDataSource("444444", separator))
+        #     lcd_02_up_sgmts[-1].set_position_identifier(tuple([LCD_TOP_ROW_OFFSET, i]))
+        #     lcd_02_dn_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
+        #     lcd_02_dn_sgmts[-1].set_data_source(DisplayDataSource("555555", separator))
+        #     lcd_02_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
+        #     lcd_03_up_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
+        #     lcd_03_up_sgmts[-1].set_data_source(DisplayDataSource("666666", separator))
+        #     lcd_03_up_sgmts[-1].set_position_identifier(tuple([LCD_TOP_ROW_OFFSET, i]))
+        #     lcd_03_dn_sgmts.append(LogicalDisplaySegment(width, self.on_display_text_changed))
+        #     lcd_03_dn_sgmts[-1].set_data_source(DisplayDataSource("777777", separator))
+        #     lcd_03_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
 
         # self.LCD_display[LCD_ANGLED_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_00_up_sgmts)
         # self.LCD_display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_00_dn_sgmts)
@@ -116,22 +116,34 @@ class C4Model(V2C4Component):
         self.split_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_SPLIT)
         self.lock_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_LOCK)
         self.spot_erase_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_SPLIT_ERASE)
+        self.function_buttons = tuple([self.split_button, self.lock_button, self.spot_erase_button])
+
         self.marker_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_MARKER)
         self.chan_strip_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_CHANNEL_STRIP)
         self.track_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_TRACK)
         self.function_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_FUNCTION)
+        self.assignment_buttons = tuple([self.marker_button, self.chan_strip_button,
+                                         self.track_button, self.function_button])
+
         self.shift_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_SHIFT)
         self.control_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_CONTROL)
         self.option_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_OPTION)
         self.alt_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_ALT)
+        self.modifier_buttons = tuple([self.shift_button, self.control_button, self.option_button, self.alt_button])
+
         self.bank_left_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_BANK_LEFT)
         self.bank_right_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_BANK_RIGHT)
         self.single_left_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_SINGLE_LEFT)
         self.single_right_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_SINGLE_RIGHT)
+        self.parameter_buttons = tuple([self.bank_left_button, self.bank_right_button,
+                                        self.single_left_button, self.single_right_button])
+
         self.slot_up_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_SLOT_UP)
         self.slot_down_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_SLOT_DOWN)
         self.track_left_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_TRACK_LEFT)
         self.track_right_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_TRACK_RIGHT)
+        self.cardinal_buttons = tuple([self.slot_up_button, self.slot_down_button,
+                                       self.track_left_button, self.track_right_button])
 
         # Encoders, Encoder Buttons, Encoder LED Rings
         # 32 of each in 4 rows by 8 columns
@@ -146,7 +158,7 @@ class C4Model(V2C4Component):
 
     def destroy(self):
         V2C4Component.destroy(self)
-        self.LCD_display = None # deep destroy()?
+        # self.LCD_display = None # deep destroy()?
 
 
 class LCDDisplayElement(DisplayElement):
