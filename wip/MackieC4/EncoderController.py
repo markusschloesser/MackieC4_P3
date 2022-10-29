@@ -1077,10 +1077,7 @@ class EncoderController(MackieC4Component):
 
                 elif s_index == encoder_27_index:
                     if self.selected_track.has_audio_output:
-                        if self.__filter_mst_trk:
-                            vpot_display_text.set_text(None, 'XAssgn')  # Crossfade assign on Audio or Return tracks, currently neither vpot rotation not vpot push works
-                            # vpot_param = (self.selected_track.mixer_device.crossfade_assignments.values(), VPOT_DISPLAY_BOOST_CUT)  # the actual param
-                        else:
+                        if self.__filter_mst_trk != 1:
                             vpot_display_text.set_text(self.selected_track.mixer_device.crossfader,'X-Fade')  # Crossfader on Master track
                             vpot_param = (self.selected_track.mixer_device.crossfader, VPOT_DISPLAY_BOOST_CUT)
 
@@ -1396,17 +1393,33 @@ class EncoderController(MackieC4Component):
                     upper_string3 += adjust_string(u_alt_text, 6)
                     upper_string3 += ' '
                 elif t in row_03_encoders:
-                    if t < encoder_28_index:
+                    if t < encoder_27_index:
                         lower_string4 += adjust_string(l_alt_text, 6)
                         lower_string4 += ' '
                         upper_string4 += adjust_string(u_alt_text, 6)
                         upper_string4 += ' '
 
-                    # if t == encoder_27_index:
-                    #     if liveobj_valid(self.selected_track):
-                    #         if self.selected_track.has_audio_output:
-                    #             if self.__filter_mst_trk:
-                    #                 lower_string4 += str(self.selected_track.mixer_device.crossfade_assignments)
+                    if t == encoder_27_index:
+                        if liveobj_valid(self.selected_track):
+                            if self.selected_track.has_audio_output:
+                                if self.__filter_mst_trk:
+                                    state = self.selected_track.mixer_device.crossfade_assign
+                                    value_to_display = None
+                                    if state == 0:
+                                        value_to_display = 'XFadeA'
+                                    elif state == 1:
+                                        value_to_display = ' Off  '
+                                    elif state == 2:
+                                        value_to_display = 'XFadeB'
+                                    upper_string4 += 'X-Fade'
+                                    upper_string4 += ' '
+                                    lower_string4 += str(value_to_display)
+                                    lower_string4 += ' '
+                                else:
+                                    lower_string4 += adjust_string(str(l_alt_text), 6)
+                                    lower_string4 += ' '
+                                    upper_string4 += adjust_string(u_alt_text, 6)
+                                    upper_string4 += ' '
 
                     if t == encoder_28_index:
                         if liveobj_valid(self.selected_track):
