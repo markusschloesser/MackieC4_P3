@@ -1405,12 +1405,17 @@ class EncoderController(MackieC4Component):
                                 if self.__filter_mst_trk:
                                     state = self.selected_track.mixer_device.crossfade_assign
                                     value_to_display = None
+                                    spp_vpot_index = 26
+                                    spp_vpot = self.__encoders[spp_vpot_index]
                                     if state == 0:
                                         value_to_display = 'XFadeA'
+                                        spp_vpot.update_led_ring(0x11)
                                     elif state == 1:
                                         value_to_display = ' Off  '
+                                        spp_vpot.unlight_vpot_leds()
                                     elif state == 2:
                                         value_to_display = 'XFadeB'
+                                        spp_vpot.update_led_ring(0x1B)
                                     upper_string4 += 'X-Fade'
                                     upper_string4 += ' '
                                     lower_string4 += str(value_to_display)
