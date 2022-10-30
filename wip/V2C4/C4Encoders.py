@@ -12,6 +12,7 @@ class C4Encoders:
     __module__ = __name__
 
     def __init__(self, parent, extended, encoder_index):
+        assert encoder_index < NUM_ENCODERS
         self.__parent = parent
         self.__bank = 0
         self.__selected_device = None
