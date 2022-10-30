@@ -3,13 +3,12 @@ from .V2C4Component import *
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range, str
 
-from .C4_DEFINES import *
-
 import Live
 # from folder.file import class
-from _Framework.DisplayDataSource import DisplayDataSource
-from _Framework.LogicalDisplaySegment import LogicalDisplaySegment
-from _Framework.PhysicalDisplayElement import DisplayElement
+from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
+# from _Framework.DisplayDataSource import DisplayDataSource
+# from _Framework.LogicalDisplaySegment import LogicalDisplaySegment
+# from _Framework.PhysicalDisplayElement import DisplayElement
 
 from _Framework.InputControlElement import *
 from _Framework.ButtonElement import ButtonElement
@@ -42,11 +41,6 @@ SYSEX_START = SYSEX_HEADER  # + (LCD_xxx_ADDRESS, LCD_yyy_ROW_OFFSET)
 class C4Model(V2C4Component):
 
     __module__ = __name__
-
-    # def on_display_text_changed(self):
-    #     """callback method, called when the display text changes"""
-    #     # alert the Physical Display to send midi?
-    #     pass
 
     def __init__(self, *a, **k):
         V2C4Component.__init__(self, *a, **k)
@@ -107,10 +101,32 @@ class C4Model(V2C4Component):
         # self.LCD_display[LCD_MDL_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_03_up_sgmts)
         # self.LCD_display[LCD_MDL_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_03_dn_sgmts)
 
+        # the 56th byte/char defined on each row here will be ignored by the C4 which only has 55 actual
+        # text positions per line/row on the LCDs.  But 56 / 8 has 0 remainder, there must be a natural number
+        # of display_text_characters (7) defined per display segment in a "Control Surface script".
+        # per
+        self.LCD_display = {
+            LCD_ANGLED_ADDRESS:   # 0x38 == 48 + 8 == 56
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)},
+            LCD_TOP_FLAT_ADDRESS:
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)},
+            LCD_MDL_FLAT_ADDRESS:
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)},
+            LCD_BTM_FLAT_ADDRESS:
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)}}
+
+        self.channel_strip_display = {
+            LCD_ANGLED_ADDRESS:  # 0x38 == 48 + 8 == 56
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, 2),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, 2)}}
         # Bottom area Buttons
         # C4 sends Note ON vel 127 for "button pressed"
         #      and Note ON vel   0 for "button released"  (or Note Off vel 0?)
-        # which is "not momentary", but could be proven wrong
+        # which is "not momentary", but could be proven wrong. Axiom code "required" True here
         is_momentary = True
         channel = 0
         self.split_button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_SPLIT)
@@ -145,11 +161,19 @@ class C4Model(V2C4Component):
         self.cardinal_buttons = tuple([self.slot_up_button, self.slot_down_button,
                                        self.track_left_button, self.track_right_button])
 
-        # Encoders, Encoder Buttons, Encoder LED Rings
+        # Encoders, Encoder Buttons
         # 32 of each in 4 rows by 8 columns
+        # Encoders        originate MIDI CC messages for their channel and CC number
+        # Encoder LED rings receive MIDI CC messages for their channel and CC number
+        # Encoder Buttons   originate MIDI Note messages for their channel and Note number
+        # Encoder Button LEDs receive MIDI Note messages for their channel and Note number
+        # the "receivers" are the "midi feedback" targets of the "originators"
+        # the "receivers" are not generally modeled in code other than as "midi feedback" targets
+        # sometimes though, you just want to send SYSEX to the encoder rings, for example,
+        # that's handled elsewhere.
         self.encoders = []
         self.encoder_buttons = []
-        for i in range(ENCODER_BASE, NUM_ENCODERS):
+        for i in range(NUM_ENCODERS):
             self.encoders.append(C4EncoderElement(MIDI_CC_TYPE, channel,
                                                   C4SID_VPOT_CC_ADDRESS_BASE + i,
                                                   Live.MidiMap.MapMode.relative_signed_bit))
@@ -160,51 +184,56 @@ class C4Model(V2C4Component):
         V2C4Component.destroy(self)
         # self.LCD_display = None # deep destroy()?
 
-
-class LCDDisplayElement(DisplayElement):
-    """This class models an entire LCD Top or Bottom row
-    NOTE: each C4 "LCD line" only has 55 bytes of text, but the char width of a DisplayElement needs to evenly divide by
-    the number of segments. Saying the width is 56 means the 56th character of each line is never visible, but it
-    gives each of 8 segments 7 chars per line
-    LCD_BOTTOM_ROW_OFFSET = 0x38  # 56
-    NUM_TEXT_BYTES_PER_SYSEX_MSG = 55  # 0x37
-    """
-    def __init__(self, *a, **k):
-        DisplayElement.__init__(self, LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k)
+    # def on_display_text_changed(self):
+    #     """callback method, called when the display text changes"""
+    #     # alert the Physical Display to send midi?
+    #     pass
 
 
-class LCDLogicalSegment(object):
-    """This class models just the text data over an encoder LCD Top or Bottom row"""
-
-    _row_offset_text = ""
-
-    def __init__(self, encoder_row_index, display_row_offset, display_text, separator="", *a, **k):
-
-        self.encoder_row_index = encoder_row_index  # index of the encoder in its row 0 - 7
-        self.bottom_row_offset = display_row_offset  # offset of 0 means "top row"
-        width = len(display_text)
-        if width < 6:
-            width = 6
-
-        # self.__data_source = DisplayDataSource(display_text, separator, *a, **k)
-        # setting this callback here would get overwritten by the next two lines anyway
-        # self.__data_source.set_update_callback(self.on_display_text_changed())
-        self.__logicalDisplay = LogicalDisplaySegment(width, self.__on_display_text_changed(), *a, **k)
-        self.__logicalDisplay.set_data_source(DisplayDataSource(display_text, separator, *a, **k))
-        #  Giant SWAG - "position identifier" could be used to construct the full two-rows-of-text needed
-        # to make a full LCD screen SYSEX message from these "chunks" of logical display
-        # offset of 0, then 8 row indexes;
-        # offset of 53, then 8 row indexes is how we want this tuple interpreted
-        self.__logicalDisplay.set_position_identifier(tuple([display_row_offset, encoder_row_index]))
-
-    def __on_display_text_changed(self):
-        """callback method, called when the LCDDataSource display text changes"""
-        # may need to pass this callback further up to the level of an entire LCD
-        # self._row_offset_text = self.__logicalDisplay.display_string()
-        pass
-
-    def get_text(self):
-        return self._row_offset_text
-
-    def get_logical_segment(self):
-        return self.__logicalDisplay
+# class LCDDisplayElement(DisplayElement):
+#     """This class models an entire LCD Top or Bottom row
+#     NOTE: each C4 "LCD line" only has 55 bytes of text, but the char width of a DisplayElement needs to evenly divide by
+#     the number of segments. Saying the width is 56 means the 56th character of each line is never visible, but it
+#     gives each of 8 segments 7 chars per line
+#     LCD_BOTTOM_ROW_OFFSET = 0x38  # 56
+#     NUM_TEXT_BYTES_PER_SYSEX_MSG = 55  # 0x37
+#     """
+#     def __init__(self, *a, **k):
+#         DisplayElement.__init__(self, LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k)
+#
+#
+# class LCDLogicalSegment(object):
+#     """This class models just the text data over an encoder LCD Top or Bottom row"""
+#
+#     _row_offset_text = ""
+#
+#     def __init__(self, encoder_row_index, display_row_offset, display_text, separator="", *a, **k):
+#
+#         self.encoder_row_index = encoder_row_index  # index of the encoder in its row 0 - 7
+#         self.bottom_row_offset = display_row_offset  # offset of 0 means "top row"
+#         width = len(display_text)
+#         if width < 6:
+#             width = 6
+#
+#         # self.__data_source = DisplayDataSource(display_text, separator, *a, **k)
+#         # setting this callback here would get overwritten by the next two lines anyway
+#         # self.__data_source.set_update_callback(self.on_display_text_changed())
+#         self.__logicalDisplay = LogicalDisplaySegment(width, self.__on_display_text_changed(), *a, **k)
+#         self.__logicalDisplay.set_data_source(DisplayDataSource(display_text, separator, *a, **k))
+#         #  Giant SWAG - "position identifier" could be used to construct the full two-rows-of-text needed
+#         # to make a full LCD screen SYSEX message from these "chunks" of logical display
+#         # offset of 0, then 8 row indexes;
+#         # offset of 53, then 8 row indexes is how we want this tuple interpreted
+#         self.__logicalDisplay.set_position_identifier(tuple([display_row_offset, encoder_row_index]))
+#
+#     def __on_display_text_changed(self):
+#         """callback method, called when the LCDDataSource display text changes"""
+#         # may need to pass this callback further up to the level of an entire LCD
+#         # self._row_offset_text = self.__logicalDisplay.display_string()
+#         pass
+#
+#     def get_text(self):
+#         return self._row_offset_text
+#
+#     def get_logical_segment(self):
+#         return self.__logicalDisplay

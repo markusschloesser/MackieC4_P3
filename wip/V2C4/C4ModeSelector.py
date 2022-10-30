@@ -6,20 +6,23 @@ if sys.version_info[0] >= 3:  # Live 11
 from _Framework.SessionComponent import SessionComponent
 from _Framework.TransportComponent import TransportComponent
 from _Framework.ModeSelectorComponent import ModeSelectorComponent
+from _Framework.MixerComponent import MixerComponent
 from _Framework.ButtonElement import ButtonElement
 from _Framework.DisplayDataSource import DisplayDataSource
 from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
 
 from .C4DeviceComponent import C4DeviceComponent
-from .C4MixerComponent import C4MixerComponent
+from .C4ChannelStripComponent import C4ChannelStripComponent
+
 
 class C4ModeSelector(ModeSelectorComponent):
     """class that selects between assignment modes using modifiers"""
     __module__ = __name__
 
-    def __init__(self, mixer, device, transport, session, encoders,
+    def __init__(self, mixer, channel_strip, device, transport, session, encoders,
                  assignment_buttons, modifier_buttons, device_bank_buttons):
-        assert isinstance(mixer, C4MixerComponent)
+        assert isinstance(mixer, MixerComponent)
+        assert isinstance(channel_strip, C4ChannelStripComponent)
         assert isinstance(device, C4DeviceComponent)
         assert isinstance(transport, TransportComponent)
         assert isinstance(session, SessionComponent)
@@ -103,7 +106,7 @@ class C4ModeSelector(ModeSelectorComponent):
         return
 
     def number_of_modes(self):
-        # self._assignment_buttons * self._modifier_buttons = 16 eventually?
+        # self._assignment_buttons + self._assignment_buttons * self._modifier_buttons = up to 20 eventually?
         return 2
 
     def update(self):
