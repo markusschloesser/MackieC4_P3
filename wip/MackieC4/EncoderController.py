@@ -742,6 +742,8 @@ class EncoderController(MackieC4Component):
             encoder_14_index = 13
             encoder_16_index = 15  # Scroll / Zoom
             encoder_17_index = 16  # Metronome
+            encoder_18_index = 17  # re-enable automation
+            encoder_19_index = 18  # capture midi
             encoder_25_index = 24  # Stop
             encoder_26_index = 25  # Play
             encoder_27_index = 26  # continue play
@@ -825,6 +827,13 @@ class EncoderController(MackieC4Component):
 
             elif encoder_index == encoder_17_index:
                 self.song().metronome = not self.song().metronome
+
+            elif s.vpot_index() == encoder_18_index:
+                if self.song().re_enable_automation_enabled:
+                    """Returns true if some automated parameter has been overriden"""
+                    self.song().re_enable_automation()
+
+                #  capture_midi
 
             elif encoder_index == encoder_25_index:
                 self.song().stop_playing()
@@ -968,6 +977,8 @@ class EncoderController(MackieC4Component):
         encoder_14_index = 13
         encoder_16_index = 14
         encoder_17_index = 16  # Metronome
+        encoder_18_index = 17
+        encoder_19_index = 18
         encoder_24_index = 23
         encoder_25_index = 24
         encoder_26_index = 25
@@ -1229,10 +1240,16 @@ class EncoderController(MackieC4Component):
                 elif s.vpot_index() == encoder_11_index:
                     vpot_display_text.set_text('all', 'unarm')
                 # elif s.vpot_index() == encoder_12_index:
-                #     # time display was moved to on_update_display_timer because song position needs to be updated in real-time
+                #     time display was moved to on_update_display_timer because song position needs to be updated in real-time,
+                #     same for LoopLength, LoopStart
 
                 elif s.vpot_index() == encoder_17_index:
                     vpot_display_text.set_text('nome  ', 'Metro ')
+
+                elif s.vpot_index() == encoder_18_index:
+                    vpot_display_text.set_text('Autmtn', 'Renabl')
+
+                #  capture_midi
 
                 elif s.vpot_index() == encoder_25_index:
                     dummy_param = (None, VPOT_DISPLAY_WRAP)
@@ -1602,6 +1619,8 @@ class EncoderController(MackieC4Component):
             encoder_14_index = 12  # because 12 is occupied, we still need 12 otherwise everything be shifted over
             encoder_15_index = 13
             encoder_16_index = 14
+            encoder_18_index = 17  # re-enable automation
+            encoder_19_index = 18  # capture midi
             encoder_25_index = 24
             encoder_26_index = 25
             for e in self.__encoders:
@@ -1679,13 +1698,15 @@ class EncoderController(MackieC4Component):
                         upper_string2 += ('Scroll' if self.application().view.is_view_visible('Session') else 'Zoom  ')
                         lower_string2 += adjust_string(self.selected_track.name, 6)
 
+                    elif e.vpot_index() == encoder_18_index:
+                        if self.song().re_enable_automation_enabled:
+                            """Returns true if some automated parameter has been overriden"""
+                            self.__encoders[encoder_18_index].show_full_enlighted_poti()
+
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                         lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_02_encoders:
-                    # if e.vpot_index() == encoder_16_index:
-                    #     if self.song().metronome:
-                    # self.song().BeatTime.beats
 
                     upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string3 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
