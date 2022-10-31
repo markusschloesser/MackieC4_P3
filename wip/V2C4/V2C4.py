@@ -1,6 +1,8 @@
 
 
 from __future__ import absolute_import, print_function, unicode_literals
+import logging
+logger = logging.getLogger(__name__)
 
 from _Framework.ControlSurface import ControlSurface
 from _Framework.SessionComponent import SessionComponent
@@ -50,8 +52,6 @@ class V2C4(ControlSurface):
             strip.set_volume_control(self._model.encoders[encoder_32_index])
             encoder_31_index = C4SID_VPOT_CC_ADDRESS_31 - C4SID_VPOT_CC_ADDRESS_BASE
             strip.set_pan_control(self._model.encoders[encoder_31_index])
-            # volume encoder is also track select button
-            strip.set_select_button(self._model.encoder_buttons[encoder_32_index])
 
             encoder_30_index = C4SID_VPOT_PUSH_30 - C4SID_VPOT_PUSH_BASE
             encoder_29_index = C4SID_VPOT_PUSH_29 - C4SID_VPOT_PUSH_BASE
@@ -141,3 +141,17 @@ class V2C4(ControlSurface):
         for i in LCD_DISPLAY_ADDRESSES:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                 self._send_midi((SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER, )))
+
+    def log_message(self, *message):
+        """ Overrides standard to use logger instead of c_instance. """
+        try:
+            message = '(%s) %s' % (self.__class__.__name__,
+             (' ').join(map(str, message)))
+            logger.info(message)
+        except:
+            logger.info('Logging encountered illegal character(s)!')
+
+    # @staticmethod
+    # def get_logger():
+    #     """ Returns this script's logger object. """
+    #     return logger
