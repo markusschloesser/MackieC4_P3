@@ -8,6 +8,7 @@ from _Framework.MixerComponent import MixerComponent
 from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
 from _Framework.ButtonElement import ButtonElement
 
+
 from .C4_DEFINES import *
 
 
@@ -22,7 +23,6 @@ class C4ChannelStripComponent(ChannelStripComponent):
         ChannelStripComponent.__init__(self)
         assert isinstance(mixer, MixerComponent)
         self._mixer = mixer
-
         self._update_callback = None
         self._display = None
         self._register_timer_callback(self._on_timer)
@@ -34,6 +34,11 @@ class C4ChannelStripComponent(ChannelStripComponent):
         self._unregister_timer_callback(self._on_timer)
         self._display = None
         return
+
+    def on_selected_track_changed(self):
+        if self.song().view.selected_track != self._track:
+            self.set_track(self.song().view.selected_track)
+            ChannelStripComponent.on_selected_track_changed(self)
 
     def set_update_callback(self, callback):
         assert callback is None or dir(callback).count('im_func') is 1
