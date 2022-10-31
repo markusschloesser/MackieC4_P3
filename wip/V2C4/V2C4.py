@@ -65,12 +65,14 @@ class V2C4(ControlSurface):
             self.set_device_component(device)
 
             transport = TransportComponent()
-            encoder_24_index = C4SID_VPOT_PUSH_24 - C4SID_VPOT_PUSH_BASE
-            encoder_25_index = C4SID_VPOT_PUSH_25 - C4SID_VPOT_PUSH_BASE
+            encoder_27_index = C4SID_VPOT_PUSH_27 - C4SID_VPOT_PUSH_BASE
             encoder_26_index = C4SID_VPOT_PUSH_26 - C4SID_VPOT_PUSH_BASE
-            transport.set_stop_button(self._model.encoder_buttons[encoder_24_index])
-            transport.set_play_button(self._model.encoder_buttons[encoder_25_index])
-            transport.set_record_button(self._model.encoder_buttons[encoder_26_index])
+            encoder_25_index = C4SID_VPOT_PUSH_25 - C4SID_VPOT_PUSH_BASE
+
+            transport.set_record_button(self._model.encoder_buttons[encoder_27_index])
+            transport.set_play_button(self._model.encoder_buttons[encoder_26_index])
+            transport.set_stop_button(self._model.encoder_buttons[encoder_25_index])
+
             session = SessionComponent(0, 0)
 
             encoders = tuple(self._model.encoders)
