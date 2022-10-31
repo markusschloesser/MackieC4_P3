@@ -31,12 +31,20 @@ from .C4EncoderElement import C4EncoderElement
 # (0x90, 0x20, 0x7F) is a Note message from encoder button 0 with Note value (velocity) 127
 # (0xB0, 0x20, 0x7F) is also a CC message TO encoder LED Ring 0 with CC value 127
 #
+#
 # scratch comments
 # SYSEX_HEADER = (0xF0, 0, 0, 0x66, 0x17)  # (240, 0, 0, 102, 23)
 # SYSEX_FOOTER = 0xF7  # 247
 # sysex_msg = SYSEX_HEADER + (LCD_xxx_ADDRESS, LCD_yyy_ROW_OFFSET) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)
 #
-SYSEX_START = SYSEX_HEADER  # + (LCD_xxx_ADDRESS, LCD_yyy_ROW_OFFSET)
+# message from the C4 logged by _Framework.ControlSurface base class
+# C4 sends this message at "power on" and "LCD wake-up",  also after it receives
+# # whatever SYSEX message displays the Mackie welcome
+# (240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51, 6, 0, 247)
+# (240, 0, 0, 102, 23)     Z,  T,  1,  0,  4,  7,  3,  A,  3,  ,  ,(247)
+#
+# The serial number of my C4 is ZT10473.  A3 might indicate firmware version?  mine is 3.0.0 per the Mackie Welcome
+#
 #
 class C4Model(V2C4Component):
 
