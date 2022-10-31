@@ -120,6 +120,13 @@ class V2C4(ControlSurface):
             for component in self.components:
                 component.set_enabled(False)
 
+            # clear all screens and show firmware on top angled LCD,
+            # firmware version SYSEX message from C4 unlocks components locked above
+            # self.schedule_message(10, self.request_firmware_version)
+            self.request_firmware_version()
+            self.show_message("Mackie C4 v2 script initialized")
+            self.log_message("Mackie C4 v2 script initialized")
+
     def refresh_state(self):
         ControlSurface.refresh_state(self)
         self._waiting_for_first_response = True
@@ -127,14 +134,31 @@ class V2C4(ControlSurface):
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                 self.schedule_message(10, self._send_midi, (SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER, )))
 
+    #                            v   3   .   0   0       <--- C4 firmware version
+    # (240, 0, 0, 102, 23, 20, 118, 51, 46, 48, 48, 247)
+    #                          Z   T   1   0   4   7   3         <---- C4 serial number (ZT10473 on a sticker)
+    # (240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51, 6, 0, 247)
+    # (240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16, 6, 0, 247)
     def handle_sysex(self, midi_bytes):
-        # want to log whatever appears here SYSEX from the C4?
         if midi_bytes[0:5] == SYSEX_HEADER:
+            self.log_message("midi SYSEX message from C4 {}".format(midi_bytes))
+            serial_nbr = midi_bytes[6:13]
+            self.log_message("connected to C4 serial number {}".format(serial_nbr))
             self._waiting_for_first_response = False
+            self.log_message("enabling <{}> components".format(len(self.components)))
             for component in self.components:
                 component.set_enabled(True)
-        # pass, commented because we need to enable components, or not disable them.
 
+            self.update()
+            # translate serial number to text versus ascii bytes
+            self.show_message("connected to C4 serial number {}".format(serial_nbr))
+
+
+    def request_firmware_version(self):
+        sysex = SYSEX_HEADER + (SYSEX_MACKIE_CONTROL_FIRMWARE_REQUEST, 0, SYSEX_FOOTER)
+        self.log_message("requesting C4 firmware {}".format(sysex))
+        if self._waiting_for_first_response:
+            self._send_midi(sysex)
 
     def disconnect(self):
         ControlSurface.disconnect(self)
