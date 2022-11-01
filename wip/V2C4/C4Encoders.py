@@ -1,14 +1,17 @@
 
-from __future__ import absolute_import, print_function, unicode_literals
+from .V2C4Component import *
+
 import Live
+
 from _Generic.Devices import *
 
-from .C4_DEFINES import *
 
 class C4Encoders:
-    """ Class representing all encoders on the C4 device
+    """ Class representing behaviors associated with all encoders on the C4 device
         sliced by the 4 encoder rows under each of the 4 LCD screens
-     modeled after _Axiom/Encoders class"""
+        and by each individual encoder
+     modeled after _Axiom/Encoders class
+     """
     __module__ = __name__
 
     def __init__(self, parent, extended, encoder_index):
@@ -23,6 +26,7 @@ class C4Encoders:
 
         self.__encoder_index = encoder_index
         self.__cc_nbr = encoder_cc_ids[self.__encoder_index]
+        self.set_LED_ring_display_mode()
         if encoder_index in row_00_encoder_indexes:
             self.__row_id = 0
         elif encoder_index in row_01_encoder_indexes:
@@ -35,37 +39,44 @@ class C4Encoders:
         return
 
     def disconnect(self):
-        if self.__selected_device != None:
+        if self.__selected_device is not None:
             self.__selected_device.remove_parameters_listener(self.__on_device_parameters_changed)
             self.__selected_device = None
         return
 
+    @property
+    def c4_row_id(self):
+        return self.__row_id
+
+    def set_LED_ring_display_mode(self, display_mode=VPOT_DISPLAY_WRAP):
+        if display_mode in encoder_ring_led_mode_values.keys():
+            self.__display_mode = display_mode
+
+    def specialize_feedback_rule(self, feedback_rule, channel=0):
+        feedback_rule.channel = channel
+        feedback_rule.cc_no = self.__cc_nbr
+        display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__display_mode][0]
+        feedback_val_range_len = encoder_ring_led_mode_cc_values[self.__display_mode][1]
+        feedback_val_range_len = feedback_val_range_len - display_mode_cc_base + 1
+        feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(feedback_val_range_len)])
+        feedback_rule.delay_in_ms = -1.0
+
     # builds an encoder midi map of "track volume" control
     #                              "track panning" control if self.__extended or self.__modifier
-    # for up to all 32 encoders,
-    # but only maps for number of visible tracks in song
-    def build_midi_map(self, script_handle, midi_map_handle):
-        tracks = self.__parent.song().visible_tracks
-        feedback_rule = Live.MidiMap.CCFeedbackRule()
+    def build_midi_map(self, midi_map_handle):
+        track = self.__parent.song().selected_track
         encoder_cc_channel = 0
-        for encoder in range(ENCODER_BASE, NUM_ENCODERS):
-            track_index = encoder
-            if len(tracks) > track_index:
-                feedback_rule.channel = encoder_cc_channel
-                feedback_rule.cc_no = encoder_cc_ids[encoder]
-                feedback_rule.cc_value_map = tuple()
-                feedback_rule.delay_in_ms = -1.0
-                if self.__extended or self.__modifier:
-                    device_parameter = tracks[track_index].mixer_device.panning
-                else:
-                    device_parameter = tracks[track_index].mixer_device.volume
-                avoid_takeover = True
-                Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle,
-                                                           device_parameter, encoder_cc_channel, encoder_cc_ids[encoder],
-                                                           Live.MidiMap.MapMode.relative_signed_bit, feedback_rule,
-                                                           not avoid_takeover, sensitivity=1.0)
-            else:
-                break
+        feedback_rule = Live.MidiMap.CCFeedbackRule()
+        self.specialize_feedback_rule(feedback_rule, encoder_cc_channel)
+        if self.__extended or self.__modifier:
+            device_parameter = track.mixer_device.panning
+        else:
+            device_parameter = track.mixer_device.volume
+        avoid_takeover = True
+        Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle,
+                                                   device_parameter, encoder_cc_channel, self.__cc_nbr,
+                                                   Live.MidiMap.MapMode.relative_signed_bit, feedback_rule,
+                                                   not avoid_takeover, sensitivity=1.0)
 
         # this call wipes out the above mapping?
         self.__connect_to_device(midi_map_handle)
@@ -104,15 +115,12 @@ class C4Encoders:
                             else:
                                 self.__show_bank_select('Best of Parameters')
                         else:
-                            self.__show_bank_select('Bank' + str(self.__bank + 1))
+                            self.__show_bank_select("Bank {}".format(self.__bank + 1))
                 free_encoders = 0
                 for encoder_index in range(ENCODER_BASE, NUM_ENCODERS):
                     parameter_index = encoder_index + self.__bank * NUM_ENCODERS
                     if len(device_parameters) + free_encoders >= parameter_index:
-                        feedback_rule.channel = encoder_cc_channel
-                        feedback_rule.cc_no = encoder_cc_ids[encoder_index]
-                        feedback_rule.cc_value_map = tuple()
-                        feedback_rule.delay_in_ms = -1.0
+                        self.specialize_feedback_rule(feedback_rule, encoder_cc_channel)
                         parameter = 0
                         if param_bank is not None:
                             if  [encoder_index] != '':
@@ -178,9 +186,9 @@ class C4Encoders:
 
     def __change_appointed_device(self, device):
         if not device == self.__selected_device:
-            if self.__selected_device != None:
+            if self.__selected_device is not None:
                 self.__selected_device.remove_parameters_listener(self.__on_device_parameters_changed)
-            if device != None:
+            if device is not None:
                 device.add_parameters_listener(self.__on_device_parameters_changed)
             self.__bank = 0
         self.__show_bank = False

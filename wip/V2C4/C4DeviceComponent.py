@@ -1,7 +1,5 @@
 
 from .V2C4Component import *
-if sys.version_info[0] >= 3:  # Live 11
-    from builtins import range, str
 
 import Live
 from _Generic.Devices import *
@@ -9,6 +7,7 @@ from _Framework.DeviceComponent import DeviceComponent
 from _Framework.EncoderElement import EncoderElement
 from _Framework.ButtonElement import ButtonElement
 from _Framework.DisplayDataSource import DisplayDataSource
+from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
 SPECIAL_NAME_DICT = {'InstrumentImpulse': (
                        (u'Pad1', u'Pad2'),
                        (u'Pad3', u'Pad4'),
@@ -93,28 +92,51 @@ SPECIAL_DEVICE_DICT = {'InstrumentImpulse': [
          (
           EQ8_BANK6,)]}
 
-class C4DeviceComponent(DeviceComponent):
+
+class C4DeviceComponent(DeviceComponent, V2C4Component):
     """Modeled on Axiom Pro PageableDeviceComponent """
+
     __module__ = __name__
 
     def __init__(self, *a, **k):
         super(C4DeviceComponent, self).__init__(*a, **k)
-        self._parameter_value_data_source = DisplayDataSource()
+        V2C4Component.__init__(self)
+        self._parameter_value_data_sources = []
         self._parameter_name_data_sources = []
         self._page_name_data_sources = []
         self._page_index = [0, 0, 0, 0]
-        for new_index in range(ENCODER_BASE, NUM_ENCODERS):
+        for new_index in range(NUM_ENCODERS):
+            self._parameter_value_data_sources.append(DisplayDataSource())
             self._parameter_name_data_sources.append(DisplayDataSource())
             self._page_name_data_sources.append(DisplayDataSource())
+            self._parameter_value_data_sources[(-1)].set_display_string(' - ')
             self._parameter_name_data_sources[(-1)].set_display_string(' - ')
             self._page_name_data_sources[(-1)].set_display_string(' - ')
 
     def disconnect(self):
-        self._parameter_value_data_source = None
+        self._parameter_value_data_sources = None
         self._parameter_name_data_sources = None
         self._page_name_data_sources = None
         DeviceComponent.disconnect(self)
         return
+
+    # def set_parameter_value_data_sources(self, data_sources):
+    #     assert isinstance(data_sources[0][0], PhysicalDisplayElement)
+    #     for i in range(NUM_ENCODERS):
+    #         if i in row_00_encoder_indexes:
+    #             self._parameter_name_data_sources[i] = data_sources[LCD_ANGLED_ADDRESS]
+    #             self._parameter_name_data_sources[i].set_display_string(' - ')
+    # def set_parameter_name_data_sources(self, data_sources):
+    #     assert isinstance(data_sources, tuple)
+    #     assert len(data_sources) == NUM_ENCODERS
+    #     for i in range(NUM_ENCODERS):
+    #         self._parameter_name_data_sources[i] = data_sources[i]
+    #         self._parameter_name_data_sources[i].set_display_string(' - ')
+
+    def set_script_backdoor(self, main_script):
+        """ to log in Live's log from this class, for example, need to set this script """
+        self._set_script_backdoor(main_script)
+
 
     def set_device(self, device):
         DeviceComponent.set_device(self, device)
@@ -132,14 +154,14 @@ class C4DeviceComponent(DeviceComponent):
         DeviceComponent.set_bank_buttons(self, buttons)
         return
 
-    def set_parameter_controls(self, controls):
-        assert controls is None or isinstance(controls, tuple) and len(controls) == NUM_ENCODERS
+    def set_parameter_controls(self, model_controls):
+        assert model_controls is None or isinstance(model_controls, tuple) and len(model_controls) == NUM_ENCODERS
         if self._parameter_controls is not None:
             for control in self._parameter_controls:
                 if self._device is not None:
                     control.release_parameter()
 
-        self._parameter_controls = controls
+        self._parameter_controls = model_controls
         if self._parameter_controls is not None:
             for control in self._parameter_controls:
                 assert control is not None
@@ -149,15 +171,25 @@ class C4DeviceComponent(DeviceComponent):
         self.update()
         return
 
-    def parameter_value_data_source(self):
-        return self._parameter_value_data_source
+    def parameter_value_data_sources(self):
+        return self._parameter_value_data_sources
+
+    def parameter_value_data_source(self, index):
+        assert index in range(NUM_ENCODERS)
+        return self._parameter_value_data_sources[index]
+
+    def parameter_name_data_sources(self):
+        return self._parameter_name_data_sources
 
     def parameter_name_data_source(self, index):
-        assert index in range(8)
+        assert index in range(NUM_ENCODERS)
         return self._parameter_name_data_sources[index]
 
+    def page_name_data_sources(self):
+        return self._page_name_data_sources
+
     def page_name_data_source(self, index):
-        assert index in range(8)
+        assert index in range(NUM_ENCODERS)
         return self._page_name_data_sources[index]
 
     def _bank_value(self, value, button):
@@ -189,6 +221,7 @@ class C4DeviceComponent(DeviceComponent):
                 self.__assign_parameters_normal()
             else:
                 self.__assign_parameters_plugin()
+
         self._parameter_value_data_source.set_display_string('')
         for index in range(len(self._parameter_controls)):
             if self._parameter_controls[index].mapped_parameter() is not None:

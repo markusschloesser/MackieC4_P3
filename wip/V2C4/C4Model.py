@@ -1,7 +1,5 @@
 
 from .V2C4Component import *
-if sys.version_info[0] >= 3:  # Live 11
-    from builtins import range, str
 
 import Live
 # from folder.file import class
@@ -46,12 +44,14 @@ from .C4EncoderElement import C4EncoderElement
 # The serial number of my C4 is ZT10473.  A3 might indicate firmware version?  mine is 3.0.0 per the Mackie Welcome
 #
 #
+
+
 class C4Model(V2C4Component):
 
     __module__ = __name__
 
-    def __init__(self, *a, **k):
-        V2C4Component.__init__(self, *a, **k)
+    def __init__(self):
+        V2C4Component.__init__(self)  #
 
         # self.LCD_display = {
         #     LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
@@ -191,6 +191,11 @@ class C4Model(V2C4Component):
     def destroy(self):
         V2C4Component.destroy(self)
         # self.LCD_display = None # deep destroy()?
+
+    def set_script_backdoor(self, main_script):
+        """ to log in Live's log from this class, for example, need to set this script """
+        self._set_script_backdoor(main_script)
+
 
     # def on_display_text_changed(self):
     #     """callback method, called when the display text changes"""

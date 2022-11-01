@@ -1,13 +1,13 @@
 
 from .V2C4Component import *
-if sys.version_info[0] >= 3:  # Live 11
-    from builtins import range, str
 
 from _Framework.EncoderElement import EncoderElement
 from _Framework.InputControlElement import *
 
+
 class C4EncoderElement(EncoderElement):
-    """modeled on Axiom Peekable Encoder Element"""
+    """ modeled on Axiom Peekable Encoder Element """
+
     __module__ = __name__
 
     def __init__(self, msg_type, channel, identifier, map_mode):

@@ -1,8 +1,6 @@
-
-
 from __future__ import absolute_import, print_function, unicode_literals
 import logging
-logger = logging.getLogger(__name__)
+import Live
 
 from _Framework.ControlSurface import ControlSurface
 from _Framework.SessionComponent import SessionComponent
@@ -11,6 +9,7 @@ from _Framework.MixerComponent import MixerComponent
 
 from .C4Controller import C4Controller
 from .C4EncoderElement import C4EncoderElement
+from .C4Encoders import C4Encoders
 from .C4ChannelStripComponent import C4ChannelStripComponent
 from .C4Model import C4Model
 from .C4ModeSelector import C4ModeSelector
@@ -22,6 +21,9 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
     from builtins import object
 
+logger = logging.getLogger(__name__)
+
+
 class V2C4(ControlSurface):
     """V2C4 class acts as a container/manager for all the
        C4 subcomponents like Encoders, Displays and so on.
@@ -31,11 +33,17 @@ class V2C4(ControlSurface):
     def __init__(self, c_instance, *a, **k):
         ControlSurface.__init__(self, c_instance, *a, **k)
         with self.component_guard():
-            self._model = C4Model(self, *a, **k)
-            self._controller = C4Controller(self, *a, **k)
+            self._model = C4Model()
+            self._model.set_script_backdoor(self)
+            self._controller = C4Controller()
 
             assert len(self._model.encoders) == NUM_ENCODERS
             assert len(self._model.encoder_buttons) == NUM_ENCODERS
+
+            self._mapping_encoders = []
+            extended_behavior = False
+            for i in range(NUM_ENCODERS):
+                self._mapping_encoders.append(C4Encoders(self, extended_behavior, i))
 
             self._suggested_input_port = 'MackieC4'
             self._suggested_output_port = 'MackieC4'
@@ -46,7 +54,9 @@ class V2C4(ControlSurface):
             mixer.set_select_buttons(self._model.track_right_button, self._model.track_left_button)
             mixer.set_bank_buttons(self._model.bank_right_button, self._model.bank_left_button)
 
-            strip = C4ChannelStripComponent(mixer)
+            strip = C4ChannelStripComponent()
+            strip.set_script_backdoor(self)
+            strip.set_mixer(mixer)
 
             encoder_32_index = C4SID_VPOT_CC_ADDRESS_32 - C4SID_VPOT_CC_ADDRESS_BASE
             strip.set_volume_control(self._model.encoders[encoder_32_index])
@@ -62,6 +72,7 @@ class V2C4(ControlSurface):
             strip.set_shift_button(self._model.shift_button)
 
             device = C4DeviceComponent(device_selection_follows_track_selection=True)
+            device.set_script_backdoor(self)
             self.set_device_component(device)
 
             transport = TransportComponent()
@@ -74,16 +85,6 @@ class V2C4(ControlSurface):
             transport.set_stop_button(self._model.encoder_buttons[encoder_25_index])
 
             session = SessionComponent(0, 0)
-
-            encoders = tuple(self._model.encoders)
-            assignment_buttons = self._model.assignment_buttons
-            modifier_buttons = self._model.modifier_buttons
-            device_bank_buttons = tuple([self._model.single_left_button, self._model.single_left_button])
-
-            mode_selector = C4ModeSelector(mixer, strip, device, transport, session, encoders,
-                                           assignment_buttons, modifier_buttons, device_bank_buttons)
-            mode_selector.set_mode_toggle(self._model.marker_button)
-            mode_selector.set_peek_button(self._model.spot_erase_button)
 
             self._lcd_displays = self._model.LCD_display
             self.blanks = tuple([ASCII_SPACE for x in range(LCD_BOTTOM_ROW_OFFSET)])
@@ -116,25 +117,50 @@ class V2C4(ControlSurface):
 
             strip.set_display(self._chan_strip_display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET])
 
-            # still need to connect the "data sources" associated with
-            # each encoder to the physical displays, don't we?
+            midi_map_encoders = tuple(self._mapping_encoders)
+            model_encoders = tuple(self._model.encoders)
+            assignment_buttons = self._model.assignment_buttons
+            modifier_buttons = self._model.modifier_buttons
+            bank_buttons = tuple([self._model.bank_right_button, self._model.bank_left_button])
+
+            mode_selector = C4ModeSelector(mixer, strip, device, transport, session, midi_map_encoders, model_encoders,
+                                           assignment_buttons, modifier_buttons, bank_buttons)
+            mode_selector.set_mode_toggle(self._model.marker_button)
+            mode_selector.set_peek_button(self._model.spot_erase_button)
 
             for component in self.components:
                 component.set_enabled(False)
 
             # clear all screens and show firmware on top angled LCD,
             # firmware version SYSEX message from C4 unlocks components locked above
-            # self.schedule_message(10, self.request_firmware_version)
             self.request_firmware_version()
-            self.show_message("Mackie C4 v2 script initialized")
-            self.log_message("Mackie C4 v2 script initialized")
+            self.show_message("Mackie C4 v2 script initialize finished")
+            self.log_message("Mackie C4 v2 script initialize finished")
 
     def refresh_state(self):
         ControlSurface.refresh_state(self)
         self._waiting_for_first_response = True
+        self.request_firmware_version()
+        # always blank the LCDs when refreshing state?
+        # what about the LED rings?
         for i in LCD_DISPLAY_ADDRESSES:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                 self.schedule_message(10, self._send_midi, (SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER, )))
+
+    def build_midi_map(self, midi_map_handle):
+
+        for encoder in self._mapping_encoders:
+            encoder.build_midi_map(midi_map_handle)
+
+        for i in range(C4SID_FIRST, C4SID_LAST + 1):
+            Live.MidiMap.forward_midi_note(self._c_instance.handle(), midi_map_handle, 0, i)
+            Live.MidiMap.forward_midi_cc(self._c_instance.handle(), midi_map_handle, 0, i)
+
+    def receive_midi(self, midi_bytes):
+        """ only need to handle CC or Note message types here """
+
+        # superclass will call back to handle any SYSEX messages
+        ControlSurface.receive_midi(midi_bytes)
 
     #                            v   3   .   0   0       <--- C4 firmware version
     # (240, 0, 0, 102, 23, 20, 118, 51, 46, 48, 48, 247)
@@ -143,9 +169,9 @@ class V2C4(ControlSurface):
     # (240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16, 6, 0, 247)
     def handle_sysex(self, midi_bytes):
         if midi_bytes[0:5] == SYSEX_HEADER:
-            self.log_message("midi SYSEX message from C4 {}".format(midi_bytes))
+            # self.log_message("midi SYSEX message from C4 {}".format(midi_bytes))
             serial_nbr = midi_bytes[6:13]
-            self.log_message("connected to C4 serial number {}".format(serial_nbr))
+            # self.log_message("connected to C4 serial number {}".format(serial_nbr))
             self._waiting_for_first_response = False
             self.log_message("enabling <{}> components".format(len(self.components)))
             for component in self.components:
@@ -153,13 +179,15 @@ class V2C4(ControlSurface):
 
             self.update()
             # translate serial number to text versus ascii bytes
-            self.show_message("connected to C4 serial number {}".format(serial_nbr))
-
+            if len(midi_bytes) > 13:
+                self.show_message("connected to C4 with serial number {}".format(serial_nbr[0:4]))
+            else:
+                self.show_message("connected to C4 with firmware version {}".format(serial_nbr))
 
     def request_firmware_version(self):
         sysex = SYSEX_HEADER + (SYSEX_MACKIE_CONTROL_FIRMWARE_REQUEST, 0, SYSEX_FOOTER)
-        self.log_message("requesting C4 firmware {}".format(sysex))
         if self._waiting_for_first_response:
+            self.log_message("requesting C4 firmware {}".format(sysex))
             self._send_midi(sysex)
 
     def disconnect(self):
@@ -177,7 +205,7 @@ class V2C4(ControlSurface):
         except:
             logger.info('Logging encountered illegal character(s)!')
 
-    # @staticmethod
-    # def get_logger():
-    #     """ Returns this script's logger object. """
-    #     return logger
+    @staticmethod
+    def get_logger():
+        """ Returns this script's logger object. """
+        return logger
