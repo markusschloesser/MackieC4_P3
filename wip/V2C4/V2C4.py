@@ -7,13 +7,14 @@ from _Framework.SessionComponent import SessionComponent
 from _Framework.TransportComponent import TransportComponent
 from _Framework.MixerComponent import MixerComponent
 
-from .C4Controller import C4Controller
+# from .C4ControlSurfaceComponent import C4ControlSurfaceComponent
 from .C4EncoderElement import C4EncoderElement
 from .C4Encoders import C4Encoders
 from .C4ChannelStripComponent import C4ChannelStripComponent
 from .C4Model import C4Model
 from .C4ModeSelector import C4ModeSelector
 from .C4DeviceComponent import C4DeviceComponent
+from .C4EncodersComponent import C4EncodersComponent
 from .C4_DEFINES import *
 
 if sys.version_info[0] >= 3:  # Live 11
@@ -34,20 +35,18 @@ class V2C4(ControlSurface):
         ControlSurface.__init__(self, c_instance, *a, **k)
         with self.component_guard():
             self._model = C4Model()
-            self._model.set_script_backdoor(self)
-            self._controller = C4Controller()
+            self._model.set_script_handle(self)
+            # self._controller = C4ControlSurfaceComponent()
 
             assert len(self._model.encoders) == NUM_ENCODERS
             assert len(self._model.encoder_buttons) == NUM_ENCODERS
 
-            self._mapping_encoders = []
-            extended_behavior = False
-            for i in range(NUM_ENCODERS):
-                self._mapping_encoders.append(C4Encoders(self, extended_behavior, i))
-
             self._suggested_input_port = 'MackieC4'
             self._suggested_output_port = 'MackieC4'
             self._waiting_for_first_response = True
+
+            self._encoders_component = C4EncodersComponent()
+            self._encoders_component.set_script_handle(self)
 
             nbr_tracks = 1
             mixer = MixerComponent(nbr_tracks)
@@ -55,7 +54,7 @@ class V2C4(ControlSurface):
             mixer.set_bank_buttons(self._model.bank_right_button, self._model.bank_left_button)
 
             strip = C4ChannelStripComponent()
-            strip.set_script_backdoor(self)
+            strip.set_script_handle(self)
             strip.set_mixer(mixer)
 
             encoder_32_index = C4SID_VPOT_CC_ADDRESS_32 - C4SID_VPOT_CC_ADDRESS_BASE
@@ -117,7 +116,7 @@ class V2C4(ControlSurface):
 
             strip.set_display(self._chan_strip_display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET])
 
-            midi_map_encoders = tuple(self._mapping_encoders)
+            midi_map_encoders = tuple(self._encoders_component.encoder_components())
             model_encoders = tuple(self._model.encoders)
             assignment_buttons = self._model.assignment_buttons
             modifier_buttons = self._model.modifier_buttons
@@ -125,11 +124,14 @@ class V2C4(ControlSurface):
 
             mode_selector = C4ModeSelector(mixer, strip, device, transport, session, midi_map_encoders, model_encoders,
                                            assignment_buttons, modifier_buttons, bank_buttons)
-            mode_selector.set_mode_toggle(self._model.marker_button)
-            mode_selector.set_peek_button(self._model.spot_erase_button)
 
             for component in self.components:
                 component.set_enabled(False)
+
+            # these settings will get "locked in" when the "firmware handshake" update runs
+            # after a successful handshake
+            mode_selector.set_mode_toggle(self._model.marker_button)
+            mode_selector.set_peek_button(self._model.spot_erase_button)
 
             # clear all screens and show firmware on top angled LCD,
             # firmware version SYSEX message from C4 unlocks components locked above
@@ -149,18 +151,22 @@ class V2C4(ControlSurface):
 
     def build_midi_map(self, midi_map_handle):
 
-        for encoder in self._mapping_encoders:
+        for encoder in self._encoders_component.encoder_components():
             encoder.build_midi_map(midi_map_handle)
 
-        for i in range(C4SID_FIRST, C4SID_LAST + 1):
-            Live.MidiMap.forward_midi_note(self._c_instance.handle(), midi_map_handle, 0, i)
-            Live.MidiMap.forward_midi_cc(self._c_instance.handle(), midi_map_handle, 0, i)
+        # uncomment to see "unknown midi messages" from the C4 in the logs
+        # of if you want to directly implement handlers for those midi messages
+        # for i in range(C4SID_FIRST, C4SID_LAST + 1):
+        #     Live.MidiMap.forward_midi_note(self._c_instance.handle(), midi_map_handle, 0, i)
+        #     Live.MidiMap.forward_midi_cc(self._c_instance.handle(), midi_map_handle, 0, i)
+
+        super(V2C4, self).build_midi_map(midi_map_handle)
 
     def receive_midi(self, midi_bytes):
         """ only need to handle CC or Note message types here """
 
         # superclass will call back to handle any SYSEX messages
-        ControlSurface.receive_midi(midi_bytes)
+        ControlSurface.receive_midi(self, midi_bytes)
 
     #                            v   3   .   0   0       <--- C4 firmware version
     # (240, 0, 0, 102, 23, 20, 118, 51, 46, 48, 48, 247)
@@ -205,7 +211,7 @@ class V2C4(ControlSurface):
         except:
             logger.info('Logging encountered illegal character(s)!')
 
-    @staticmethod
-    def get_logger():
+    # @staticmethod
+    def get_logger(self):
         """ Returns this script's logger object. """
         return logger

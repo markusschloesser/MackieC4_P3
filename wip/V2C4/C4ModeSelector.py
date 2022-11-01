@@ -15,7 +15,7 @@ from .C4DeviceComponent import C4DeviceComponent
 from .C4ChannelStripComponent import C4ChannelStripComponent
 
 
-class C4ModeSelector(ModeSelectorComponent):
+class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     """class that selects between assignment modes using modifiers"""
     __module__ = __name__
 
@@ -32,6 +32,7 @@ class C4ModeSelector(ModeSelectorComponent):
         assert isinstance(modifier_buttons, tuple)
         assert isinstance(bank_buttons, tuple)
         ModeSelectorComponent.__init__(self)
+        V2C4Component.__init__(self)
         self._mixer = mixer
         self._chan_strip = channel_strip
         self._device = device
@@ -59,7 +60,7 @@ class C4ModeSelector(ModeSelectorComponent):
         for encoder in self._c4_model_encoders:
             encoder.add_value_listener(self._parameter_value, identify_sender)
 
-        self.set_mode(0)
+        # self.set_mode(0) # displays must be connected before we set the mode
         return
 
     def disconnect(self):
@@ -82,21 +83,22 @@ class C4ModeSelector(ModeSelectorComponent):
         return
 
     def set_displays(self, displays, value_display=None):
-        assert isinstance(displays, dict)
-        assert len(displays.keys()) == len(LCD_DISPLAY_ADDRESSES)
-        if self._default_displays[LCD_ANGLED_ADDRESS][0] is None and displays[LCD_ANGLED_ADDRESS][0] is not None:
-            self._default_displays = displays
+        if self.is_enabled():
+            assert isinstance(displays, dict)
+            assert len(displays.keys()) == len(LCD_DISPLAY_ADDRESSES)
+            if self._default_displays[LCD_ANGLED_ADDRESS][0] is None and displays[LCD_ANGLED_ADDRESS][0] is not None:
+                self._default_displays = displays
 
-        one_LCD = displays[LCD_ANGLED_ADDRESS]
-        self._encoder_row00_displays = tuple([one_LCD[LCD_TOP_ROW_OFFSET], one_LCD[LCD_BOTTOM_ROW_OFFSET]])
-        one_LCD = displays[LCD_TOP_FLAT_ADDRESS]
-        self._encoder_row01_displays = tuple([one_LCD[LCD_TOP_ROW_OFFSET], one_LCD[LCD_BOTTOM_ROW_OFFSET]])
-        one_LCD = displays[LCD_MDL_FLAT_ADDRESS]
-        self._encoder_row02_displays = tuple([one_LCD[LCD_TOP_ROW_OFFSET], one_LCD[LCD_BOTTOM_ROW_OFFSET]])
-        one_LCD = displays[LCD_BTM_FLAT_ADDRESS]
-        self._encoder_row03_displays = tuple([one_LCD[LCD_TOP_ROW_OFFSET], one_LCD[LCD_BOTTOM_ROW_OFFSET]])
+            one_LCD = displays[LCD_ANGLED_ADDRESS]
+            self._encoder_row00_displays = tuple([one_LCD[LCD_TOP_ROW_OFFSET], one_LCD[LCD_BOTTOM_ROW_OFFSET]])
+            one_LCD = displays[LCD_TOP_FLAT_ADDRESS]
+            self._encoder_row01_displays = tuple([one_LCD[LCD_TOP_ROW_OFFSET], one_LCD[LCD_BOTTOM_ROW_OFFSET]])
+            one_LCD = displays[LCD_MDL_FLAT_ADDRESS]
+            self._encoder_row02_displays = tuple([one_LCD[LCD_TOP_ROW_OFFSET], one_LCD[LCD_BOTTOM_ROW_OFFSET]])
+            one_LCD = displays[LCD_BTM_FLAT_ADDRESS]
+            self._encoder_row03_displays = tuple([one_LCD[LCD_TOP_ROW_OFFSET], one_LCD[LCD_BOTTOM_ROW_OFFSET]])
 
-        self.set_value_display(value_display)
+            self.set_value_display(value_display)
 
         return
 
@@ -111,12 +113,13 @@ class C4ModeSelector(ModeSelectorComponent):
         self._encoder_row03_displays[1].update()
 
     def set_value_display(self, value_display):
-        if value_display is not None and isinstance(value_display, PhysicalDisplayElement):
-            self._value_display = value_display
+        if self.is_enabled():
+            if value_display is not None and isinstance(value_display, PhysicalDisplayElement):
+                self._value_display = value_display
 
-        if self._value_display is not None:
-            self._value_display.segment(0).set_data_source(self._parameter_source)
-        self.update()
+            if self._value_display is not None:
+                self._value_display.segment(0).set_data_source(self._parameter_source)
+            self.update()
 
     # NOTE: PyCharm can't find a reference to an implementation of
     # add or remove _value_listener methods, and neither can "find in files" except in
@@ -149,7 +152,9 @@ class C4ModeSelector(ModeSelectorComponent):
                 self._device.set_bank_buttons(None)
                 encoder_32_index = C4SID_VPOT_CC_ADDRESS_32 - C4SID_VPOT_CC_ADDRESS_BASE
                 self._chan_strip.set_volume_control(self._c4_model_encoders[encoder_32_index])
-                self._chan_strip.set_display(self._encoder_row00_displays[0])
+                if self._encoder_row00_displays is not None:
+                    self._chan_strip.set_display(self._encoder_row00_displays[0])
+
                 volume_encoder = self._midi_mapping_encoders[encoder_32_index]
                 volume_encoder.set_LED_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
 
@@ -157,22 +162,23 @@ class C4ModeSelector(ModeSelectorComponent):
                 self._chan_strip.set_pan_control(self._c4_model_encoders[encoder_31_index])
                 pan_encoder = self._midi_mapping_encoders[encoder_32_index]
                 pan_encoder.set_LED_ring_display_mode(VPOT_DISPLAY_SPREAD)
-                self._chan_strip.set_bank_buttons(self._bank_buttons[0], self._bank_buttons[1])
+                self._mixer.set_bank_buttons(self._bank_buttons[0], self._bank_buttons[1])
 
             elif self._mode_index == 1:
                 self._chan_strip.set_volume_control(None)
                 self._chan_strip.set_display(None)
                 self._chan_strip.set_pan_control(None)
-                self._chan_strip.set_bank_buttons(None)
+                self._mixer.set_bank_buttons(None)
                 self._device.set_parameter_controls(self._c4_model_encoders)
                 self._device.set_bank_buttons(self._bank_buttons)
                 # if self._device_display is not None:
                 #     self._device_display.segment(0).set_data_source(self._device.device_name_data_source())
                 #     self._device_display.update()
-                if len(self._encoder_row00_displays) == 2 and \
-                   len(self._encoder_row01_displays) == 2 and \
-                   len(self._encoder_row02_displays) == 2 and \
-                   len(self._encoder_row03_displays) == 2:
+                if self._encoder_row00_displays is not None and \
+                    len(self._encoder_row00_displays) == 2 and \
+                    len(self._encoder_row01_displays) == 2 and \
+                    len(self._encoder_row02_displays) == 2 and \
+                    len(self._encoder_row03_displays) == 2:
                     for index in range(len(self._c4_model_encoders)):
                         if index in row_00_encoder_indexes:
                             self._encoder_row00_displays[0].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
@@ -202,7 +208,7 @@ class C4ModeSelector(ModeSelectorComponent):
                 #         self._page_displays[index].update()
 
             else:
-                print('Invalid mode index')
+                self._log_message('Invalid mode index')
                 assert False
         return
 
