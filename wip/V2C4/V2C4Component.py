@@ -18,20 +18,21 @@ class V2C4Component(object):
     __module__ = __name__
 
     def __init__(self):
-        self._script_backdoor = None
+        self._script_backdoor_handle = None
 
     def destroy(self):
         pass
 
-    def _set_script_backdoor(self, main_script):
+    def _set_script_handle(self, main_script):
         # can't validate like this because can't import V2C4
         # assert isinstance(main_script, V2C4)
-        self._script_backdoor = main_script
+        self._script_backdoor_handle = main_script
 
     def _log_message(self, *message):
         """ Overrides ControlSurface standard to only use python logger and not also c_instance logger """
-        try:
-            message = '(%s) %s' % (self.__class__.__name__, ' '.join(map(str, message)))
-            self._script_backdoor.get_logger().info(message)
-        except:
-            self._script_backdoor.get_logger().info('Logging encountered illegal character(s)!')
+        if self._script_backdoor_handle is not None:
+            try:
+                message = '(%s) %s' % (self.__class__.__name__, ' '.join(map(str, message)))
+                self._script_backdoor_handle.get_logger().info(message)
+            except:
+                self._script_backdoor_handle.get_logger().info('Logging encountered illegal character(s)!')

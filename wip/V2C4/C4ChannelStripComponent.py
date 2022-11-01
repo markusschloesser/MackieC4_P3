@@ -31,9 +31,9 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         self._display = None
         return
 
-    def set_script_backdoor(self, main_script):
+    def set_script_handle(self, main_script):
         """ to log in Live's log from this class, for example, need to set this script """
-        self._set_script_backdoor(main_script)
+        self._set_script_handle(main_script)
 
     def on_selected_track_changed(self):
         if self.song().view.selected_track != self._track:

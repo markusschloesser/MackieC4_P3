@@ -192,9 +192,9 @@ class C4Model(V2C4Component):
         V2C4Component.destroy(self)
         # self.LCD_display = None # deep destroy()?
 
-    def set_script_backdoor(self, main_script):
+    def set_script_handle(self, main_script):
         """ to log in Live's log from this class, for example, need to set this script """
-        self._set_script_backdoor(main_script)
+        self._set_script_handle(main_script)
 
 
     # def on_display_text_changed(self):

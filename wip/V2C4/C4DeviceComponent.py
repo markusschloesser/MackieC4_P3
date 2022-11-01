@@ -104,6 +104,9 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         self._parameter_value_data_sources = []
         self._parameter_name_data_sources = []
         self._page_name_data_sources = []
+        # not sure what self._page_index was before, but we could maybe use this to track pages of each individual
+        # row of 8 encoders.  A users could be looking at a different device on each row if there are 4 devices
+        # on the selected track, and different "pages" of each device's parameters
         self._page_index = [0, 0, 0, 0]
         for new_index in range(NUM_ENCODERS):
             self._parameter_value_data_sources.append(DisplayDataSource())
@@ -135,7 +138,7 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
 
     def set_script_backdoor(self, main_script):
         """ to log in Live's log from this class, for example, need to set this script """
-        self._set_script_backdoor(main_script)
+        self._set_script_handle(main_script)
 
 
     def set_device(self, device):
