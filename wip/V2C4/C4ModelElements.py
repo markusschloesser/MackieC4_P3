@@ -46,7 +46,7 @@ from .C4EncoderElement import C4EncoderElement
 #
 
 
-class C4Model(V2C4Component):
+class C4ModelElements(V2C4Component):
 
     __module__ = __name__
 

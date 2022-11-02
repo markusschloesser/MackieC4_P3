@@ -11,7 +11,7 @@ from _Framework.MixerComponent import MixerComponent
 from .C4EncoderElement import C4EncoderElement
 from .C4Encoders import C4Encoders
 from .C4ChannelStripComponent import C4ChannelStripComponent
-from .C4Model import C4Model
+from .C4ModelElements import C4ModelElements
 from .C4ModeSelector import C4ModeSelector
 from .C4DeviceComponent import C4DeviceComponent
 from .C4EncodersComponent import C4EncodersComponent
@@ -34,7 +34,7 @@ class V2C4(ControlSurface):
     def __init__(self, c_instance, *a, **k):
         ControlSurface.__init__(self, c_instance, *a, **k)
         with self.component_guard():
-            self._model = C4Model()
+            self._model = C4ModelElements()
             self._model.set_script_handle(self)
             # self._controller = C4ControlSurfaceComponent()
 
