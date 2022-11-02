@@ -114,7 +114,7 @@ class C4ModelElements(V2C4Component):
         # of display_text_characters (7) defined per display segment in a "Control Surface script".
         # per
         self.LCD_display = {
-            LCD_ANGLED_ADDRESS:   # 0x38 == 48 + 8 == 56
+            LCD_ANGLED_ADDRESS:   # 0x38 == 48 + 8 == 56 == LCD_BOTTOM_ROW_OFFSET
                 {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
                  LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)},
             LCD_TOP_FLAT_ADDRESS:
@@ -126,6 +126,21 @@ class C4ModelElements(V2C4Component):
             LCD_BTM_FLAT_ADDRESS:
                 {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
                  LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)}}
+
+        self.LCD_display_clear_display_msg = tuple([ASCII_SPACE for x in range(LCD_BOTTOM_ROW_OFFSET)])
+        self.LCD_display_id_message = {
+            LCD_ANGLED_ADDRESS:   # 0x38 == 48 + 8 == 56
+                {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO for x in range(LCD_BOTTOM_ROW_OFFSET)]),
+                 LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 1 for x in range(LCD_BOTTOM_ROW_OFFSET)])},
+            LCD_TOP_FLAT_ADDRESS:
+                {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO + 2 for x in range(LCD_BOTTOM_ROW_OFFSET)]),
+                 LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 3 for x in range(LCD_BOTTOM_ROW_OFFSET)])},
+            LCD_MDL_FLAT_ADDRESS:
+                {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO + 4 for x in range(LCD_BOTTOM_ROW_OFFSET)]),
+                 LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 5 for x in range(LCD_BOTTOM_ROW_OFFSET)])},
+            LCD_BTM_FLAT_ADDRESS:
+                {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO + 6 for x in range(LCD_BOTTOM_ROW_OFFSET)]),
+                 LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 7 for x in range(LCD_BOTTOM_ROW_OFFSET)])}}
 
         self.channel_strip_display = {
             LCD_ANGLED_ADDRESS:  # 0x38 == 48 + 8 == 56

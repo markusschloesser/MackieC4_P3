@@ -86,7 +86,7 @@ class V2C4(ControlSurface):
             session = SessionComponent(0, 0)
 
             self._lcd_displays = self._model.LCD_display
-            self.blanks = tuple([ASCII_SPACE for x in range(LCD_BOTTOM_ROW_OFFSET)])
+            self.blanks = self._model.LCD_display_clear_display_msg
             for i in LCD_DISPLAY_ADDRESSES:
                 for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                     self._lcd_displays[i][j].set_clear_all_message(SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER, ))
@@ -164,8 +164,9 @@ class V2C4(ControlSurface):
 
     def receive_midi(self, midi_bytes):
         """ only need to handle CC or Note message types here """
+        # superclass will call back separately to handle any SYSEX messages
 
-        # superclass will call back to handle any SYSEX messages
+        # this call forces any "unknown midi messages" logging mentioned above
         ControlSurface.receive_midi(self, midi_bytes)
 
     #                            v   3   .   0   0       <--- C4 firmware version
@@ -184,7 +185,7 @@ class V2C4(ControlSurface):
                 component.set_enabled(True)
 
             self.update()
-            # translate serial number to text versus ascii bytes
+            # TODO translate serial number to text versus ascii bytes
             if len(midi_bytes) > 13:
                 self.show_message("connected to C4 with serial number {}".format(serial_nbr[0:4]))
             else:
@@ -193,10 +194,20 @@ class V2C4(ControlSurface):
     def request_firmware_version(self):
         sysex = SYSEX_HEADER + (SYSEX_MACKIE_CONTROL_FIRMWARE_REQUEST, 0, SYSEX_FOOTER)
         if self._waiting_for_first_response:
-            self.log_message("requesting C4 firmware {}".format(sysex))
+            self.log_message("C4 firmware request sysex ({})".format(sysex))
             self._send_midi(sysex)
 
+            for i in LCD_DISPLAY_ADDRESSES:
+                for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
+                    # this "id message" should clear any "firmware garbage" off the screens before
+                    # the screens get "refreshed/cleared"
+                    sysex = SYSEX_HEADER + (self._model.LCD_display_id_message[i][j], 0, SYSEX_FOOTER)
+                    self.schedule_message(2, self._send_midi, sysex)
+
     def disconnect(self):
+        for component in self.components:
+            component.disconnect()
+
         ControlSurface.disconnect(self)
         for i in LCD_DISPLAY_ADDRESSES:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
