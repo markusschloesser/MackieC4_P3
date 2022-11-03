@@ -7,7 +7,6 @@ from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
 from _Framework.ButtonElement import ButtonElement
 
 
-
 class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
     """
     combination of Axiom Displaying and Notifying Mixer Component code
@@ -21,13 +20,13 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         self._mixer = None
         self._update_callback = None
         self._display = None
-        self._register_timer_callback(self._on_timer)
+        # self._register_timer_callback(self._on_timer)
         return
 
     def disconnect(self):
         ChannelStripComponent.disconnect(self)
         self._update_callback = None
-        self._unregister_timer_callback(self._on_timer)
+        # self._unregister_timer_callback(self._on_timer)
         self._display = None
         return
 
