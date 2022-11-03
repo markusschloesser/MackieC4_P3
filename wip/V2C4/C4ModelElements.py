@@ -50,10 +50,10 @@ class C4ModelElements(V2C4Component):
 
     __module__ = __name__
 
-    def __init__(self):
+    def __init__(self, *a, **k):
         V2C4Component.__init__(self)  #
 
-        # self.LCD_display = {
+        # self.lcd_physical_displays = {
         #     LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
         #                          LCD_BOTTOM_ROW_OFFSET: LCDDisplayElement(*a, **k)},
         #     LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: LCDDisplayElement(*a, **k),
@@ -100,35 +100,35 @@ class C4ModelElements(V2C4Component):
         #     lcd_03_dn_sgmts[-1].set_data_source(DisplayDataSource("777777", separator))
         #     lcd_03_dn_sgmts[-1].set_position_identifier(tuple([LCD_BOTTOM_ROW_OFFSET, i]))
 
-        # self.LCD_display[LCD_ANGLED_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_00_up_sgmts)
-        # self.LCD_display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_00_dn_sgmts)
-        # self.LCD_display[LCD_TOP_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_01_up_sgmts)
-        # self.LCD_display[LCD_TOP_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_01_dn_sgmts)
-        # self.LCD_display[LCD_MDL_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_02_up_sgmts)
-        # self.LCD_display[LCD_MDL_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_02_dn_sgmts)
-        # self.LCD_display[LCD_MDL_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_03_up_sgmts)
-        # self.LCD_display[LCD_MDL_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_03_dn_sgmts)
+        # self.lcd_physical_displays[LCD_ANGLED_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_00_up_sgmts)
+        # self.lcd_physical_displays[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_00_dn_sgmts)
+        # self.lcd_physical_displays[LCD_TOP_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_01_up_sgmts)
+        # self.lcd_physical_displays[LCD_TOP_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_01_dn_sgmts)
+        # self.lcd_physical_displays[LCD_MDL_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_02_up_sgmts)
+        # self.lcd_physical_displays[LCD_MDL_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_02_dn_sgmts)
+        # self.lcd_physical_displays[LCD_MDL_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].set_data_sources(lcd_03_up_sgmts)
+        # self.lcd_physical_displays[LCD_MDL_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].set_data_sources(lcd_03_dn_sgmts)
 
         # the 56th byte/char defined on each row here will be ignored by the C4 which only has 55 actual
         # text positions per line/row on the LCDs.  But 56 / 8 has 0 remainder, there must be a natural number
         # of display_text_characters (7) defined per display segment in a "Control Surface script".
         # per
-        self.LCD_display = {
+        self.lcd_physical_displays = {
             LCD_ANGLED_ADDRESS:   # 0x38 == 48 + 8 == 56 == LCD_BOTTOM_ROW_OFFSET
-                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
-                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)},
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k)},
             LCD_TOP_FLAT_ADDRESS:
-                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
-                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)},
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k)},
             LCD_MDL_FLAT_ADDRESS:
-                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
-                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)},
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k)},
             LCD_BTM_FLAT_ADDRESS:
-                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE),
-                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE)}}
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, ENCODER_BANK_SIZE, *a, **k)}}
 
-        self.LCD_display_clear_display_msg = tuple([ASCII_SPACE for x in range(LCD_BOTTOM_ROW_OFFSET)])
-        self.LCD_display_id_message = {
+        self.lcd_display_clear_message = tuple([ASCII_SPACE for x in range(LCD_BOTTOM_ROW_OFFSET)])
+        self.lcd_display_id_message = {
             LCD_ANGLED_ADDRESS:   # 0x38 == 48 + 8 == 56
                 {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO for x in range(LCD_BOTTOM_ROW_OFFSET)]),
                  LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 1 for x in range(LCD_BOTTOM_ROW_OFFSET)])},
@@ -144,8 +144,8 @@ class C4ModelElements(V2C4Component):
 
         self.channel_strip_display = {
             LCD_ANGLED_ADDRESS:  # 0x38 == 48 + 8 == 56
-                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, 2),
-                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, 2)}}
+                {LCD_TOP_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, 2, *a, **k),
+                 LCD_BOTTOM_ROW_OFFSET: PhysicalDisplayElement(LCD_BOTTOM_ROW_OFFSET, 2, *a, **k)}}
         # Bottom area Buttons
         # C4 sends Note ON vel 127 for "button pressed"
         #      and Note ON vel   0 for "button released"  (or Note Off vel 0?)
