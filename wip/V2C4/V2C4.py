@@ -14,7 +14,8 @@ from .C4ChannelStripComponent import C4ChannelStripComponent
 from .C4ModelElements import C4ModelElements
 from .C4ModeSelector import C4ModeSelector
 from .C4DeviceComponent import C4DeviceComponent
-from .C4EncodersComponent import C4EncodersComponent
+from .V2C4Component import V2C4Component
+# from .C4EncodersComponent import C4EncodersComponent
 from .C4_DEFINES import *
 
 if sys.version_info[0] >= 3:  # Live 11
@@ -34,19 +35,14 @@ class V2C4(ControlSurface):
     def __init__(self, c_instance, *a, **k):
         ControlSurface.__init__(self, c_instance, *a, **k)
         with self.component_guard():
-            self._model = C4ModelElements()
+            self._model = C4ModelElements(*a, **k)
             self._model.set_script_handle(self)
-            # self._controller = C4ControlSurfaceComponent()
 
             assert len(self._model.encoders) == NUM_ENCODERS
-            assert len(self._model.encoder_buttons) == NUM_ENCODERS
 
             self._suggested_input_port = 'MackieC4'
             self._suggested_output_port = 'MackieC4'
             self._waiting_for_first_response = True
-
-            self._encoders_component = C4EncodersComponent()
-            self._encoders_component.set_script_handle(self)
 
             nbr_tracks = 1
             mixer = MixerComponent(nbr_tracks)
@@ -57,17 +53,20 @@ class V2C4(ControlSurface):
             strip.set_script_handle(self)
             strip.set_mixer(mixer)
 
-            encoder_32_index = C4SID_VPOT_CC_ADDRESS_32 - C4SID_VPOT_CC_ADDRESS_BASE
+            encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
+            self._model.encoders[encoder_32_index].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
             strip.set_volume_control(self._model.encoders[encoder_32_index])
-            encoder_31_index = C4SID_VPOT_CC_ADDRESS_31 - C4SID_VPOT_CC_ADDRESS_BASE
+
+            encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
+            self._model.encoders[encoder_31_index].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
             strip.set_pan_control(self._model.encoders[encoder_31_index])
 
-            encoder_30_index = C4SID_VPOT_PUSH_30 - C4SID_VPOT_PUSH_BASE
-            encoder_29_index = C4SID_VPOT_PUSH_29 - C4SID_VPOT_PUSH_BASE
-            encoder_28_index = C4SID_VPOT_PUSH_28 - C4SID_VPOT_PUSH_BASE
-            strip.set_mute_button(self._model.encoder_buttons[encoder_30_index])
-            strip.set_solo_button(self._model.encoder_buttons[encoder_29_index])
-            strip.set_arm_button(self._model.encoder_buttons[encoder_28_index])
+            encoder_30_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_30)
+            encoder_29_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_29)
+            encoder_28_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_28)
+            strip.set_mute_button(self._model.encoders[encoder_30_index].get_encoder_button())
+            strip.set_solo_button(self._model.encoders[encoder_29_index].get_encoder_button())
+            strip.set_arm_button(self._model.encoders[encoder_28_index].get_encoder_button())
             strip.set_shift_button(self._model.shift_button)
 
             device = C4DeviceComponent(device_selection_follows_track_selection=True)
@@ -75,18 +74,17 @@ class V2C4(ControlSurface):
             self.set_device_component(device)
 
             transport = TransportComponent()
-            encoder_27_index = C4SID_VPOT_PUSH_27 - C4SID_VPOT_PUSH_BASE
-            encoder_26_index = C4SID_VPOT_PUSH_26 - C4SID_VPOT_PUSH_BASE
-            encoder_25_index = C4SID_VPOT_PUSH_25 - C4SID_VPOT_PUSH_BASE
-
-            transport.set_record_button(self._model.encoder_buttons[encoder_27_index])
-            transport.set_play_button(self._model.encoder_buttons[encoder_26_index])
-            transport.set_stop_button(self._model.encoder_buttons[encoder_25_index])
+            encoder_27_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_27)
+            encoder_26_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_26)
+            encoder_25_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_25)
+            transport.set_record_button(self._model.encoders[encoder_27_index].get_encoder_button())
+            transport.set_play_button(self._model.encoders[encoder_26_index].get_encoder_button())
+            transport.set_stop_button(self._model.encoders[encoder_25_index].get_encoder_button())
 
             session = SessionComponent(0, 0)
 
-            self._lcd_displays = self._model.LCD_display
-            self.blanks = self._model.LCD_display_clear_display_msg
+            self._lcd_displays = self._model.lcd_physical_displays
+            self.blanks = self._model.lcd_display_clear_message
             for i in LCD_DISPLAY_ADDRESSES:
                 for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                     self._lcd_displays[i][j].set_clear_all_message(SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER, ))
@@ -116,15 +114,14 @@ class V2C4(ControlSurface):
 
             strip.set_display(self._chan_strip_display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET])
 
-            midi_map_encoders = tuple(self._encoders_component.encoder_components())
             model_encoders = tuple(self._model.encoders)
             assignment_buttons = self._model.assignment_buttons
             modifier_buttons = self._model.modifier_buttons
             bank_buttons = tuple([self._model.bank_right_button, self._model.bank_left_button])
 
-            mode_selector = C4ModeSelector(mixer, strip, device, transport, session, midi_map_encoders, model_encoders,
+            mode_selector = C4ModeSelector(mixer, strip, device, transport, session, model_encoders,
                                            assignment_buttons, modifier_buttons, bank_buttons)
-
+            mode_selector.set_script_handle(self)
             for component in self.components:
                 component.set_enabled(False)
 
@@ -151,8 +148,8 @@ class V2C4(ControlSurface):
 
     def build_midi_map(self, midi_map_handle):
 
-        for encoder in self._encoders_component.encoder_components():
-            encoder.build_midi_map(midi_map_handle)
+        # for encoder in self._encoders_component.encoder_components():
+        #     encoder.build_midi_map(midi_map_handle)
 
         # uncomment to see "unknown midi messages" from the C4 in the logs
         # of if you want to directly implement handlers for those midi messages
@@ -201,7 +198,7 @@ class V2C4(ControlSurface):
                 for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                     # this "id message" should clear any "firmware garbage" off the screens before
                     # the screens get "refreshed/cleared"
-                    sysex = SYSEX_HEADER + (self._model.LCD_display_id_message[i][j], 0, SYSEX_FOOTER)
+                    sysex = SYSEX_HEADER + (i, j) + self._model.lcd_display_id_message[i][j] + (0, SYSEX_FOOTER)
                     self.schedule_message(2, self._send_midi, sysex)
 
     def disconnect(self):
@@ -222,7 +219,7 @@ class V2C4(ControlSurface):
         except:
             logger.info('Logging encountered illegal character(s)!')
 
-    # @staticmethod
-    def get_logger(self):
+    @staticmethod
+    def get_logger():
         """ Returns this script's logger object. """
         return logger

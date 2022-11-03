@@ -1,7 +1,4 @@
-
 from .V2C4Component import *
-if sys.version_info[0] >= 3:  # Live 11
-    from builtins import range, str
 
 from _Framework.SessionComponent import SessionComponent
 from _Framework.TransportComponent import TransportComponent
@@ -19,14 +16,13 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     """class that selects between assignment modes using modifiers"""
     __module__ = __name__
 
-    def __init__(self, mixer, channel_strip, device, transport, session, mm_encoders, encoders,
+    def __init__(self, mixer, channel_strip, device, transport, session, encoders,
                  assignment_buttons, modifier_buttons, bank_buttons):
         assert isinstance(mixer, MixerComponent)
         assert isinstance(channel_strip, C4ChannelStripComponent)
         assert isinstance(device, C4DeviceComponent)
         assert isinstance(transport, TransportComponent)
         assert isinstance(session, SessionComponent)
-        assert isinstance(mm_encoders, tuple)
         assert isinstance(encoders, tuple)
         assert isinstance(assignment_buttons, tuple)
         assert isinstance(modifier_buttons, tuple)
@@ -38,7 +34,6 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         self._device = device
         self._transport = transport
         self._session = session
-        self._midi_mapping_encoders = mm_encoders
         self._c4_model_encoders = encoders
         self._assignment_buttons = assignment_buttons
         self._modifier_buttons = modifier_buttons
@@ -66,7 +61,6 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     def disconnect(self):
         self._unregister_timer_callback(self._on_timer)
         self._device = None
-        self._midi_mapping_encoders = None
         self._c4_model_encoders = None
         self._assignment_buttons = None
         self._modifier_buttons = None
@@ -150,25 +144,26 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
             if self._mode_index == 0:
                 self._device.set_parameter_controls(None)
                 self._device.set_bank_buttons(None)
-                encoder_32_index = C4SID_VPOT_CC_ADDRESS_32 - C4SID_VPOT_CC_ADDRESS_BASE
+                encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
+                self._c4_model_encoders[encoder_32_index].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
                 self._chan_strip.set_volume_control(self._c4_model_encoders[encoder_32_index])
                 if self._encoder_row00_displays is not None:
                     self._chan_strip.set_display(self._encoder_row00_displays[0])
 
-                volume_encoder = self._midi_mapping_encoders[encoder_32_index]
-                volume_encoder.set_LED_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
-
-                encoder_31_index = C4SID_VPOT_CC_ADDRESS_31 - C4SID_VPOT_CC_ADDRESS_BASE
+                encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
+                self._c4_model_encoders[encoder_31_index].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
                 self._chan_strip.set_pan_control(self._c4_model_encoders[encoder_31_index])
-                pan_encoder = self._midi_mapping_encoders[encoder_32_index]
-                pan_encoder.set_LED_ring_display_mode(VPOT_DISPLAY_SPREAD)
                 self._mixer.set_bank_buttons(self._bank_buttons[0], self._bank_buttons[1])
 
             elif self._mode_index == 1:
                 self._chan_strip.set_volume_control(None)
                 self._chan_strip.set_display(None)
                 self._chan_strip.set_pan_control(None)
-                self._mixer.set_bank_buttons(None)
+                self._mixer.set_bank_buttons(None, None)
+
+                for e in self._c4_model_encoders:
+                    e.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_WRAP)
+
                 self._device.set_parameter_controls(self._c4_model_encoders)
                 self._device.set_bank_buttons(self._bank_buttons)
                 # if self._device_display is not None:
@@ -246,3 +241,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         if peek_changed and len(self._encoder_row00_displays) == 2:
             self._must_update_encoder_display = True
         return
+
+    def set_script_handle(self, main_script):
+        """ to log in Live's log from this class, for example, need to set this script """
+        self._set_script_handle(main_script)

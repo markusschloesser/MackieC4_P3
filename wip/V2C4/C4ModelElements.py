@@ -195,17 +195,45 @@ class C4ModelElements(V2C4Component):
         # sometimes though, you just want to send SYSEX to the encoder rings, for example,
         # that's handled elsewhere.
         self.encoders = []
-        self.encoder_buttons = []
         for i in range(NUM_ENCODERS):
-            self.encoders.append(C4EncoderElement(MIDI_CC_TYPE, channel,
-                                                  C4SID_VPOT_CC_ADDRESS_BASE + i,
-                                                  Live.MidiMap.MapMode.relative_signed_bit))
-            self.encoders[(-1)].set_feedback_delay(-1)
-            self.encoder_buttons.append(ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, C4SID_VPOT_PUSH_BASE + i))
+            self.encoders.append(C4EncoderElement(C4SID_VPOT_CC_ADDRESS_BASE + i, *a, **k))
+            self.encoders[i].set_encoder_button(ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel,
+                                                              C4SID_VPOT_PUSH_BASE + i, *a, **k))
 
     def destroy(self):
         V2C4Component.destroy(self)
-        # self.LCD_display = None # deep destroy()?
+
+        for i in range(NUM_ENCODERS):
+            self.encoders[i].set_encoder_button(None)
+        for e in self.encoders:
+            e = None
+
+        self.slot_up_button.disconnect()
+        self.slot_up_button = None
+        self.slot_down_button = None
+        self.track_left_button = None
+        self.track_right_button = None
+        self.bank_left_button = None
+        self.bank_right_button = None
+        self.single_left_button = None
+        self.single_right_button = None
+        self.shift_button = None
+        self.control_button = None
+        self.option_button = None
+        self.alt_button = None
+        self.marker_button = None
+        self.chan_strip_button = None
+        self.track_button = None
+        self.function_button = None
+        self.split_button = None
+        self.lock_button = None
+        self.spot_erase_button = None
+
+        for i in LCD_DISPLAY_ADDRESSES:
+            for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
+                self.lcd_physical_displays[i][j].disconnect()
+
+        self.channel_strip_display[LCD_ANGLED_ADDRESS][LCD_TOP_ROW_OFFSET].disconnect()
 
     def set_script_handle(self, main_script):
         """ to log in Live's log from this class, for example, need to set this script """
