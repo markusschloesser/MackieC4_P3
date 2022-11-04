@@ -3,15 +3,72 @@ from .V2C4Component import *
 
 # import Live
 
-from _Framework.EncoderElement import EncoderElement
+from _Framework.EncoderElement import EncoderElement, _not_implemented
 from _Framework.ButtonElement import ButtonElement
-from _Framework.InputControlElement import MIDI_MSG_TYPES, MIDI_CC_TYPE
+from _Framework.CompoundElement import CompoundElement
+from _Framework.InputControlElement import InputControlElement, MIDI_CC_TYPE, InputSignal
+from _Framework.SubjectSlot import SubjectEvent, subject_slot
+from _Framework.Util import nop, const
 
 from .C4Encoders import C4Encoders
 
 
-class C4EncoderElement(EncoderElement, V2C4Component):
-    """ modeled on RingedEncoderElement in _APC and PeekableEncoderElement in _AxiomPro"""
+class C4EncoderElementBase(EncoderElement):
+    """
+    Defines the interface necessary to implement a C4 encoder, so that it works in
+    combination with other parts of the framework (like the EncoderControl).
+    """
+    __module__ = __name__
+
+    class ProxiedInterface(EncoderElement.ProxiedInterface):
+        __module__ = __name__
+        set_script_handle = const(False)
+        set_feedback_delay = const(False)
+        update_led_ring_display_mode = const(False)
+        set_midi_feedback_data = const(False)
+        send_led_ring_midi_cc = const(False)
+        send_led_ring_full_off = const(False)
+        send_led_ring_min_on = const(False)
+        send_led_ring_max_on = const(False)
+        c4_encoder = nop
+        _feedback_rule = nop
+        _button = nop
+
+    def set_script_handle(self, main_script=None):
+        raise NotImplementedError
+
+    def update_led_ring_display_mode(self, display_mode=VPOT_DISPLAY_SINGLE_DOT, extended=False):
+        raise NotImplementedError
+
+    def set_midi_feedback_data(self):
+        raise NotImplementedError
+
+    def send_led_ring_midi_cc(self, cc_val):
+        raise NotImplementedError
+
+    def send_led_ring_full_off(self):
+        raise NotImplementedError
+
+    def send_led_ring_min_on(self):
+        raise NotImplementedError
+
+    def send_led_ring_max_on(self):
+        raise NotImplementedError
+
+
+class C4EncoderElement(CompoundElement, C4EncoderElementBase, V2C4Component):
+    """ modeled on RingedEncoderElement in _APC and PeekableEncoderElement in _AxiomPro
+        and TouchEncoderElementBase + TouchEncoderElement in EncoderElement itself
+    """
+
+    def on_nested_control_element_received(self, control):
+        pass
+
+    def on_nested_control_element_lost(self, control):
+        pass
+
+    def on_nested_control_element_value(self, value, control):
+        pass
 
     __module__ = __name__
 
@@ -26,10 +83,9 @@ class C4EncoderElement(EncoderElement, V2C4Component):
         self.c4_encoder = C4Encoders(self, extended, encoder_index, map_mode)
         self._feedback_rule = None
         self.set_feedback_delay(0.0)
-        self._button = ButtonElement
+        self._button = ButtonElement  # maybe this could be nested?
 
-
-    def set_script_handle(self, main_script):
+    def set_script_handle(self, main_script=None):
         """ to log from this class only through Python, for example, need to set this script handle """
         self._set_script_handle(main_script)
 
@@ -47,17 +103,17 @@ class C4EncoderElement(EncoderElement, V2C4Component):
     def _mapping_feedback_values(self):
         return self.c4_encoder.led_ring_cc_values
 
-    def send_led_ring_midi_cc(self, cc_val):
-        self.c4_encoder.send_led_ring_midi_cc(self, cc_val)
+    def send_led_ring_midi_cc(self, cc_val, force=False):
+        self.c4_encoder.send_led_ring_midi_cc(self, cc_val, force)
 
-    def send_led_ring_full_off(self):
-        self.c4_encoder.send_led_ring_full_off(self)
+    def send_led_ring_full_off(self, force=False):
+        self.c4_encoder.send_led_ring_full_off(self, force)
 
-    def send_led_ring_min_on(self):
-        self.c4_encoder.send_led_ring_min_on(self)
+    def send_led_ring_min_on(self, force=False):
+        self.c4_encoder.send_led_ring_min_on(self, force)
 
-    def send_led_ring_max_on(self):
-        self.c4_encoder.send_led_ring_max_on(self)
+    def send_led_ring_max_on(self, force=False):
+        self.c4_encoder.send_led_ring_max_on(self, force)
 
     def set_encoder_button(self, new_button):
         assert new_button is None or isinstance(new_button, ButtonElement)

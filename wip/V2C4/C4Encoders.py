@@ -132,23 +132,23 @@ class C4Encoders:
         # the C4 only sends on channel 0 ( ch 1 in Live)
         pass
 
-    def send_led_ring_midi_cc(self, control_element, cc_val):
+    def send_led_ring_midi_cc(self, control_element, cc_val, force=False):
         assert isinstance(ControlElement, control_element)
         assert cc_val in self._cc_value_map
-        control_element.send_midi(self.__cc_nbr, cc_val, self.__cc_channel)
+        control_element.send_midi(self.__cc_nbr, cc_val, self.__cc_channel, force=force)
 
-    def send_led_ring_full_off(self, control_element):
-        self.send_led_ring_midi_cc(control_element, LED_OFF_DATA)
+    def send_led_ring_full_off(self, control_element, force=False):
+        self.send_led_ring_midi_cc(control_element, LED_OFF_DATA, force)
 
-    def send_led_ring_min_on(self, control_element):
+    def send_led_ring_min_on(self, control_element, force=False):
         min_on_value = 0
         min_on_value = encoder_ring_led_mode_cc_values[self.__display_mode][min_on_value]
-        self.send_led_ring_midi_cc(control_element, min_on_value)
+        self.send_led_ring_midi_cc(control_element, min_on_value, force)
 
-    def send_led_ring_max_on(self, control_element):
+    def send_led_ring_max_on(self, control_element, force=False):
         max_on_value = 1
         max_on_value = encoder_ring_led_mode_cc_values[self.__display_mode][max_on_value]
-        self.send_led_ring_midi_cc(control_element, max_on_value)
+        self.send_led_ring_midi_cc(control_element, max_on_value, force)
 
     # builds an encoder midi map of "device_parameter" controls
     # for up to all 32 encoders, in up to 4 "banks" (128 maximum device parameters)
