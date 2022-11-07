@@ -11,6 +11,8 @@ from ableton.v2.control_surface.elements import ButtonMatrixElement, EncoderElem
 from ableton.v2.control_surface.mode import AddLayerMode, ModesComponent
 from ableton.v2.control_surface import MIDI_CC_TYPE, MIDI_NOTE_TYPE, MIDI_PB_TYPE
 from .hw_elements import HW_Elements, SESSION_WIDTH, SESSION_HEIGHT
+import logging
+logger = logging.getLogger(__name__)
 
 IS_MOMENTARY = True
 CHANNEL = 0
@@ -25,7 +27,7 @@ class MackieC4_v3(ControlSurface):
             self._create_controls()
             self._create_session()
 
-        # self.log_message(time.strftime("%d.%m.%Y %H:%M:%S",time.localtime()) + "--------------= ProjectX log opened =--------------")  # Writes message into Live's main log file. This is a ControlSurface method.
+        logger.info(time.strftime("%d.%m.%Y %H:%M:%S",time.localtime()) + "--------------= ProjectX log opened =--------------")  # Writes message into Live's main log file. This is a ControlSurface method.
 
 
 def make_button(identifier, name, **k):
