@@ -35,10 +35,8 @@ class V2C4(ControlSurface):
     def __init__(self, c_instance, *a, **k):
         ControlSurface.__init__(self, c_instance, *a, **k)
         with self.component_guard():
-            self._model = C4ModelElements(*a, **k)
+            self._model = C4ModelElements()
             self._model.set_script_handle(self)
-
-            assert len(self._model.encoders) == NUM_ENCODERS
 
             self._suggested_input_port = 'MackieC4'
             self._suggested_output_port = 'MackieC4'
@@ -46,91 +44,117 @@ class V2C4(ControlSurface):
 
             nbr_tracks = 1
             mixer = MixerComponent(nbr_tracks)
-            mixer.set_select_buttons(self._model.track_right_button, self._model.track_left_button)
-            mixer.set_bank_buttons(self._model.bank_right_button, self._model.bank_left_button)
+            mixer.set_select_buttons(
+                self._model.make_button(C4SID_TRACK_RIGHT), self._model.make_button(C4SID_TRACK_LEFT))
+            mixer.set_bank_buttons(
+                self._model.make_button(C4SID_BANK_RIGHT),  self._model.make_button(C4SID_BANK_LEFT))
 
             strip = C4ChannelStripComponent()
             strip.set_script_handle(self)
             strip.set_mixer(mixer)
 
-            encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
-            self._model.encoders[encoder_32_index].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
-            strip.set_volume_control(self._model.encoders[encoder_32_index])
+            # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
+            volume_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_32, *a, **k)
+            volume_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
+            strip.set_volume_control(volume_encoder)
 
-            encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
-            self._model.encoders[encoder_31_index].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
-            strip.set_pan_control(self._model.encoders[encoder_31_index])
+            pan_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_31, *a, **k)
+            pan_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
+            strip.set_pan_control(pan_encoder)
+            channel_encoders = tuple([volume_encoder, pan_encoder])
 
-            encoder_30_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_30)
-            encoder_29_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_29)
-            encoder_28_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_28)
-            strip.set_mute_button(self._model.encoders[encoder_30_index].get_encoder_button())
-            strip.set_solo_button(self._model.encoders[encoder_29_index].get_encoder_button())
-            strip.set_arm_button(self._model.encoders[encoder_28_index].get_encoder_button())
-            strip.set_shift_button(self._model.shift_button)
+            strip.set_mute_button(self._model.make_button(C4SID_VPOT_PUSH_30, *a, **k))
+            strip.set_solo_button(self._model.make_button(C4SID_VPOT_PUSH_29, *a, **k))
+            strip.set_arm_button(self._model.make_button(C4SID_VPOT_PUSH_28, *a, **k))
+            strip.set_shift_button(self._model.make_button(C4SID_SHIFT, *a, **k))
 
             device = C4DeviceComponent(device_selection_follows_track_selection=True)
-            device.set_script_backdoor(self)
+            device.set_script_handle(self)
             self.set_device_component(device)
 
             transport = TransportComponent()
-            encoder_27_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_27)
-            encoder_26_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_26)
-            encoder_25_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_25)
-            transport.set_record_button(self._model.encoders[encoder_27_index].get_encoder_button())
-            transport.set_play_button(self._model.encoders[encoder_26_index].get_encoder_button())
-            transport.set_stop_button(self._model.encoders[encoder_25_index].get_encoder_button())
+            transport.set_record_button(self._model.make_button(C4SID_VPOT_PUSH_27, *a, **k))
+            transport.set_play_button(self._model.make_button(C4SID_VPOT_PUSH_26, *a, **k))
+            transport.set_stop_button(self._model.make_button(C4SID_VPOT_PUSH_25, *a, **k))
 
             session = SessionComponent(0, 0)
 
-            self._lcd_displays = self._model.lcd_physical_displays
-            self.blanks = self._model.lcd_display_clear_message
+            self._device_parameter_displays = {
+                LCD_ANGLED_ADDRESS:
+                    {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(*a, **k),
+                     LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(*a, **k)},
+                LCD_TOP_FLAT_ADDRESS:
+                    {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(*a, **k),
+                     LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(*a, **k)},
+                LCD_MDL_FLAT_ADDRESS:
+                    {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(*a, **k),
+                     LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(*a, **k)},
+                LCD_BTM_FLAT_ADDRESS:
+                    {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(*a, **k),
+                     LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(*a, **k)}}
+
+            self.clear_display_msg = self._model.lcd_display_clear_message
+            self.hello_display_msg = self._model.lcd_display_hello_message
+            self.goodbye_display_msg = self._model.lcd_display_goodbye_message
+            foot_part = (SYSEX_FOOTER, )
             for i in LCD_DISPLAY_ADDRESSES:
                 for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
-                    self._lcd_displays[i][j].set_clear_all_message(SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER, ))
-                    self._lcd_displays[i][j].set_message_parts(SYSEX_HEADER + (i, j), (SYSEX_FOOTER, ))
+                    head_part = tuple(SYSEX_HEADER + (i, j))
+                    self._device_parameter_displays[i][j].set_message_parts(head_part, foot_part)
+                    self._device_parameter_displays[i][j].set_clear_all_message(
+                        head_part + self.clear_display_msg + foot_part)
 
-                    # encoder_data_sources = []
-                    for k in range(NUM_ENCODERS_ONE_ROW):  # ENCODER_BANK_SIZE
-                        self._lcd_displays[i][j].segment(k).set_position_identifier((k,))  # necessary???
-                    # these data sources will need to be dynamically updated depending on selected mode
-                    #     if i == LCD_ANGLED_ADDRESS:
-                    #         encoder_data_sources.append(self.__model.encoders[row_00_encoder_indexes[k]])
-                    #     elif i == LCD_TOP_FLAT_ADDRESS:
-                    #         encoder_data_sources.append(self.__model.encoders[row_01_encoder_indexes[k]])
-                    #     elif i == LCD_MDL_FLAT_ADDRESS:
-                    #         encoder_data_sources.append(self.__model.encoders[row_02_encoder_indexes[k]])
-                    #     elif i == LCD_MDL_FLAT_ADDRESS:
-                    #         encoder_data_sources.append(self.__model.encoders[row_03_encoder_indexes[k]])
-                    #
-                    # assert len(encoder_data_sources) > 0
-                    # self._lcd_displays[i][j].set_data_sources(encoder_data_sources)
+                    for m in range(NUM_ENCODERS_ONE_ROW):  # ENCODER_BANK_SIZE
+                        self._device_parameter_displays[i][j].segment(m).set_position_identifier((m,))  # necessary???
 
-            self._chan_strip_display = self._model.channel_strip_display
+            self._chan_strip_display = {
+                LCD_ANGLED_ADDRESS:
+                    {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(nbr_segments=2, *a, **k),
+                     LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(nbr_segments=2, *a, **k)}}
+
             i = LCD_ANGLED_ADDRESS
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
-                self._chan_strip_display[i][j].set_clear_all_message(SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER,))
-                self._chan_strip_display[i][j].set_message_parts(SYSEX_HEADER + (i, j), (SYSEX_FOOTER,))
+                head_part = tuple(SYSEX_HEADER + (i, j))
+                self._chan_strip_display[i][j].set_clear_all_message(
+                    head_part + self.clear_display_msg + foot_part)
+                self._chan_strip_display[i][j].set_message_parts(head_part, foot_part)
+                # .set_position_identifier here too?
 
-            strip.set_display(self._chan_strip_display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET])
+            strip.set_display(self._chan_strip_display,
+                              self._device_component.device_name_data_source())
 
-            model_encoders = tuple(self._model.encoders)
-            assignment_buttons = self._model.assignment_buttons
-            modifier_buttons = self._model.modifier_buttons
-            bank_buttons = tuple([self._model.bank_right_button, self._model.bank_left_button])
+            assert len(encoder_cc_ids) == NUM_ENCODERS
+            device_encoders = []
+            for cc_id in encoder_cc_ids:
+                device_encoders.append(self._model.make_encoder(cc_id))
+            device_encoders = tuple(device_encoders)
 
-            mode_selector = C4ModeSelector(mixer, strip, device, transport, session, model_encoders,
-                                           assignment_buttons, modifier_buttons, bank_buttons)
+            assignment_buttons = [self._model.make_button(C4SID_MARKER)]  # ,
+                                  # self._model.make_button(C4SID_CHANNEL_STRIP),
+                                  # self._model.make_button(C4SID_TRACK),
+                                  # self._model.make_button(C4SID_FUNCTION)]
+            assignment_buttons = tuple(assignment_buttons)
+            modifier_buttons = [self._model.make_button(C4SID_SHIFT)]  # ,
+                                # self._model.make_button(C4SID_CONTROL),
+                                # self._model.make_button(C4SID_OPTION),
+                                # self._model.make_button(C4SID_ALT)]
+            modifier_buttons = tuple(modifier_buttons)
+
+            device_bank_buttons = tuple([self._model.make_button(C4SID_SINGLE_RIGHT),
+                                         self._model.make_button(C4SID_SINGLE_LEFT)])
+
+            mode_selector = C4ModeSelector(mixer, strip, device, transport, session, channel_encoders, device_encoders,
+                                           assignment_buttons, modifier_buttons, device_bank_buttons)
             mode_selector.set_script_handle(self)
             for component in self.components:
                 component.set_enabled(False)
 
             # these settings will get "locked in" when the "firmware handshake" update runs
             # after a successful handshake
-            mode_selector.set_mode_toggle(self._model.marker_button)
-            mode_selector.set_peek_button(self._model.spot_erase_button)
+            mode_selector.set_mode_toggle(assignment_buttons[0])
+            mode_selector.set_peek_button(self._model.make_button(C4SID_SPLIT_ERASE))
+            mode_selector.set_displays(self._device_parameter_displays, self._chan_strip_display)
 
-            # clear all screens and show firmware on top angled LCD,
             # firmware version SYSEX message from C4 unlocks components locked above
             self.request_firmware_version()
             self.show_message("Mackie C4 v2 script initialize finished")
@@ -142,9 +166,11 @@ class V2C4(ControlSurface):
         self.request_firmware_version()
         # always blank the LCDs when refreshing state?
         # what about the LED rings?
+        foot_part = (SYSEX_FOOTER, )
         for i in LCD_DISPLAY_ADDRESSES:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
-                self.schedule_message(10, self._send_midi, (SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER, )))
+                head_part = tuple(SYSEX_HEADER + (i, j))
+                self.schedule_message(3, self._send_midi, head_part + self.clear_display_msg + foot_part)
 
     def build_midi_map(self, midi_map_handle):
 
@@ -177,28 +203,32 @@ class V2C4(ControlSurface):
             serial_nbr = midi_bytes[6:13]
             # self.log_message("connected to C4 serial number {}".format(serial_nbr))
             self._waiting_for_first_response = False
-            self.log_message("enabling <{}> components".format(len(self.components)))
+            self.log_message("C4 responded, enabling <{}> components".format(len(self.components)))
             for component in self.components:
                 component.set_enabled(True)
 
+            show_msg = "V2C4 remote script connected to C4 with "
             self.update()
-            # TODO translate serial number to text versus ascii bytes
             if len(midi_bytes) > 13:
-                self.show_message("connected to C4 with serial number {}".format(serial_nbr[0:4]))
+                sysex_ints_as_ascii_text = [str(c) for c in serial_nbr[0:4]].__str__()
+                self.show_message(show_msg + "serial number {}".format(sysex_ints_as_ascii_text))
             else:
-                self.show_message("connected to C4 with firmware version {}".format(serial_nbr))
+                sysex_ints_as_ascii_text = [str(c) for c in serial_nbr].__str__()
+                self.show_message(show_msg + "firmware version {}".format(sysex_ints_as_ascii_text))
 
     def request_firmware_version(self):
         sysex = SYSEX_HEADER + (SYSEX_MACKIE_CONTROL_FIRMWARE_REQUEST, 0, SYSEX_FOOTER)
         if self._waiting_for_first_response:
-            self.log_message("C4 firmware request sysex ({})".format(sysex))
+            self.log_message("requesting C4 firmware")
             self._send_midi(sysex)
 
+            foot_part = (0, SYSEX_FOOTER)
             for i in LCD_DISPLAY_ADDRESSES:
                 for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
-                    # this "id message" should clear any "firmware garbage" off the screens before
-                    # the screens get "refreshed/cleared"
-                    sysex = SYSEX_HEADER + (i, j) + self._model.lcd_display_id_message[i][j] + (0, SYSEX_FOOTER)
+                    # this "id message" should clear any "firmware garbage" off the screens
+                    # before the screens get "refreshed/cleared"
+                    head_part = tuple(SYSEX_HEADER + (i, j))
+                    sysex = head_part + self._model.lcd_display_id_message[i][j] + foot_part
                     self.schedule_message(2, self._send_midi, sysex)
 
     def disconnect(self):
@@ -206,9 +236,13 @@ class V2C4(ControlSurface):
             component.disconnect()
 
         ControlSurface.disconnect(self)
+        foot_part = (SYSEX_FOOTER, )
         for i in LCD_DISPLAY_ADDRESSES:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
-                self._send_midi((SYSEX_HEADER + (i, j) + self.blanks + (SYSEX_FOOTER, )))
+                head_part = tuple(SYSEX_HEADER + (i, j))
+                # here, we could display a "goodbye message" instead of blanking the screens again
+                sysex = head_part + self.goodbye_display_msg + foot_part
+                self.schedule_message(3, self._send_midi, sysex)
 
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
