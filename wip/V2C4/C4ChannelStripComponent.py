@@ -4,6 +4,7 @@ from .V2C4Component import *
 from _Framework.MixerComponent import ChannelStripComponent
 from _Framework.MixerComponent import MixerComponent
 from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
+from _Framework.DisplayDataSource import DisplayDataSource
 from _Framework.ButtonElement import ButtonElement
 
 
@@ -19,7 +20,14 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         V2C4Component.__init__(self)
         self._mixer = None
         self._update_callback = None
-        self._display = None
+        self._data_display = None
+        self._static_display = None
+
+        self._track_name_static_ds = DisplayDataSource(separator='|')
+        self._device_name_static_ds = DisplayDataSource()
+        self._track_name_static_ds.set_display_string('Track Name'.center(LCD_BOTTOM_ROW_OFFSET/2))
+        self._device_name_static_ds.set_display_string('Device Name'.center(LCD_BOTTOM_ROW_OFFSET/2))
+        self.static_data_sources = [self._track_name_static_ds, self._device_name_static_ds]
         # self._register_timer_callback(self._on_timer)
         return
 
@@ -27,7 +35,8 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         ChannelStripComponent.disconnect(self)
         self._update_callback = None
         # self._unregister_timer_callback(self._on_timer)
-        self._display = None
+        self._data_display = None
+        self._static_display = None
         return
 
     def set_script_handle(self, main_script):
@@ -53,16 +62,24 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         return
 
     def update(self):
-        self._log_message("updating ChannelStripComponent")
+        # self._log_message("updating ChannelStripComponent")
         super(C4ChannelStripComponent, self).update()
         if self._update_callback is not None:
             self._log_message("running _update_callback()")
             self._update_callback()
         return
 
-    def set_display(self, display):
-        assert isinstance(display, PhysicalDisplayElement)
-        self._display = display
+    def set_display(self, display, device_name_data_source):
+        assert isinstance(display, dict)
+        assert display.keys()[0] == LCD_ANGLED_ADDRESS
+        assert isinstance(display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET], PhysicalDisplayElement)
+
+        self._static_display = display[LCD_ANGLED_ADDRESS][LCD_TOP_ROW_OFFSET]
+        self._static_display.set_data_sources(self.static_data_sources)
+
+        self._data_display = display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET]
+        data_sources = [self._track_name_data_source, device_name_data_source]
+        self._data_display.set_data_sources(data_sources)
         return
 
     def _on_timer(self):
@@ -95,4 +112,5 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
                 # WTF2? arm the selected track and show the instrument view every time the timer strobes?
                 # self.track.arm = True
                 # self.track.view.select_instrument()
+        # WTF Notes: maybe this behavior could implement an alternative channel strip "arm takeover" mode
         return

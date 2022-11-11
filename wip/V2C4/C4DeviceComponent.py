@@ -110,11 +110,11 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         self._page_index = [0, 0, 0, 0]
         for i in range(NUM_ENCODERS):
             self._parameter_name_data_sources.append(DisplayDataSource())
-            self._parameter_value_data_sources.append(DisplayDataSource())
+            self._parameter_value_data_sources.append(DisplayDataSource())  # encoder LED rings get feedback mapped
             self._page_name_data_sources.append(DisplayDataSource())
 
             self._parameter_name_data_sources[(-1)].set_display_string(' - ')
-            self._parameter_value_data_sources[(-1)].set_display_string(' - ')
+            self._parameter_value_data_sources[(-1)].set_display_string(' * ')
             self._page_name_data_sources[(-1)].set_display_string(' - ')
 
     def disconnect(self):
@@ -124,20 +124,8 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         DeviceComponent.disconnect(self)
         return
 
-    # def set_parameter_value_data_sources(self, data_sources):
-    #     assert isinstance(data_sources[0][0], PhysicalDisplayElement)
-    #     for i in range(NUM_ENCODERS):
-    #         if i in row_00_encoder_indexes:
-    #             self._parameter_name_data_sources[i] = data_sources[LCD_ANGLED_ADDRESS]
-    #             self._parameter_name_data_sources[i].set_display_string(' - ')
-    # def set_parameter_name_data_sources(self, data_sources):
-    #     assert isinstance(data_sources, tuple)
-    #     assert len(data_sources) == NUM_ENCODERS
-    #     for i in range(NUM_ENCODERS):
-    #         self._parameter_name_data_sources[i] = data_sources[i]
-    #         self._parameter_name_data_sources[i].set_display_string(' - ')
 
-    def set_script_backdoor(self, main_script):
+    def set_script_handle(self, main_script):
         """ to log in Live's log from this class, for example, need to set this script """
         self._set_script_handle(main_script)
 
@@ -147,6 +135,9 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
             for source in self._parameter_name_data_sources:
                 source.set_display_string(' - ')
 
+            for source in self._parameter_value_data_sources:
+                source.set_display_string(' * ')
+
             for source in self._page_name_data_sources:
                 source.set_display_string(' - ')
 
@@ -155,14 +146,15 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         DeviceComponent.set_bank_buttons(self, buttons)
         return
 
-    def set_parameter_controls(self, model_controls):
-        assert model_controls is None or isinstance(model_controls, tuple) and len(model_controls) == NUM_ENCODERS
+    def set_parameter_controls(self, encoder_controls):
+        assert encoder_controls is None or \
+               isinstance(encoder_controls, tuple) and len(encoder_controls) == NUM_ENCODERS
         if self._parameter_controls is not None:
             for control in self._parameter_controls:
                 if self._device is not None:
                     control.release_parameter()
 
-        self._parameter_controls = model_controls
+        self._parameter_controls = encoder_controls
         if self._parameter_controls is not None:
             for control in self._parameter_controls:
                 assert control is not None
@@ -176,21 +168,21 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         return self._parameter_value_data_sources
 
     def parameter_value_data_source(self, index):
-        assert index in range(NUM_ENCODERS)
+        assert index in len(self._parameter_value_data_sources)
         return self._parameter_value_data_sources[index]
 
     def parameter_name_data_sources(self):
         return self._parameter_name_data_sources
 
     def parameter_name_data_source(self, index):
-        assert index in range(NUM_ENCODERS)
+        assert index in len(self._parameter_name_data_sources)
         return self._parameter_name_data_sources[index]
 
     def page_name_data_sources(self):
         return self._page_name_data_sources
 
     def page_name_data_source(self, index):
-        assert index in range(NUM_ENCODERS)
+        assert index in len(self._page_name_data_sources)
         return self._page_name_data_sources[index]
 
     def _bank_value(self, value, button):
@@ -223,12 +215,18 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
             else:
                 self.__assign_parameters_plugin()
 
-        self._parameter_value_data_source.set_display_string('')
+        # self._parameter_value_data_source.set_display_string('')
         for index in range(len(self._parameter_controls)):
             if self._parameter_controls[index].mapped_parameter() is not None:
-                self._parameter_name_data_sources[index].set_display_string(self._parameter_controls[index].mapped_parameter().name)
+                self._parameter_name_data_sources[index].set_display_string(
+                    # Live.Device.DeviceParameter.name
+                    self._parameter_controls[index].mapped_parameter().name)
+                self._parameter_value_data_sources[index].set_display_string(
+                    # Live.Device.DeviceParameter.str_for_value
+                    self._parameter_controls[index].mapped_parameter().str_for_value)
             else:
                 self._parameter_name_data_sources[index].set_display_string(' - ')
+                self._parameter_value_data_sources[index].set_display_string(' * ')
 
         return
 
@@ -324,7 +322,8 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
                     r_offset = "{}".format(parameter_offset + 1)
                     l_offset = "{}".format(parameter_offset + num_controls)
                     if index < num_double_pages:
-                        add_offset_before = index == self._bank_index and self._page_index[index] == 0 or index != self._bank_index and self._page_index[index] != 0
+                        add_offset_before = index == self._bank_index and self._page_index[index] == 0 or \
+                                            index != self._bank_index and self._page_index[index] != 0
                         if add_offset_before:
                             parameter_offset += num_controls
                             r_offset = "{}".format(parameter_offset + 1)
