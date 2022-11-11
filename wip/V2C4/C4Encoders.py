@@ -4,7 +4,7 @@ from .V2C4Component import *
 import Live
 
 from _Generic.Devices import *
-from _Framework.ControlElement import ControlElement
+from _Framework.InputControlElement import InputControlElement
 
 
 class C4Encoders:
@@ -133,9 +133,9 @@ class C4Encoders:
         pass
 
     def send_led_ring_midi_cc(self, control_element, cc_val, force=False):
-        assert isinstance(ControlElement, control_element)
-        assert cc_val in self._cc_value_map
-        control_element.send_midi(self.__cc_nbr, cc_val, self.__cc_channel, force=force)
+        assert isinstance(control_element, InputControlElement)
+        assert cc_val in self._cc_value_map or cc_val == 0
+        control_element.send_value(cc_val, force=force, channel=self.__cc_channel)
 
     def send_led_ring_full_off(self, control_element, force=False):
         self.send_led_ring_midi_cc(control_element, LED_OFF_DATA, force)
