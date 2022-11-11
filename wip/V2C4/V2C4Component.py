@@ -44,21 +44,20 @@ class V2C4Component(object):
         range_to_scale = rval_max - rval_min
 
         # Compute the scale factor between left and right values
-        scaleFactor = float(range_to_scale) / float(fixed_range)
+        scale_factor = float(range_to_scale) / float(fixed_range)
 
         # create interpolation function using pre-calculated scaleFactor
         def interpolation_function(value):
-            return rval_min + (value - lval_min) * scaleFactor
+            return rval_min + (value - lval_min) * scale_factor
 
         return interpolation_function
 
     @staticmethod
     def convert_encoder_id_value(convertable_value):
         """
-            directly Sconverts between index values in the ranges 0x00 - 0x01F and 0x20 - 0x3F
-            input 0x00      output 0x20
-            input 0x3F      output 0x1F
-            input any number outside either range, output the same number
+            directly converts between index values in the ranges 0x00 - 0x01F and 0x20 - 0x3F. Examples:
+            input 0x00-->output 0x20: input 0x3F-->output 0x1F: input any number outside either range,
+            output the same number
         """
         return_value = convertable_value
         if convertable_value in encoder_cc_ids:
@@ -66,3 +65,17 @@ class V2C4Component(object):
         elif convertable_value in encoder_index_range:
             return_value = convertable_value + 0x20
         return return_value
+
+    @staticmethod
+    def generate_sysex_body(text_for_display):
+
+        # convert unicode string (list of character values) to list of integer values
+        ascii_text_sysex_ints = [ord(c) for c in text_for_display]
+        for i in range(len(ascii_text_sysex_ints)):
+            if ascii_text_sysex_ints[i] > MIDI_DATA_LAST_VALID:
+
+                # replace any integer values above the ASCII 7-bit (MIDI_DATA) range (0x00 - 0x7F)
+                # replacement value is the code for #
+                ascii_text_sysex_ints[i] = ASCII_HASH
+
+        return ascii_text_sysex_ints
