@@ -16,18 +16,22 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
     __module__ = __name__
 
     def __init__(self):
-        ChannelStripComponent.__init__(self)
         V2C4Component.__init__(self)
         self._mixer = None
         self._update_callback = None
         self._data_display = None
         self._static_display = None
 
+        self._track_name_label = 'Track Name'.center(LCD_BOTTOM_ROW_OFFSET/2)
+        self._device_name_label = 'Device Name'.center(LCD_BOTTOM_ROW_OFFSET/2)
+
         self._track_name_static_ds = DisplayDataSource(separator='|')
         self._device_name_static_ds = DisplayDataSource()
-        self._track_name_static_ds.set_display_string('Track Name'.center(LCD_BOTTOM_ROW_OFFSET/2))
-        self._device_name_static_ds.set_display_string('Device Name'.center(LCD_BOTTOM_ROW_OFFSET/2))
+        self._track_name_static_ds.set_display_string(self._track_name_label)
+        self._device_name_static_ds.set_display_string(self._device_name_label)
         self.static_data_sources = [self._track_name_static_ds, self._device_name_static_ds]
+
+        ChannelStripComponent.__init__(self)
         # self._register_timer_callback(self._on_timer)
         return
 
@@ -67,6 +71,19 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         if self._update_callback is not None:
             self._log_message("running _update_callback()")
             self._update_callback()
+        return
+
+    def _update_track_name_data_source(self):
+        # see super(C4ChannelStripComponent, self)._update_track_name_data_source()
+        self._track_name_data_source.set_display_string(
+            self._track.name if self._track is not None else ' None Track ')
+        self._track_name_static_ds.set_display_string(
+            self._track_name_label if self._track is not None else ' Track label ')
+        self._device_name_static_ds.set_display_string(
+            self._device_name_label if self._track is not None and
+                                       self._track.view is not None and
+                                       self._track.view.selected_device is not None else ' Device Label ')
+
         return
 
     def set_display(self, display, device_name_data_source):
