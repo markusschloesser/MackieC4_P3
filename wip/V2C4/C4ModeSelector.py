@@ -42,18 +42,18 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         self._bank_buttons = bank_buttons
         self._peek_button = None
         self._default_displays = {LCD_ANGLED_ADDRESS: {0: None}}
-        self._encoder_row00_displays = None
-        self._encoder_row01_displays = None
-        self._encoder_row02_displays = None
-        self._encoder_row03_displays = None
+        self._encoder_row00_displays = ()
+        self._encoder_row01_displays = ()
+        self._encoder_row02_displays = ()
+        self._encoder_row03_displays = ()
         self._value_display = None
         self._device_dummy_source = DisplayDataSource()
         self._parameter_source = DisplayDataSource()
         self._device_dummy_source.set_display_string('Ch Str')
         self._clean_value_display_in = -1
-        self._channel_strip_display = None
+        self._channel_strip_displays = ()
         self._must_update_encoder_display = False
-        self._register_timer_callback(self._on_timer)
+        # self._register_timer_callback(self._on_timer)
 
         # identify_sender = True
         # for encoder in self._device_encoders:
@@ -63,22 +63,22 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         return
 
     def disconnect(self):
-        self._unregister_timer_callback(self._on_timer)
+        # self._unregister_timer_callback(self._on_timer)
         self._device = None
         self._device_encoders = None
         self._assignment_buttons = None
         self._modifier_buttons = None
         self._bank_buttons = None
         self._default_displays = None
-        self._channel_strip_display = None
-        self._encoder_row00_displays = (PhysicalDisplayElement, PhysicalDisplayElement)
-        self._encoder_row01_displays = (PhysicalDisplayElement, PhysicalDisplayElement)
-        self._encoder_row02_displays = (PhysicalDisplayElement, PhysicalDisplayElement)
-        self._encoder_row03_displays = (PhysicalDisplayElement, PhysicalDisplayElement)
+        self._channel_strip_displays = None
+        self._encoder_row00_displays = None
+        self._encoder_row01_displays = None
+        self._encoder_row02_displays = None
+        self._encoder_row03_displays = None
         self._value_display = None  # peek value display? (maybe use part of channel strip "static" name display)
         self._device_dummy_source = None
         self._parameter_source = None
-        self._channel_strip_display = None
+        self._channel_strip_displays = None
         ModeSelectorComponent.disconnect(self)
         return
 
@@ -173,6 +173,9 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                 self._channel_encoders[0].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
                 self._chan_strip.set_volume_control(self._channel_encoders[0])
 
+                # encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
+                self._channel_encoders[1].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
+                self._chan_strip.set_pan_control(self._channel_encoders[1])
 
                 if self._channel_strip_displays is not None:
                     self._channel_strip_displays[0].segment(0).set_data_source(self._chan_strip.static_data_sources[0])
@@ -193,10 +196,6 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                     self._encoder_row02_displays[1].reset()
                     self._encoder_row03_displays[0].reset()
                     self._encoder_row03_displays[1].reset()
-
-                # encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
-                self._channel_encoders[1].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
-                self._chan_strip.set_pan_control(self._channel_encoders[1])
 
             elif self._mode_index == 1:
                 self._chan_strip.set_volume_control(None)
