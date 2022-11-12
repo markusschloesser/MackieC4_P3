@@ -134,7 +134,7 @@ class V2C4(ControlSurface):
                                   # self._model.make_button(C4SID_TRACK),
                                   # self._model.make_button(C4SID_FUNCTION)]
             assignment_buttons = tuple(assignment_buttons)
-            modifier_buttons = [self._model.make_button(C4SID_SHIFT)]  # ,
+            modifier_buttons = [None]  # [self._model.make_button(C4SID_SHIFT)]  # ,
                                 # self._model.make_button(C4SID_CONTROL),
                                 # self._model.make_button(C4SID_OPTION),
                                 # self._model.make_button(C4SID_ALT)]
@@ -152,7 +152,7 @@ class V2C4(ControlSurface):
             # these settings will get "locked in" when the "firmware handshake" update runs
             # after a successful handshake
             mode_selector.set_mode_toggle(assignment_buttons[0])
-            mode_selector.set_peek_button(self._model.make_button(C4SID_SPLIT_ERASE))
+            # mode_selector.set_peek_button(self._model.make_button(C4SID_SPLIT_ERASE))
             mode_selector.set_displays(self._device_parameter_displays, self._chan_strip_display)
 
             # firmware version SYSEX message from C4 unlocks components locked above
