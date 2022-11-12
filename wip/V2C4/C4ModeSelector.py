@@ -104,15 +104,15 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
 
         self.set_value_display(value_display)
 
-        # mode selector only needs to know about the bottom row of the channel strip display
-        # the top row contains static track and device name labels
-        self._channel_strip_display = channel_strip_display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET]
+        one_lcd = channel_strip_display[LCD_ANGLED_ADDRESS]
+        self._channel_strip_displays = tuple([one_lcd[LCD_TOP_ROW_OFFSET], one_lcd[LCD_BOTTOM_ROW_OFFSET]])
         self.set_mode(0)
         return
 
     def update_displays(self):
         if self._mode_index == 0:
-            self._channel_strip_display.update()
+            self._channel_strip_displays[0].update()
+            self._channel_strip_displays[1].update()
         elif self._mode_index == 1:
             self._encoder_row00_displays[0].update()
             self._encoder_row00_displays[1].update()
@@ -173,9 +173,12 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                 self._channel_encoders[0].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
                 self._chan_strip.set_volume_control(self._channel_encoders[0])
 
-                if self._channel_strip_display is not None:
-                    self._channel_strip_display.segment(0).set_data_source(self._chan_strip.track_name_data_source())
-                    self._channel_strip_display.segment(1).set_data_source(self._device.device_name_data_source())
+
+                if self._channel_strip_displays is not None:
+                    self._channel_strip_displays[0].segment(0).set_data_source(self._chan_strip.static_data_sources[0])
+                    self._channel_strip_displays[0].segment(1).set_data_source(self._chan_strip.static_data_sources[1])
+                    self._channel_strip_displays[1].segment(0).set_data_source(self._chan_strip.track_name_data_source())
+                    self._channel_strip_displays[1].segment(1).set_data_source(self._device.device_name_data_source())
 
                 if self._encoder_row00_displays is not None and \
                     len(self._encoder_row00_displays) == 2 and \
@@ -209,8 +212,9 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                 self._device.set_parameter_controls(self._device_encoders)
                 self._device.set_bank_buttons(self._bank_buttons)
 
-                if self._channel_strip_display is not None:
-                    self._channel_strip_display.reset()
+                if self._channel_strip_displays is not None:
+                    self._channel_strip_displays[0].reset()
+                    self._channel_strip_displays[1].reset()
 
                 if self._encoder_row00_displays is not None and \
                     len(self._encoder_row00_displays) == 2 and \
