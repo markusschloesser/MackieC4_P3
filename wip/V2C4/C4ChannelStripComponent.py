@@ -58,7 +58,7 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         if self.selected_track != self.song().view.selected_track:
             # this C4 Channel Strip is not "known" to the mixer component
             self.selected_track = self.song().view.selected_track
-            # self.set_track(self.selected_track)
+            self.set_track(self.selected_track)
             self.selected_strip = self._mixer.selected_strip
             #
         return
