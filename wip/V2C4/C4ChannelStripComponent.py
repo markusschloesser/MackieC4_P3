@@ -18,6 +18,8 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
     def __init__(self):
         V2C4Component.__init__(self)
         self._mixer = None
+        self.selected_track = None
+        self.selected_strip = None
         self._update_callback = None
         self._data_display = None
         self._static_display = None
@@ -41,6 +43,9 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         # self._unregister_timer_callback(self._on_timer)
         self._data_display = None
         self._static_display = None
+        self._mixer = None
+        self.selected_track = None
+        self.selected_strip = None
         return
 
     def set_script_handle(self, main_script):
@@ -48,9 +53,14 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         self._set_script_handle(main_script)
 
     def on_selected_track_changed(self):
-        if self.song().view.selected_track != self._track:
-            self.set_track(self.song().view.selected_track)
-            self.update()  # call stack includes ChannelStripComponent.on_selected_track_changed(self)
+        super(C4ChannelStripComponent, self).on_selected_track_changed()
+
+        if self.selected_track != self.song().view.selected_track:
+            # this C4 Channel Strip is not "known" to the mixer component
+            self.selected_track = self.song().view.selected_track
+            # self.set_track(self.selected_track)
+            self.selected_strip = self._mixer.selected_strip
+            #
         return
 
     def set_mixer(self, mixer):
@@ -86,7 +96,7 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
 
         return
 
-    def set_display(self, display, device_name_data_source):
+    def set_displays(self, display, device_name_data_source):
         assert isinstance(display, dict)
         assert display.keys()[0] == LCD_ANGLED_ADDRESS
         assert isinstance(display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET], PhysicalDisplayElement)
