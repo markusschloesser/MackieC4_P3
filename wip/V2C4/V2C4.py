@@ -120,8 +120,8 @@ class V2C4(ControlSurface):
                 self._chan_strip_display[i][j].set_message_parts(head_part, foot_part)
                 # .set_position_identifier here too?
 
-            strip.set_display(self._chan_strip_display,
-                              self._device_component.device_name_data_source())
+            strip.set_displays(self._chan_strip_display,
+                               self._device_component.device_name_data_source())
 
             assert len(encoder_cc_ids) == NUM_ENCODERS
             device_encoders = []
@@ -204,8 +204,11 @@ class V2C4(ControlSurface):
             # self.log_message("connected to C4 serial number {}".format(serial_nbr))
             self._waiting_for_first_response = False
             self.log_message("C4 responded, enabling <{}> components".format(len(self.components)))
+            i = 1
             for component in self.components:
+                self.log_message("<{}> {}".format(i, component.__str__()))
                 component.set_enabled(True)
+                i = i + 1
 
             show_msg = "V2C4 remote script connected to C4 with "
             self.update()
