@@ -35,7 +35,7 @@ class C4Encoders:
         self.__encoder_index = encoder_index
         self.__cc_channel = C4_MIDI_CHANNEL
         self.__cc_nbr = encoder_cc_ids[self.__encoder_index]
-        self._midi_feedback_delay = -1.0
+        self._midi_feedback_delay = -1
         self._map_mode = map_mode
 
         self.__display_mode = display_mode

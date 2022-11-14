@@ -82,7 +82,7 @@ class C4EncoderElement(CompoundElement, C4EncoderElementBase, V2C4Component):
         V2C4Component._log_message(self, "encoderId <{}> calc idx <{}>".format(identifier, encoder_index))
         self.c4_encoder = C4Encoders(self, extended, encoder_index, map_mode)
         self._feedback_rule = None
-        self.set_feedback_delay(0.0)
+        self.set_feedback_delay(-1)
         self._button = ButtonElement  # maybe this could be nested?
 
     def set_script_handle(self, main_script=None):
