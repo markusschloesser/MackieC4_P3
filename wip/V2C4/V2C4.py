@@ -247,20 +247,20 @@ class V2C4(ControlSurface):
                     # before the screens get "refreshed/cleared"
                     head_part = tuple(SYSEX_HEADER + (i, j))
                     sysex = head_part + self._model.lcd_display_id_message[i][j] + foot_part
-                    self.schedule_message(2, self._send_midi, sysex)
+                    # self.schedule_message(1, self._send_midi, sysex)
+                    self._send_midi(sysex)
 
     def disconnect(self):
-        for component in self.components:
-            component.disconnect()
-
-        ControlSurface.disconnect(self)
         foot_part = (SYSEX_FOOTER, )
         for i in LCD_DISPLAY_ADDRESSES:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                 head_part = tuple(SYSEX_HEADER + (i, j))
                 # here, we could display a "goodbye message" instead of blanking the screens again
                 sysex = head_part + self.goodbye_display_msg + foot_part
-                self.schedule_message(3, self._send_midi, sysex)
+                # self.schedule_message(1, self._send_midi, sysex)
+                self._send_midi(sysex)
+
+        ControlSurface.disconnect(self)
 
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
