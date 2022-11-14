@@ -4,6 +4,7 @@ import Live
 
 from _Framework.ControlSurface import ControlSurface
 from _Framework.SessionComponent import SessionComponent
+from _Framework.InputControlElement import InputControlElement
 from _Framework.TransportComponent import TransportComponent
 from _Framework.MixerComponent import MixerComponent
 
@@ -185,6 +186,19 @@ class V2C4(ControlSurface):
         #     Live.MidiMap.forward_midi_cc(self._c_instance.handle(), midi_map_handle, 0, i)
 
         super(V2C4, self).build_midi_map(midi_map_handle)
+
+    # def _install_mapping(self, midi_map_handle, control, parameter, feedback_delay, feedback_map):
+    #     assert self._in_build_midi_map
+    #     assert control is not None and parameter is not None
+    #     self.log_message("control and parameter are not None")
+    #     self.log_message("<{}> {}".format(control.__str__(), parameter.__str__()))
+    #     assert isinstance(parameter, Live.DeviceParameter.DeviceParameter)
+    #     assert isinstance(control, InputControlElement)
+    #     self.log_message("control and parameter are instances")
+    #     assert isinstance(feedback_delay, int)
+    #     assert isinstance(feedback_map, tuple)
+    #     self.log_message("feedback delay<{}> and map<{}> are instances".format(feedback_delay, feedback_map))
+    #     super(V2C4, self)._install_mapping(midi_map_handle, control, parameter, feedback_delay, feedback_map)
 
     def receive_midi(self, midi_bytes):
         """ only need to handle CC or Note message types here """
