@@ -1,29 +1,45 @@
 from .V2C4Component import *
 
-from _Framework.MixerComponent import ChannelStripComponent
-from _Framework.MixerComponent import MixerComponent
+from _Framework.MixerComponent import MixerComponent, izip_longest, turn_button_on_off
 from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
 from _Framework.DisplayDataSource import DisplayDataSource
 from _Framework.ButtonElement import ButtonElement
 
 from .C4ChannelStripComponent import C4ChannelStripComponent
 
+
 class C4MixerComponent(MixerComponent, V2C4Component):
     """
-        Mixer customization making use of C4ChannelStripComponent for displaying data on LCD screen
+        Mixer customization making use of C4ChannelStripComponent for displaying data on LCD screen.
+        This mixer component follows the self.song().view.selected_track around, one "set" of
+        track control elements always connects to the mixer's "selected channel strip" or None.
     """
     __module__ = __name__
 
     def __init__(self, *a, **k):
         V2C4Component.__init__(self)
+        self._selected_strip_volume_control = None
+        self._selected_strip_pan_control = None
+        self._selected_strip_send_controls = (None, )
+        self._selected_strip_track_buttons = {'arm': None, 'solo': None, 'mute': None, 'activate': None}
+        self._selected_track = None
         self._displays = {LCD_ANGLED_ADDRESS: {LCD_BOTTOM_ROW_OFFSET: None}}
         self._device_name_data_source = None
 
         MixerComponent.__init__(self, num_tracks=1, *a, **k)
 
     def disconnect(self):
+        self._disconnect_selected_strip_controls()
         MixerComponent.disconnect(self)
-        self._displays = None
+        self._selected_strip_track_buttons['arm'] = None
+        self._selected_strip_track_buttons['solo'] = None
+        self._selected_strip_track_buttons['mute'] = None
+        self._selected_strip_track_buttons['activate'] = None
+        self._selected_strip_volume_control = None
+        self._selected_strip_pan_control = None
+        self._selected_strip_send_controls = (None, )
+        self._selected_track = None
+        self._displays = None 
         self._device_name_data_source = None
 
     def _create_strip(self):
@@ -38,9 +54,121 @@ class C4MixerComponent(MixerComponent, V2C4Component):
         self._device_name_data_source = device_name_data_source
 
     def on_selected_track_changed(self):
+        self._disconnect_selected_strip_controls()
         MixerComponent.on_selected_track_changed(self)
+        self._connect_selected_strip_controls()
+        # self._selected_track != self.song().master_track
+        # self._selected_track = self.song().view.selected_track
+
         if isinstance(self._displays[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET], PhysicalDisplayElement):
             self.selected_strip().set_displays(self._displays, self._device_name_data_source)
+    
+    def set_selected_strip_volume_control(self, control):
+        self._selected_strip_volume_control = control
+        self._set_selected_strip_volume_control()
+
+    def _set_selected_strip_volume_control(self):
+        self.selected_strip().set_volume_control(self._selected_strip_volume_control)
+
+    def set_selected_strip_pan_control(self, control):
+        self._selected_strip_pan_control = control
+        self._set_selected_strip_pan_control()
+
+    def _set_selected_strip_pan_control(self):
+        self.selected_strip().set_pan_control(self._selected_strip_pan_control)
+
+    def set_selected_strip_send_controls(self, controls):
+        self._send_controls = controls
+        for control in izip_longest(controls or []):
+            if self._send_index is None:
+                self._selected_strip_send_controls = (None, )
+            else:
+                self._selected_strip_send_controls = (None, ) * self._send_index + (control,)
+
+        self._set_selected_strip_send_controls()
+
+    def _set_selected_strip_send_controls(self):
+        if len(self._selected_strip_send_controls) > 0 and self._selected_strip_send_controls[0] is None:
+            self.selected_strip().set_send_controls(None)
+        else:
+            self.selected_strip().set_send_controls(self._selected_strip_send_controls)
+
+    def set_selected_strip_arm_button(self, button):
+        if self._selected_strip_track_buttons['arm'] is None or self._selected_strip_track_buttons['arm'] != button:
+            self._selected_strip_track_buttons['arm'] = button 
+            self._set_selected_strip_arm_button()
+
+    def _set_selected_strip_arm_button(self):
+        if self.selected_strip().track == \
+                self.song().view.selected_track and self.song().view.selected_track.can_be_armed:
+            self.selected_strip().set_arm_button(self._selected_strip_track_buttons['arm'])
+        else:
+            self.selected_strip().set_arm_button(None)
+
+    def set_selected_strip_solo_button(self, button):
+        if self._selected_strip_track_buttons['solo'] is None or self._selected_strip_track_buttons['solo'] != button:
+            self._selected_strip_track_buttons['solo'] = button 
+            self._set_selected_strip_solo_button()
+
+    def _set_selected_strip_solo_button(self):
+        if self.selected_strip() != self.master_strip():
+            self.selected_strip().set_solo_button(self._selected_strip_track_buttons['solo'])
+        else:
+            self.selected_strip().set_solo_button(None)
+
+    def set_selected_strip_mute_button(self, button):
+        if self._selected_strip_track_buttons['mute'] is None or self._selected_strip_track_buttons['mute'] != button:
+            self._selected_strip_track_buttons['mute'] = button 
+            self._set_selected_strip_mute_button()
+
+    def _set_selected_strip_mute_button(self):
+        if self.selected_strip() != self.master_strip():
+            self.selected_strip().set_mute_button(self._selected_strip_track_buttons['mute'])
+        else:
+            self.selected_strip().set_mute_button(None)
+
+    def set_selected_strip_activate_button(self, button):
+        if self._selected_strip_track_buttons['activate'] is None or self._selected_strip_track_buttons['activate'] != button:
+            self._selected_strip_track_buttons['activate'] = button 
+            self._set_selected_strip_activate_button()
+
+    def _set_selected_strip_activate_button(self):
+        if self.selected_strip() != self.master_strip():
+            self.selected_strip().set_select_button(self._selected_strip_track_buttons['activate'])
+        else:
+            self.selected_strip().set_select_button(None)
+
+    def update(self):
+        super(MixerComponent, self).update()
+        if self._allow_updates:
+            if self.is_enabled():
+                self.selected_strip().update()
+            else:
+                map(lambda x: turn_button_on_off(x, on=False), [
+                 self._selected_strip_track_buttons['arm'],
+                 self._selected_strip_track_buttons['solo'],
+                 self._selected_strip_track_buttons['mute'],
+                 self._selected_strip_track_buttons['activate']])
+        else:
+            self._update_requests += 1
+    
+    def _connect_selected_strip_controls(self):
+        self._set_selected_strip_volume_control()
+        self._set_selected_strip_pan_control()
+        self._set_selected_strip_send_controls()
+        self._set_selected_strip_arm_button()
+        self._set_selected_strip_solo_button()
+        self._set_selected_strip_mute_button()
+        self._set_selected_strip_activate_button()
+
+    def _disconnect_selected_strip_controls(self):
+        self.selected_strip().set_volume_control(None)
+        self.selected_strip().set_pan_control(None)
+        self.selected_strip().set_send_controls(None)
+        self.selected_strip().set_arm_button(None)
+        self.selected_strip().set_solo_button(None)
+        self.selected_strip().set_mute_button(None)
+        self.selected_strip().set_select_button(None)
 
     def set_script_handle(self, main_script):
         """ to log in Live's log from this class, for example, need to set this script """
