@@ -56,26 +56,26 @@ class V2C4(ControlSurface):
             # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
             volume_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_32, *a, **k)
             volume_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
-            mixer.set_volume_controls([volume_encoder])
+            mixer.set_selected_strip_volume_control(volume_encoder)
 
             pan_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_31, *a, **k)
             pan_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
-            mixer.set_pan_controls([pan_encoder])
+            mixer.set_selected_strip_pan_control(pan_encoder)
             channel_encoders = tuple([volume_encoder, pan_encoder])
 
-            mixer.set_mute_buttons([self._model.make_button(C4SID_VPOT_PUSH_30, *a, **k)])
-            mixer.set_solo_buttons([self._model.make_button(C4SID_VPOT_PUSH_29, *a, **k)])
-            mixer.set_arm_buttons([self._model.make_button(C4SID_VPOT_PUSH_28, *a, **k)])
+            mixer.set_selected_strip_mute_button(self._model.make_button(C4SID_VPOT_PUSH_30, *a, **k))
+            mixer.set_selected_strip_solo_button(self._model.make_button(C4SID_VPOT_PUSH_29, *a, **k))
+            mixer.set_selected_strip_arm_button(self._model.make_button(C4SID_VPOT_PUSH_28, *a, **k))
             mixer.set_shift_button(self._model.make_button(C4SID_SHIFT, *a, **k))
 
             device = C4DeviceComponent(device_selection_follows_track_selection=True)
             device.set_script_handle(self)
             self.set_device_component(device)
 
-            transport = TransportComponent()
-            transport.set_record_button(self._model.make_button(C4SID_VPOT_PUSH_27, *a, **k))
-            transport.set_play_button(self._model.make_button(C4SID_VPOT_PUSH_26, *a, **k))
-            transport.set_stop_button(self._model.make_button(C4SID_VPOT_PUSH_25, *a, **k))
+            stop_button = self._model.make_button(C4SID_VPOT_PUSH_25, *a, **k)
+            play_button = self._model.make_button(C4SID_VPOT_PUSH_26, *a, **k)
+            record_button = self._model.make_button(C4SID_VPOT_PUSH_27, *a, **k)
+            transport_buttons = tuple([stop_button, play_button, record_button])
 
             session = SessionComponent(0, 0)
 
@@ -143,8 +143,9 @@ class V2C4(ControlSurface):
             device_bank_buttons = tuple([self._model.make_button(C4SID_SINGLE_RIGHT),
                                          self._model.make_button(C4SID_SINGLE_LEFT)])
 
-            mode_selector = C4ModeSelector(mixer, device, transport, session, channel_encoders, device_encoders,
-                                           assignment_buttons, modifier_buttons, device_bank_buttons)
+            mode_selector = C4ModeSelector(mixer, device, session, channel_encoders, device_encoders,
+                                           assignment_buttons, modifier_buttons, device_bank_buttons,
+                                           transport_buttons, *a, **k)
             mode_selector.set_script_handle(self)
             for component in self.components:
                 component.set_enabled(False)

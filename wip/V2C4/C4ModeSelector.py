@@ -16,22 +16,26 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     """class that selects between assignment modes using modifiers"""
     __module__ = __name__
 
-    def __init__(self, mixer, device, transport, session, channel_encoders, device_encoders,
-                 assignment_buttons, modifier_buttons, bank_buttons):
+    def __init__(self, mixer, device, session, channel_encoders, device_encoders,
+                 assignment_buttons, modifier_buttons, bank_buttons, transport_buttons, *a, **k):
         assert isinstance(mixer, C4MixerComponent)
         assert isinstance(device, C4DeviceComponent)
-        assert isinstance(transport, TransportComponent)
         assert isinstance(session, SessionComponent)
         assert isinstance(channel_encoders, tuple)
         assert isinstance(device_encoders, tuple)
         assert isinstance(assignment_buttons, tuple)
         assert isinstance(modifier_buttons, tuple)
         assert isinstance(bank_buttons, tuple)
+        assert isinstance(transport_buttons, tuple)
         ModeSelectorComponent.__init__(self)
         V2C4Component.__init__(self)
         self._mixer = mixer
         self._device = device
-        self._transport = transport
+        self._transport = TransportComponent(*a, **k)
+        self._transport_buttons = transport_buttons
+        self._transport.set_stop_button(transport_buttons[0])
+        self._transport.set_play_button(transport_buttons[1])
+        self._transport.set_record_button(transport_buttons[2])
         self._session = session
         self._channel_encoders = channel_encoders
         self._device_encoders = device_encoders
@@ -62,6 +66,12 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
 
     def disconnect(self):
         # self._unregister_timer_callback(self._on_timer)
+        self._mixer = None
+        self._device = None
+        self._transport = None
+        self._transport_buttons = None
+        self._session = None
+        self._channel_encoders = None
         self._device = None
         self._device_encoders = None
         self._assignment_buttons = None
@@ -159,21 +169,24 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     def update(self):
         super(C4ModeSelector, self).update()
         if self.is_enabled():
+            # the mixer track and bank select buttons stay set in both modes
+            self._transport.set_stop_button(self._transport_buttons[0])
+            self._transport.set_play_button(self._transport_buttons[1])
+            self._transport.set_record_button(self._transport_buttons[2])
+
             if self._mode_index == 0:
                 self._device.set_parameter_controls(None)
                 self._device.set_bank_buttons(None)
                 for e in self._device_encoders:
                     e.send_led_ring_full_off()
 
-                # the mixer bank buttons stay set in both modes
-
                 # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
                 self._channel_encoders[0].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
-                self._mixer.set_volume_controls([self._channel_encoders[0]])
+                self._mixer.selected_strip().set_volume_control(self._channel_encoders[0])
 
                 # encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
                 self._channel_encoders[1].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
-                self._mixer.set_pan_controls([self._channel_encoders[1]])
+                self._mixer.selected_strip().set_pan_control(self._channel_encoders[1])
 
                 if self._channel_strip_displays is not None:
                     self._channel_strip_displays[0].segment(0).set_data_source(
@@ -200,8 +213,11 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                     self._encoder_row03_displays[1].reset()
 
             elif self._mode_index == 1:
-                self._mixer.set_volume_controls(None)
-                self._mixer.set_pan_controls(None)
+                self._mixer.selected_strip().set_volume_control(None)
+                self._mixer.selected_strip().set_pan_control(None)
+                self._transport.set_stop_button(None)
+                self._transport.set_play_button(None)
+                self._transport.set_record_button(None)
 
                 for e in self._channel_encoders:
                     e.send_led_ring_full_off()
