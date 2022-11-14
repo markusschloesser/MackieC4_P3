@@ -9,17 +9,16 @@ from _Framework.DisplayDataSource import DisplayDataSource
 from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
 
 from .C4DeviceComponent import C4DeviceComponent
-from .C4ChannelStripComponent import C4ChannelStripComponent
+from .C4MixerComponent import C4MixerComponent
 
 
 class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     """class that selects between assignment modes using modifiers"""
     __module__ = __name__
 
-    def __init__(self, mixer, channel_strip, device, transport, session, channel_encoders, device_encoders,
+    def __init__(self, mixer, device, transport, session, channel_encoders, device_encoders,
                  assignment_buttons, modifier_buttons, bank_buttons):
-        assert isinstance(mixer, MixerComponent)
-        assert isinstance(channel_strip, C4ChannelStripComponent)
+        assert isinstance(mixer, C4MixerComponent)
         assert isinstance(device, C4DeviceComponent)
         assert isinstance(transport, TransportComponent)
         assert isinstance(session, SessionComponent)
@@ -31,7 +30,6 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         ModeSelectorComponent.__init__(self)
         V2C4Component.__init__(self)
         self._mixer = mixer
-        self._chan_strip = channel_strip
         self._device = device
         self._transport = transport
         self._session = session
@@ -39,7 +37,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         self._device_encoders = device_encoders
         self._assignment_buttons = assignment_buttons
         self._modifier_buttons = modifier_buttons
-        self._bank_buttons = bank_buttons
+        self._device_bank_buttons = bank_buttons
         self._peek_button = None
         self._default_displays = {LCD_ANGLED_ADDRESS: {0: None}}
         self._encoder_row00_displays = ()
@@ -68,7 +66,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         self._device_encoders = None
         self._assignment_buttons = None
         self._modifier_buttons = None
-        self._bank_buttons = None
+        self._device_bank_buttons = None
         self._default_displays = None
         self._channel_strip_displays = None
         self._encoder_row00_displays = None
@@ -171,17 +169,21 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
 
                 # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
                 self._channel_encoders[0].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
-                self._chan_strip.set_volume_control(self._channel_encoders[0])
+                self._mixer.set_volume_controls([self._channel_encoders[0]])
 
                 # encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
                 self._channel_encoders[1].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
-                self._chan_strip.set_pan_control(self._channel_encoders[1])
+                self._mixer.set_pan_controls([self._channel_encoders[1]])
 
                 if self._channel_strip_displays is not None:
-                    self._channel_strip_displays[0].segment(0).set_data_source(self._chan_strip.static_data_sources[0])
-                    self._channel_strip_displays[0].segment(1).set_data_source(self._chan_strip.static_data_sources[1])
-                    self._channel_strip_displays[1].segment(0).set_data_source(self._chan_strip.track_name_data_source())
-                    self._channel_strip_displays[1].segment(1).set_data_source(self._device.device_name_data_source())
+                    self._channel_strip_displays[0].segment(0).set_data_source(
+                        self._mixer.selected_strip().static_data_sources[0])
+                    self._channel_strip_displays[0].segment(1).set_data_source(
+                        self._mixer.selected_strip().static_data_sources[1])
+                    self._channel_strip_displays[1].segment(0).set_data_source(
+                        self._mixer.selected_strip().track_name_data_source())
+                    self._channel_strip_displays[1].segment(1).set_data_source(
+                        self._device.device_name_data_source())
 
                 if self._encoder_row00_displays is not None and \
                     len(self._encoder_row00_displays) == 2 and \
@@ -198,9 +200,8 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                     self._encoder_row03_displays[1].reset()
 
             elif self._mode_index == 1:
-                self._chan_strip.set_volume_control(None)
-                # self._chan_strip.set_display(None)
-                self._chan_strip.set_pan_control(None)
+                self._mixer.set_volume_controls(None)
+                self._mixer.set_pan_controls(None)
 
                 for e in self._channel_encoders:
                     e.send_led_ring_full_off()
@@ -209,7 +210,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                     e.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_WRAP)
 
                 self._device.set_parameter_controls(self._device_encoders)
-                self._device.set_bank_buttons(self._bank_buttons)
+                self._device.set_bank_buttons(self._device_bank_buttons)
 
                 if self._channel_strip_displays is not None:
                     self._channel_strip_displays[0].reset()

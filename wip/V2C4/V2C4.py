@@ -14,6 +14,7 @@ from .C4ChannelStripComponent import C4ChannelStripComponent
 from .C4ModelElements import C4ModelElements
 from .C4ModeSelector import C4ModeSelector
 from .C4DeviceComponent import C4DeviceComponent
+from .C4MixerComponent import C4MixerComponent
 from .V2C4Component import V2C4Component
 # from .C4EncodersComponent import C4EncodersComponent
 from .C4_DEFINES import *
@@ -42,31 +43,30 @@ class V2C4(ControlSurface):
             self._suggested_output_port = 'MackieC4'
             self._waiting_for_first_response = True
 
-            nbr_tracks = 1
-            mixer = MixerComponent(nbr_tracks)
+            mixer = C4MixerComponent()
             mixer.set_select_buttons(
                 self._model.make_button(C4SID_TRACK_RIGHT), self._model.make_button(C4SID_TRACK_LEFT))
             mixer.set_bank_buttons(
                 self._model.make_button(C4SID_BANK_RIGHT),  self._model.make_button(C4SID_BANK_LEFT))
 
-            strip = C4ChannelStripComponent()
-            strip.set_script_handle(self)
-            strip.set_mixer(mixer)
+            # strip = C4ChannelStripComponent()
+            # strip.set_script_handle(self)
+            # strip.set_mixer(mixer)
 
             # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
             volume_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_32, *a, **k)
             volume_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
-            strip.set_volume_control(volume_encoder)
+            mixer.set_volume_controls([volume_encoder])
 
             pan_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_31, *a, **k)
             pan_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
-            strip.set_pan_control(pan_encoder)
+            mixer.set_pan_controls([pan_encoder])
             channel_encoders = tuple([volume_encoder, pan_encoder])
 
-            strip.set_mute_button(self._model.make_button(C4SID_VPOT_PUSH_30, *a, **k))
-            strip.set_solo_button(self._model.make_button(C4SID_VPOT_PUSH_29, *a, **k))
-            strip.set_arm_button(self._model.make_button(C4SID_VPOT_PUSH_28, *a, **k))
-            strip.set_shift_button(self._model.make_button(C4SID_SHIFT, *a, **k))
+            mixer.set_mute_buttons([self._model.make_button(C4SID_VPOT_PUSH_30, *a, **k)])
+            mixer.set_solo_buttons([self._model.make_button(C4SID_VPOT_PUSH_29, *a, **k)])
+            mixer.set_arm_buttons([self._model.make_button(C4SID_VPOT_PUSH_28, *a, **k)])
+            mixer.set_shift_button(self._model.make_button(C4SID_SHIFT, *a, **k))
 
             device = C4DeviceComponent(device_selection_follows_track_selection=True)
             device.set_script_handle(self)
@@ -120,7 +120,7 @@ class V2C4(ControlSurface):
                 self._chan_strip_display[i][j].set_message_parts(head_part, foot_part)
                 # .set_position_identifier here too?
 
-            strip.set_displays(self._chan_strip_display,
+            mixer.set_displays(self._chan_strip_display,
                                self._device_component.device_name_data_source())
 
             assert len(encoder_cc_ids) == NUM_ENCODERS
@@ -143,7 +143,7 @@ class V2C4(ControlSurface):
             device_bank_buttons = tuple([self._model.make_button(C4SID_SINGLE_RIGHT),
                                          self._model.make_button(C4SID_SINGLE_LEFT)])
 
-            mode_selector = C4ModeSelector(mixer, strip, device, transport, session, channel_encoders, device_encoders,
+            mode_selector = C4ModeSelector(mixer, device, transport, session, channel_encoders, device_encoders,
                                            assignment_buttons, modifier_buttons, device_bank_buttons)
             mode_selector.set_script_handle(self)
             for component in self.components:
