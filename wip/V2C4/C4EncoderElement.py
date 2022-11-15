@@ -84,6 +84,7 @@ class C4EncoderElement(CompoundElement, C4EncoderElementBase, V2C4Component):
         self._feedback_rule = None
         self.set_feedback_delay(-1)
         self._button = ButtonElement  # maybe this could be nested?
+        self.set_report_values(True, True)
 
     def set_script_handle(self, main_script=None):
         """ to log from this class only through Python, for example, need to set this script handle """
@@ -125,9 +126,9 @@ class C4EncoderElement(CompoundElement, C4EncoderElementBase, V2C4Component):
         return self._button
 
     # override from InputControlElement
-    def receive_value(self, value):
-        self._log_message("received value <{}>".format(value))
-        super(C4EncoderElement, self).receive_value(value)
+    # def receive_value(self, value):
+    #     self._log_message("received value <{}>".format(value))
+    #     super(C4EncoderElement, self).receive_value(value)
         # value = getattr(value, 'midi_value', value)
         # self._verify_value(value)
         # self._last_sent_message = None
