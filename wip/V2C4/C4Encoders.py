@@ -17,7 +17,7 @@ class C4Encoders:
 
     @staticmethod
     def map_mode():
-        return Live.MidiMap.MapMode.relative_signed_bit
+        return Live.MidiMap.MapMode.relative_signed_bit  # relative_smooth_signed_bit?
 
     def __init__(self, parent, extended, encoder_index, map_mode,
                  display_mode=VPOT_DISPLAY_SINGLE_DOT):
