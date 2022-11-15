@@ -79,7 +79,7 @@ class C4EncoderElement(CompoundElement, C4EncoderElementBase, V2C4Component):
         V2C4Component.__init__(self)
 
         encoder_index = V2C4Component.convert_encoder_id_value(identifier)
-        V2C4Component._log_message(self, "encoderId <{}> calc idx <{}>".format(identifier, encoder_index))
+        # V2C4Component._log_message(self, "encoderId <{}> calc idx <{}>".format(identifier, encoder_index))
         self.c4_encoder = C4Encoders(self, extended, encoder_index, map_mode)
         self._feedback_rule = None
         self.set_feedback_delay(-1)
