@@ -74,6 +74,10 @@ class C4Encoders:
     def encoder_index(self):
         return self.__encoder_index
 
+    @property
+    def encoder_cc_id(self):
+        return self.__cc_nbr
+
     def set_led_ring_display_mode(self, display_mode):
         """ no change unless display_mode is in C4_DEFINES.encoder_ring_led_mode_values.keys() """
         if display_mode in encoder_ring_led_mode_values.keys():
