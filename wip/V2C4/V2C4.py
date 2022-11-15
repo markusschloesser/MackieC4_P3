@@ -8,11 +8,10 @@ from _Framework.InputControlElement import InputControlElement
 from _Framework.TransportComponent import TransportComponent
 from _Framework.MixerComponent import MixerComponent
 
-# from .C4ControlSurfaceComponent import C4ControlSurfaceComponent
 from .C4EncoderElement import C4EncoderElement
 from .C4Encoders import C4Encoders
 from .C4ChannelStripComponent import C4ChannelStripComponent
-from .C4ModelElements import C4ModelElements
+from .C4ElementModel import C4ElementModel
 from .C4ModeSelector import C4ModeSelector
 from .C4DeviceComponent import C4DeviceComponent
 from .C4MixerComponent import C4MixerComponent
@@ -37,7 +36,7 @@ class V2C4(ControlSurface):
     def __init__(self, c_instance, *a, **k):
         ControlSurface.__init__(self, c_instance, *a, **k)
         with self.component_guard():
-            self._model = C4ModelElements()
+            self._model = C4ElementModel()
             self._model.set_script_handle(self)
 
             self._suggested_input_port = 'MackieC4'
@@ -50,27 +49,16 @@ class V2C4(ControlSurface):
             mixer.set_bank_buttons(
                 self._model.make_button(C4SID_BANK_RIGHT),  self._model.make_button(C4SID_BANK_LEFT))
 
-            # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
-            volume_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_32, *a, **k)
-            volume_encoder.set_script_handle(self)
-            volume_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
-            mixer.set_selected_strip_volume_control(volume_encoder)
-
-            pan_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_31, *a, **k)
-            pan_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
-            pan_encoder.set_script_handle(self)
-            mixer.set_selected_strip_pan_control(pan_encoder)
-            channel_encoders = tuple([volume_encoder, pan_encoder])
-            for i in range(len(channel_encoders)):
-                e = channel_encoders[i]
-                if i == 0:
-                    self.log_message("volume_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
-                        C4SID_VPOT_CC_ADDRESS_32, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
-                        e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
-                else:
-                    self.log_message("pan_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
-                        C4SID_VPOT_CC_ADDRESS_31, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
-                        e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
+            # for i in range(len(channel_encoders)):
+            #     e = channel_encoders[i]
+            #     if i == 0:
+            #         self.log_message("volume_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
+            #             C4SID_VPOT_CC_ADDRESS_32, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
+            #             e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
+            #     else:
+            #         self.log_message("pan_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
+            #             C4SID_VPOT_CC_ADDRESS_31, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
+            #             e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
 
             mixer.set_selected_strip_mute_button(self._model.make_button(C4SID_VPOT_PUSH_30, *a, **k))
             mixer.set_selected_strip_solo_button(self._model.make_button(C4SID_VPOT_PUSH_29, *a, **k))
@@ -133,15 +121,26 @@ class V2C4(ControlSurface):
                                self._device_component.device_name_data_source())
 
             assert len(encoder_cc_ids) == NUM_ENCODERS
-            device_encoders = []
+            encoders = []
             for cc_id in encoder_cc_ids:
                 e = self._model.make_encoder(cc_id, *a, **k)
-                device_encoders.append(e)
-                device_encoders[-1].set_script_handle(self)
-                self.log_message("device_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
-                    cc_id, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
-                    e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
-            device_encoders = tuple(device_encoders)
+                encoders.append(e)
+                encoders[-1].set_script_handle(self)
+                # self.log_message("device_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
+                #     cc_id, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
+                #     e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
+            encoders = tuple(encoders)
+
+            volume_encoder = self._model.get_encoder(C4SID_VPOT_CC_ADDRESS_32)
+            volume_encoder.set_script_handle(self)
+            volume_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
+            mixer.set_selected_strip_volume_control(volume_encoder)
+
+            pan_encoder = self._model.get_encoder(C4SID_VPOT_CC_ADDRESS_31)
+            pan_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
+            pan_encoder.set_script_handle(self)
+            mixer.set_selected_strip_pan_control(pan_encoder)
+            channel_encoders = tuple([volume_encoder, pan_encoder])
 
             assignment_buttons = [self._model.make_button(C4SID_MARKER)]  # ,
                                   # self._model.make_button(C4SID_CHANNEL_STRIP),
@@ -157,7 +156,7 @@ class V2C4(ControlSurface):
             device_bank_buttons = tuple([self._model.make_button(C4SID_SINGLE_RIGHT),
                                          self._model.make_button(C4SID_SINGLE_LEFT)])
 
-            mode_selector = C4ModeSelector(mixer, device, session, channel_encoders, device_encoders,
+            mode_selector = C4ModeSelector(mixer, device, session, channel_encoders, encoders,
                                            assignment_buttons, modifier_buttons, device_bank_buttons,
                                            transport_buttons, *a, **k)
             mode_selector.set_script_handle(self)
