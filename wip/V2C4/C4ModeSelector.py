@@ -66,6 +66,8 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
 
     def disconnect(self):
         # self._unregister_timer_callback(self._on_timer)
+        for e in self._device_encoders:
+            e.send_led_ring_full_off()
         self._mixer = None
         self._device = None
         self._transport = None
