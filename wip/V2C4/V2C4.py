@@ -50,19 +50,27 @@ class V2C4(ControlSurface):
             mixer.set_bank_buttons(
                 self._model.make_button(C4SID_BANK_RIGHT),  self._model.make_button(C4SID_BANK_LEFT))
 
-            # strip = C4ChannelStripComponent()
-            # strip.set_script_handle(self)
-            # strip.set_mixer(mixer)
-
             # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
             volume_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_32, *a, **k)
+            volume_encoder.set_script_handle(self)
             volume_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
             mixer.set_selected_strip_volume_control(volume_encoder)
 
             pan_encoder = self._model.make_encoder(C4SID_VPOT_CC_ADDRESS_31, *a, **k)
             pan_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
+            pan_encoder.set_script_handle(self)
             mixer.set_selected_strip_pan_control(pan_encoder)
             channel_encoders = tuple([volume_encoder, pan_encoder])
+            for i in range(len(channel_encoders)):
+                e = channel_encoders[i]
+                if i == 0:
+                    self.log_message("volume_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
+                        C4SID_VPOT_CC_ADDRESS_32, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
+                        e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
+                else:
+                    self.log_message("pan_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
+                        C4SID_VPOT_CC_ADDRESS_31, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
+                        e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
 
             mixer.set_selected_strip_mute_button(self._model.make_button(C4SID_VPOT_PUSH_30, *a, **k))
             mixer.set_selected_strip_solo_button(self._model.make_button(C4SID_VPOT_PUSH_29, *a, **k))
@@ -127,7 +135,12 @@ class V2C4(ControlSurface):
             assert len(encoder_cc_ids) == NUM_ENCODERS
             device_encoders = []
             for cc_id in encoder_cc_ids:
-                device_encoders.append(self._model.make_encoder(cc_id))
+                e = self._model.make_encoder(cc_id, *a, **k)
+                device_encoders.append(e)
+                device_encoders[-1].set_script_handle(self)
+                self.log_message("device_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
+                    cc_id, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
+                    e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
             device_encoders = tuple(device_encoders)
 
             assignment_buttons = [self._model.make_button(C4SID_MARKER)]  # ,
