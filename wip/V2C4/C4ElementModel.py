@@ -18,6 +18,11 @@ class C4ElementModel(V2C4Component):
         self._element_factory = C4ElementFactory()
         self._display_factory = C4DisplayFactory()
 
+        self.lcd_hello_message = self._display_factory.lcd_display_hello_message
+        self.lcd_goodbye_message = self._display_factory.lcd_display_goodbye_message
+        self.lcd_clear_message = self._display_factory.lcd_display_clear_message
+        self.lcd_id_message = self._display_factory.lcd_display_id_message
+
         self._model = {
             MIDI_NOTE_TYPE: {
                 C4SID_SPLIT: None, C4SID_LOCK: None, C4SID_SPLIT_ERASE: None,
@@ -135,7 +140,7 @@ class C4ElementModel(V2C4Component):
         self.make_button(C4SID_TRACK_LEFT, *a, **k)
         self.make_button(C4SID_TRACK_RIGHT, *a, **k)
 
-    def make_all_elements(self, *a, **k):
+    def make_all_c4_elements(self, *a, **k):
         self.make_all_encoders(*a, **k)
         self.make_all_encoder_buttons(*a, **k)
         self.make_all_button_buttons(*a, **k)
@@ -164,7 +169,7 @@ class C4ElementModel(V2C4Component):
         assert column in range(NUM_ENCODERS_ONE_ROW)
         return self.get_button_by_encoder_index(row * NUM_ENCODERS_ONE_ROW + column)
 
-    def get_assignment_buttons(self):  # C4SID_MARKER: C4SID_TRACK: C4SID_CHANNEL_STRIP: C4SID_FUNCTION:
+    def get_assignment_buttons(self):
         return {
             C4SID_MARKER: self._model[MIDI_NOTE_TYPE][C4SID_MARKER],
             C4SID_TRACK: self._model[MIDI_NOTE_TYPE][C4SID_TRACK],
@@ -172,7 +177,7 @@ class C4ElementModel(V2C4Component):
             C4SID_FUNCTION: self._model[MIDI_NOTE_TYPE][C4SID_FUNCTION]
                 }
 
-    def get_modifier_buttons(self):  # C4SID_SHIFT: C4SID_OPTION: C4SID_CONTROL: C4SID_ALT
+    def get_modifier_buttons(self):
         return {
             C4SID_SHIFT: self._model[MIDI_NOTE_TYPE][C4SID_SHIFT],
             C4SID_OPTION: self._model[MIDI_NOTE_TYPE][C4SID_OPTION],
@@ -180,7 +185,7 @@ class C4ElementModel(V2C4Component):
             C4SID_ALT: self._model[MIDI_NOTE_TYPE][C4SID_ALT]
                 }
 
-    def get_parameter_buttons(self):  # C4SID_BANK_LEFT: C4SID_BANK_RIGHT: C4SID_SINGLE_LEFT: C4SID_SINGLE_RIGHT
+    def get_parameter_buttons(self):
         return {
             C4SID_BANK_LEFT: self._model[MIDI_NOTE_TYPE][C4SID_BANK_LEFT],
             C4SID_BANK_RIGHT: self._model[MIDI_NOTE_TYPE][C4SID_BANK_RIGHT],
@@ -188,7 +193,7 @@ class C4ElementModel(V2C4Component):
             C4SID_SINGLE_RIGHT: self._model[MIDI_NOTE_TYPE][C4SID_SINGLE_RIGHT]
                 }
 
-    def get_session_nav_buttons(self):  # C4SID_SLOT_UP: C4SID_SLOT_DOWN: C4SID_TRACK_LEFT: C4SID_TRACK_RIGHT
+    def get_session_nav_buttons(self):
         return {
             C4SID_SLOT_UP: self._model[MIDI_NOTE_TYPE][C4SID_SLOT_UP],
             C4SID_SLOT_DOWN: self._model[MIDI_NOTE_TYPE][C4SID_SLOT_DOWN],
@@ -199,20 +204,6 @@ class C4ElementModel(V2C4Component):
     def make_physical_display(self, nbr_segments=ENCODER_BANK_SIZE, nbr_display_chars=LCD_BOTTOM_ROW_OFFSET, *a, **k):
         return self._display_factory.make_physical_display(nbr_segments, nbr_display_chars, *a, **k)
 
-    def get_lcd_hello_message(self):
-        return self._display_factory.lcd_display_hello_message
-
-    def get_lcd_goodbye_message(self):
-        return self._display_factory.lcd_display_goodbye_message
-
-    def get_lcd_display_clear_message(self):
-        """ returns ASCII blank spaces as sysex integers """
-        return self._display_factory.lcd_display_clear_message
-
-    def get_lcd_display_id_message(self):
-        return self._display_factory.lcd_display_id_message
-
     def set_script_handle(self, main_script=None):
         self._set_script_handle(main_script)
 
-        

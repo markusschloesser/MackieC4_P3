@@ -90,9 +90,9 @@ class V2C4(ControlSurface):
                     {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(*a, **k),
                      LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(*a, **k)}}
 
-            self.clear_display_msg = self._model.lcd_display_clear_message
-            self.hello_display_msg = self._model.lcd_display_hello_message
-            self.goodbye_display_msg = self._model.lcd_display_goodbye_message
+            self.clear_display_msg = self._model.lcd_clear_message
+            self.hello_display_msg = self._model.lcd_hello_message
+            self.goodbye_display_msg = self._model.lcd_goodbye_message
             foot_part = (SYSEX_FOOTER, )
             for i in LCD_DISPLAY_ADDRESSES:
                 for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
@@ -258,7 +258,7 @@ class V2C4(ControlSurface):
                     # this "id message" should clear any "firmware garbage" off the screens
                     # before the screens get "refreshed/cleared"
                     head_part = tuple(SYSEX_HEADER + (i, j))
-                    sysex = head_part + self._model.lcd_display_id_message[i][j] + foot_part
+                    sysex = head_part + self._model.lcd_id_message[i][j] + foot_part
                     # self.schedule_message(1, self._send_midi, sysex)
                     self._send_midi(sysex)
 
