@@ -86,6 +86,24 @@ class C4EncoderElement(CompoundElement, C4EncoderElementBase, V2C4Component):
         self._button = ButtonElement  # maybe this could be nested?
         self.set_report_values(True, True)
 
+    @subject_slot('value')
+    def __receive_value(self, value):
+        self._log_message("encoder element<{}> received value <{}>".format(self.c4_encoder.encoder_index, value))
+        self.notify_value(value)  # EncoderElement
+        self.receive_value(value)  # InputControlElement
+
+    # override from InputControlElement
+    def receive_value(self, value):
+        self._log_message("received value <{}>".format(value))
+        super(C4EncoderElement, self).receive_value(value)
+        # value = getattr(value, 'midi_value', value)
+        # self._verify_value(value)
+        # self._last_sent_message = None
+        # self.notify_value(value)
+        # if self._report_input:
+        #     is_input = True
+        #     self._report_value(value, is_input)
+
     def set_script_handle(self, main_script=None):
         """ to log from this class only through Python, for example, need to set this script handle """
         self._set_script_handle(main_script)
@@ -125,17 +143,6 @@ class C4EncoderElement(CompoundElement, C4EncoderElementBase, V2C4Component):
     def get_encoder_button(self):
         return self._button
 
-    # override from InputControlElement
-    # def receive_value(self, value):
-    #     self._log_message("received value <{}>".format(value))
-    #     super(C4EncoderElement, self).receive_value(value)
-        # value = getattr(value, 'midi_value', value)
-        # self._verify_value(value)
-        # self._last_sent_message = None
-        # self.notify_value(value)
-        # if self._report_input:
-        #     is_input = True
-        #     self._report_value(value, is_input)
 
     # def install_connections(self, install_translation, install_mapping, install_forwarding):
     #     self._send_delayed_messages_task.kill()
