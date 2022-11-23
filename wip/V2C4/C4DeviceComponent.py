@@ -8,6 +8,10 @@ from _Framework.EncoderElement import EncoderElement
 from _Framework.ButtonElement import ButtonElement
 from _Framework.DisplayDataSource import DisplayDataSource
 from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
+from _Framework.SubjectSlot import subject_slot, subject_slot_group, Subject
+
+from .C4EncoderElement import C4EncoderElement
+
 SPECIAL_NAME_DICT = {'InstrumentImpulse': (
                        (u'Pad1', u'Pad2'),
                        (u'Pad3', u'Pad4'),
@@ -113,9 +117,22 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
             self._parameter_value_data_sources.append(DisplayDataSource())  # encoder LED rings get feedback mapped
             self._page_name_data_sources.append(DisplayDataSource())
 
-            self._parameter_name_data_sources[(-1)].set_display_string(' - ')
-            self._parameter_value_data_sources[(-1)].set_display_string(' * ')
-            self._page_name_data_sources[(-1)].set_display_string(' - ')
+        self.reset_device_displays()
+
+        def make_property_slot(name, alias=None):
+            alias = alias or name
+            return self.register_slot(None, getattr(self, '_on_%s_changed' % alias), name)
+
+        self._parameter_value_property_slot = make_property_slot('value', alias='parameter_value')
+        self.__on_selected_device_parameter_value_changed.subject = self.song().view.selected_track.view
+
+    @subject_slot('selected_device')
+    def __on_selected_device_parameter_value_changed(self):
+        self.update_device_displays()
+
+    @subject_slot_group('value')
+    def _on_parameter_value_changed(self):
+        self.update_device_displays()
 
     def disconnect(self):
         self._parameter_value_data_sources = None
@@ -124,26 +141,49 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         DeviceComponent.disconnect(self)
         return
 
-
     def set_script_handle(self, main_script):
-        """ to log in Live's log from this class, for example, need to set this script """
         self._set_script_handle(main_script)
 
     def set_device(self, device):
         DeviceComponent.set_device(self, device)
-        if self._device is None:
-            for source in self._parameter_name_data_sources:
-                source.set_display_string(' - ')
+        self._parameter_value_property_slot.subject = self._on_parameter_value_changed()
+        self.update_device_displays()
 
-            for source in self._parameter_value_data_sources:
-                source.set_display_string(' * ')
+    def reset_device_displays(self):
+        for source in self._parameter_name_data_sources:
+            source.set_display_string(' - ')
 
-            for source in self._page_name_data_sources:
-                source.set_display_string(' - ')
+        for source in self._parameter_value_data_sources:
+            source.set_display_string(' * ')
+
+        for source in self._page_name_data_sources:
+            source.set_display_string(' - ')
+
+    def update_device_displays(self):
+        if self._device is not None:
+            if self._parameter_controls is not None and len(self._parameter_controls) > 0:
+                for index in range(len(self._parameter_controls)):
+                    param = self._parameter_controls[index].mapped_parameter()
+                    if param is not None:
+                        # Live.Device.DeviceParameter.name
+                        self._parameter_name_data_sources[index].set_display_string(param.name)
+                        # Live.Device.DeviceParameter.str_for_value(Live.Device.DeviceParameter.value)
+                        self._parameter_value_data_sources[index].set_display_string(param.str_for_value(param.value))
+                    else:
+                        self._parameter_name_data_sources[index].set_display_string(' - ')
+                        self._parameter_value_data_sources[index].set_display_string(' * ')
+            else:
+                # device is here but device parameters are not yet mapped to encoder controls or displays
+                self.reset_device_displays()
+        else:
+            self.reset_device_displays()
 
     def set_bank_buttons(self, buttons):
-        assert buttons is None or isinstance(buttons, tuple) and len(buttons) == 4
-        DeviceComponent.set_bank_buttons(self, buttons)
+        assert buttons is None or isinstance(buttons, tuple) and len(buttons) == 2
+        if buttons is not None:
+            DeviceComponent.set_bank_nav_buttons(self, buttons[1], buttons[0])
+        else:
+            DeviceComponent.set_bank_nav_buttons(self, None, None)
         return
 
     def set_parameter_controls(self, encoder_controls):
@@ -158,7 +198,7 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         if self._parameter_controls is not None:
             for control in self._parameter_controls:
                 assert control is not None
-                if not isinstance(control, EncoderElement):
+                if not isinstance(control, C4EncoderElement):
                     raise AssertionError
 
         self.update()
@@ -168,14 +208,14 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         return self._parameter_value_data_sources
 
     def parameter_value_data_source(self, index):
-        assert index in len(self._parameter_value_data_sources)
+        assert index < len(self._parameter_value_data_sources)
         return self._parameter_value_data_sources[index]
 
     def parameter_name_data_sources(self):
         return self._parameter_name_data_sources
 
     def parameter_name_data_source(self, index):
-        assert index in len(self._parameter_name_data_sources)
+        assert index < len(self._parameter_name_data_sources)
         return self._parameter_name_data_sources[index]
 
     def page_name_data_sources(self):
@@ -185,6 +225,13 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         assert index in len(self._page_name_data_sources)
         return self._page_name_data_sources[index]
 
+    def update(self):
+        super(C4DeviceComponent, self).update()
+        self.update_device_displays()
+
+    def _on_parameters_changed(self):
+        self.update()
+
     def _bank_value(self, value, button):
         if self._bank_buttons is None:
             raise AssertionError
@@ -193,13 +240,40 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         assert isinstance(value, int)
         assert isinstance(button, ButtonElement)
         assert list(self._bank_buttons).count(button) == 1
-        if self.is_enabled() and (not button.is_momentary() or value is not 0):
-            bank = list(self._bank_buttons).index(button)
-            if self._device is not None:
-                if bank != self._bank_index:
-                    self._bank_index = bank
+
+        # DeMorgan's Law: (not B or not C) == not (B and C)
+        mome = button.is_momentary()
+        zero = value is 0
+        # if self.is_enabled() and (not button.is_momentary() or value is not 0):
+        # if self.is_enabled() and (not mome or not zero):
+        if self.is_enabled() and not (mome and zero):
+            # a C4 button is always momentary, so
+            # this code won't run when the connected bank button press gets released
+            # (won't run when zero is True)
+            encoder_count = len(self._parameter_controls)
+            max_full_banks = LIVE_DEFAULT_MAX_SIZE / encoder_count
+            partial_bank = LIVE_DEFAULT_MAX_SIZE % encoder_count
+            if (max_full_banks == 4 and partial_bank > 0) or encoder_count != NUM_ENCODERS:
+                raise AssertionError
+
+            prev_index = self._bank_index
+            self._log_message("Bank Button <{}> pressed, value is <{}>".format(button, value))
+            if self._bank_down_button == button:
+                if self._bank_index > 0:
+                    self._bank_index -= 1
+                    self._log_message("Bank Down pressed old index<{}> new index<{}>".format(prev_index,
+                                                                                             self._bank_index))
                 else:
-                    self._page_index[bank] += 1
+                    if self._page_index[self._bank_index] > 0:
+                        self._page_index[self._bank_index] -= 1
+            elif self._bank_next_button == button:
+                if self._bank_index < 3:
+                    self._bank_index += 1
+                    self._log_message("Bank Next pressed old index<{}> new index<{}>".format(prev_index,
+                                                                                             self._bank_index))
+                else:
+                    self._page_index[-1] += 1
+            if self._device is not None:
                 self.update()
         return
 
@@ -215,41 +289,46 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
             else:
                 self.__assign_parameters_plugin()
 
-        # self._parameter_value_data_source.set_display_string('')
-        for index in range(len(self._parameter_controls)):
-            if self._parameter_controls[index].mapped_parameter() is not None:
-                self._parameter_name_data_sources[index].set_display_string(
-                    # Live.Device.DeviceParameter.name
-                    self._parameter_controls[index].mapped_parameter().name)
-                self._parameter_value_data_sources[index].set_display_string(
-                    # Live.Device.DeviceParameter.str_for_value
-                    self._parameter_controls[index].mapped_parameter().str_for_value)
-            else:
-                self._parameter_name_data_sources[index].set_display_string(' - ')
-                self._parameter_value_data_sources[index].set_display_string(' * ')
-
+        self.update_device_displays()
         return
 
     def __assign_parameters_special(self):
-        u""" Assign the controls to the parameters of a device with more than 4 pages """
+        """
+            Assign the controls to the parameters of a device in SPECIAL_DEVICE_DICT
+        """
+        # (with more than 4 pages, but don't really understand what pages were before.  I think each AxiomPro encoder
+        # bank has 8 encoders, so 4 bank pages of parameters would be 32.
+        # The SPECIAL_DEVICE_DICT is defined here top of this file)
         banks = SPECIAL_DEVICE_DICT[self._device.class_name]
         bank_names = SPECIAL_NAME_DICT[self._device.class_name]
         pages = banks[self._bank_index]
         self._page_index[self._bank_index] %= len(pages)
         self._bank_name = bank_names[self._bank_index][self._page_index[self._bank_index]]
         page = pages[self._page_index[self._bank_index]]
-        assert len(page) >= len(self._parameter_controls)
+        # assert len(page) >= len(self._parameter_controls)
         for index in range(len(self._parameter_controls)):
-            parameter = get_parameter_by_name(self._device, page[index])
-            if parameter is not None:
-                self._parameter_controls[index].connect_to(parameter)
+            if index < len(page):
+                parameter = get_parameter_by_name(self._device, page[index])
+                if parameter is not None:
+                    self._parameter_controls[index].connect_to(parameter)
+                    # parameter.callback = self._on_parameter_value_changed
+                else:
+                    self._log_message(
+                        "releasing encoder <{}> because device param in page<{}> bank<{}> is None".
+                        format(index, self._page_index[self._bank_index], self._bank_index))
+                    self._parameter_controls[index].release_parameter()
+                    # parameter.callback = None
             else:
+                # self._log_message(
+                #     "releasing encoder <{}> because more encoders than params in page<{}> bank<{}>".
+                #     format(index, self._page_index[self._bank_index], self._bank_index))
                 self._parameter_controls[index].release_parameter()
+                # parameter.callback = None
 
         for index in range(len(self._page_name_data_sources)):
             if index < len(bank_names):
                 page_names = bank_names[index]
-                if index == self._bank_index:
+                if self._bank_index == index:
                     self._page_name_data_sources[index].set_display_string(page_names[((self._page_index[index] + 1) % len(page_names))])
                 else:
                     self._page_name_data_sources[index].set_display_string(page_names[(self._page_index[index] % len(page_names))])
@@ -259,25 +338,45 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         return
 
     def __assign_parameters_normal(self):
-        u""" Assign the controls to the parameters of a device with 4 pages or less """
+        """
+            Assign the controls to the parameters of a device in DEVICE_BOB_DICT  (generic devices)
+        """
+        # (with less than 4 pages, but don't really understand what pages were before.  I think each AxiomPro encoder
+        # bank has 8 encoders, so 4 pages of parameters would be 32)
+
         assert self._device.class_name in DEVICE_BOB_DICT.keys()
+        self._log_message("page index len is <{}> and _bank_index is <{}>".format(len(self._page_index),
+                                                                                  self._bank_index))
         self._page_index[self._bank_index] = 0
         banks = DEVICE_DICT[self._device.class_name]
         bank_names = []
         if len(banks) > self._bank_index:
             if self._device.class_name in BANK_NAME_DICT.keys() and len(BANK_NAME_DICT[self._device.class_name]) > 1:
                 bank_names = BANK_NAME_DICT[self._device.class_name]
-            bank = banks[self._bank_index]
+            bank_params = banks[self._bank_index]
             if self._bank_index in range(len(bank_names)):
                 self._bank_name = bank_names[self._bank_index]
             else:
                 self._bank_name = "Bank {}".format(self._bank_index + 1)
-            assert len(bank) >= len(self._parameter_controls)
+            # self._log_message("ParamsInBank<{}> >= encoder controls<{}>".format(len(bank_params),
+            #                                                                     len(self._parameter_controls)))
+            # assert len(bank_params) >= len(self._parameter_controls)
             for index in range(len(self._parameter_controls)):
-                parameter = get_parameter_by_name(self._device, bank[index])
-                if parameter is not None:
-                    self._parameter_controls[index].connect_to(parameter)
+                if index < len(bank_params):
+                    parameter = get_parameter_by_name(self._device, bank_params[index])
+                    if parameter is not None:
+                        self._parameter_controls[index].connect_to(parameter)
+                        # parameter.callback = self._on_parameter_value_changed
+                    else:
+                        self._log_message(
+                            "releasing encoder <{}> because device param in bank<{}> is None".format(index,
+                                                                                                     self._bank_index))
+                        self._parameter_controls[index].release_parameter()
+                        # parameter.callback = None
                 else:
+                    # self._log_message(
+                    #     "releasing encoder <{}> because more encoders than params in bank<{}>".format(index,
+                    #                                                                                   self._bank_index))
                     self._parameter_controls[index].release_parameter()
 
         for index in range(len(self._page_name_data_sources)):
@@ -289,7 +388,9 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         return
 
     def __assign_parameters_plugin(self):
-        u""" Assign the controls to the parameters of a plugin """
+        """
+            Assign the controls to the parameters of any other plugin not in DEVICE_BOB_DICT or SPECIAL_DEVICE_DICT
+        """
         num_controls = len(self._parameter_controls)
         num_banks = min(8, number_of_parameter_banks(self._device))
         num_double_pages = 0
@@ -307,12 +408,36 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         if self._bank_index + num_double_pages_before < num_banks:
             bank_offset = (self._bank_index + num_double_pages_before) * num_controls
             page_offset = bank_offset + self._page_index[self._bank_index] * num_controls
-            for control in self._parameter_controls:
-                if page_offset < len(parameters_to_use):
-                    control.connect_to(parameters_to_use[page_offset])
+            for index in range(len(self._parameter_controls)):
+                if index < len(parameters_to_use):
+                    if page_offset < len(parameters_to_use):
+                        # parameter = get_parameter_by_name(self._device, parameters_to_use[page_offset])
+                        parameter = parameters_to_use[page_offset]
+                        if parameter is not None:
+                            self._parameter_controls[index].connect_to(parameter)
+                            # parameter.callback = self._on_parameter_value_changed
+                        else:
+                            self._log_message("releasing encoder <{}> because device param in bank<{}> is None".
+                                format(index, self._bank_index))
+                            self._parameter_controls[index].release_parameter()
+                            # parameter.callback = None
+                    else:
+                        self._parameter_controls[index].release_parameter()
                 else:
-                    control.release_parameter()
-                page_offset += 1
+                    # more encoders than device parameters to map
+                    self._parameter_controls[index].release_parameter()
+
+            # if page_offset < len(parameters_to_use):
+            #     for control in self._parameter_controls:
+            #         if page_offset < len(parameters_to_use):
+            #             control.connect_to(parameters_to_use[page_offset])
+            #             parameters_to_use[page_offset].callback = self._on_parameter_value_changed
+            #         else:
+            #             control.release_parameter()
+            #             parameters_to_use[page_offset].callback = None
+            #         page_offset += 1
+            # else:
+
 
             bank_names = []
             parameter_offset = 0
@@ -322,8 +447,8 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
                     r_offset = "{}".format(parameter_offset + 1)
                     l_offset = "{}".format(parameter_offset + num_controls)
                     if index < num_double_pages:
-                        add_offset_before = index == self._bank_index and self._page_index[index] == 0 or \
-                                            index != self._bank_index and self._page_index[index] != 0
+                        add_offset_before = (self._bank_index == index and self._page_index[index] == 0 or
+                                             self._bank_index != index and self._page_index[index] != 0)
                         if add_offset_before:
                             parameter_offset += num_controls
                             r_offset = "{}".format(parameter_offset + 1)
