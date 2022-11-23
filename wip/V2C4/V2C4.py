@@ -44,6 +44,7 @@ class V2C4(ControlSurface):
             self._waiting_for_first_response = True
 
             mixer = C4MixerComponent()
+            mixer.set_script_handle(self)
             mixer.set_select_buttons(
                 self._model.make_button(C4SID_TRACK_RIGHT), self._model.make_button(C4SID_TRACK_LEFT))
             mixer.set_bank_buttons(
@@ -124,8 +125,8 @@ class V2C4(ControlSurface):
             encoders = []
             for cc_id in encoder_cc_ids:
                 e = self._model.make_encoder(cc_id, *a, **k)
+                e.set_script_handle(self)
                 encoders.append(e)
-                encoders[-1].set_script_handle(self)
                 # self.log_message("device_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
                 #     cc_id, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
                 #     e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
