@@ -43,7 +43,10 @@ class C4MixerComponent(MixerComponent, V2C4Component):
         self._device_name_data_source = None
 
     def _create_strip(self):
-        return C4ChannelStripComponent()
+        if self._script_backdoor_handle is not None:
+            return C4ChannelStripComponent().set_script_handle(self._script_backdoor_handle)
+        else:
+            return C4ChannelStripComponent()
 
     def set_displays(self, display_rows, device_name_data_source):
         assert isinstance(display_rows, dict)
@@ -153,6 +156,7 @@ class C4MixerComponent(MixerComponent, V2C4Component):
             self._update_requests += 1
     
     def _connect_selected_strip_controls(self):
+        self.selected_strip().set_script_handle(self._script_backdoor_handle)
         self._set_selected_strip_volume_control()
         self._set_selected_strip_pan_control()
         self._set_selected_strip_send_controls()
