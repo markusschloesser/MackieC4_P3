@@ -134,6 +134,7 @@ class V2C4(ControlSurface):
             encoders = tuple(encoders)
 
             volume_encoder = self._model.get_encoder(C4SID_VPOT_CC_ADDRESS_32)
+            assert volume_encoder in encoders
             volume_encoder.set_script_handle(self)
             volume_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
             mixer.set_selected_strip_volume_control(volume_encoder)
@@ -217,7 +218,7 @@ class V2C4(ControlSurface):
     def receive_midi(self, midi_bytes):
         """ only need to handle CC or Note message types here """
         # superclass will call back separately to handle any SYSEX messages
-
+        self.log_message("V2C4 main script received midi bytes<{}>".format(midi_bytes))
         # this call forces any "unknown midi messages" logging mentioned above
         ControlSurface.receive_midi(self, midi_bytes)
 
