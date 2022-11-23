@@ -52,8 +52,8 @@ class C4ElementFactory:
         return ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, identifier, *a, **k)
 
     @staticmethod
-    def make_encoder(identifier, *a, **k):
-        return C4EncoderElement(identifier, *a, **k)
+    def make_encoder(identifier, name=None, *a, **k):
+        return C4EncoderElement(identifier, name, *a, **k)
 
     @staticmethod
     def make_encoder_and_button(common_identifier, channel=0, is_momentary=True, name='', *a, **k):

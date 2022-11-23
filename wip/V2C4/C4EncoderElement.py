@@ -3,7 +3,7 @@ from .V2C4Component import *
 
 # import Live
 
-from _Framework.EncoderElement import EncoderElement, _not_implemented
+from _Framework.EncoderElement import EncoderElement, _not_implemented, ENCODER_VALUE_NORMALIZER
 from _Framework.ButtonElement import ButtonElement
 from _Framework.CompoundElement import CompoundElement
 from _Framework.InputControlElement import InputControlElement, MIDI_CC_TYPE, InputSignal
@@ -13,114 +13,98 @@ from _Framework.Util import nop, const
 from .C4Encoders import C4Encoders
 
 
-class C4EncoderElementBase(EncoderElement):
+class C4EncoderElement(InputControlElement, V2C4Component):
     """
-    Defines the interface necessary to implement a C4 encoder, so that it works in
-    combination with other parts of the framework (like the EncoderControl).
+    currently modeled on EncoderElement itself inheriting from InputControlElement
+    formerly modeled on RingedEncoderElement in _APC and PeekableEncoderElement in _AxiomPro
+    and TouchEncoderElementBase + TouchEncoderElement in EncoderElement itself
     """
+
     __module__ = __name__
 
-    class ProxiedInterface(EncoderElement.ProxiedInterface):
+    class ProxiedInterface(InputControlElement.ProxiedInterface):
         __module__ = __name__
-        set_script_handle = const(False)
-        set_feedback_delay = const(False)
-        update_led_ring_display_mode = const(False)
-        set_midi_feedback_data = const(False)
-        send_led_ring_midi_cc = const(False)
-        send_led_ring_full_off = const(False)
-        send_led_ring_min_on = const(False)
-        send_led_ring_max_on = const(False)
-        c4_encoder = nop
-        _feedback_rule = nop
-        _button = nop
+        normalize_value = nop
 
-    def set_script_handle(self, main_script=None):
-        raise NotImplementedError
-
-    def update_led_ring_display_mode(self, display_mode=VPOT_DISPLAY_SINGLE_DOT, extended=False):
-        raise NotImplementedError
-
-    def set_midi_feedback_data(self):
-        raise NotImplementedError
-
-    def send_led_ring_midi_cc(self, cc_val):
-        raise NotImplementedError
-
-    def send_led_ring_full_off(self):
-        raise NotImplementedError
-
-    def send_led_ring_min_on(self):
-        raise NotImplementedError
-
-    def send_led_ring_max_on(self):
-        raise NotImplementedError
-
-
-class C4EncoderElement(CompoundElement, C4EncoderElementBase, V2C4Component):
-    """ modeled on RingedEncoderElement in _APC and PeekableEncoderElement in _AxiomPro
-        and TouchEncoderElementBase + TouchEncoderElement in EncoderElement itself
-    """
-
-    def on_nested_control_element_received(self, control):
-        pass
-
-    def on_nested_control_element_lost(self, control):
-        pass
-
-    def on_nested_control_element_value(self, value, control):
-        pass
-
-    __module__ = __name__
+    __subject_events__ = (
+     SubjectEvent(name='normalized_value', signal=InputSignal),)
+    encoder_sensitivity = 1.0
 
     def __init__(self, identifier=C4SID_VPOT_CC_ADDRESS_BASE, extended=False, channel=C4_MIDI_CHANNEL,
-                 map_mode=C4Encoders.map_mode(), *a, **k):
-        super(C4EncoderElement, self).__init__(MIDI_CC_TYPE, channel, identifier, map_mode, *a, **k)
+                 map_mode=C4Encoders.map_mode(), encoder_sensitivity=None, name=None, *a, **k):
+        if name is None:
+            name = 'Encoder_Control_%d' % V2C4Component.convert_encoder_id_value(identifier)
+        super(C4EncoderElement, self).__init__(MIDI_CC_TYPE, channel, identifier, name=name, *a, **k)
 
+        # _Framework.EncoderElement.__init__()
+        if encoder_sensitivity is not None:  # if input parameter is not None
+            # replaces assignment above __init__  encoder_sensitivity = 1.0
+            self.encoder_sensitivity = encoder_sensitivity
+        self.__map_mode = map_mode
+        self.__value_normalizer = ENCODER_VALUE_NORMALIZER.get(map_mode, _not_implemented)
+
+        # C4EncoderElement.__init__() additions
         V2C4Component.__init__(self)
-
         encoder_index = V2C4Component.convert_encoder_id_value(identifier)
-        # V2C4Component._log_message(self, "encoderId <{}> calc idx <{}>".format(identifier, encoder_index))
         self.c4_encoder = C4Encoders(self, extended, encoder_index, map_mode)
-        self._feedback_rule = None
+        self._feedback_rule = None  # Live.MidiMap.CCFeedbackRule()
         self.set_feedback_delay(-1)
-        self._button = ButtonElement  # maybe this could be nested?
+        self._button = None  # maybe this could be nested?
+
+        # InputControlElement.set_report_values
         self.set_report_values(True, True)
 
-    @subject_slot('value')
-    def __receive_value(self, value):
-        self._log_message("encoder element<{}> received value <{}>".format(self.c4_encoder.encoder_index, value))
-        self.notify_value(value)  # EncoderElement
-        self.receive_value(value)  # InputControlElement
+    # EncoderElement methods
+    def relative_value_to_delta(self, value):
+        assert value >= 0 and value < 128
+        return self.__value_normalizer(value)
 
-    # override from InputControlElement
+    def normalize_value(self, value):
+        return self.relative_value_to_delta(value) / 64.0 * self.encoder_sensitivity
+
+    def notify_value(self, value):
+        super(C4EncoderElement, self).notify_value(value)
+        if self.normalized_value_listener_count():
+            self.notify_normalized_value(self.normalize_value(value))
+
+    # inherited abstract methods from InputControlElement
+    def message_map_mode(self):
+        # assert self.message_type() is MIDI_CC_TYPE
+        return self.__map_mode
+
+    # override methods from InputControlElement
+    def _mapping_feedback_values(self):
+        # see def update_led_ring_display_mode(self, display_mode)
+        return self.c4_encoder.led_ring_cc_values
+
     def receive_value(self, value):
-        self._log_message("received value <{}>".format(value))
-        super(C4EncoderElement, self).receive_value(value)
-        # value = getattr(value, 'midi_value', value)
-        # self._verify_value(value)
-        # self._last_sent_message = None
-        # self.notify_value(value)
-        # if self._report_input:
-        #     is_input = True
-        #     self._report_value(value, is_input)
+        self._log_message("encoder<{}> received midi value<{}>".format(self.message_identifier(), value))
+        value = getattr(value, 'midi_value', value)
+        self._log_message("after getattr on midi_value<{}>".format(value))
+        self._verify_value(value)
+        self._last_sent_message = None
+        self.notify_value(value)
+        if self._report_input:
+            is_input = True
+            self._report_value(value, is_input)
 
+    # V2C4 specific methods
     def set_script_handle(self, main_script=None):
-        """ to log from this class only through Python, for example, need to set this script handle """
         self._set_script_handle(main_script)
 
     def update_led_ring_display_mode(self, display_mode=VPOT_DISPLAY_SINGLE_DOT, extended=False):
         if display_mode in encoder_ring_led_mode_values.keys():
+            # side effect of new C4Encoder: updates self.c4_encoder.led_ring_cc_values tuple,
+            # see def _mapping_feedback_values(self)
             self.c4_encoder = C4Encoders(self, extended, self.c4_encoder.encoder_index,
                                          C4Encoders.map_mode(), display_mode)
             self.set_midi_feedback_data()
 
     def set_midi_feedback_data(self):
         self.set_feedback_delay(self.c4_encoder.led_ring_feedback_delay)
+        # c4_encoder.specialize_feedback_rule() returns a Live.MidiMap.CCFeedbackRule() instance
         self._feedback_rule = self.c4_encoder.specialize_feedback_rule()
         self._request_rebuild()
-
-    def _mapping_feedback_values(self):
-        return self.c4_encoder.led_ring_cc_values
 
     def send_led_ring_midi_cc(self, cc_val, force=False):
         self.c4_encoder.send_led_ring_midi_cc(self, cc_val, force)
