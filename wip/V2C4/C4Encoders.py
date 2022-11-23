@@ -33,7 +33,8 @@ class C4Encoders:
         self.__show_param_bank = False
 
         self.__encoder_index = encoder_index
-        self.__cc_channel = C4_MIDI_CHANNEL
+        self.__midi_cc_channel = C4_MIDI_CHANNEL
+        self.__live_cc_channel = C4_LIVE_MIDI_CHANNEL  # C4_MIDI_CHANNEL + 1
         self.__cc_nbr = encoder_cc_ids[self.__encoder_index]
         self._midi_feedback_delay = -1
         self._map_mode = map_mode
@@ -88,7 +89,7 @@ class C4Encoders:
             self._cc_value_map = tuple([display_mode_cc_base + x for x in range(feedback_val_range_len)])
 
     def specialize_feedback_rule(self, feedback_rule=Live.MidiMap.CCFeedbackRule()):
-        feedback_rule.channel = self.__cc_channel
+        feedback_rule.channel = self.__midi_cc_channel
         feedback_rule.cc_no = self.__cc_nbr
         feedback_rule.cc_value_map = self._cc_value_map
         feedback_rule.delay_in_ms = self._midi_feedback_delay
@@ -123,7 +124,7 @@ class C4Encoders:
             avoid_takeover = True
             takeover_mode = not avoid_takeover
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, device_parameter,
-                                                       self.__cc_channel, self.__cc_nbr, self._map_mode,
+                                                       self.__midi_cc_channel, self.__cc_nbr, self._map_mode,
                                                        feedback_rule, takeover_mode, sensitivity=1.0)
         self.build_midi_map(midi_map_handle)
 
@@ -139,7 +140,7 @@ class C4Encoders:
     def send_led_ring_midi_cc(self, control_element, cc_val, force=False):
         assert isinstance(control_element, InputControlElement)
         assert cc_val in self._cc_value_map or cc_val == 0
-        control_element.send_value(cc_val, force=force, channel=self.__cc_channel)
+        control_element.send_value(cc_val, force=force, channel=self.__midi_cc_channel)
 
     def send_led_ring_full_off(self, control_element, force=False):
         self.send_led_ring_midi_cc(control_element, LED_OFF_DATA, force)
