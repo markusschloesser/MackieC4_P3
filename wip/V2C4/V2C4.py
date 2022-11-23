@@ -101,9 +101,10 @@ class V2C4(ControlSurface):
                     self._device_parameter_displays[i][j].set_message_parts(head_part, foot_part)
                     self._device_parameter_displays[i][j].set_clear_all_message(
                         head_part + self.clear_display_msg + foot_part)
-
-                    for m in range(NUM_ENCODERS_ONE_ROW):  # ENCODER_BANK_SIZE
-                        self._device_parameter_displays[i][j].segment(m).set_position_identifier((m,))  # necessary???
+                    # NOT necessary, setting position identifier here puts an undefined non-text "char"
+                    # on the LCD screen kind of like a divider between segments, but inconsistent
+                    # for m in range(NUM_ENCODERS_ONE_ROW):  # ENCODER_BANK_SIZE
+                    #     self._device_parameter_displays[i][j].segment(m).set_position_identifier((m,))
 
             self._chan_strip_display = {
                 LCD_ANGLED_ADDRESS:
