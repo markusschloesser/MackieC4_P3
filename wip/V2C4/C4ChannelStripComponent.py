@@ -6,6 +6,7 @@ from _Framework.MixerComponent import MixerComponent
 from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
 from _Framework.DisplayDataSource import DisplayDataSource
 from _Framework.ButtonElement import ButtonElement
+from _Framework.Util import nop
 
 
 class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
@@ -92,6 +93,30 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
             self._device_name_label if self._track is not None and
                                        self._track.view is not None and
                                        self._track.view.selected_device is not None else ' Device Label ')
+
+        return
+
+    # override to add logging
+    def _connect_parameters(self):
+
+        if self._pan_control is not None:
+            self._log_message("connecting pan encoder<{}>".format(self._pan_control.message_identifier()))
+            self._pan_control.connect_to(self._track.mixer_device.panning)
+            self._log_message("connected pan param<{}>".format(self._pan_control.mapped_parameter().__str__()))
+        if self._volume_control is not None:
+            self._log_message("connecting volume encoder<{}>".format(self._volume_control.message_identifier()))
+            self._volume_control.connect_to(self._track.mixer_device.volume)
+            self._log_message("connected volume param<{}>".format(self._volume_control.mapped_parameter().__str__()))
+        if self._send_controls is not None:
+            index = 0
+            for send_control in self._send_controls:
+                if send_control is not None:
+                    if index < len(self._track.mixer_device.sends):
+                        send_control.connect_to(self._track.mixer_device.sends[index])
+                    else:
+                        send_control.release_parameter()
+                        self._empty_control_slots.register_slot(send_control, nop, 'value')
+                index += 1
 
         return
 
