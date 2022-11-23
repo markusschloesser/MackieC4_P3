@@ -46,6 +46,9 @@ class C4ElementFactory:
 
     @staticmethod
     def make_button(identifier, channel=0, is_momentary=True, *a, **k):
+        #   is_momentary: True because C4 buttons send a message on being released
+        # MIDI_NOTE_TYPE: because C4 buttons send and receive "Midi Note" messages (0x90 id byte)
+        #        channel: 0 because the C4 communicates on channel 0
         return ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, identifier, *a, **k)
 
     @staticmethod
