@@ -261,10 +261,10 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                             self._encoder_row03_displays[1].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
                                 self._device.parameter_value_data_source(index))
 
-                if self._page_displays is not None:
-                    for index in range(len(self._page_displays)):
-                        self._page_displays[index].segment(0).set_data_source(self._device.page_name_data_source(index))
-                        self._page_displays[index].update()
+                # if self._page_displays is not None:
+                #     for index in range(len(self._page_displays)):
+                #         self._page_displays[index].segment(0).set_data_source(self._device.page_name_data_source(index))
+                #         self._page_displays[index].update()
 
             else:
                 self._log_message('Invalid mode index')
@@ -285,6 +285,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         return
 
     def _on_timer(self):
+        self.update_displays()
         if self._clean_value_display_in > 0:
             self._clean_value_display_in -= 1
             if self._clean_value_display_in == 0:
