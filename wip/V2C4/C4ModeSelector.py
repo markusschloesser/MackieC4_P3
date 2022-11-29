@@ -55,11 +55,19 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         self._clean_value_display_in = -1
         self._channel_strip_displays = ()
         self._must_update_encoder_display = False
+
+        self._control_elements = []
+        for c in self._device_encoders:
+            self._control_elements.append(c)  # self._channel_encoders are also device encoders
+        for c in self._device_bank_buttons:
+            self._control_elements.append(c)
+        for c in self._transport_buttons:
+            self._control_elements.append(c)
         # self._register_timer_callback(self._on_timer)
 
-        # identify_sender = True
-        # for encoder in self._device_encoders:
-        #     encoder.add_value_listener(self._parameter_value, identify_sender)
+        identify_sender = True
+        for encoder in self._device_encoders:
+            encoder.add_value_listener(self._parameter_value, identify_sender)
 
         # self.set_mode(0) # displays must be connected before we set the mode
         return
@@ -67,7 +75,12 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     def disconnect(self):
         # self._unregister_timer_callback(self._on_timer)
         for e in self._device_encoders:
+            e.remove_value_listener(self._parameter_value)
             e.send_led_ring_full_off()
+
+        for c in self._control_elements:
+            c.release_parameter()
+
         self._mixer = None
         self._device = None
         self._transport = None
@@ -171,7 +184,11 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     def update(self):
         super(C4ModeSelector, self).update()
         if self.is_enabled():
+            for c in self._control_elements:
+                c.release_parameter()
+
             # the mixer track and bank select buttons stay set in both modes
+            # but these "transport buttons" are also "device encoder buttons"
             self._transport.set_stop_button(self._transport_buttons[0])
             self._transport.set_play_button(self._transport_buttons[1])
             self._transport.set_record_button(self._transport_buttons[2])
@@ -181,14 +198,16 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                 self._device.set_bank_buttons(None)
                 for e in self._device_encoders:
                     e.send_led_ring_full_off()
+                    e.disconnect()
 
                 # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
-                self._channel_encoders[0].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
-                self._mixer.selected_strip().set_volume_control(self._channel_encoders[0])
+                self._channel_encoders[0].update_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
+                self._log_message("mode<0> setting selected strip volume")
+                self._mixer.set_selected_strip_volume_control(self._channel_encoders[0])
 
                 # encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
-                self._channel_encoders[1].c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
-                self._mixer.selected_strip().set_pan_control(self._channel_encoders[1])
+                self._channel_encoders[1].update_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
+                self._mixer.set_selected_strip_pan_control(self._channel_encoders[1])
 
                 if self._channel_strip_displays is not None:
                     self._channel_strip_displays[0].segment(0).set_data_source(
@@ -215,19 +234,20 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                     self._encoder_row03_displays[1].reset()
 
             elif self._mode_index == 1:
-                self._mixer.selected_strip().set_volume_control(None)
-                self._mixer.selected_strip().set_pan_control(None)
+                self._mixer.set_selected_strip_volume_control(None)
+                self._mixer.set_selected_strip_pan_control(None)
                 self._transport.set_stop_button(None)
                 self._transport.set_play_button(None)
                 self._transport.set_record_button(None)
 
                 for e in self._channel_encoders:
                     e.send_led_ring_full_off()
-
-                for e in self._device_encoders:
-                    e.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_WRAP)
+                    e.disconnect()
 
                 self._device.set_parameter_controls(self._device_encoders)
+                for e in self._device_encoders:
+                    e.update_led_ring_display_mode(VPOT_DISPLAY_WRAP)
+
                 self._device.set_bank_buttons(self._device_bank_buttons)
 
                 if self._channel_strip_displays is not None:
@@ -275,12 +295,16 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
 
     def _parameter_value(self, value, control):
         assert control in self._device_encoders
+        self._log_message("mode selector <{}> parameter value listener popped value<{}>".format(control.name, value))
         if self.is_enabled():
             parameter = control.mapped_parameter()
             if parameter is not None:
                 self._parameter_source.set_display_string("{}: {}".format(parameter.name, parameter.__str__()))
+                self._log_message(
+                    "parameter <{}> has value<{}> mapped".format(parameter.name, parameter.__str__()))
             else:
                 self._parameter_source.set_display_string('<unmapped>')
+                self._log_message("parameter <None> has value<None> mapped")
             self._clean_value_display_in = 20
         return
 
