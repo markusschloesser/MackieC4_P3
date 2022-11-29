@@ -1,19 +1,45 @@
 
 from .V2C4Component import *
 
-# import Live
+import Live
 
-from _Framework.EncoderElement import EncoderElement, _not_implemented, ENCODER_VALUE_NORMALIZER
-from _Framework.ButtonElement import ButtonElement
+from _Framework.EncoderElement import EncoderElement  # , _not_implemented  # , ENCODER_VALUE_NORMALIZER
+from _Framework.ButtonElement import ButtonElement, DummyUndoStepHandler
 from _Framework.CompoundElement import CompoundElement
-from _Framework.InputControlElement import InputControlElement, MIDI_CC_TYPE, InputSignal
+from _Framework.InputControlElement import InputControlElement, MIDI_NOTE_TYPE, MIDI_CC_TYPE, InputSignal
 from _Framework.SubjectSlot import SubjectEvent, subject_slot
-from _Framework.Util import nop, const
+from _Framework.Skin import Skin
+from _Framework.Util import nop, const, in_range
 
 from .C4Encoders import C4Encoders
+from .C4EncoderMixin import C4EncoderMixin
+from .C4EncoderMixin import encoder_ring_led_mode_mode_select_values, encoder_ring_led_mode_cc_min_max_values
 
 
-class C4EncoderElement(InputControlElement, V2C4Component):
+def _not_implemented(value):
+    raise NotImplementedError
+
+def signed_bit_delta(value):
+    delta = SIGNED_BIT_DEFAULT_DELTA
+    is_increment = value <= 64
+    index = value - 1 if is_increment else value - 64
+    if in_range(index, 0, len(SIGNED_BIT_VALUE_MAP)):
+        delta = SIGNED_BIT_VALUE_MAP[index]
+    if is_increment:
+        return delta
+    return -delta
+
+SIGNED_BIT_DEFAULT_DELTA = 20.0
+SIGNED_BIT_VALUE_MAP = (1, 2, 3, 4, 5, 8, 10, 20, 50)
+
+_map_modes = map_modes = Live.MidiMap.MapMode
+ENCODER_VALUE_NORMALIZER = {_map_modes.relative_smooth_two_compliment: lambda v: v if v <= 64 else v - 128,
+   _map_modes.relative_smooth_signed_bit: lambda v: v if v <= 64 else 64 - v,
+   _map_modes.relative_smooth_binary_offset: lambda v: v - 64,
+   _map_modes.relative_signed_bit: signed_bit_delta}
+
+
+class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
     """
     currently modeled on EncoderElement itself inheriting from InputControlElement
     formerly modeled on RingedEncoderElement in _APC and PeekableEncoderElement in _AxiomPro
@@ -22,7 +48,7 @@ class C4EncoderElement(InputControlElement, V2C4Component):
 
     __module__ = __name__
 
-    class ProxiedInterface(InputControlElement.ProxiedInterface):
+    class ProxiedInterface(InputControlElement.ProxiedInterface, C4EncoderMixin):
         __module__ = __name__
         normalize_value = nop
 
@@ -50,9 +76,20 @@ class C4EncoderElement(InputControlElement, V2C4Component):
         self._feedback_rule = None  # Live.MidiMap.CCFeedbackRule()
         self.set_feedback_delay(-1)
         self._button = None  # maybe this could be nested?
+        self._undo_step_handler = DummyUndoStepHandler()
+        self._skin = Skin()
+        self._last_received_value = 0
+        self._last_received_raw_value = 0
+        self._input_signal_listener_count = 1  # self?
 
         # InputControlElement.set_report_values
         self.set_report_values(True, True)
+        self.set_needs_takeover(False)
+
+    def disconnect(self):
+        super(C4EncoderElement, self).disconnect()
+        self._undo_step_handler = None
+        return
 
     # EncoderElement methods
     def relative_value_to_delta(self, value):
@@ -67,9 +104,18 @@ class C4EncoderElement(InputControlElement, V2C4Component):
         if self.normalized_value_listener_count():
             self.notify_normalized_value(self.normalize_value(value))
 
+    # inherited methods from ControlElement, overrides from InputControlElement
+    def reset(self):
+        self._log_message("encoder<{}> reset".format(self.c4_encoder.encoder_index))
+        super(C4EncoderElement, self).reset()
+
+    def reset_state(self):
+        self._log_message("encoder<{}> reset_state".format(self.c4_encoder.encoder_index))
+        super(C4EncoderElement, self).reset_state()
+
     # inherited abstract methods from InputControlElement
     def message_map_mode(self):
-        # assert self.message_type() is MIDI_CC_TYPE
+        assert self.message_type() is MIDI_CC_TYPE
         return self.__map_mode
 
     # override methods from InputControlElement
@@ -78,22 +124,37 @@ class C4EncoderElement(InputControlElement, V2C4Component):
         return self.c4_encoder.led_ring_cc_values
 
     def receive_value(self, value):
-        self._log_message("encoder<{}> received midi value<{}>".format(self.message_identifier(), value))
-        value = getattr(value, 'midi_value', value)
-        self._log_message("after getattr on midi_value<{}>".format(value))
+        self._last_received_raw_value = value
+        self._log_message("encoder<{}> received raw value<{}>".format(self.c4_encoder.encoder_index, value))
+        super(C4EncoderElement, self).receive_value(value)
+        self._log_message("after super did getattr on midi_value<{}>".format(value))
+        self._last_received_value = value
+
+    def _report_value(self, value, is_input):
         self._verify_value(value)
-        self._last_sent_message = None
-        self.notify_value(value)
-        if self._report_input:
-            is_input = True
-            self._report_value(value, is_input)
+        message = str(self.name) + ' ('
+        if self._msg_type == MIDI_CC_TYPE:
+            message += 'CC ' + str(self._msg_identifier) + ', '
+            message += 'Chan. ' + str(self._msg_channel)
+            message += ') '
+            message += 'received value ' if is_input else 'sent value '
+            message += str(value)
+            self._log_message(message)
+        else:
+            super(C4EncoderElement, self)._report_value(value, is_input)
+
 
     # V2C4 specific methods
     def set_script_handle(self, main_script=None):
         self._set_script_handle(main_script)
 
+    # C4EncoderMixin abstract methods
+    def set_ring_mode(self, mode):
+        self.update_led_ring_display_mode(mode)
+
+    # C4EncoderElement specific methods
     def update_led_ring_display_mode(self, display_mode=VPOT_DISPLAY_SINGLE_DOT, extended=False):
-        if display_mode in encoder_ring_led_mode_values.keys():
+        if display_mode in encoder_ring_led_mode_mode_select_values.keys():
             # side effect of new C4Encoder: updates self.c4_encoder.led_ring_cc_values tuple,
             # see def _mapping_feedback_values(self)
             self.c4_encoder = C4Encoders(self, extended, self.c4_encoder.encoder_index,
@@ -126,59 +187,4 @@ class C4EncoderElement(InputControlElement, V2C4Component):
 
     def get_encoder_button(self):
         return self._button
-
-
-    # def install_connections(self, install_translation, install_mapping, install_forwarding):
-    #     self._send_delayed_messages_task.kill()
-    #     self._is_mapped = False
-    #     self._is_being_forwarded = False
-    #     if self._msg_channel != self._original_channel or self._msg_identifier != self._original_identifier:
-    #         install_translation(self._msg_type, self._original_identifier, self._original_channel, self._msg_identifier, self._msg_channel)
-    #     if self._parameter_to_map_to != None:
-    #         self._is_mapped = install_mapping(self, self._parameter_to_map_to, self._mapping_feedback_delay, self._mapping_feedback_values())
-    #     if self.script_wants_forwarding():
-    #         self._is_being_forwarded = install_forwarding(self)
-    #         if self._is_being_forwarded and self.send_depends_on_forwarding:
-    #             self._send_delayed_messages_task.restart()
-    #     return
-    #
-
-    # def install_connections(self, install_translation_callback, install_mapping_callback, install_forwarding_callback):
-    #     super(C4EncoderElement, self).install_connections(install_translation_callback,
-    #                                                       install_mapping_callback, install_forwarding_callback)
-    #     if not self._is_mapped and self.value_listener_count() == 0:
-    #         self._is_being_forwarded = install_forwarding_callback(self)
-    #     self._update_ring_mode()
-    #
-    # def is_mapped_manually(self):
-    #     return not self._is_mapped and not self._is_being_forwarded
-    #
-    #
-    # def _update_ring_mode(self):
-    #     pass
-        # if self._ring_mode_button != None:
-        #     if self.is_mapped_manually():
-        #         self._ring_mode_button.send_value(RING_SIN_VALUE, force=True)
-        #     elif self._parameter_to_map_to != None:
-        #         param = self._parameter_to_map_to
-        #         p_range = param.max - param.min
-        #         value = (param.value - param.min) / p_range * 127
-        #         self.send_value(int(value), force=True)
-        #         if self._parameter_to_map_to.min == -1 * self._parameter_to_map_to.max:
-        #             self._ring_mode_button.send_value(RING_PAN_VALUE, force=True)
-        #         elif self._parameter_to_map_to.is_quantized:
-        #             self._ring_mode_button.send_value(RING_SIN_VALUE, force=True)
-        #         else:
-        #             self._ring_mode_button.send_value(RING_VOL_VALUE, force=True)
-        #     else:
-        #         self._ring_mode_button.send_value(RING_OFF_VALUE, force=True)
-        # return
-
-    # def build_midi_map(self, midi_map_handle):
-    #     avoid_takeover = True
-    #     takeover_mode = not avoid_takeover
-    #     Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, self.mapped_parameter(),
-    #                                                self.message_channel, self.message_identifier,
-    #                                                self.message_map_mode(),
-    #                                                self._feedback_rule, takeover_mode, sensitivity=1.0)
 
