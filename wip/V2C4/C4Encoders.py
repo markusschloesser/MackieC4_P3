@@ -1,5 +1,6 @@
 
 from .V2C4Component import *
+from .C4EncoderMixin import encoder_ring_led_mode_mode_select_values, encoder_ring_led_mode_cc_min_max_values
 
 import Live
 
@@ -80,11 +81,11 @@ class C4Encoders:
         return self.__cc_nbr
 
     def set_led_ring_display_mode(self, display_mode):
-        """ no change unless display_mode is in C4_DEFINES.encoder_ring_led_mode_values.keys() """
-        if display_mode in encoder_ring_led_mode_values.keys():
+        """ no change unless display_mode is in C4EncoderMixin.encoder_ring_led_mode_mode_select_values.keys() """
+        if display_mode in encoder_ring_led_mode_mode_select_values.keys():
             self.__display_mode = display_mode
-            display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__display_mode][0]
-            feedback_val_range_len = encoder_ring_led_mode_cc_values[self.__display_mode][1]
+            display_mode_cc_base = encoder_ring_led_mode_cc_min_max_values[self.__display_mode][0]
+            feedback_val_range_len = encoder_ring_led_mode_cc_min_max_values[self.__display_mode][1]
             feedback_val_range_len = feedback_val_range_len - display_mode_cc_base + 1
             self._cc_value_map = tuple([display_mode_cc_base + x for x in range(feedback_val_range_len)])
 
