@@ -67,6 +67,7 @@ class C4MixerComponent(MixerComponent, V2C4Component):
             self.selected_strip().set_displays(self._displays, self._device_name_data_source)
     
     def set_selected_strip_volume_control(self, control):
+        self._log_message("setting volume control<{}> on selected strip<{}>".format(control.__str__(), self.selected_strip()))
         self._selected_strip_volume_control = control
         self._set_selected_strip_volume_control()
 
@@ -74,6 +75,7 @@ class C4MixerComponent(MixerComponent, V2C4Component):
         self.selected_strip().set_volume_control(self._selected_strip_volume_control)
 
     def set_selected_strip_pan_control(self, control):
+        self._log_message("setting pan control<{}> on selected strip<{}>".format(control.__str__(), self.selected_strip()))
         self._selected_strip_pan_control = control
         self._set_selected_strip_pan_control()
 
