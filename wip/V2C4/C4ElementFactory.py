@@ -1,10 +1,13 @@
 from .V2C4Component import *
 
+import Live
 
 from _Framework.InputControlElement import *
 from _Framework.ButtonElement import ButtonElement
+from _Framework.EncoderElement import EncoderElement
 
 from .C4EncoderElement import C4EncoderElement
+from .C4Encoders import C4Encoders
 
 #
 # SYSEX midi messages beginning with 0xF0  and end with 0xF7
@@ -54,6 +57,11 @@ class C4ElementFactory:
     @staticmethod
     def make_encoder(identifier, name=None, *a, **k):
         return C4EncoderElement(identifier, name, *a, **k)
+
+    @staticmethod
+    def make_framework_encoder(identifier, *a, **k):
+        return EncoderElement(MIDI_CC_TYPE, C4_MIDI_CHANNEL, identifier,
+                              Live.MidiMap.MapMode.relative_signed_bit, *a, **k)
 
     @staticmethod
     def make_encoder_and_button(common_identifier, channel=0, is_momentary=True, name='', *a, **k):
