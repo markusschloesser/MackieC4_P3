@@ -187,6 +187,7 @@ encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x01,
 # VPOT_DISPLAY_WRAP: == 21, 22, 23, 24, 25...2B
 # and the VPOT_NEXT_CC_VALUE list is populated with the reversed "wrapping values"
 # VPOT_DISPLAY_WRAP: == 2B, 2A, 29, 28, 27...21
+# these are for "animating" the LED rings in User mode
 VPOT_CURRENT_CC_VALUE = 0
 VPOT_NEXT_CC_VALUE = 1
 
