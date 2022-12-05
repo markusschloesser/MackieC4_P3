@@ -16,7 +16,7 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
     from builtins import object
 
-from .hwelements import create_encoder, SESSION_WIDTH, SESSION_HEIGHT
+from .hw_elements import create_encoder, SESSION_WIDTH, SESSION_HEIGHT
 from .C4ViewControlComponent import C4ViewControlComponent
 
 import logging
