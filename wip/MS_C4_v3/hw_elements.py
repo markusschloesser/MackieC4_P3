@@ -5,15 +5,22 @@
 # Compiled at: 2021-03-17 12:36:39
 # Size of source mod 2**32: 4080 bytes
 from __future__ import absolute_import, print_function, unicode_literals
-from builtins import range
-from builtins import object
+
+import sys
+if sys.version_info[0] >= 3:  # Live 11
+    from builtins import str
+    from builtins import range
+    from builtins import object
+
 from functools import partial
+
 import Live
+
 from ableton.v2.base import depends, recursive_map
 from ableton.v2.control_surface import MIDI_CC_TYPE, MIDI_NOTE_TYPE, PrioritizedResource
 from ableton.v2.control_surface.elements import ButtonElement, ButtonMatrixElement, ComboElement, EncoderElement
-SESSION_WIDTH = 8
-SESSION_HEIGHT = 4
+SESSION_WIDTH = 8  # eight tracks
+SESSION_HEIGHT = 4  # four scenes
 
 
 @depends(skin=None)
