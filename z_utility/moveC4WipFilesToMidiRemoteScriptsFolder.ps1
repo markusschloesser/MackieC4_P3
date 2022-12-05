@@ -14,14 +14,16 @@
 
 
 $LIVE_VERSION = 10
-$MIDI_REMOTE_SCRIPT_NAME = "MackieC4Frametest"   # the name to add to a "remote script slot" in Live midi options
-                                            # This "folder" should already exist empty at $dest before the script first runs
+# This "folder" should already exist empty at $dest before the script first runs
+$MIDI_REMOTE_SCRIPT_NAME = "MackieC4_v3"   # the name to add to a "remote script slot" in Live midi options
+
 $QUIET = $false   # make $true to silence console output
 $WHISPER = $true  # make $false to see all not-quiet console output
 
 
 # set source dir
-$path = "D:\deadDriveArchive\newStuff\repos\markusC4Repo\wip\V2C4"
+# $path = "D:\deadDriveArchive\newStuff\repos\markusC4Repo\wip\V2C4"
+$path = "D:\deadDriveArchive\newStuff\repos\markusC4Repo\wip\MS_C4_v3"
 
 # set destination dir
 $dest = "C:\ProgramData\Ableton\Live {0} Suite\Resources\MIDI Remote Scripts\{1}" -f $LIVE_VERSION, $MIDI_REMOTE_SCRIPT_NAME
