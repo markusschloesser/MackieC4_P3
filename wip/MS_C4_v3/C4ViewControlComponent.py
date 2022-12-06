@@ -41,10 +41,9 @@ class C4ViewControlComponent(ViewControlComponent):
     def num_tracks(self):
         return self._session_width
 
-    def _get_target_track(self):
-        return [self._target_track.target_track]
+    def _get_targeted_tracks(self):
+        return filter(lambda t: liveobj_valid(t) and t == self._target_track.target_track, self.song.tracks)
 
     @property
     def tracks_to_use(self):
-        return self._get_target_track
-    #     return filter(lambda t: liveobj_valid(t) and t == self._target_track.target_track, self.song.tracks)
+        return self._get_targeted_tracks
