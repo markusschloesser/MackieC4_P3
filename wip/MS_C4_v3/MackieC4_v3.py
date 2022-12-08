@@ -11,6 +11,7 @@ from ableton.v2.control_surface.components import SessionComponent, SessionOverv
 from ableton.v2.control_surface.components import BasicTrackScroller
 from ableton.v2.control_surface.elements import ButtonMatrixElement, EncoderElement, SysexElement, ButtonElement
 from ableton.v2.control_surface.mode import AddLayerMode, ModesComponent
+from ableton.v2.control_surface.profile import profile
 
 import sys
 if sys.version_info[0] >= 3:  # Live 11
@@ -35,9 +36,11 @@ class MackieC4_v3(ControlSurface):
 
         with self.component_guard():
             name = 'Encoder32'  # C4SID_VPOT_CC_ADDRESS_32 = 0x3F
-            self._prehear_volume_control = create_encoder(0x3f, name)
+            e = create_encoder(0x3f, name)
+            self._prehear_volume_control = e
             # uncomment to produce Control registered twice assertion error
             # self._register_control(self._prehear_volume_control)
+            logger.info("<{}> identifier bytes <{}>".format(e.name, e.identifier_bytes()))
 
             self._view_control_stub = C4ViewControlComponent(*a, **k)
             self._mixer = MixerComponent(tracks_provider=self._view_control_stub)
@@ -81,6 +84,7 @@ class MackieC4_v3(ControlSurface):
         self.process_midi_bytes(midi_bytes, self._receive_midi_data)
         logger.info("'process_midi_bytes' called")
 
+    @profile
     def receive_midi(self, midi_bytes):
         logger.info("receive_midi received midi bytes <{}>".format(midi_bytes))
         super(MackieC4_v3, self).receive_midi(midi_bytes)
@@ -100,22 +104,25 @@ class MackieC4_v3(ControlSurface):
         super(MackieC4_v3, self)._install_forwarding(midi_map_handle, control, forwarding_type)
 
     def _set_controls(self):
-        logger.info("bingo <{}>".format(self._prehear_volume_control.value_listener_count()))
+        e = self._prehear_volume_control
+        logger.info("<{}> identifier bytes <{}>".format(e.name, e.identifier_bytes()))
+        
+        logger.info("bingo <{}>".format(e.value_listener_count()))
         for key in self._forwarding_registry.keys():
             logger.info("forwarding key<{}> value<{}>".format(key, self._forwarding_registry[key]))
         for key in self._forwarding_long_identifier_registry.keys():
             logger.info("forwarding long key<{}> value<{}>".format(key, self._forwarding_long_identifier_registry[key]))
 
-        if self._prehear_volume_control.value_listener_count() == 0:
-            self._prehear_volume_control.add_value_listener(self._encoder_value_listener)
-            logger.info("bango <{}>".format(self._prehear_volume_control.value_listener_count()))
+        if e.value_listener_count() == 0:
+            e.add_value_listener(self._encoder_value_listener)
+            logger.info("bango <{}>".format(e.value_listener_count()))
             for key in self._forwarding_registry.keys():
                 logger.info("forwarding key<{}> value<{}>".format(key, self._forwarding_registry[key]))
             for key in self._forwarding_long_identifier_registry.keys():
                 logger.info(
                     "forwarding long key<{}> value<{}>".format(key, self._forwarding_long_identifier_registry[key]))
 
-        self._mixer.set_prehear_volume_control(self._prehear_volume_control)
+        self._mixer.set_prehear_volume_control(e)
 
     def _encoder_value_listener(self, value, *a, **k):
         logger.info("bongo <{}>".format(value))
