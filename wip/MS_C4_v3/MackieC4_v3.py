@@ -10,6 +10,8 @@ from ableton.v2.control_surface.components import MixerComponent, SessionNavigat
 from ableton.v2.control_surface.components import SessionComponent, SessionOverviewComponent, SimpleTrackAssigner
 from ableton.v2.control_surface.components import BasicTrackScroller
 from ableton.v2.control_surface.elements import ButtonMatrixElement, EncoderElement, SysexElement, ButtonElement
+from ableton.v2.control_surface.control.encoder import SendValueEncoderControl, EncoderControl
+from ableton.v2.control_surface.control.control import SendValueMixin
 from ableton.v2.control_surface.mode import AddLayerMode, ModesComponent
 from ableton.v2.control_surface.profile import profile
 
@@ -37,16 +39,29 @@ class MackieC4_v3(ControlSurface):
         with self.component_guard():
             name = 'Encoder32'  # C4SID_VPOT_CC_ADDRESS_32 = 0x3F
             e = create_encoder(0x3f, name)
-            self._prehear_volume_control = e
-            # uncomment to produce Control registered twice assertion error
-            # self._register_control(self._prehear_volume_control)
-            logger.info("<{}> identifier bytes <{}>".format(e.name, e.identifier_bytes()))
+            self._encoder_element_32 = e
+            logger.info("__init__: <{}> identifier bytes <{}>".format(e.name, e.identifier_bytes()))
+            with inject(element_container=const(self._encoder_element_32)).everywhere():
+                # ec = EncoderControl(*a, **k)
+                # svec = SendValueEncoderControl(*a, **k)
+                # mixin = SendValueMixin()
+                # mixin.set_control_element(e)
+                # svec_state = svec.State.__init__(*a, **k)
+                # svec_state.set_control_element(e)
+                # self._encoder_control = ec
+                # self._prehear_volume_control = ec
+                # ec_state = ec.State(control=ec, manager=self._mixer, *a, **k)
+                # ec_state.set_control_element(e)
+                # self._encoder_control_state = ec_state
 
-            self._view_control_stub = C4ViewControlComponent(*a, **k)
-            self._mixer = MixerComponent(tracks_provider=self._view_control_stub)
+                # uncomment to produce Control registered twice assertion error
+                # self._register_control(self._prehear_volume_control)
 
-            self._set_controls()
-            # self._create_session()
+                self._view_control_stub = C4ViewControlComponent(*a, **k)
+                self._mixer = MixerComponent(tracks_provider=self._view_control_stub)
+
+                self._set_controls()
+                # self._create_session()
 
         # noinspection PyTypeChecker
         fmt = str('%d.%m.%Y %H:%M:%S')
@@ -54,8 +69,10 @@ class MackieC4_v3(ControlSurface):
         banner = "--------------= C4 v3 Project log opened =--------------"
         # Writes message into Live's main log file. logger.info() is a ControlSurface method.
         logger.info(timestamp + banner)
+        logger.info("__init__: number of forwarding registry keys<{}>". format(len(self._forwarding_registry.keys())))
         for key in self._forwarding_registry.keys():
             logger.info("forwarding key<{}> value<{}>".format(key, self._forwarding_registry[key]))
+
         for key in self._forwarding_long_identifier_registry.keys():
             logger.info("forwarding long key<{}> value<{}>".format(key, self._forwarding_long_identifier_registry[key]))
 
@@ -104,10 +121,14 @@ class MackieC4_v3(ControlSurface):
         super(MackieC4_v3, self)._install_forwarding(midi_map_handle, control, forwarding_type)
 
     def _set_controls(self):
-        e = self._prehear_volume_control
-        logger.info("<{}> identifier bytes <{}>".format(e.name, e.identifier_bytes()))
-        
-        logger.info("bingo <{}>".format(e.value_listener_count()))
+        e = self._encoder_element_32
+        # e_state = self._encoder_control_state
+
+        logger.info("_set_controls: <{}> identifier bytes <{}>".format(e.name, e.identifier_bytes()))
+        # logger.info("_set_controls: <{}> state identifier <{}>".format(e_state.__str__(), e_state.identifier))
+
+        logger.info("_set_controls: bingo <{}> listeners <{}>".format(e.name, e.value_listener_count()))
+        logger.info("_set_controls: number of forwarding registry keys<{}>". format(len(self._forwarding_registry.keys())))
         for key in self._forwarding_registry.keys():
             logger.info("forwarding key<{}> value<{}>".format(key, self._forwarding_registry[key]))
         for key in self._forwarding_long_identifier_registry.keys():
