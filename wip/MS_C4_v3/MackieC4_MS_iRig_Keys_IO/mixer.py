@@ -6,9 +6,10 @@
 # Size of source mod 2**32: 2588 bytes
 from __future__ import absolute_import, print_function, unicode_literals
 from ableton.v2.base import forward_property, liveobj_valid
-import ableton.v2.control_surface.components as MixerComponentBase
+from ableton.v2.control_surface.components import MixerComponent as MixerComponentBase
 from ableton.v2.control_surface.control import ButtonControl
 from .scroll import ScrollComponent
+
 
 class MixerComponent(MixerComponentBase):
     track_scroll_encoder = forward_property('_track_scrolling')('scroll_encoder')

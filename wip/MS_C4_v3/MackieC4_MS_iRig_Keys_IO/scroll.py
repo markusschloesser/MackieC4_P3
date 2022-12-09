@@ -6,7 +6,7 @@
 # Size of source mod 2**32: 733 bytes
 from __future__ import absolute_import, print_function, unicode_literals
 from ableton.v2.base import nop
-import ableton.v2.control_surface.components as ScrollComponentBase
+from ableton.v2.control_surface.components import ScrollComponent as ScrollComponentBase
 from ableton.v2.control_surface.control import EncoderControl
 
 

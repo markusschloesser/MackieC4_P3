@@ -5,7 +5,7 @@
 # Compiled at: 2021-01-27 15:20:55
 # Size of source mod 2**32: 550 bytes
 from __future__ import absolute_import, print_function, unicode_literals
-import ableton.v2.control_surface.components as SessionRecordingComponentBase
+from ableton.v2.control_surface.components import SessionComponent as SessionRecordingComponentBase
 from ableton.v2.control_surface.control import ButtonControl
 
 
