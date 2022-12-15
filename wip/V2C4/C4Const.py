@@ -105,96 +105,6 @@ BUTTON_PRESSED = 1  # logical?  like is a button currently pressed?
 BUTTON_RELEASED = 0
 FID_PANNING_BASE = 0
 
-""" 
-
-Encoder Knobs and Encoder Buttons are addressed by the same byte values, but prefixed by a 
-different control message category
-
-- Encoder Buttons are midi Note messages (0x80, 0x20, velocity) (NOTE_ON_STATUS, C4SID_VPOT_PUSH_1, velocity)
- -- Coming from the C4 device, a Button message's note velocity value is always 127 or 7F 
- -- Coming from the C4 device, a Button message's channel value is always 0x00 (channel 1)
-
-- Encoder Knobs are midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
- -- Turning encoder knobs faster increases the data increment amount
- --- clockwise turns increase increment amount over the range 0x01 - 0x0F
- --- anti-clockwise turns increase decrement amount over the range 0x40 - 0x4F
- -- Coming from the C4 device, a Knob message's channel value is always 0x00 (channel 1)
-
-
-These CC messages are from Commander out to the C4 (DATA2 values between 00 and 3F are found outbound to C4) 
-
-002D7A93   6  23     B0    20    06    1  ---  CC: Bank LSB            # Change encoder B000 mode to Single Dot
-002B89CD   6  23     B0    20    16    1  ---  CC: Bank LSB            # Change encoder B000 mode to boost/cut 
-002D7A93   6  23     B0    20    26    1  ---  CC: Bank LSB            # Change encoder B000 mode to wrap
-002D7A93   6  23     B0    20    33    1  ---  CC: Bank LSB            # Change encoder B000 mode to spread
-002D7A93   6  23     B0    20    2B    1  ---  CC: Bank LSB            # Change encoder B000 mode to on/off
-
-002B89CD   6  23     B0    21    03    1  ---  Control Change          # Change encoder B001 mode to single dot  
-002B89CD   6  23     B0    21    13    1  ---  Control Change          # Change encoder B001 mode to boost/cut  
-002B89CD   6  23     B0    21    23    1  ---  Control Change          # Change encoder B001 mode to wrap  
-002B89CD   6  23     B0    21    32    1  ---  Control Change          # Change encoder B001 mode to spread  
-002B89CD   6  23     B0    21    20    1  ---  Control Change          # Change encoder B001 mode to on/off   
-
-002B89CD   6  23     B0    22    02    1  ---  Control Change          # Change encoder B002 mode to single dot  
-002B89CD   6  23     B0    22    12    1  ---  Control Change          # Change encoder B002 mode to boost/cut   
-002B89CD   6  23     B0    22    22    1  ---  Control Change          # Change encoder B002 mode to wrap   
-002B89CD   6  23     B0    22    32    1  ---  Control Change          # Change encoder B002 mode to spread   
-002B89CD   6  23     B0    22    20    1  ---  Control Change          # Change encoder B002 mode to on/off   
-...
-002B89CD   6  23     B0    27    08    1  ---  Control Change          # Change encoder B007 mode to single dot 
-002B89CD   6  23     B0    27    18    1  ---  Control Change          # Change encoder B007 mode to boost/cut 
-002B89CD   6  23     B0    27    28    1  ---  Control Change          # Change encoder B007 mode to wrap 
-002B89CD   6  23     B0    27    34    1  ---  Control Change          # Change encoder B007 mode to spread 
-002B89CD   6  23     B0    27    2B    1  ---  Control Change          # Change encoder B007 mode to on/off 
-
-002B89CD   6  23     B0    28    01    1  ---  Control Change          # Change encoder B008 mode to single dot 
-
-002B89CD   6  23     B0    30    01    1  ---  Control Change          # Change encoder B030 mode to single dot 
-
-002B89CD   6  23     B0    38    01    1  ---  Control Change          # Change encoder B038 mode to single dot 
-
-002B89CD   6  23     B0    3F    01    1  ---  Control Change          # Change encoder B03F mode to single dot 
-
-In Live terms (this midi script) 
-   0xB0        is CC_STATUS   
-   0x20 - 0x3F is C4SID_VPOT_CC_ADDRESS_1 - C4SID_VPOT_CC_ADDRESS_32  (one of 32 encoders)
-   0x00 - 0x3F is the data value range
-"""
-
-VPOT_DISPLAY_SINGLE_DOT = 0  #
-VPOT_DISPLAY_BOOST_CUT = 1  #
-VPOT_DISPLAY_WRAP = 2  #
-VPOT_DISPLAY_SPREAD = 3  #
-VPOT_DISPLAY_BOOLEAN = 4  #
-VPOT_DISPLAY_HEX_CONVERT = 0x10  # 16
-
-# min  max leds in ring illuminated
-encoder_ring_led_mode_cc_values = {VPOT_DISPLAY_SINGLE_DOT: (0x01, 0x0B),  # 01 - 0B
-                                   VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B),  # 11 - 1B
-                                   VPOT_DISPLAY_WRAP: (0x21, 0x2B),  # 21 - 2B
-                                   VPOT_DISPLAY_SPREAD: (0x31, 0x36),  # 31 - 36
-                                   VPOT_DISPLAY_BOOLEAN: (0x20, 0x2B)}  # 20 - 2B  -- goes to ON in about 6 steps
-
-encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x01,
-                                VPOT_DISPLAY_BOOST_CUT: 0x16,
-                                VPOT_DISPLAY_WRAP: 0x26,
-                                VPOT_DISPLAY_SPREAD: 0x33,
-                                VPOT_DISPLAY_BOOLEAN: 0x2B}
-
-# When an encoder is set for a "wrap" style LED ring display
-# encoder_ring_led_mode_values[VPOT_DISPLAY_WRAP] == 0x26, for example
-# then the VPOT_CURRENT_CC_VALUE list is directly populated with the associated forward sequence "wrapping values"
-# VPOT_DISPLAY_WRAP: == 21, 22, 23, 24, 25...2B
-# and the VPOT_NEXT_CC_VALUE list is populated with the reversed "wrapping values"
-# VPOT_DISPLAY_WRAP: == 2B, 2A, 29, 28, 27...21
-# these are for "animating" the LED rings in User mode
-VPOT_CURRENT_CC_VALUE = 0
-VPOT_NEXT_CC_VALUE = 1
-
-RING_LED_ALL_OFF = 0  # encoder disable?
-
-LED_ON_DATA = 0x7F  # any value 40 - 4F?
-LED_OFF_DATA = 0x00  # any value 00 - 0F?
 
 CLIP_STATE_INVALID = -1
 CLIP_STOPPED = 0
@@ -304,44 +214,45 @@ track_nav_switch_ids = range(C4SID_TRACK_LEFT, C4SID_TRACK_RIGHT + 1)
 # if Commander and the C4 are communicating, then
 # push and hold to toggle the 'button local' LCD display between 'data' and 'label' mode
 # push and release quickly to reset the value of the encoder to its default value
-C4SID_VPOT_PUSH_BASE = 0x20  # 32
-C4SID_VPOT_PUSH_1 = 0x20  # 32  G# 1
-C4SID_VPOT_PUSH_2 = 0x21  # 33  A  1
-C4SID_VPOT_PUSH_3 = 0x22  # 34  A# 1
-C4SID_VPOT_PUSH_4 = 0x23  # 35  B  1
-C4SID_VPOT_PUSH_5 = 0x24  # 36  C  2
-C4SID_VPOT_PUSH_6 = 0x25  # 37  C# 2
-C4SID_VPOT_PUSH_7 = 0x26  # 38  D  2
-C4SID_VPOT_PUSH_8 = 0x27  # 39  Eb 2
-C4SID_VPOT_PUSH_9 = 0x28  # 40  E  2
-C4SID_VPOT_PUSH_10 = 0x29  # 41  F 2
-C4SID_VPOT_PUSH_11 = 0x2A  # 42  F# 2
-C4SID_VPOT_PUSH_12 = 0x2B  # 43  G  2
-C4SID_VPOT_PUSH_13 = 0x2C  # 44  G# 2
-C4SID_VPOT_PUSH_14 = 0x2D  # 45  A  2
-C4SID_VPOT_PUSH_15 = 0x2E  # 46  A# 2
-C4SID_VPOT_PUSH_16 = 0x2F  # 47  B  2
-C4SID_VPOT_PUSH_17 = 0x30  # 48  C  3
-C4SID_VPOT_PUSH_18 = 0x31  # 49  C# 3
-C4SID_VPOT_PUSH_19 = 0x32  # 50  D  3
-C4SID_VPOT_PUSH_20 = 0x33  # 51  Eb 3
-C4SID_VPOT_PUSH_21 = 0x34  # 52  E  3
-C4SID_VPOT_PUSH_22 = 0x35  # 53  F  3
-C4SID_VPOT_PUSH_23 = 0x36  # 54  F# 3
-C4SID_VPOT_PUSH_24 = 0x37  # 55  G  3
-C4SID_VPOT_PUSH_25 = 0x38  # 56  G# 3
-C4SID_VPOT_PUSH_26 = 0x39  # 57  A  3
-C4SID_VPOT_PUSH_27 = 0x3A  # 58  A# 3
-C4SID_VPOT_PUSH_28 = 0x3B  # 59  B  3
-C4SID_VPOT_PUSH_29 = 0x3C  # 60  C  4
-C4SID_VPOT_PUSH_30 = 0x3D  # 61  C# 4
-C4SID_VPOT_PUSH_31 = 0x3E  # 62  D  4
-C4SID_VPOT_PUSH_32 = 0x3F  # 63  Eb 4
-encoder_switch_ids = range(C4SID_VPOT_PUSH_1, C4SID_VPOT_PUSH_32 + 1)  # len of all vpot push
-C4SID_LAST = 0x3F  # 63
+C4_ENCODER_BUTTON_BASE = 0x20  # 32
+C4_ENCODER_BUTTON_1_NOTE_ID = 0x20  # 32  G# 1
+C4_ENCODER_BUTTON_2_NOTE_ID = 0x21  # 33  A  1
+C4_ENCODER_BUTTON_3_NOTE_ID = 0x22  # 34  A# 1
+C4_ENCODER_BUTTON_4_NOTE_ID = 0x23  # 35  B  1
+C4_ENCODER_BUTTON_5_NOTE_ID = 0x24  # 36  C  2
+C4_ENCODER_BUTTON_6_NOTE_ID = 0x25  # 37  C# 2
+C4_ENCODER_BUTTON_7_NOTE_ID = 0x26  # 38  D  2
+C4_ENCODER_BUTTON_8_NOTE_ID = 0x27  # 39  Eb 2
+C4_ENCODER_BUTTON_9_NOTE_ID = 0x28  # 40  E  2
+C4_ENCODER_BUTTON_10_NOTE_ID = 0x29  # 41  F 2
+C4_ENCODER_BUTTON_11_NOTE_ID = 0x2A  # 42  F# 2
+C4_ENCODER_BUTTON_12_NOTE_ID = 0x2B  # 43  G  2
+C4_ENCODER_BUTTON_13_NOTE_ID = 0x2C  # 44  G# 2
+C4_ENCODER_BUTTON_14_NOTE_ID = 0x2D  # 45  A  2
+C4_ENCODER_BUTTON_15_NOTE_ID = 0x2E  # 46  A# 2
+C4_ENCODER_BUTTON_16_NOTE_ID = 0x2F  # 47  B  2
+C4_ENCODER_BUTTON_17_NOTE_ID = 0x30  # 48  C  3
+C4_ENCODER_BUTTON_18_NOTE_ID = 0x31  # 49  C# 3
+C4_ENCODER_BUTTON_19_NOTE_ID = 0x32  # 50  D  3
+C4_ENCODER_BUTTON_20_NOTE_ID = 0x33  # 51  Eb 3
+C4_ENCODER_BUTTON_21_NOTE_ID = 0x34  # 52  E  3
+C4_ENCODER_BUTTON_22_NOTE_ID = 0x35  # 53  F  3
+C4_ENCODER_BUTTON_23_NOTE_ID = 0x36  # 54  F# 3
+C4_ENCODER_BUTTON_24_NOTE_ID = 0x37  # 55  G  3
+C4_ENCODER_BUTTON_25_NOTE_ID = 0x38  # 56  G# 3
+C4_ENCODER_BUTTON_26_NOTE_ID = 0x39  # 57  A  3
+C4_ENCODER_BUTTON_27_NOTE_ID = 0x3A  # 58  A# 3
+C4_ENCODER_BUTTON_28_NOTE_ID = 0x3B  # 59  B  3
+C4_ENCODER_BUTTON_29_NOTE_ID = 0x3C  # 60  C  4
+C4_ENCODER_BUTTON_30_NOTE_ID = 0x3D  # 61  C# 4
+C4_ENCODER_BUTTON_31_NOTE_ID = 0x3E  # 62  D  4
+C4_ENCODER_BUTTON_32_NOTE_ID = 0x3F  # 63  Eb 4
+encoder_switch_ids = range(C4_ENCODER_BUTTON_1_NOTE_ID, C4_ENCODER_BUTTON_32_NOTE_ID + 1)  # len of all vpot push
+C4_LAST_NOTE_ID = 0x3F  # 63
 
 """
 C4 device turning encoder 00 clockwise (topmost row left end)
+                     CC    D1    D2   CH 
 000059F8  22   6     B0    00    01    1  ---  CC: Bank MSB       --> in port 22 from C4 (message reports encoder incremented 1 CW step)
 000059FB   6  23     B0    20    09    1  ---  CC: Bank LSB       --> out port 23 to C4  (message commands encoder's dial's LED set to increment 9 CW steps) 
 00005A70  22   6     B0    00    01    1  ---  CC: Bank MSB       
@@ -358,41 +269,177 @@ C4 device turning encoder 01 clockwise (topmost row second from left end)
  000320D0   6  23     B0    21    05    1  ---  Control Change
 
 """
+C4_ENCODER_CC_ID_BASE = 0x00  # 00
+C4_ENCODER_1_CC_ID = 0x00  # 00
+C4_ENCODER_2_CC_ID = 0x01  # 01
+C4_ENCODER_3_CC_ID = 0x02  # 02
+C4_ENCODER_4_CC_ID = 0x03  # 03
+C4_ENCODER_5_CC_ID = 0x04  # 04
+C4_ENCODER_6_CC_ID = 0x05  # 05
+C4_ENCODER_7_CC_ID = 0x06  # 06
+C4_ENCODER_8_CC_ID = 0x07  # 07
+C4_ENCODER_9_CC_ID = 0x08  # 08
+C4_ENCODER_10_CC_ID = 0x09  # 09
+C4_ENCODER_11_CC_ID = 0x0A  # 10
+C4_ENCODER_12_CC_ID = 0x0B  # 11
+C4_ENCODER_13_CC_ID = 0x0C  # 12
+C4_ENCODER_14_CC_ID = 0x0D  # 13
+C4_ENCODER_15_CC_ID = 0x0E  # 14
+C4_ENCODER_16_CC_ID = 0x0F  # 15
+C4_ENCODER_17_CC_ID = 0x10  # 16
+C4_ENCODER_18_CC_ID = 0x11  # 17
+C4_ENCODER_19_CC_ID = 0x12  # 18
+C4_ENCODER_20_CC_ID = 0x13  # 19
+C4_ENCODER_21_CC_ID = 0x14  # 20
+C4_ENCODER_22_CC_ID = 0x15  # 21
+C4_ENCODER_23_CC_ID = 0x16  # 22
+C4_ENCODER_24_CC_ID = 0x17  # 23
+C4_ENCODER_25_CC_ID = 0x18  # 24
+C4_ENCODER_26_CC_ID = 0x19  # 25
+C4_ENCODER_27_CC_ID = 0x1A  # 26
+C4_ENCODER_28_CC_ID = 0x1B  # 27
+C4_ENCODER_29_CC_ID = 0x1C  # 28
+C4_ENCODER_30_CC_ID = 0x1D  # 29
+C4_ENCODER_31_CC_ID = 0x1E  # 30
+C4_ENCODER_32_CC_ID = 0x1F  # 31
+C4_ENCODER_RING_BASE = 0x20  # 32
 
-C4SID_VPOT_CC_ADDRESS_BASE = 0x20  # 32
-C4SID_VPOT_CC_ADDRESS_1 = 0x20  # 32
-C4SID_VPOT_CC_ADDRESS_2 = 0x21  # 33
-C4SID_VPOT_CC_ADDRESS_3 = 0x22  # 34
-C4SID_VPOT_CC_ADDRESS_4 = 0x23  # 35
-C4SID_VPOT_CC_ADDRESS_5 = 0x24  # 36
-C4SID_VPOT_CC_ADDRESS_6 = 0x25  # 37
-C4SID_VPOT_CC_ADDRESS_7 = 0x26  # 38
-C4SID_VPOT_CC_ADDRESS_8 = 0x27  # 39
-C4SID_VPOT_CC_ADDRESS_9 = 0x28  # 40
-C4SID_VPOT_CC_ADDRESS_10 = 0x29  # 41
-C4SID_VPOT_CC_ADDRESS_11 = 0x2A  # 42
-C4SID_VPOT_CC_ADDRESS_12 = 0x2B  # 43
-C4SID_VPOT_CC_ADDRESS_13 = 0x2C  # 44
-C4SID_VPOT_CC_ADDRESS_14 = 0x2D  # 45
-C4SID_VPOT_CC_ADDRESS_15 = 0x2E  # 46
-C4SID_VPOT_CC_ADDRESS_16 = 0x2F  # 47
-C4SID_VPOT_CC_ADDRESS_17 = 0x30  # 48
-C4SID_VPOT_CC_ADDRESS_18 = 0x31  # 49
-C4SID_VPOT_CC_ADDRESS_19 = 0x32  # 50
-C4SID_VPOT_CC_ADDRESS_20 = 0x33  # 51
-C4SID_VPOT_CC_ADDRESS_21 = 0x34  # 52
-C4SID_VPOT_CC_ADDRESS_22 = 0x35  # 53
-C4SID_VPOT_CC_ADDRESS_23 = 0x36  # 54
-C4SID_VPOT_CC_ADDRESS_24 = 0x37  # 55
-C4SID_VPOT_CC_ADDRESS_25 = 0x38  # 56
-C4SID_VPOT_CC_ADDRESS_26 = 0x39  # 57
-C4SID_VPOT_CC_ADDRESS_27 = 0x3A  # 58
-C4SID_VPOT_CC_ADDRESS_28 = 0x3B  # 59
-C4SID_VPOT_CC_ADDRESS_29 = 0x3C  # 60
-C4SID_VPOT_CC_ADDRESS_30 = 0x3D  # 61
-C4SID_VPOT_CC_ADDRESS_31 = 0x3E  # 62
-C4SID_VPOT_CC_ADDRESS_32 = 0x3F  # 63
-
-encoder_cc_ids = range(C4SID_VPOT_CC_ADDRESS_1, C4SID_VPOT_CC_ADDRESS_32 + 1)
+encoder_cc_ids = range(C4_ENCODER_1_CC_ID, C4_ENCODER_RING_BASE)
 encoder_cw_values = range(0x01, 0x10)  # larger values means knob is turning faster / bigger CW increments
 encoder_ccw_values = range(0x41, 0x50)  # larger values means knob is turning faster / bigger CCW increments
+
+C4_ENCODER_RING_1_CC_ID = 0x20  # 32
+C4_ENCODER_RING_2_CC_ID = 0x21  # 33
+C4_ENCODER_RING_3_CC_ID = 0x22  # 34
+C4_ENCODER_RING_4_CC_ID = 0x23  # 35
+C4_ENCODER_RING_5_CC_ID = 0x24  # 36
+C4_ENCODER_RING_6_CC_ID = 0x25  # 37
+C4_ENCODER_RING_7_CC_ID = 0x26  # 38
+C4_ENCODER_RING_8_CC_ID = 0x27  # 39
+C4_ENCODER_RING_9_CC_ID = 0x28  # 40
+C4_ENCODER_RING_10_CC_ID = 0x29  # 41
+C4_ENCODER_RING_11_CC_ID = 0x2A  # 42
+C4_ENCODER_RING_12_CC_ID = 0x2B  # 43
+C4_ENCODER_RING_13_CC_ID = 0x2C  # 44
+C4_ENCODER_RING_14_CC_ID = 0x2D  # 45
+C4_ENCODER_RING_15_CC_ID = 0x2E  # 46
+C4_ENCODER_RING_16_CC_ID = 0x2F  # 47
+C4_ENCODER_RING_17_CC_ID = 0x30  # 48
+C4_ENCODER_RING_18_CC_ID = 0x31  # 49
+C4_ENCODER_RING_19_CC_ID = 0x32  # 50
+C4_ENCODER_RING_20_CC_ID = 0x33  # 51
+C4_ENCODER_RING_21_CC_ID = 0x34  # 52
+C4_ENCODER_RING_22_CC_ID = 0x35  # 53
+C4_ENCODER_RING_23_CC_ID = 0x36  # 54
+C4_ENCODER_RING_24_CC_ID = 0x37  # 55
+C4_ENCODER_RING_25_CC_ID = 0x38  # 56
+C4_ENCODER_RING_26_CC_ID = 0x39  # 57
+C4_ENCODER_RING_27_CC_ID = 0x3A  # 58
+C4_ENCODER_RING_28_CC_ID = 0x3B  # 59
+C4_ENCODER_RING_29_CC_ID = 0x3C  # 60
+C4_ENCODER_RING_30_CC_ID = 0x3D  # 61
+C4_ENCODER_RING_31_CC_ID = 0x3E  # 62
+C4_ENCODER_RING_32_CC_ID = 0x3F  # 63
+
+encoder_ring_cc_ids = range(C4_ENCODER_RING_1_CC_ID, C4_ENCODER_RING_32_CC_ID + 1)
+""" 
+Encoder Knobs and Encoder Buttons are addressed by the same byte values, but prefixed by a 
+different control message category
+
+- Encoder Buttons are midi Note messages (0x80, 0x20, velocity) (NOTE_ON_STATUS, C4SID_VPOT_PUSH_1, velocity)
+ -- Coming from the C4 device, a Button message's note velocity value is always 127 or 7F 
+ -- Coming from the C4 device, a Button message's channel value is always 0x00 (channel 1)
+
+- Encoder Knobs are midi CC messages (0xB0, 0x00, data) (CC_STATUS, C4_ENCODER_1_CC_ID, data)
+ -- Turning encoder knobs faster increases the data increment amount
+ --- clockwise turns increase increment amount over the range 0x01 - 0x0F
+ --- anti-clockwise turns increase decrement amount over the range 0x40 - 0x4F
+ -- Coming from the C4 device, a Knob message's channel value is always 0x00 (channel 1)
+ 
+- Encoder LED rings are midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4_ENCODER_RING_1_CC_ID, data)
+ -- LED Ring Data Values are unique per "ring mode" Single Dot, Wrap, Boost Cut, etc
+
+C4_ENCODER_1_CC_ID data goes out of the C4 into this remote script and Live
+C4_ENCODER_RING_1_CC_ID "feedback" data goes to the C4 from Live and this remote script
+
+These CC messages are from Commander out to the C4 (DATA2 values between 00 and 3F are found outbound to C4) 
+
+002D7A93   6  23     B0    20    06    1  ---  CC: Bank LSB            # Change encoder B000 mode to Single Dot
+002B89CD   6  23     B0    20    16    1  ---  CC: Bank LSB            # Change encoder B000 mode to boost/cut 
+002D7A93   6  23     B0    20    26    1  ---  CC: Bank LSB            # Change encoder B000 mode to wrap
+002D7A93   6  23     B0    20    33    1  ---  CC: Bank LSB            # Change encoder B000 mode to spread
+002D7A93   6  23     B0    20    2B    1  ---  CC: Bank LSB            # Change encoder B000 mode to on/off
+
+002B89CD   6  23     B0    21    03    1  ---  Control Change          # Change encoder B001 mode to single dot  
+002B89CD   6  23     B0    21    13    1  ---  Control Change          # Change encoder B001 mode to boost/cut  
+002B89CD   6  23     B0    21    23    1  ---  Control Change          # Change encoder B001 mode to wrap  
+002B89CD   6  23     B0    21    32    1  ---  Control Change          # Change encoder B001 mode to spread  
+002B89CD   6  23     B0    21    20    1  ---  Control Change          # Change encoder B001 mode to on/off   
+
+002B89CD   6  23     B0    22    02    1  ---  Control Change          # Change encoder B002 mode to single dot  
+002B89CD   6  23     B0    22    12    1  ---  Control Change          # Change encoder B002 mode to boost/cut   
+002B89CD   6  23     B0    22    22    1  ---  Control Change          # Change encoder B002 mode to wrap   
+002B89CD   6  23     B0    22    32    1  ---  Control Change          # Change encoder B002 mode to spread   
+002B89CD   6  23     B0    22    20    1  ---  Control Change          # Change encoder B002 mode to on/off   
+...
+002B89CD   6  23     B0    27    08    1  ---  Control Change          # Change encoder B007 mode to single dot 
+002B89CD   6  23     B0    27    18    1  ---  Control Change          # Change encoder B007 mode to boost/cut 
+002B89CD   6  23     B0    27    28    1  ---  Control Change          # Change encoder B007 mode to wrap 
+002B89CD   6  23     B0    27    34    1  ---  Control Change          # Change encoder B007 mode to spread 
+002B89CD   6  23     B0    27    2B    1  ---  Control Change          # Change encoder B007 mode to on/off 
+
+002B89CD   6  23     B0    28    01    1  ---  Control Change          # Change encoder B008 mode to single dot 
+
+002B89CD   6  23     B0    30    01    1  ---  Control Change          # Change encoder B030 mode to single dot 
+
+002B89CD   6  23     B0    38    01    1  ---  Control Change          # Change encoder B038 mode to single dot 
+
+002B89CD   6  23     B0    3F    01    1  ---  Control Change          # Change encoder B03F mode to single dot 
+
+In Live terms (this midi script) 
+   0xB0        is CC_STATUS   
+   0x00 - 0x0F is the encoder ID range (one of 32 encoders)
+     -- these data values are "relative signed bit" map mode
+     -- (0x01 - 0x10) clockwise turn, (0x41 - 0x50) CCW turn
+   0x20 - 0x3F is the feedback ID range  (one of 32 encoder rings)
+     -- these data values are sets of unique "ring mode" feedback styles
+     -- (0x01 - 0x0B) are the 11 possible "single dot" mode LED ring display values
+     -- (0x11 - 0x1B) are the 11 possible "boost cut" mode LED ring display values
+     -- "spread" is a symmetrical display mode so there are only 5 possible values
+     -- "boolean" display mode only has two possible values still symmetrical over 5 steps
+"""
+
+VPOT_DISPLAY_SINGLE_DOT = 0  #
+VPOT_DISPLAY_BOOST_CUT = 1  #
+VPOT_DISPLAY_WRAP = 2  #
+VPOT_DISPLAY_SPREAD = 3  #
+VPOT_DISPLAY_BOOLEAN = 4  #
+VPOT_DISPLAY_HEX_CONVERT = 0x10  # 16
+
+# min  max leds in ring illuminated
+encoder_ring_led_mode_cc_values = {VPOT_DISPLAY_SINGLE_DOT: (0x01, 0x0B),  # 01 - 0B
+                                   VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B),  # 11 - 1B
+                                   VPOT_DISPLAY_WRAP: (0x21, 0x2B),  # 21 - 2B
+                                   VPOT_DISPLAY_SPREAD: (0x31, 0x36),  # 31 - 36
+                                   VPOT_DISPLAY_BOOLEAN: (0x20, 0x2B)}  # 20 - 2B  -- goes to ON in about 6 steps
+
+encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x01,
+                                VPOT_DISPLAY_BOOST_CUT: 0x16,
+                                VPOT_DISPLAY_WRAP: 0x26,
+                                VPOT_DISPLAY_SPREAD: 0x33,
+                                VPOT_DISPLAY_BOOLEAN: 0x2B}
+
+# When an encoder is set for a "wrap" style LED ring display
+# encoder_ring_led_mode_values[VPOT_DISPLAY_WRAP] == 0x26, for example
+# then the VPOT_CURRENT_CC_VALUE list is directly populated with the associated forward sequence "wrapping values"
+# VPOT_DISPLAY_WRAP: == 21, 22, 23, 24, 25...2B
+# and the VPOT_NEXT_CC_VALUE list is populated with the reversed "wrapping values"
+# VPOT_DISPLAY_WRAP: == 2B, 2A, 29, 28, 27...21
+# these are for "animating" the LED rings in User mode
+VPOT_CURRENT_CC_VALUE = 0
+VPOT_NEXT_CC_VALUE = 1
+
+RING_LED_ALL_OFF = 0  # encoder disable?
+
+LED_ON_DATA = 0x7F  # any value 40 - 4F?
+LED_OFF_DATA = 0x00  # any value 00 - 0F?

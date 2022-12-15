@@ -57,6 +57,7 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
     encoder_sensitivity = 1.0
 
     def __init__(self, identifier=C4SID_VPOT_CC_ADDRESS_BASE, extended=False, channel=C4_MIDI_CHANNEL,
+    def __init__(self, identifier=C4_ENCODER_CC_ID_BASE, extended=False, channel=C4_MIDI_CHANNEL,
                  map_mode=C4Encoders.map_mode(), encoder_sensitivity=None, name=None, *a, **k):
         if name is None:
             name = 'Encoder_Control_%d' % V2C4Component.convert_encoder_id_value(identifier)
