@@ -48,31 +48,16 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
 
     __module__ = __name__
 
-    class ProxiedInterface(InputControlElement.ProxiedInterface, C4EncoderMixin):
-        __module__ = __name__
-        normalize_value = nop
-
-    __subject_events__ = (
-     SubjectEvent(name='normalized_value', signal=InputSignal),)
-    encoder_sensitivity = 1.0
-
-    def __init__(self, identifier=C4SID_VPOT_CC_ADDRESS_BASE, extended=False, channel=C4_MIDI_CHANNEL,
     def __init__(self, identifier=C4_ENCODER_CC_ID_BASE, extended=False, channel=C4_MIDI_CHANNEL,
                  map_mode=C4Encoders.map_mode(), encoder_sensitivity=None, name=None, *a, **k):
         if name is None:
-            name = 'Encoder_Control_%d' % V2C4Component.convert_encoder_id_value(identifier)
-        super(C4EncoderElement, self).__init__(MIDI_CC_TYPE, channel, identifier, name=name, *a, **k)
-
-        # _Framework.EncoderElement.__init__()
-        if encoder_sensitivity is not None:  # if input parameter is not None
-            # replaces assignment above __init__  encoder_sensitivity = 1.0
-            self.encoder_sensitivity = encoder_sensitivity
-        self.__map_mode = map_mode
-        self.__value_normalizer = ENCODER_VALUE_NORMALIZER.get(map_mode, _not_implemented)
+            name = 'Encoder_Control_%d' % identifier
+        super(C4EncoderElement, self).__init__(MIDI_CC_TYPE, channel, identifier, map_mode,
+                                               encoder_sensitivity, name=name, *a, **k)
 
         # C4EncoderElement.__init__() additions
         V2C4Component.__init__(self)
-        encoder_index = V2C4Component.convert_encoder_id_value(identifier)
+        encoder_index = identifier
         self.c4_encoder = C4Encoders(self, extended, encoder_index, map_mode)
         self._feedback_rule = None  # Live.MidiMap.CCFeedbackRule()
         self.set_feedback_delay(-1)

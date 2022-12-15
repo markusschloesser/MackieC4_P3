@@ -35,8 +35,8 @@ class C4Encoders:
 
         self.__encoder_index = encoder_index
         self.__midi_cc_channel = C4_MIDI_CHANNEL
-        self.__live_cc_channel = C4_LIVE_MIDI_CHANNEL  # C4_MIDI_CHANNEL + 1
-        self.__cc_nbr = encoder_cc_ids[self.__encoder_index]
+        self.__midi_cc_id = encoder_cc_ids[self.__encoder_index]
+        self.__feedback_cc_id = V2C4Component.convert_encoder_id_value(self.__midi_cc_id)
         self._midi_feedback_delay = -1
         self._map_mode = map_mode
 
@@ -78,7 +78,11 @@ class C4Encoders:
 
     @property
     def encoder_cc_id(self):
-        return self.__cc_nbr
+        return self.__midi_cc_id
+
+    @property
+    def encoder_ring_feedback_cc_id(self):
+        return self.__feedback_cc_id
 
     def set_led_ring_display_mode(self, display_mode):
         """ no change unless display_mode is in C4EncoderMixin.encoder_ring_led_mode_mode_select_values.keys() """
@@ -91,7 +95,7 @@ class C4Encoders:
 
     def specialize_feedback_rule(self, feedback_rule=Live.MidiMap.CCFeedbackRule()):
         feedback_rule.channel = self.__midi_cc_channel
-        feedback_rule.cc_no = self.__cc_nbr
+        feedback_rule.cc_no = self.__feedback_cc_id
         feedback_rule.cc_value_map = self._cc_value_map
         feedback_rule.delay_in_ms = self._midi_feedback_delay
         return feedback_rule
@@ -125,7 +129,7 @@ class C4Encoders:
             avoid_takeover = True
             takeover_mode = not avoid_takeover
             Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, device_parameter,
-                                                       self.__midi_cc_channel, self.__cc_nbr, self._map_mode,
+                                                       self.__midi_cc_channel, self.__midi_cc_id, self._map_mode,
                                                        feedback_rule, takeover_mode, sensitivity=1.0)
         self.build_midi_map(midi_map_handle)
 
