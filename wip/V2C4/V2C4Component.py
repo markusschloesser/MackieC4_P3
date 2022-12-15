@@ -3,7 +3,7 @@ import sys
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import object, range, str
 
-from .C4_DEFINES import *
+from .C4Const import *
 
 # can't import like this, circular dependency city
 # from .V2C4 import V2C4

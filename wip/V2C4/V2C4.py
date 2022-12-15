@@ -17,7 +17,7 @@ from .C4DeviceComponent import C4DeviceComponent
 from .C4MixerComponent import C4MixerComponent
 from .V2C4Component import V2C4Component
 # from .C4EncodersComponent import C4EncodersComponent
-from .C4_DEFINES import *
+from .C4Const import *
 
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
