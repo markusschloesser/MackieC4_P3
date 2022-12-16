@@ -50,29 +50,18 @@ class V2C4(ControlSurface):
             mixer.set_bank_buttons(
                 self._model.make_button(C4SID_BANK_RIGHT),  self._model.make_button(C4SID_BANK_LEFT))
 
-            # for i in range(len(channel_encoders)):
-            #     e = channel_encoders[i]
-            #     if i == 0:
-            #         self.log_message("volume_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
-            #             C4SID_VPOT_CC_ADDRESS_32, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
-            #             e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
-            #     else:
-            #         self.log_message("pan_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
-            #             C4SID_VPOT_CC_ADDRESS_31, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
-            #             e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
-
-            mixer.set_selected_strip_mute_button(self._model.make_button(C4SID_VPOT_PUSH_30, *a, **k))
-            mixer.set_selected_strip_solo_button(self._model.make_button(C4SID_VPOT_PUSH_29, *a, **k))
-            mixer.set_selected_strip_arm_button(self._model.make_button(C4SID_VPOT_PUSH_28, *a, **k))
+            mixer.set_selected_strip_mute_button(self._model.make_button(C4_ENCODER_BUTTON_30_NOTE_ID, *a, **k))
+            mixer.set_selected_strip_solo_button(self._model.make_button(C4_ENCODER_BUTTON_29_NOTE_ID, *a, **k))
+            mixer.set_selected_strip_arm_button(self._model.make_button(C4_ENCODER_BUTTON_28_NOTE_ID, *a, **k))
             mixer.set_shift_button(self._model.make_button(C4SID_SHIFT, *a, **k))
 
             device = C4DeviceComponent(device_selection_follows_track_selection=True)
             device.set_script_handle(self)
             self.set_device_component(device)
 
-            stop_button = self._model.make_button(C4SID_VPOT_PUSH_25, *a, **k)
-            play_button = self._model.make_button(C4SID_VPOT_PUSH_26, *a, **k)
-            record_button = self._model.make_button(C4SID_VPOT_PUSH_27, *a, **k)
+            stop_button = self._model.make_button(C4_ENCODER_BUTTON_25_NOTE_ID, *a, **k)
+            play_button = self._model.make_button(C4_ENCODER_BUTTON_26_NOTE_ID, *a, **k)
+            record_button = self._model.make_button(C4_ENCODER_BUTTON_27_NOTE_ID, *a, **k)
             transport_buttons = tuple([stop_button, play_button, record_button])
 
             session = SessionComponent(0, 0)
@@ -90,6 +79,30 @@ class V2C4(ControlSurface):
                 LCD_BTM_FLAT_ADDRESS:
                     {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(*a, **k),
                      LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(*a, **k)}}
+
+            # self.mixer = MixerComponent(num_tracks=0)
+            # self.mixer.set_select_buttons(
+            #     self._model.make_button(C4SID_TRACK_RIGHT), self._model.make_button(C4SID_TRACK_LEFT)
+            # )
+
+            # for i in range(len(channel_encoders)):
+            #     e = channel_encoders[i]
+            #     if i == 0:
+            #         self.log_message("volume_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
+            #             C4SID_VPOT_CC_ADDRESS_32, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
+            #             e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
+            #     else:
+            #         self.log_message("pan_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
+            #             C4SID_VPOT_CC_ADDRESS_31, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
+            #             e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
+            # e = self._model.make_encoder(C4_ENCODER_32_CC_ID)
+            # e.set_script_handle(self)
+            # mixer.set_prehear_volume_control(
+            #     # EncoderElement(MIDI_CC_TYPE, C4_MIDI_CHANNEL, C4SID_VPOT_CC_ADDRESS_32, Live.MidiMap.MapMode.relative_signed_bit)
+            #     e
+            #     # set_enabled(True) causes "_request_rebuild"  to run which breaks the feedback?
+            #     # e.set_enabled(True)
+            # )
 
             self.clear_display_msg = self._model.lcd_clear_message
             self.hello_display_msg = self._model.lcd_hello_message
@@ -133,13 +146,13 @@ class V2C4(ControlSurface):
                 #     e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
             encoders = tuple(encoders)
 
-            volume_encoder = self._model.get_encoder(C4SID_VPOT_CC_ADDRESS_32)
+            volume_encoder = self._model.get_encoder(C4_ENCODER_32_CC_ID)
             assert volume_encoder in encoders
             volume_encoder.set_script_handle(self)
             volume_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
             mixer.set_selected_strip_volume_control(volume_encoder)
 
-            pan_encoder = self._model.get_encoder(C4SID_VPOT_CC_ADDRESS_31)
+            pan_encoder = self._model.get_encoder(C4_ENCODER_31_CC_ID)
             pan_encoder.c4_encoder.set_led_ring_display_mode(VPOT_DISPLAY_BOOST_CUT)
             pan_encoder.set_script_handle(self)
             mixer.set_selected_strip_pan_control(pan_encoder)

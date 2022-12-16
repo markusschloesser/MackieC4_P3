@@ -32,29 +32,29 @@ class C4ElementModel(V2C4Component):
                 C4SID_OPTION: None, C4SID_CONTROL: None, C4SID_ALT: None,
                 C4SID_SLOT_UP: None, C4SID_SLOT_DOWN: None, C4SID_TRACK_LEFT: None,
                 C4SID_TRACK_RIGHT: None,
-                C4SID_VPOT_PUSH_1: None, C4SID_VPOT_PUSH_2: None, C4SID_VPOT_PUSH_3: None,
-                C4SID_VPOT_PUSH_4: None, C4SID_VPOT_PUSH_5: None, C4SID_VPOT_PUSH_6: None,
-                C4SID_VPOT_PUSH_7: None, C4SID_VPOT_PUSH_8: None, C4SID_VPOT_PUSH_9: None,
-                C4SID_VPOT_PUSH_10: None, C4SID_VPOT_PUSH_11: None, C4SID_VPOT_PUSH_12: None,
-                C4SID_VPOT_PUSH_13: None, C4SID_VPOT_PUSH_14: None, C4SID_VPOT_PUSH_15: None,
-                C4SID_VPOT_PUSH_16: None, C4SID_VPOT_PUSH_17: None, C4SID_VPOT_PUSH_18: None,
-                C4SID_VPOT_PUSH_19: None, C4SID_VPOT_PUSH_20: None, C4SID_VPOT_PUSH_21: None,
-                C4SID_VPOT_PUSH_22: None, C4SID_VPOT_PUSH_23: None, C4SID_VPOT_PUSH_24: None,
-                C4SID_VPOT_PUSH_25: None, C4SID_VPOT_PUSH_26: None, C4SID_VPOT_PUSH_27: None,
-                C4SID_VPOT_PUSH_28: None, C4SID_VPOT_PUSH_29: None, C4SID_VPOT_PUSH_30: None,
-                C4SID_VPOT_PUSH_31: None, C4SID_VPOT_PUSH_32: None},
+                C4_ENCODER_BUTTON_1_NOTE_ID: None, C4_ENCODER_BUTTON_2_NOTE_ID: None, C4_ENCODER_BUTTON_3_NOTE_ID: None,
+                C4_ENCODER_BUTTON_4_NOTE_ID: None, C4_ENCODER_BUTTON_5_NOTE_ID: None, C4_ENCODER_BUTTON_6_NOTE_ID: None,
+                C4_ENCODER_BUTTON_7_NOTE_ID: None, C4_ENCODER_BUTTON_8_NOTE_ID: None, C4_ENCODER_BUTTON_9_NOTE_ID: None,
+                C4_ENCODER_BUTTON_10_NOTE_ID: None, C4_ENCODER_BUTTON_11_NOTE_ID: None, C4_ENCODER_BUTTON_12_NOTE_ID: None,
+                C4_ENCODER_BUTTON_13_NOTE_ID: None, C4_ENCODER_BUTTON_14_NOTE_ID: None, C4_ENCODER_BUTTON_15_NOTE_ID: None,
+                C4_ENCODER_BUTTON_16_NOTE_ID: None, C4_ENCODER_BUTTON_17_NOTE_ID: None, C4_ENCODER_BUTTON_18_NOTE_ID: None,
+                C4_ENCODER_BUTTON_19_NOTE_ID: None, C4_ENCODER_BUTTON_20_NOTE_ID: None, C4_ENCODER_BUTTON_21_NOTE_ID: None,
+                C4_ENCODER_BUTTON_22_NOTE_ID: None, C4_ENCODER_BUTTON_23_NOTE_ID: None, C4_ENCODER_BUTTON_24_NOTE_ID: None,
+                C4_ENCODER_BUTTON_25_NOTE_ID: None, C4_ENCODER_BUTTON_26_NOTE_ID: None, C4_ENCODER_BUTTON_27_NOTE_ID: None,
+                C4_ENCODER_BUTTON_28_NOTE_ID: None, C4_ENCODER_BUTTON_29_NOTE_ID: None, C4_ENCODER_BUTTON_30_NOTE_ID: None,
+                C4_ENCODER_BUTTON_31_NOTE_ID: None, C4_ENCODER_BUTTON_32_NOTE_ID: None},
             MIDI_CC_TYPE: {
-                C4SID_VPOT_CC_ADDRESS_1: None, C4SID_VPOT_CC_ADDRESS_2: None, C4SID_VPOT_CC_ADDRESS_3: None,
-                C4SID_VPOT_CC_ADDRESS_4: None, C4SID_VPOT_CC_ADDRESS_5: None, C4SID_VPOT_CC_ADDRESS_6: None,
-                C4SID_VPOT_CC_ADDRESS_7: None, C4SID_VPOT_CC_ADDRESS_8: None, C4SID_VPOT_CC_ADDRESS_9: None,
-                C4SID_VPOT_CC_ADDRESS_10: None, C4SID_VPOT_CC_ADDRESS_11: None, C4SID_VPOT_CC_ADDRESS_12: None,
-                C4SID_VPOT_CC_ADDRESS_13: None, C4SID_VPOT_CC_ADDRESS_14: None, C4SID_VPOT_CC_ADDRESS_15: None,
-                C4SID_VPOT_CC_ADDRESS_16: None, C4SID_VPOT_CC_ADDRESS_17: None, C4SID_VPOT_CC_ADDRESS_18: None,
-                C4SID_VPOT_CC_ADDRESS_19: None, C4SID_VPOT_CC_ADDRESS_20: None, C4SID_VPOT_CC_ADDRESS_21: None,
-                C4SID_VPOT_CC_ADDRESS_22: None, C4SID_VPOT_CC_ADDRESS_23: None, C4SID_VPOT_CC_ADDRESS_24: None,
-                C4SID_VPOT_CC_ADDRESS_25: None, C4SID_VPOT_CC_ADDRESS_26: None, C4SID_VPOT_CC_ADDRESS_27: None,
-                C4SID_VPOT_CC_ADDRESS_28: None, C4SID_VPOT_CC_ADDRESS_29: None, C4SID_VPOT_CC_ADDRESS_30: None,
-                C4SID_VPOT_CC_ADDRESS_31: None, C4SID_VPOT_CC_ADDRESS_32: None}}
+                C4_ENCODER_1_CC_ID: None, C4_ENCODER_2_CC_ID: None, C4_ENCODER_3_CC_ID: None,
+                C4_ENCODER_4_CC_ID: None, C4_ENCODER_5_CC_ID: None, C4_ENCODER_6_CC_ID: None,
+                C4_ENCODER_7_CC_ID: None, C4_ENCODER_8_CC_ID: None, C4_ENCODER_9_CC_ID: None,
+                C4_ENCODER_10_CC_ID: None, C4_ENCODER_11_CC_ID: None, C4_ENCODER_12_CC_ID: None,
+                C4_ENCODER_13_CC_ID: None, C4_ENCODER_14_CC_ID: None, C4_ENCODER_15_CC_ID: None,
+                C4_ENCODER_16_CC_ID: None, C4_ENCODER_17_CC_ID: None, C4_ENCODER_18_CC_ID: None,
+                C4_ENCODER_19_CC_ID: None, C4_ENCODER_20_CC_ID: None, C4_ENCODER_21_CC_ID: None,
+                C4_ENCODER_22_CC_ID: None, C4_ENCODER_23_CC_ID: None, C4_ENCODER_24_CC_ID: None,
+                C4_ENCODER_25_CC_ID: None, C4_ENCODER_26_CC_ID: None, C4_ENCODER_27_CC_ID: None,
+                C4_ENCODER_28_CC_ID: None, C4_ENCODER_29_CC_ID: None, C4_ENCODER_30_CC_ID: None,
+                C4_ENCODER_31_CC_ID: None, C4_ENCODER_32_CC_ID: None}}
 
     def disconnect(self):
         self._element_factory = None
@@ -68,36 +68,46 @@ class C4ElementModel(V2C4Component):
                 C4SID_OPTION: None, C4SID_CONTROL: None, C4SID_ALT: None,
                 C4SID_SLOT_UP: None, C4SID_SLOT_DOWN: None, C4SID_TRACK_LEFT: None,
                 C4SID_TRACK_RIGHT: None,
-                C4SID_VPOT_PUSH_1: None, C4SID_VPOT_PUSH_2: None, C4SID_VPOT_PUSH_3: None,
-                C4SID_VPOT_PUSH_4: None, C4SID_VPOT_PUSH_5: None, C4SID_VPOT_PUSH_6: None,
-                C4SID_VPOT_PUSH_7: None, C4SID_VPOT_PUSH_8: None, C4SID_VPOT_PUSH_9: None,
-                C4SID_VPOT_PUSH_10: None, C4SID_VPOT_PUSH_11: None, C4SID_VPOT_PUSH_12: None,
-                C4SID_VPOT_PUSH_13: None, C4SID_VPOT_PUSH_14: None, C4SID_VPOT_PUSH_15: None,
-                C4SID_VPOT_PUSH_16: None, C4SID_VPOT_PUSH_17: None, C4SID_VPOT_PUSH_18: None,
-                C4SID_VPOT_PUSH_19: None, C4SID_VPOT_PUSH_20: None, C4SID_VPOT_PUSH_21: None,
-                C4SID_VPOT_PUSH_22: None, C4SID_VPOT_PUSH_23: None, C4SID_VPOT_PUSH_24: None,
-                C4SID_VPOT_PUSH_25: None, C4SID_VPOT_PUSH_26: None, C4SID_VPOT_PUSH_27: None,
-                C4SID_VPOT_PUSH_28: None, C4SID_VPOT_PUSH_29: None, C4SID_VPOT_PUSH_30: None,
-                C4SID_VPOT_PUSH_31: None, C4SID_VPOT_PUSH_32: None},
+                C4_ENCODER_BUTTON_1_NOTE_ID: None, C4_ENCODER_BUTTON_2_NOTE_ID: None, C4_ENCODER_BUTTON_3_NOTE_ID: None,
+                C4_ENCODER_BUTTON_4_NOTE_ID: None, C4_ENCODER_BUTTON_5_NOTE_ID: None, C4_ENCODER_BUTTON_6_NOTE_ID: None,
+                C4_ENCODER_BUTTON_7_NOTE_ID: None, C4_ENCODER_BUTTON_8_NOTE_ID: None, C4_ENCODER_BUTTON_9_NOTE_ID: None,
+                C4_ENCODER_BUTTON_10_NOTE_ID: None, C4_ENCODER_BUTTON_11_NOTE_ID: None, C4_ENCODER_BUTTON_12_NOTE_ID: None,
+                C4_ENCODER_BUTTON_13_NOTE_ID: None, C4_ENCODER_BUTTON_14_NOTE_ID: None, C4_ENCODER_BUTTON_15_NOTE_ID: None,
+                C4_ENCODER_BUTTON_16_NOTE_ID: None, C4_ENCODER_BUTTON_17_NOTE_ID: None, C4_ENCODER_BUTTON_18_NOTE_ID: None,
+                C4_ENCODER_BUTTON_19_NOTE_ID: None, C4_ENCODER_BUTTON_20_NOTE_ID: None, C4_ENCODER_BUTTON_21_NOTE_ID: None,
+                C4_ENCODER_BUTTON_22_NOTE_ID: None, C4_ENCODER_BUTTON_23_NOTE_ID: None, C4_ENCODER_BUTTON_24_NOTE_ID: None,
+                C4_ENCODER_BUTTON_25_NOTE_ID: None, C4_ENCODER_BUTTON_26_NOTE_ID: None, C4_ENCODER_BUTTON_27_NOTE_ID: None,
+                C4_ENCODER_BUTTON_28_NOTE_ID: None, C4_ENCODER_BUTTON_29_NOTE_ID: None, C4_ENCODER_BUTTON_30_NOTE_ID: None,
+                C4_ENCODER_BUTTON_31_NOTE_ID: None, C4_ENCODER_BUTTON_32_NOTE_ID: None},
             MIDI_CC_TYPE: {
-                C4SID_VPOT_CC_ADDRESS_1: None, C4SID_VPOT_CC_ADDRESS_2: None, C4SID_VPOT_CC_ADDRESS_3: None,
-                C4SID_VPOT_CC_ADDRESS_4: None, C4SID_VPOT_CC_ADDRESS_5: None, C4SID_VPOT_CC_ADDRESS_6: None,
-                C4SID_VPOT_CC_ADDRESS_7: None, C4SID_VPOT_CC_ADDRESS_8: None, C4SID_VPOT_CC_ADDRESS_9: None,
-                C4SID_VPOT_CC_ADDRESS_10: None, C4SID_VPOT_CC_ADDRESS_11: None, C4SID_VPOT_CC_ADDRESS_12: None,
-                C4SID_VPOT_CC_ADDRESS_13: None, C4SID_VPOT_CC_ADDRESS_14: None, C4SID_VPOT_CC_ADDRESS_15: None,
-                C4SID_VPOT_CC_ADDRESS_16: None, C4SID_VPOT_CC_ADDRESS_17: None, C4SID_VPOT_CC_ADDRESS_18: None,
-                C4SID_VPOT_CC_ADDRESS_19: None, C4SID_VPOT_CC_ADDRESS_20: None, C4SID_VPOT_CC_ADDRESS_21: None,
-                C4SID_VPOT_CC_ADDRESS_22: None, C4SID_VPOT_CC_ADDRESS_23: None, C4SID_VPOT_CC_ADDRESS_24: None,
-                C4SID_VPOT_CC_ADDRESS_25: None, C4SID_VPOT_CC_ADDRESS_26: None, C4SID_VPOT_CC_ADDRESS_27: None,
-                C4SID_VPOT_CC_ADDRESS_28: None, C4SID_VPOT_CC_ADDRESS_29: None, C4SID_VPOT_CC_ADDRESS_30: None,
-                C4SID_VPOT_CC_ADDRESS_31: None, C4SID_VPOT_CC_ADDRESS_32: None}}
+                C4_ENCODER_1_CC_ID: None, C4_ENCODER_2_CC_ID: None, C4_ENCODER_3_CC_ID: None,
+                C4_ENCODER_4_CC_ID: None, C4_ENCODER_5_CC_ID: None, C4_ENCODER_6_CC_ID: None,
+                C4_ENCODER_7_CC_ID: None, C4_ENCODER_8_CC_ID: None, C4_ENCODER_9_CC_ID: None,
+                C4_ENCODER_10_CC_ID: None, C4_ENCODER_11_CC_ID: None, C4_ENCODER_12_CC_ID: None,
+                C4_ENCODER_13_CC_ID: None, C4_ENCODER_14_CC_ID: None, C4_ENCODER_15_CC_ID: None,
+                C4_ENCODER_16_CC_ID: None, C4_ENCODER_17_CC_ID: None, C4_ENCODER_18_CC_ID: None,
+                C4_ENCODER_19_CC_ID: None, C4_ENCODER_20_CC_ID: None, C4_ENCODER_21_CC_ID: None,
+                C4_ENCODER_22_CC_ID: None, C4_ENCODER_23_CC_ID: None, C4_ENCODER_24_CC_ID: None,
+                C4_ENCODER_25_CC_ID: None, C4_ENCODER_26_CC_ID: None, C4_ENCODER_27_CC_ID: None,
+                C4_ENCODER_28_CC_ID: None, C4_ENCODER_29_CC_ID: None, C4_ENCODER_30_CC_ID: None,
+                C4_ENCODER_31_CC_ID: None, C4_ENCODER_32_CC_ID: None}}
 
     def destroy(self):
         self.disconnect()
         self._model = None
         super(C4ElementModel, self).destroy()
 
-    def make_encoder(self, cc_id=C4SID_VPOT_CC_ADDRESS_1, *a, **k):
+    def make_framework_encoder(self, cc_id=C4_ENCODER_1_CC_ID, *a, **k):
+        if self._model[MIDI_CC_TYPE][cc_id] is None:
+            name = 'Encoder_Control_%d' % V2C4Component.convert_encoder_id_value(cc_id)
+            self._model[MIDI_CC_TYPE][cc_id] = self._element_factory.make_framework_encoder(cc_id, *a, **k)
+            # name = 'Encoder_Control_%d' % V2C4Component.convert_encoder_id_value(cc_id)
+            # self._model[MIDI_CC_TYPE][cc_id] = self._element_factory.make_framework_encoder(cc_id, name=name, *a, **k)
+        else:
+            assert False
+        return self._model[MIDI_CC_TYPE][cc_id]
+
+    def make_encoder(self, cc_id=C4_ENCODER_1_CC_ID, *a, **k):
         if self._model[MIDI_CC_TYPE][cc_id] is None:
             self._model[MIDI_CC_TYPE][cc_id] = self._element_factory.make_encoder(cc_id, *a, **k)
         else:
@@ -145,7 +155,7 @@ class C4ElementModel(V2C4Component):
         self.make_all_encoder_buttons(*a, **k)
         self.make_all_button_buttons(*a, **k)
 
-    def get_encoder(self, cc_id=C4SID_VPOT_CC_ADDRESS_1):
+    def get_encoder(self, cc_id=C4_ENCODER_1_CC_ID):
         return self._model[MIDI_CC_TYPE][cc_id]
 
     def get_encoder_by_index(self, encoder_index=0):
