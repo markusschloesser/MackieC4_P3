@@ -13,6 +13,7 @@ class LedMappingType(object):
 
 
 # min  max leds in ring illuminated
+# (multiples of 0x10 mean "all ring LEDS OFF" [0, 16, 32, 48]
 encoder_ring_led_mode_cc_min_max_values = {
     LedMappingType.VPOT_DISPLAY_SINGLE_DOT: (0x01, 0x0B),  # 01 - 0B
     LedMappingType.VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B),  # 11 - 1B
