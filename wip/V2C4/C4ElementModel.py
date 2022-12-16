@@ -25,13 +25,13 @@ class C4ElementModel(V2C4Component):
 
         self._model = {
             MIDI_NOTE_TYPE: {
-                C4SID_SPLIT: None, C4SID_LOCK: None, C4SID_SPLIT_ERASE: None,
-                C4SID_MARKER: None, C4SID_TRACK: None, C4SID_CHANNEL_STRIP: None,
-                C4SID_FUNCTION: None, C4SID_BANK_LEFT: None, C4SID_BANK_RIGHT: None,
-                C4SID_SINGLE_LEFT: None, C4SID_SINGLE_RIGHT: None, C4SID_SHIFT: None,
-                C4SID_OPTION: None, C4SID_CONTROL: None, C4SID_ALT: None,
-                C4SID_SLOT_UP: None, C4SID_SLOT_DOWN: None, C4SID_TRACK_LEFT: None,
-                C4SID_TRACK_RIGHT: None,
+                C4SID_SPLIT_NOTE_ID: None, C4SID_LOCK_NOTE_ID: None, C4SID_SPLIT_ERASE_NOTE_ID: None,
+                C4SID_MARKER_NOTE_ID: None, C4SID_TRACK_NOTE_ID: None, C4SID_CHANNEL_STRIP_NOTE_ID: None,
+                C4SID_FUNCTION_NOTE_ID: None, C4SID_BANK_LEFT_NOTE_ID: None, C4SID_BANK_RIGHT_NOTE_ID: None,
+                C4SID_SINGLE_LEFT_NOTE_ID: None, C4SID_SINGLE_RIGHT_NOTE_ID: None, C4SID_SHIFT_NOTE_ID: None,
+                C4SID_OPTION_NOTE_ID: None, C4SID_CONTROL_NOTE_ID: None, C4SID_ALT_NOTE_ID: None,
+                C4SID_SLOT_UP_NOTE_ID: None, C4SID_SLOT_DOWN_NOTE_ID: None, C4SID_TRACK_LEFT_NOTE_ID: None,
+                C4SID_TRACK_RIGHT_NOTE_ID: None,
                 C4_ENCODER_BUTTON_1_NOTE_ID: None, C4_ENCODER_BUTTON_2_NOTE_ID: None, C4_ENCODER_BUTTON_3_NOTE_ID: None,
                 C4_ENCODER_BUTTON_4_NOTE_ID: None, C4_ENCODER_BUTTON_5_NOTE_ID: None, C4_ENCODER_BUTTON_6_NOTE_ID: None,
                 C4_ENCODER_BUTTON_7_NOTE_ID: None, C4_ENCODER_BUTTON_8_NOTE_ID: None, C4_ENCODER_BUTTON_9_NOTE_ID: None,
@@ -61,13 +61,13 @@ class C4ElementModel(V2C4Component):
         self._display_factory = None
         self._model = {
             MIDI_NOTE_TYPE: {
-                C4SID_SPLIT: None, C4SID_LOCK: None, C4SID_SPLIT_ERASE: None,
-                C4SID_MARKER: None, C4SID_TRACK: None, C4SID_CHANNEL_STRIP: None,
-                C4SID_FUNCTION: None, C4SID_BANK_LEFT: None, C4SID_BANK_RIGHT: None,
-                C4SID_SINGLE_LEFT: None, C4SID_SINGLE_RIGHT: None, C4SID_SHIFT: None,
-                C4SID_OPTION: None, C4SID_CONTROL: None, C4SID_ALT: None,
-                C4SID_SLOT_UP: None, C4SID_SLOT_DOWN: None, C4SID_TRACK_LEFT: None,
-                C4SID_TRACK_RIGHT: None,
+                C4SID_SPLIT_NOTE_ID: None, C4SID_LOCK_NOTE_ID: None, C4SID_SPLIT_ERASE_NOTE_ID: None,
+                C4SID_MARKER_NOTE_ID: None, C4SID_TRACK_NOTE_ID: None, C4SID_CHANNEL_STRIP_NOTE_ID: None,
+                C4SID_FUNCTION_NOTE_ID: None, C4SID_BANK_LEFT_NOTE_ID: None, C4SID_BANK_RIGHT_NOTE_ID: None,
+                C4SID_SINGLE_LEFT_NOTE_ID: None, C4SID_SINGLE_RIGHT_NOTE_ID: None, C4SID_SHIFT_NOTE_ID: None,
+                C4SID_OPTION_NOTE_ID: None, C4SID_CONTROL_NOTE_ID: None, C4SID_ALT_NOTE_ID: None,
+                C4SID_SLOT_UP_NOTE_ID: None, C4SID_SLOT_DOWN_NOTE_ID: None, C4SID_TRACK_LEFT_NOTE_ID: None,
+                C4SID_TRACK_RIGHT_NOTE_ID: None,
                 C4_ENCODER_BUTTON_1_NOTE_ID: None, C4_ENCODER_BUTTON_2_NOTE_ID: None, C4_ENCODER_BUTTON_3_NOTE_ID: None,
                 C4_ENCODER_BUTTON_4_NOTE_ID: None, C4_ENCODER_BUTTON_5_NOTE_ID: None, C4_ENCODER_BUTTON_6_NOTE_ID: None,
                 C4_ENCODER_BUTTON_7_NOTE_ID: None, C4_ENCODER_BUTTON_8_NOTE_ID: None, C4_ENCODER_BUTTON_9_NOTE_ID: None,
@@ -118,7 +118,7 @@ class C4ElementModel(V2C4Component):
         for cc_id in encoder_cc_ids:
             self.make_encoder(cc_id, *a, **k)
 
-    def make_button(self, note_id=C4SID_SPLIT, *a, **k):
+    def make_button(self, note_id=C4SID_SPLIT_NOTE_ID, *a, **k):
         if self._model[MIDI_NOTE_TYPE][note_id] is None:
             self._model[MIDI_NOTE_TYPE][note_id] = self._element_factory.make_button(note_id, *a, **k)
         else:
@@ -130,25 +130,25 @@ class C4ElementModel(V2C4Component):
             self.make_button(note_id, *a, **k)
 
     def make_all_button_buttons(self, *a, **k):
-        self.make_button(C4SID_SPLIT, *a, **k)
-        self.make_button(C4SID_LOCK, *a, **k)
-        self.make_button(C4SID_SPLIT_ERASE, *a, **k)
-        self.make_button(C4SID_MARKER, *a, **k)
-        self.make_button(C4SID_TRACK, *a, **k)
-        self.make_button(C4SID_CHANNEL_STRIP, *a, **k)
-        self.make_button(C4SID_FUNCTION, *a, **k)
-        self.make_button(C4SID_BANK_LEFT, *a, **k)
-        self.make_button(C4SID_BANK_RIGHT, *a, **k)
-        self.make_button(C4SID_SINGLE_LEFT, *a, **k)
-        self.make_button(C4SID_SINGLE_RIGHT, *a, **k)
-        self.make_button(C4SID_SHIFT, *a, **k)
-        self.make_button(C4SID_OPTION, *a, **k)
-        self.make_button(C4SID_CONTROL, *a, **k)
-        self.make_button(C4SID_ALT, *a, **k)
-        self.make_button(C4SID_SLOT_UP, *a, **k)
-        self.make_button(C4SID_SLOT_DOWN, *a, **k)
-        self.make_button(C4SID_TRACK_LEFT, *a, **k)
-        self.make_button(C4SID_TRACK_RIGHT, *a, **k)
+        self.make_button(C4SID_SPLIT_NOTE_ID, *a, **k)
+        self.make_button(C4SID_LOCK_NOTE_ID, *a, **k)
+        self.make_button(C4SID_SPLIT_ERASE_NOTE_ID, *a, **k)
+        self.make_button(C4SID_MARKER_NOTE_ID, *a, **k)
+        self.make_button(C4SID_TRACK_NOTE_ID, *a, **k)
+        self.make_button(C4SID_CHANNEL_STRIP_NOTE_ID, *a, **k)
+        self.make_button(C4SID_FUNCTION_NOTE_ID, *a, **k)
+        self.make_button(C4SID_BANK_LEFT_NOTE_ID, *a, **k)
+        self.make_button(C4SID_BANK_RIGHT_NOTE_ID, *a, **k)
+        self.make_button(C4SID_SINGLE_LEFT_NOTE_ID, *a, **k)
+        self.make_button(C4SID_SINGLE_RIGHT_NOTE_ID, *a, **k)
+        self.make_button(C4SID_SHIFT_NOTE_ID, *a, **k)
+        self.make_button(C4SID_OPTION_NOTE_ID, *a, **k)
+        self.make_button(C4SID_CONTROL_NOTE_ID, *a, **k)
+        self.make_button(C4SID_ALT_NOTE_ID, *a, **k)
+        self.make_button(C4SID_SLOT_UP_NOTE_ID, *a, **k)
+        self.make_button(C4SID_SLOT_DOWN_NOTE_ID, *a, **k)
+        self.make_button(C4SID_TRACK_LEFT_NOTE_ID, *a, **k)
+        self.make_button(C4SID_TRACK_RIGHT_NOTE_ID, *a, **k)
 
     def make_all_c4_elements(self, *a, **k):
         self.make_all_encoders(*a, **k)
@@ -167,7 +167,7 @@ class C4ElementModel(V2C4Component):
         assert column in range(NUM_ENCODERS_ONE_ROW)
         return self.get_encoder_by_index(row * NUM_ENCODERS_ONE_ROW + column)
 
-    def get_button(self, note_id=C4SID_SPLIT):
+    def get_button(self, note_id=C4SID_SPLIT_NOTE_ID):
         return self._model[MIDI_NOTE_TYPE][note_id]
 
     def get_button_by_encoder_index(self, encoder_index=0):
@@ -181,34 +181,34 @@ class C4ElementModel(V2C4Component):
 
     def get_assignment_buttons(self):
         return {
-            C4SID_MARKER: self._model[MIDI_NOTE_TYPE][C4SID_MARKER],
-            C4SID_TRACK: self._model[MIDI_NOTE_TYPE][C4SID_TRACK],
-            C4SID_CHANNEL_STRIP: self._model[MIDI_NOTE_TYPE][C4SID_CHANNEL_STRIP],
-            C4SID_FUNCTION: self._model[MIDI_NOTE_TYPE][C4SID_FUNCTION]
+            C4SID_MARKER_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_MARKER_NOTE_ID],
+            C4SID_TRACK_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_TRACK_NOTE_ID],
+            C4SID_CHANNEL_STRIP_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_CHANNEL_STRIP_NOTE_ID],
+            C4SID_FUNCTION_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_FUNCTION_NOTE_ID]
                 }
 
     def get_modifier_buttons(self):
         return {
-            C4SID_SHIFT: self._model[MIDI_NOTE_TYPE][C4SID_SHIFT],
-            C4SID_OPTION: self._model[MIDI_NOTE_TYPE][C4SID_OPTION],
-            C4SID_CONTROL: self._model[MIDI_NOTE_TYPE][C4SID_CONTROL],
-            C4SID_ALT: self._model[MIDI_NOTE_TYPE][C4SID_ALT]
+            C4SID_SHIFT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_SHIFT_NOTE_ID],
+            C4SID_OPTION_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_OPTION_NOTE_ID],
+            C4SID_CONTROL_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_CONTROL_NOTE_ID],
+            C4SID_ALT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_ALT_NOTE_ID]
                 }
 
     def get_parameter_buttons(self):
         return {
-            C4SID_BANK_LEFT: self._model[MIDI_NOTE_TYPE][C4SID_BANK_LEFT],
-            C4SID_BANK_RIGHT: self._model[MIDI_NOTE_TYPE][C4SID_BANK_RIGHT],
-            C4SID_SINGLE_LEFT: self._model[MIDI_NOTE_TYPE][C4SID_SINGLE_LEFT],
-            C4SID_SINGLE_RIGHT: self._model[MIDI_NOTE_TYPE][C4SID_SINGLE_RIGHT]
+            C4SID_BANK_LEFT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_BANK_LEFT_NOTE_ID],
+            C4SID_BANK_RIGHT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_BANK_RIGHT_NOTE_ID],
+            C4SID_SINGLE_LEFT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_SINGLE_LEFT_NOTE_ID],
+            C4SID_SINGLE_RIGHT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_SINGLE_RIGHT_NOTE_ID]
                 }
 
     def get_session_nav_buttons(self):
         return {
-            C4SID_SLOT_UP: self._model[MIDI_NOTE_TYPE][C4SID_SLOT_UP],
-            C4SID_SLOT_DOWN: self._model[MIDI_NOTE_TYPE][C4SID_SLOT_DOWN],
-            C4SID_TRACK_LEFT: self._model[MIDI_NOTE_TYPE][C4SID_TRACK_LEFT],
-            C4SID_TRACK_RIGHT: self._model[MIDI_NOTE_TYPE][C4SID_TRACK_RIGHT]
+            C4SID_SLOT_UP_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_SLOT_UP_NOTE_ID],
+            C4SID_SLOT_DOWN_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_SLOT_DOWN_NOTE_ID],
+            C4SID_TRACK_LEFT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_TRACK_LEFT_NOTE_ID],
+            C4SID_TRACK_RIGHT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4SID_TRACK_RIGHT_NOTE_ID]
                 }
 
     def make_physical_display(self, nbr_segments=ENCODER_BANK_SIZE, nbr_display_chars=LCD_BOTTOM_ROW_OFFSET, *a, **k):

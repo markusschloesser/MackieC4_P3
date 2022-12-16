@@ -137,84 +137,84 @@ C4SID_FIRST = 0
 # and then apply the "next layout loaded" to the other three rows of encoders (and their associated displays)
 #
 # these are Note messages, so they correspond to midi notes
-C4SID_SPLIT = 0  # C -1
-C4SID_LOCK = 0x03  # 3  Eb-1
-C4SID_SPLIT_ERASE = 0x04  # 4 E -1
+C4SID_SPLIT_NOTE_ID = 0  # C -1
+C4SID_LOCK_NOTE_ID = 0x03  # 3  Eb-1
+C4SID_SPLIT_ERASE_NOTE_ID = 0x04  # 4 E -1
 
 # buttons inside the 'function' box on the C4 graphics
-system_switch_ids = range(C4SID_SPLIT, C4SID_SPLIT_ERASE + 1)
-C4SID_MARKER = 0x05  # 5  F-1
-C4SID_TRACK = 0x06  # 6  F#-1
+system_switch_ids = range(C4SID_SPLIT_NOTE_ID, C4SID_SPLIT_ERASE_NOTE_ID + 1)
+C4SID_MARKER_NOTE_ID = 0x05  # 5  F-1
+C4SID_TRACK_NOTE_ID = 0x06  # 6  F#-1
 
 # if Commander and the C4 are communicating, then you can toggle the bottom row
 # of all displays between showing the current encoder value
 # and showing any "bottom line text"
 # you cannot change/toggle channel while edit mode is active
-C4SID_CHANNEL_STRIP = 0x07  # 7  G-1
+C4SID_CHANNEL_STRIP_NOTE_ID = 0x07  # 7  G-1
 
 # if Commander and the C4 are communicating,
 # this button toggles the Run/Edit status in Commander/C4
-C4SID_FUNCTION = 0x08  # 8  G#-1
+C4SID_FUNCTION_NOTE_ID = 0x08  # 8  G#-1
 
 # buttons inside the 'assignment' box on the C4 graphics
-assignment_mode_switch_ids = range(C4SID_MARKER, C4SID_FUNCTION + 1)
-assignment_mode_to_button_id = {C4M_USER: C4SID_MARKER,
-                                C4M_PLUGINS: C4SID_TRACK,
-                                C4M_CHANNEL_STRIP: C4SID_CHANNEL_STRIP,
-                                C4M_FUNCTION: C4SID_FUNCTION}
-button_id_to_assignment_mode = {C4SID_MARKER: C4M_USER,
-                                C4SID_TRACK: C4M_PLUGINS,
-                                C4SID_CHANNEL_STRIP: C4M_CHANNEL_STRIP,
-                                C4SID_FUNCTION: C4M_FUNCTION}
+assignment_mode_switch_ids = range(C4SID_MARKER_NOTE_ID, C4SID_FUNCTION_NOTE_ID + 1)
+assignment_mode_to_button_id = {C4M_USER: C4SID_MARKER_NOTE_ID,
+                                C4M_PLUGINS: C4SID_TRACK_NOTE_ID,
+                                C4M_CHANNEL_STRIP: C4SID_CHANNEL_STRIP_NOTE_ID,
+                                C4M_FUNCTION: C4SID_FUNCTION_NOTE_ID}
+button_id_to_assignment_mode = {C4SID_MARKER_NOTE_ID: C4M_USER,
+                                C4SID_TRACK_NOTE_ID: C4M_PLUGINS,
+                                C4SID_CHANNEL_STRIP_NOTE_ID: C4M_CHANNEL_STRIP,
+                                C4SID_FUNCTION_NOTE_ID: C4M_FUNCTION}
 
 # if Commander and the C4 are communicating, then you can move back and forth
 # between pages (banks) of the currently loaded layouts (pages have 8 columns and 4 rows)
-C4SID_BANK_LEFT = 0x09  # 9     A -1
-C4SID_BANK_RIGHT = 0x0A  # 10  A#-1
+C4SID_BANK_LEFT_NOTE_ID = 0x09  # 9     A -1
+C4SID_BANK_RIGHT_NOTE_ID = 0x0A  # 10  A#-1
 
 # buttons inside the 'Parameter' box on the C4 graphics
-bank_switch_ids = range(C4SID_BANK_LEFT, C4SID_BANK_RIGHT + 1)
+bank_switch_ids = range(C4SID_BANK_LEFT_NOTE_ID, C4SID_BANK_RIGHT_NOTE_ID + 1)
 
 # if Commander and the C4 are communicating, then you can move back and forth
 # between page columns of the currently loaded layouts (pages have 8 columns and 4 rows)
 # note that page banks and single columns can scroll between loaded layouts too
-C4SID_SINGLE_LEFT = 0x0B  # 11    B -1
-C4SID_SINGLE_RIGHT = 0x0C  # 12   C 0
+C4SID_SINGLE_LEFT_NOTE_ID = 0x0B  # 11    B -1
+C4SID_SINGLE_RIGHT_NOTE_ID = 0x0C  # 12   C 0
 
 # buttons inside the 'Parameter' box on the C4 graphics
-single_switch_ids = range(C4SID_SINGLE_LEFT, C4SID_SINGLE_RIGHT + 1)
+single_switch_ids = range(C4SID_SINGLE_LEFT_NOTE_ID, C4SID_SINGLE_RIGHT_NOTE_ID + 1)
 
 # control functions just like the channel button: toggles between bottom row LCD displays
 
 
-C4SID_CONTROL = 0x0F  # 15  Eb 0
-C4SID_ALT = 0x10  # 16  E  0
-C4SID_SHIFT = 0x0D  # 13  C# 0
-C4SID_OPTION = 0x0E  # 14  D  0
+C4SID_CONTROL_NOTE_ID = 0x0F  # 15  Eb 0
+C4SID_ALT_NOTE_ID = 0x10  # 16  E  0
+C4SID_SHIFT_NOTE_ID = 0x0D  # 13  C# 0
+C4SID_OPTION_NOTE_ID = 0x0E  # 14  D  0
 # buttons inside the 'Modifiers' box on the C4 graphics (MackieControl calls them software_controls_switch_ids)
-modifier_switch_ids = range(C4SID_SHIFT, C4SID_ALT + 1)
+modifier_switch_ids = range(C4SID_SHIFT_NOTE_ID, C4SID_ALT_NOTE_ID + 1)
 
 # if Commander and the C4 are communicating, then you can move up and down
 # through rows of "layout pages" of currently loaded layouts
-C4SID_SLOT_UP = 0x11  # 17  F  0
-C4SID_SLOT_DOWN = 0x12  # 18 F# 0
+C4SID_SLOT_UP_NOTE_ID = 0x11  # 17  F  0
+C4SID_SLOT_DOWN_NOTE_ID = 0x12  # 18 F# 0
 
 # buttons around the 'solid black' ellipse on the C4 graphics
-slot_nav_switch_ids = range(C4SID_SLOT_UP, C4SID_SLOT_DOWN + 1)
+slot_nav_switch_ids = range(C4SID_SLOT_UP_NOTE_ID, C4SID_SLOT_DOWN_NOTE_ID + 1)
 
 # if Commander and the C4 are communicating, then you can move up and down
 # then you can move back and forth between pages of loaded layouts
-C4SID_TRACK_LEFT = 0x13  # 19  G  0
-C4SID_TRACK_RIGHT = 0x14  # 20 G# 0
+C4SID_TRACK_LEFT_NOTE_ID = 0x13  # 19  G  0
+C4SID_TRACK_RIGHT_NOTE_ID = 0x14  # 20 G# 0
 
 # buttons around the 'solid black' ellipse on the C4 graphics
-track_nav_switch_ids = range(C4SID_TRACK_LEFT, C4SID_TRACK_RIGHT + 1)
+track_nav_switch_ids = range(C4SID_TRACK_LEFT_NOTE_ID, C4SID_TRACK_RIGHT_NOTE_ID + 1)
 
 # encoder push button addresses
 # if Commander and the C4 are communicating, then
 # push and hold to toggle the 'button local' LCD display between 'data' and 'label' mode
 # push and release quickly to reset the value of the encoder to its default value
-C4_ENCODER_BUTTON_BASE = 0x20  # 32
+C4_ENCODER_BUTTON_NOTE_ID_BASE = 0x20  # 32
 C4_ENCODER_BUTTON_1_NOTE_ID = 0x20  # 32  G# 1
 C4_ENCODER_BUTTON_2_NOTE_ID = 0x21  # 33  A  1
 C4_ENCODER_BUTTON_3_NOTE_ID = 0x22  # 34  A# 1
@@ -302,9 +302,9 @@ C4_ENCODER_29_CC_ID = 0x1C  # 28
 C4_ENCODER_30_CC_ID = 0x1D  # 29
 C4_ENCODER_31_CC_ID = 0x1E  # 30
 C4_ENCODER_32_CC_ID = 0x1F  # 31
-C4_ENCODER_RING_BASE = 0x20  # 32
+C4_ENCODER_RING_CC_ID_BASE = 0x20  # 32
 
-encoder_cc_ids = range(C4_ENCODER_1_CC_ID, C4_ENCODER_RING_BASE)
+encoder_cc_ids = range(C4_ENCODER_1_CC_ID, C4_ENCODER_RING_CC_ID_BASE)
 encoder_cw_values = range(0x01, 0x10)  # larger values means knob is turning faster / bigger CW increments
 encoder_ccw_values = range(0x41, 0x50)  # larger values means knob is turning faster / bigger CCW increments
 
@@ -408,26 +408,26 @@ In Live terms (this midi script)
      -- "spread" is a symmetrical display mode so there are only 5 possible values
      -- "boolean" display mode only has two possible values still symmetrical over 5 steps
 """
-
-VPOT_DISPLAY_SINGLE_DOT = 0  #
-VPOT_DISPLAY_BOOST_CUT = 1  #
-VPOT_DISPLAY_WRAP = 2  #
-VPOT_DISPLAY_SPREAD = 3  #
-VPOT_DISPLAY_BOOLEAN = 4  #
-VPOT_DISPLAY_HEX_CONVERT = 0x10  # 16
-
-# min  max leds in ring illuminated
-encoder_ring_led_mode_cc_values = {VPOT_DISPLAY_SINGLE_DOT: (0x01, 0x0B),  # 01 - 0B
-                                   VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B),  # 11 - 1B
-                                   VPOT_DISPLAY_WRAP: (0x21, 0x2B),  # 21 - 2B
-                                   VPOT_DISPLAY_SPREAD: (0x31, 0x36),  # 31 - 36
-                                   VPOT_DISPLAY_BOOLEAN: (0x20, 0x2B)}  # 20 - 2B  -- goes to ON in about 6 steps
-
-encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x01,
-                                VPOT_DISPLAY_BOOST_CUT: 0x16,
-                                VPOT_DISPLAY_WRAP: 0x26,
-                                VPOT_DISPLAY_SPREAD: 0x33,
-                                VPOT_DISPLAY_BOOLEAN: 0x2B}
+# These "LED Ring" constants are now defined via LedMappingType Objects in C4EncoderMixin module
+# VPOT_DISPLAY_SINGLE_DOT = 0  #
+# VPOT_DISPLAY_BOOST_CUT = 1  #
+# VPOT_DISPLAY_WRAP = 2  #
+# VPOT_DISPLAY_SPREAD = 3  #
+# VPOT_DISPLAY_BOOLEAN = 4  #
+# VPOT_DISPLAY_HEX_CONVERT = 0x10  # 16
+#
+# # min  max leds in ring illuminated
+# encoder_ring_led_mode_cc_values = {VPOT_DISPLAY_SINGLE_DOT: (0x01, 0x0B),  # 01 - 0B
+#                                    VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B),  # 11 - 1B
+#                                    VPOT_DISPLAY_WRAP: (0x21, 0x2B),  # 21 - 2B
+#                                    VPOT_DISPLAY_SPREAD: (0x31, 0x36),  # 31 - 36
+#                                    VPOT_DISPLAY_BOOLEAN: (0x20, 0x2B)}  # 20 - 2B  -- goes to ON in about 6 steps
+#
+# encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x01,
+#                                 VPOT_DISPLAY_BOOST_CUT: 0x16,
+#                                 VPOT_DISPLAY_WRAP: 0x26,
+#                                 VPOT_DISPLAY_SPREAD: 0x33,
+#                                 VPOT_DISPLAY_BOOLEAN: 0x2B}
 
 # When an encoder is set for a "wrap" style LED ring display
 # encoder_ring_led_mode_values[VPOT_DISPLAY_WRAP] == 0x26, for example
