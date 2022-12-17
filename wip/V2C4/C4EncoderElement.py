@@ -29,8 +29,9 @@ def signed_bit_delta(value):
         return delta
     return -delta
 
+
 SIGNED_BIT_DEFAULT_DELTA = 20.0
-SIGNED_BIT_VALUE_MAP = (1, 2, 3, 4, 5, 8, 10, 11, 12, 15, 20, 50)
+SIGNED_BIT_VALUE_MAP = (1, 1, 2, 3, 4, 5, 8, 11, 11, 13, 13, 15, 15, 20, 50)  # length is 15
 
 _map_modes = map_modes = Live.MidiMap.MapMode
 ENCODER_VALUE_NORMALIZER = {_map_modes.relative_smooth_two_compliment: lambda v: v if v <= 64 else v - 128,
