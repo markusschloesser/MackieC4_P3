@@ -127,7 +127,7 @@ row_01_encoder_indexes = range(NUM_ENCODERS_ONE_ROW, NUM_ENCODERS_ONE_ROW * 2)  
 row_02_encoder_indexes = range(NUM_ENCODERS_ONE_ROW * 2, NUM_ENCODERS_ONE_ROW * 3)  # [16,17,18,19,20,21,22,23]
 row_03_encoder_indexes = range(NUM_ENCODERS_ONE_ROW * 3, NUM_ENCODERS)
 
-C4SID_FIRST = 0
+C4BTN_FIRST = 0
 
 # split is a toggle between four "split states" (None, 1/3, 2/2, 3/1)
 # if Commander and the C4 are communicating, then you can display one, two, or three
@@ -137,78 +137,78 @@ C4SID_FIRST = 0
 # and then apply the "next layout loaded" to the other three rows of encoders (and their associated displays)
 #
 # these are Note messages, so they correspond to midi notes
-C4SID_SPLIT_NOTE_ID = 0  # C -1
-C4SID_LOCK_NOTE_ID = 0x03  # 3  Eb-1
-C4SID_SPLIT_ERASE_NOTE_ID = 0x04  # 4 E -1
+C4BTN_SPLIT_NOTE_ID = 0  # C -1
+C4BTN_LOCK_NOTE_ID = 0x03  # 3  Eb-1
+C4BTN_SPLIT_ERASE_NOTE_ID = 0x04  # 4 E -1
 
 # buttons inside the 'function' box on the C4 graphics
-system_switch_ids = range(C4SID_SPLIT_NOTE_ID, C4SID_SPLIT_ERASE_NOTE_ID + 1)
-C4SID_MARKER_NOTE_ID = 0x05  # 5  F-1
-C4SID_TRACK_NOTE_ID = 0x06  # 6  F#-1
+system_switch_ids = range(C4BTN_SPLIT_NOTE_ID, C4BTN_SPLIT_ERASE_NOTE_ID + 1)
+C4BTN_MARKER_NOTE_ID = 0x05  # 5  F-1
+C4BTN_TRACK_NOTE_ID = 0x06  # 6  F#-1
 
 # if Commander and the C4 are communicating, then you can toggle the bottom row
 # of all displays between showing the current encoder value
 # and showing any "bottom line text"
 # you cannot change/toggle channel while edit mode is active
-C4SID_CHANNEL_STRIP_NOTE_ID = 0x07  # 7  G-1
+C4BTN_CHANNEL_STRIP_NOTE_ID = 0x07  # 7  G-1
 
 # if Commander and the C4 are communicating,
 # this button toggles the Run/Edit status in Commander/C4
-C4SID_FUNCTION_NOTE_ID = 0x08  # 8  G#-1
+C4BTN_FUNCTION_NOTE_ID = 0x08  # 8  G#-1
 
 # buttons inside the 'assignment' box on the C4 graphics
-assignment_mode_switch_ids = range(C4SID_MARKER_NOTE_ID, C4SID_FUNCTION_NOTE_ID + 1)
-assignment_mode_to_button_id = {C4M_USER: C4SID_MARKER_NOTE_ID,
-                                C4M_PLUGINS: C4SID_TRACK_NOTE_ID,
-                                C4M_CHANNEL_STRIP: C4SID_CHANNEL_STRIP_NOTE_ID,
-                                C4M_FUNCTION: C4SID_FUNCTION_NOTE_ID}
-button_id_to_assignment_mode = {C4SID_MARKER_NOTE_ID: C4M_USER,
-                                C4SID_TRACK_NOTE_ID: C4M_PLUGINS,
-                                C4SID_CHANNEL_STRIP_NOTE_ID: C4M_CHANNEL_STRIP,
-                                C4SID_FUNCTION_NOTE_ID: C4M_FUNCTION}
+assignment_mode_switch_ids = range(C4BTN_MARKER_NOTE_ID, C4BTN_FUNCTION_NOTE_ID + 1)
+assignment_mode_to_button_id = {C4M_USER: C4BTN_MARKER_NOTE_ID,
+                                C4M_PLUGINS: C4BTN_TRACK_NOTE_ID,
+                                C4M_CHANNEL_STRIP: C4BTN_CHANNEL_STRIP_NOTE_ID,
+                                C4M_FUNCTION: C4BTN_FUNCTION_NOTE_ID}
+button_id_to_assignment_mode = {C4BTN_MARKER_NOTE_ID: C4M_USER,
+                                C4BTN_TRACK_NOTE_ID: C4M_PLUGINS,
+                                C4BTN_CHANNEL_STRIP_NOTE_ID: C4M_CHANNEL_STRIP,
+                                C4BTN_FUNCTION_NOTE_ID: C4M_FUNCTION}
 
 # if Commander and the C4 are communicating, then you can move back and forth
 # between pages (banks) of the currently loaded layouts (pages have 8 columns and 4 rows)
-C4SID_BANK_LEFT_NOTE_ID = 0x09  # 9     A -1
-C4SID_BANK_RIGHT_NOTE_ID = 0x0A  # 10  A#-1
+C4BTN_BANK_LEFT_NOTE_ID = 0x09  # 9     A -1
+C4BTN_BANK_RIGHT_NOTE_ID = 0x0A  # 10  A#-1
 
 # buttons inside the 'Parameter' box on the C4 graphics
-bank_switch_ids = range(C4SID_BANK_LEFT_NOTE_ID, C4SID_BANK_RIGHT_NOTE_ID + 1)
+bank_switch_ids = range(C4BTN_BANK_LEFT_NOTE_ID, C4BTN_BANK_RIGHT_NOTE_ID + 1)
 
 # if Commander and the C4 are communicating, then you can move back and forth
 # between page columns of the currently loaded layouts (pages have 8 columns and 4 rows)
 # note that page banks and single columns can scroll between loaded layouts too
-C4SID_SINGLE_LEFT_NOTE_ID = 0x0B  # 11    B -1
-C4SID_SINGLE_RIGHT_NOTE_ID = 0x0C  # 12   C 0
+C4BTN_SINGLE_LEFT_NOTE_ID = 0x0B  # 11    B -1
+C4BTN_SINGLE_RIGHT_NOTE_ID = 0x0C  # 12   C 0
 
 # buttons inside the 'Parameter' box on the C4 graphics
-single_switch_ids = range(C4SID_SINGLE_LEFT_NOTE_ID, C4SID_SINGLE_RIGHT_NOTE_ID + 1)
+single_switch_ids = range(C4BTN_SINGLE_LEFT_NOTE_ID, C4BTN_SINGLE_RIGHT_NOTE_ID + 1)
 
 # control functions just like the channel button: toggles between bottom row LCD displays
 
 
-C4SID_CONTROL_NOTE_ID = 0x0F  # 15  Eb 0
-C4SID_ALT_NOTE_ID = 0x10  # 16  E  0
-C4SID_SHIFT_NOTE_ID = 0x0D  # 13  C# 0
-C4SID_OPTION_NOTE_ID = 0x0E  # 14  D  0
+C4BTN_CONTROL_NOTE_ID = 0x0F  # 15  Eb 0
+C4BTN_ALT_NOTE_ID = 0x10  # 16  E  0
+C4BTN_SHIFT_NOTE_ID = 0x0D  # 13  C# 0
+C4BTN_OPTION_NOTE_ID = 0x0E  # 14  D  0
 # buttons inside the 'Modifiers' box on the C4 graphics (MackieControl calls them software_controls_switch_ids)
-modifier_switch_ids = range(C4SID_SHIFT_NOTE_ID, C4SID_ALT_NOTE_ID + 1)
+modifier_switch_ids = range(C4BTN_SHIFT_NOTE_ID, C4BTN_ALT_NOTE_ID + 1)
 
 # if Commander and the C4 are communicating, then you can move up and down
 # through rows of "layout pages" of currently loaded layouts
-C4SID_SLOT_UP_NOTE_ID = 0x11  # 17  F  0
-C4SID_SLOT_DOWN_NOTE_ID = 0x12  # 18 F# 0
+C4BTN_SLOT_UP_NOTE_ID = 0x11  # 17  F  0
+C4BTN_SLOT_DOWN_NOTE_ID = 0x12  # 18 F# 0
 
 # buttons around the 'solid black' ellipse on the C4 graphics
-slot_nav_switch_ids = range(C4SID_SLOT_UP_NOTE_ID, C4SID_SLOT_DOWN_NOTE_ID + 1)
+slot_nav_switch_ids = range(C4BTN_SLOT_UP_NOTE_ID, C4BTN_SLOT_DOWN_NOTE_ID + 1)
 
 # if Commander and the C4 are communicating, then you can move up and down
 # then you can move back and forth between pages of loaded layouts
-C4SID_TRACK_LEFT_NOTE_ID = 0x13  # 19  G  0
-C4SID_TRACK_RIGHT_NOTE_ID = 0x14  # 20 G# 0
+C4BTN_TRACK_LEFT_NOTE_ID = 0x13  # 19  G  0
+C4BTN_TRACK_RIGHT_NOTE_ID = 0x14  # 20 G# 0
 
 # buttons around the 'solid black' ellipse on the C4 graphics
-track_nav_switch_ids = range(C4SID_TRACK_LEFT_NOTE_ID, C4SID_TRACK_RIGHT_NOTE_ID + 1)
+track_nav_switch_ids = range(C4BTN_TRACK_LEFT_NOTE_ID, C4BTN_TRACK_RIGHT_NOTE_ID + 1)
 
 # encoder push button addresses
 # if Commander and the C4 are communicating, then

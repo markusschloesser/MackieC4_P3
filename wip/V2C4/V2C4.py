@@ -46,14 +46,14 @@ class V2C4(ControlSurface):
             mixer = C4MixerComponent()
             mixer.set_script_handle(self)
             mixer.set_select_buttons(
-                self._model.make_button(C4SID_TRACK_RIGHT), self._model.make_button(C4SID_TRACK_LEFT))
+                self._model.make_button(C4BTN_TRACK_RIGHT_NOTE_ID), self._model.make_button(C4BTN_TRACK_LEFT_NOTE_ID))
             mixer.set_bank_buttons(
-                self._model.make_button(C4SID_BANK_RIGHT),  self._model.make_button(C4SID_BANK_LEFT))
+                self._model.make_button(C4BTN_BANK_RIGHT_NOTE_ID),  self._model.make_button(C4BTN_BANK_LEFT_NOTE_ID))
 
             mixer.set_selected_strip_mute_button(self._model.make_button(C4_ENCODER_BUTTON_30_NOTE_ID, *a, **k))
             mixer.set_selected_strip_solo_button(self._model.make_button(C4_ENCODER_BUTTON_29_NOTE_ID, *a, **k))
             mixer.set_selected_strip_arm_button(self._model.make_button(C4_ENCODER_BUTTON_28_NOTE_ID, *a, **k))
-            mixer.set_shift_button(self._model.make_button(C4SID_SHIFT, *a, **k))
+            mixer.set_shift_button(self._model.make_button(C4BTN_SHIFT_NOTE_ID, *a, **k))
 
             device = C4DeviceComponent(device_selection_follows_track_selection=True)
             device.set_script_handle(self)
@@ -158,19 +158,19 @@ class V2C4(ControlSurface):
             mixer.set_selected_strip_pan_control(pan_encoder)
             channel_encoders = tuple([volume_encoder, pan_encoder])
 
-            assignment_buttons = [self._model.make_button(C4SID_MARKER)]  # ,
-                                  # self._model.make_button(C4SID_CHANNEL_STRIP),
-                                  # self._model.make_button(C4SID_TRACK),
-                                  # self._model.make_button(C4SID_FUNCTION)]
+            assignment_buttons = [self._model.make_button(C4BTN_MARKER_NOTE_ID)]  # ,
+                                  # self._model.make_button(C4BTN_CHANNEL_STRIP_NOTE_ID),
+                                  # self._model.make_button(C4BTN_TRACK_NOTE_ID),
+                                  # self._model.make_button(C4BTN_FUNCTION_NOTE_ID)]
             assignment_buttons = tuple(assignment_buttons)
-            modifier_buttons = [None]  # [self._model.make_button(C4SID_SHIFT)]  # ,
-                                # self._model.make_button(C4SID_CONTROL),
-                                # self._model.make_button(C4SID_OPTION),
-                                # self._model.make_button(C4SID_ALT)]
+            modifier_buttons = [None]  # [self._model.make_button(C4BTN_SHIFT_NOTE_ID)]  # ,
+                                # self._model.make_button(C4BTN_CONTROL_NOTE_ID),
+                                # self._model.make_button(C4BTN_OPTION_NOTE_ID),
+                                # self._model.make_button(C4BTN_ALT_NOTE_ID)]
             modifier_buttons = tuple(modifier_buttons)
 
-            device_bank_buttons = tuple([self._model.make_button(C4SID_SINGLE_RIGHT),
-                                         self._model.make_button(C4SID_SINGLE_LEFT)])
+            device_bank_buttons = tuple([self._model.make_button(C4BTN_SINGLE_RIGHT_NOTE_ID),
+                                         self._model.make_button(C4BTN_SINGLE_LEFT_NOTE_ID)])
 
             mode_selector = C4ModeSelector(mixer, device, session, channel_encoders, encoders,
                                            assignment_buttons, modifier_buttons, device_bank_buttons,
