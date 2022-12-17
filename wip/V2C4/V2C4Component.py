@@ -38,7 +38,7 @@ class V2C4Component(object):
                 self._script_backdoor_handle.get_logger().info('Logging encountered illegal character(s)!')
 
     @staticmethod
-    def make_scaling_function(self, lval_min, lval_max, rval_min, rval_max):
+    def make_scaling_function(lval_min, lval_max, rval_min, rval_max):
         # Figure out how 'wide' each range is
         fixed_range = lval_max - lval_min
         range_to_scale = rval_max - rval_min
