@@ -1,27 +1,28 @@
 from .V2C4Component import *
 
-from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
+import Live
 
+from _Framework.PhysicalDisplayElement import PhysicalDisplayElement
 from _Framework.InputControlElement import *
 from _Framework.ButtonElement import ButtonElement
+from _Framework.EncoderElement import EncoderElement
+
 from .C4ElementFactory import C4ElementFactory
 from .C4DisplayFactory import C4DisplayFactory
 from .C4EncoderElement import C4EncoderElement
 
 
-class C4ElementModel(V2C4Component):
+class C4MidiMap(C4DisplayFactory, V2C4Component):
 
     __module__ = __name__
 
     def __init__(self):
         V2C4Component.__init__(self)
-        self._element_factory = C4ElementFactory()
-        self._display_factory = C4DisplayFactory()
 
-        self.lcd_hello_message = self._display_factory.lcd_display_hello_message
-        self.lcd_goodbye_message = self._display_factory.lcd_display_goodbye_message
-        self.lcd_clear_message = self._display_factory.lcd_display_clear_message
-        self.lcd_id_message = self._display_factory.lcd_display_id_message
+        self.lcd_hello_message = self.lcd_display_hello_message()
+        self.lcd_goodbye_message = self.lcd_display_goodbye_message()
+        self.lcd_clear_message = self.lcd_display_clear_message()
+        self.lcd_id_message = self.lcd_display_id_message()
 
         self._model = {
             MIDI_NOTE_TYPE: {
@@ -57,8 +58,6 @@ class C4ElementModel(V2C4Component):
                 C4_ENCODER_31_CC_ID: None, C4_ENCODER_32_CC_ID: None}}
 
     def disconnect(self):
-        self._element_factory = None
-        self._display_factory = None
         self._model = {
             MIDI_NOTE_TYPE: {
                 C4BTN_SPLIT_NOTE_ID: None, C4BTN_LOCK_NOTE_ID: None, C4BTN_SPLIT_ERASE_NOTE_ID: None,
@@ -95,21 +94,20 @@ class C4ElementModel(V2C4Component):
     def destroy(self):
         self.disconnect()
         self._model = None
-        super(C4ElementModel, self).destroy()
+        super(C4MidiMap, self).destroy()
 
     def make_framework_encoder(self, cc_id=C4_ENCODER_1_CC_ID, *a, **k):
         if self._model[MIDI_CC_TYPE][cc_id] is None:
-            name = 'Encoder_Control_%d' % V2C4Component.convert_encoder_id_value(cc_id)
-            self._model[MIDI_CC_TYPE][cc_id] = self._element_factory.make_framework_encoder(cc_id, *a, **k)
-            # name = 'Encoder_Control_%d' % V2C4Component.convert_encoder_id_value(cc_id)
-            # self._model[MIDI_CC_TYPE][cc_id] = self._element_factory.make_framework_encoder(cc_id, name=name, *a, **k)
+            name = 'Encoder_Control_%d' % cc_id
+            self._model[MIDI_CC_TYPE][cc_id] = EncoderElement(MIDI_CC_TYPE, C4_MIDI_CHANNEL, cc_id,
+                                                              Live.MidiMap.MapMode.relative_signed_bit, *a, **k)
         else:
             assert False
         return self._model[MIDI_CC_TYPE][cc_id]
 
-    def make_encoder(self, cc_id=C4_ENCODER_1_CC_ID, *a, **k):
+    def make_encoder(self, cc_id=C4_ENCODER_1_CC_ID, nm=None, *a, **k):
         if self._model[MIDI_CC_TYPE][cc_id] is None:
-            self._model[MIDI_CC_TYPE][cc_id] = self._element_factory.make_encoder(cc_id, *a, **k)
+            self._model[MIDI_CC_TYPE][cc_id] = C4EncoderElement(cc_id, name=nm, *a, **k)
         else:
             assert False
         return self._model[MIDI_CC_TYPE][cc_id]
@@ -118,9 +116,10 @@ class C4ElementModel(V2C4Component):
         for cc_id in encoder_cc_ids:
             self.make_encoder(cc_id, *a, **k)
 
-    def make_button(self, note_id=C4BTN_SPLIT_NOTE_ID, *a, **k):
+    def make_button(self, note_id=C4BTN_SPLIT_NOTE_ID, channel=0, is_momentary=True, *a, **k):
         if self._model[MIDI_NOTE_TYPE][note_id] is None:
-            self._model[MIDI_NOTE_TYPE][note_id] = self._element_factory.make_button(note_id, *a, **k)
+            self._model[MIDI_NOTE_TYPE][note_id] = ButtonElement(is_momentary, MIDI_NOTE_TYPE,
+                                                                 channel, note_id, *a, **k)
         else:
             assert False
         return self._model[MIDI_NOTE_TYPE][note_id]
@@ -210,9 +209,6 @@ class C4ElementModel(V2C4Component):
             C4BTN_TRACK_LEFT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4BTN_TRACK_LEFT_NOTE_ID],
             C4BTN_TRACK_RIGHT_NOTE_ID: self._model[MIDI_NOTE_TYPE][C4BTN_TRACK_RIGHT_NOTE_ID]
                 }
-
-    def make_physical_display(self, nbr_segments=ENCODER_BANK_SIZE, nbr_display_chars=LCD_BOTTOM_ROW_OFFSET, *a, **k):
-        return self._display_factory.make_physical_display(nbr_segments, nbr_display_chars, *a, **k)
 
     def set_script_handle(self, main_script=None):
         self._set_script_handle(main_script)
