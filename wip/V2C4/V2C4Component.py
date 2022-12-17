@@ -60,8 +60,10 @@ class V2C4Component(object):
             output the same number
         """
         return_value = convertable_value
-        if convertable_value in encoder_cc_ids:
+        if convertable_value in encoder_ring_cc_ids:
             return_value = convertable_value - 0x20
+        elif convertable_value in encoder_cc_ids:
+            return_value = convertable_value + 0x20
         elif convertable_value in encoder_index_range:
             return_value = convertable_value + 0x20
         return return_value
