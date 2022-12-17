@@ -39,11 +39,9 @@ ENCODER_VALUE_NORMALIZER = {_map_modes.relative_smooth_two_compliment: lambda v:
    _map_modes.relative_signed_bit: signed_bit_delta}
 
 
-class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
+class C4EncoderElement(EncoderElement, C4EncoderMixin, V2C4Component):
     """
-    currently modeled on EncoderElement itself inheriting from InputControlElement
-    formerly modeled on RingedEncoderElement in _APC and PeekableEncoderElement in _AxiomPro
-    and TouchEncoderElementBase + TouchEncoderElement in EncoderElement itself
+
     """
 
     __module__ = __name__
