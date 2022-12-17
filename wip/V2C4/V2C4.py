@@ -9,10 +9,10 @@ from _Framework.TransportComponent import TransportComponent
 from _Framework.MixerComponent import MixerComponent
 
 from .C4EncoderElement import C4EncoderElement
-from .C4Encoders import C4Encoders
+# from .C4Encoders import C4Encoders
 from .C4EncoderMixin import LedMappingType
 from .C4ChannelStripComponent import C4ChannelStripComponent
-from .C4ElementModel import C4ElementModel
+from .C4MidiMap import C4MidiMap
 from .C4ModeSelector import C4ModeSelector
 from .C4DeviceComponent import C4DeviceComponent
 from .C4MixerComponent import C4MixerComponent
@@ -37,7 +37,7 @@ class V2C4(ControlSurface):
     def __init__(self, c_instance, *a, **k):
         ControlSurface.__init__(self, c_instance, *a, **k)
         with self.component_guard():
-            self._model = C4ElementModel()
+            self._model = C4MidiMap()
             self._model.set_script_handle(self)
 
             self._suggested_input_port = 'MackieC4'
@@ -81,9 +81,9 @@ class V2C4(ControlSurface):
                     {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(*a, **k),
                      LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(*a, **k)}}
 
-            self.clear_display_msg = self._model.lcd_clear_message
-            self.hello_display_msg = self._model.lcd_hello_message
-            self.goodbye_display_msg = self._model.lcd_goodbye_message
+            self.clear_display_msg = self._model.lcd_display_clear_message()
+            self.hello_display_msg = self._model.lcd_display_hello_message()
+            self.goodbye_display_msg = self._model.lcd_display_goodbye_message()
             foot_part = (SYSEX_FOOTER, )
             for i in LCD_DISPLAY_ADDRESSES:
                 for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
@@ -118,9 +118,9 @@ class V2C4(ControlSurface):
                 e = self._model.make_encoder(cc_id, *a, **k)
                 e.set_script_handle(self)
                 encoders.append(e)
-                # self.log_message("device_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
-                #     cc_id, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
-                #     e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
+                # self.log_message("<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}> fb cc nbr<{}>".format(
+                #     e.name, e.encoder_index(), e.c4_row_id(),
+                #     e.c4_row_index(), e.message_identifier(), e.message_feedback_identifier()))
             encoders = tuple(encoders)
 
             volume_encoder = self._model.get_encoder(C4_ENCODER_32_CC_ID)
@@ -186,9 +186,10 @@ class V2C4(ControlSurface):
 
         # uncomment to see "unknown midi messages" from the C4 in the logs
         # of if you want to directly implement handlers for those midi messages
-        # for i in range(C4SID_FIRST, C4SID_LAST + 1):
+        # for i in range(C4BTN_FIRST, C4_LAST_NOTE_ID + 1):
         #     Live.MidiMap.forward_midi_note(self._c_instance.handle(), midi_map_handle, 0, i)
-        #     Live.MidiMap.forward_midi_cc(self._c_instance.handle(), midi_map_handle, 0, i)
+        #     if i < C4_ENCODER_RING_CC_ID_BASE  # no midi to "forward" comes from encoder LED Rings
+        #         Live.MidiMap.forward_midi_cc(self._c_instance.handle(), midi_map_handle, 0, i)
 
         super(V2C4, self).build_midi_map(midi_map_handle)
 
@@ -205,9 +206,9 @@ class V2C4(ControlSurface):
                                                          feedback_delay, feedback_map)
         else:
             self.log_message("V2C4 main script _install_mapping for <{}> with CC ID {} and feedback CC ID {} ".
-                             format(control.name, control.message_identifier(), control.feedback_cc_id()))
+                             format(control.name, control.message_identifier(), control.message_feedback_identifier()))
             feedback_rule = Live.MidiMap.CCFeedbackRule()
-            feedback_rule.cc_no = control.feedback_cc_id()
+            feedback_rule.cc_no = control.message_feedback_identifier()
             feedback_rule.cc_value_map = feedback_map
             feedback_rule.channel = control.message_channel()
             feedback_rule.delay_in_ms = feedback_delay
@@ -268,7 +269,7 @@ class V2C4(ControlSurface):
                     # this "id message" should clear any "firmware garbage" off the screens
                     # before the screens get "refreshed/cleared"
                     head_part = tuple(SYSEX_HEADER + (i, j))
-                    sysex = head_part + self._model.lcd_id_message[i][j] + foot_part
+                    sysex = head_part + self._model.lcd_display_id_message()[i][j] + foot_part
                     # self.schedule_message(1, self._send_midi, sysex)
                     self._send_midi(sysex)
 
