@@ -91,12 +91,12 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
 
     def set_volume_control(self, control):
         if control != self._volume_control:
-            self._log_message("releasing volume control<{}>".format(self._volume_control))
+            # self._log_message("releasing volume control<{}>".format(self._volume_control.name))
             release_control(self._volume_control)
             self._volume_control = control
-            self._log_message("setting volume control<{}>".format(self._volume_control))
+            # self._log_message("setting volume control<{}>".format(self._volume_control.name))
             self.update()
-            self._log_message("strip updated")
+            # self._log_message("strip updated")
 
     def _update_track_name_data_source(self):
         # see super(C4ChannelStripComponent, self)._update_track_name_data_source()
@@ -114,9 +114,9 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
     # # override to add logging
     # def _connect_parameters(self):
     #     if self._pan_control is not None:
-    #         self._log_message("super connecting pan encoder<{}>".format(self._pan_control.c4_encoder.encoder_index))
+    #         self._log_message("super connecting pan encoder<{}>".format(self._pan_control.encoder_index()))
     #     if self._volume_control is not None:
-    #         self._log_message("super connecting volume encoder<{}>".format(self._volume_control.c4_encoder.encoder_index))
+    #         self._log_message("super connecting volume encoder<{}>".format(self._volume_control.encoder_index()))
     #
     #     super(C4ChannelStripComponent, self)._connect_parameters()
     #
@@ -143,9 +143,9 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
     #                           format(self._volume_control.mapped_parameter().__str__()))
     #
     #     if self._pan_control is not None:
-    #         self._log_message("disconnecting pan encoder<{}>".format(self._pan_control.c4_encoder.encoder_index))
+    #         self._log_message("disconnecting pan encoder<{}>".format(self._pan_control.encoder_index()))
     #     if self._volume_control is not None:
-    #         self._log_message("disconnecting volume encoder<{}>".format(self._volume_control.c4_encoder.encoder_index))
+    #         self._log_message("disconnecting volume encoder<{}>".format(self._volume_control.encoder_index()))
     #
     #     super(C4ChannelStripComponent, self)._disconnect_parameters()
     #     return
