@@ -1,6 +1,6 @@
 
 from .V2C4Component import *
-from .C4EncoderMixin import encoder_ring_led_mode_mode_select_values, encoder_ring_led_mode_cc_min_max_values
+from .C4EncoderMixin import LedMappingType, encoder_ring_led_mode_mode_select_values, encoder_ring_led_mode_cc_min_max_values
 
 import Live
 
@@ -16,12 +16,8 @@ class C4Encoders:
      """
     __module__ = __name__
 
-    @staticmethod
-    def map_mode():
-        return Live.MidiMap.MapMode.relative_signed_bit  # could be relative_smooth_signed_bit?
-
-    def __init__(self, parent, extended, encoder_index, map_mode,
-                 display_mode=VPOT_DISPLAY_SINGLE_DOT):
+    def __init__(self, parent, extended, encoder_index, map_mode=None,
+                 display_mode=LedMappingType.VPOT_DISPLAY_SINGLE_DOT):
         assert 0 <= encoder_index < NUM_ENCODERS
         self.__parent = parent
         self.__param_bank = 0
@@ -55,6 +51,12 @@ class C4Encoders:
 
     def disconnect(self):
         self.__parent = None
+
+    def map_mode(self):
+        if self._map_mode is None:
+            return Live.MidiMap.MapMode.relative_signed_bit  # could be relative_smooth_signed_bit?
+        else:
+            return self._map_mode
 
     @property
     def c4_row_id(self):
@@ -152,12 +154,12 @@ class C4Encoders:
 
     def send_led_ring_min_on(self, control_element, force=False):
         min_on_value = 0
-        min_on_value = encoder_ring_led_mode_cc_values[self.__display_mode][min_on_value]
+        min_on_value = encoder_ring_led_mode_cc_min_max_values[self.__display_mode][min_on_value]
         self.send_led_ring_midi_cc(control_element, min_on_value, force)
 
     def send_led_ring_max_on(self, control_element, force=False):
         max_on_value = 1
-        max_on_value = encoder_ring_led_mode_cc_values[self.__display_mode][max_on_value]
+        max_on_value = encoder_ring_led_mode_cc_min_max_values[self.__display_mode][max_on_value]
         self.send_led_ring_midi_cc(control_element, max_on_value, force)
 
     # builds an encoder midi map of "device_parameter" controls

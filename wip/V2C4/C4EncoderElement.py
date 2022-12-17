@@ -12,7 +12,7 @@ from _Framework.Skin import Skin
 from _Framework.Util import nop, const, in_range
 
 from .C4Encoders import C4Encoders
-from .C4EncoderMixin import C4EncoderMixin
+from .C4EncoderMixin import C4EncoderMixin, LedMappingType
 from .C4EncoderMixin import encoder_ring_led_mode_mode_select_values, encoder_ring_led_mode_cc_min_max_values
 
 
@@ -49,7 +49,7 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
     __module__ = __name__
 
     def __init__(self, identifier=C4_ENCODER_CC_ID_BASE, extended=False, channel=C4_MIDI_CHANNEL,
-                 map_mode=C4Encoders.map_mode(), encoder_sensitivity=None, name=None, *a, **k):
+                 map_mode=_map_modes.relative_signed_bit, encoder_sensitivity=None, name=None, *a, **k):
         if name is None:
             name = 'Encoder_Control_%d' % identifier
         super(C4EncoderElement, self).__init__(MIDI_CC_TYPE, channel, identifier, map_mode,
@@ -102,7 +102,7 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
     # inherited abstract methods from InputControlElement
     def message_map_mode(self):
         assert self.message_type() is MIDI_CC_TYPE
-        return self.__map_mode
+        return self.c4_encoder.map_mode()
 
     # override methods from InputControlElement
     def _mapping_feedback_values(self):
@@ -140,11 +140,12 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
 
     # C4EncoderElement specific methods
     def update_led_ring_display_mode(self, display_mode=VPOT_DISPLAY_SINGLE_DOT, extended=False):
+    def update_led_ring_display_mode(self, display_mode=LedMappingType.VPOT_DISPLAY_SINGLE_DOT, extended=False):
         if display_mode in encoder_ring_led_mode_mode_select_values.keys():
             # side effect of new C4Encoder: updates self.c4_encoder.led_ring_cc_values tuple,
             # see def _mapping_feedback_values(self)
             self.c4_encoder = C4Encoders(self, extended, self.c4_encoder.encoder_index,
-                                         C4Encoders.map_mode(), display_mode)
+                                         self.c4_encoder.map_mode(), display_mode)
             self.set_midi_feedback_data()
 
     def set_midi_feedback_data(self):
