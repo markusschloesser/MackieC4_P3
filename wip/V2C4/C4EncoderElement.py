@@ -139,7 +139,9 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
         self.update_led_ring_display_mode(mode)
 
     # C4EncoderElement specific methods
-    def update_led_ring_display_mode(self, display_mode=VPOT_DISPLAY_SINGLE_DOT, extended=False):
+    def feedback_cc_id(self):
+        return self.c4_encoder.encoder_ring_feedback_cc_id
+
     def update_led_ring_display_mode(self, display_mode=LedMappingType.VPOT_DISPLAY_SINGLE_DOT, extended=False):
         if display_mode in encoder_ring_led_mode_mode_select_values.keys():
             # side effect of new C4Encoder: updates self.c4_encoder.led_ring_cc_values tuple,
