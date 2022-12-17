@@ -80,30 +80,6 @@ class V2C4(ControlSurface):
                     {LCD_TOP_ROW_OFFSET: self._model.make_physical_display(*a, **k),
                      LCD_BOTTOM_ROW_OFFSET: self._model.make_physical_display(*a, **k)}}
 
-            # self.mixer = MixerComponent(num_tracks=0)
-            # self.mixer.set_select_buttons(
-            #     self._model.make_button(C4SID_TRACK_RIGHT), self._model.make_button(C4SID_TRACK_LEFT)
-            # )
-
-            # for i in range(len(channel_encoders)):
-            #     e = channel_encoders[i]
-            #     if i == 0:
-            #         self.log_message("volume_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
-            #             C4SID_VPOT_CC_ADDRESS_32, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
-            #             e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
-            #     else:
-            #         self.log_message("pan_encoder<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}>".format(
-            #             C4SID_VPOT_CC_ADDRESS_31, e.c4_encoder.encoder_index, e.c4_encoder.c4_row_id,
-            #             e.c4_encoder.c4_row_index, e.c4_encoder.encoder_cc_id))
-            # e = self._model.make_encoder(C4_ENCODER_32_CC_ID)
-            # e.set_script_handle(self)
-            # mixer.set_prehear_volume_control(
-            #     # EncoderElement(MIDI_CC_TYPE, C4_MIDI_CHANNEL, C4SID_VPOT_CC_ADDRESS_32, Live.MidiMap.MapMode.relative_signed_bit)
-            #     e
-            #     # set_enabled(True) causes "_request_rebuild"  to run which breaks the feedback?
-            #     # e.set_enabled(True)
-            # )
-
             self.clear_display_msg = self._model.lcd_clear_message
             self.hello_display_msg = self._model.lcd_hello_message
             self.goodbye_display_msg = self._model.lcd_goodbye_message

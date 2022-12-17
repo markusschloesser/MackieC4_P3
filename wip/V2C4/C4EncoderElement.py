@@ -65,11 +65,11 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
         self._undo_step_handler = DummyUndoStepHandler()
         self._skin = Skin()
         self._last_received_value = 0
-        self._last_received_raw_value = 0
-        self._input_signal_listener_count = 1  # self?
+        # self._last_received_raw_value = 0
+        # self._input_signal_listener_count = 1
 
         # InputControlElement.set_report_values
-        self.set_report_values(True, True)
+        # self.set_report_values(True, True)
         self.set_needs_takeover(False)
 
     def disconnect(self):
@@ -78,26 +78,26 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
         return
 
     # EncoderElement methods
-    def relative_value_to_delta(self, value):
-        assert value >= 0 and value < 128
-        return self.__value_normalizer(value)
-
-    def normalize_value(self, value):
-        return self.relative_value_to_delta(value) / 64.0 * self.encoder_sensitivity
-
-    def notify_value(self, value):
-        super(C4EncoderElement, self).notify_value(value)
-        if self.normalized_value_listener_count():
-            self.notify_normalized_value(self.normalize_value(value))
+    # def relative_value_to_delta(self, value):
+    #     assert value >= 0 and value < 128
+    #     return self.__value_normalizer(value)
+    #
+    # def normalize_value(self, value):
+    #     return self.relative_value_to_delta(value) / 64.0 * self.encoder_sensitivity
+    #
+    # def notify_value(self, value):
+    #     super(C4EncoderElement, self).notify_value(value)
+    #     if self.normalized_value_listener_count():
+    #         self.notify_normalized_value(self.normalize_value(value))
 
     # inherited methods from ControlElement, overrides from InputControlElement
-    def reset(self):
-        self._log_message("encoder<{}> reset".format(self.c4_encoder.encoder_index))
-        super(C4EncoderElement, self).reset()
-
-    def reset_state(self):
-        self._log_message("encoder<{}> reset_state".format(self.c4_encoder.encoder_index))
-        super(C4EncoderElement, self).reset_state()
+    # def reset(self):
+    #     self._log_message("encoder<{}> reset".format(self.c4_encoder.encoder_index))
+    #     super(C4EncoderElement, self).reset()
+    #
+    # def reset_state(self):
+    #     self._log_message("encoder<{}> reset_state".format(self.c4_encoder.encoder_index))
+    #     super(C4EncoderElement, self).reset_state()
 
     # inherited abstract methods from InputControlElement
     def message_map_mode(self):
@@ -110,24 +110,24 @@ class C4EncoderElement(InputControlElement, C4EncoderMixin, V2C4Component):
         return self.c4_encoder.led_ring_cc_values
 
     def receive_value(self, value):
-        self._last_received_raw_value = value
-        self._log_message("encoder<{}> received raw value<{}>".format(self.c4_encoder.encoder_index, value))
+        # self._last_received_raw_value = value
+        # self._log_message("encoder<{}> received raw value<{}>".format(self.c4_encoder.encoder_index, value))
         super(C4EncoderElement, self).receive_value(value)
-        self._log_message("after super did getattr on midi_value<{}>".format(value))
+        # self._log_message("after super did getattr on midi_value<{}>".format(value))
         self._last_received_value = value
 
-    def _report_value(self, value, is_input):
-        self._verify_value(value)
-        message = str(self.name) + ' ('
-        if self._msg_type == MIDI_CC_TYPE:
-            message += 'CC ' + str(self._msg_identifier) + ', '
-            message += 'Chan. ' + str(self._msg_channel)
-            message += ') '
-            message += 'received value ' if is_input else 'sent value '
-            message += str(value)
-            self._log_message(message)
-        else:
-            super(C4EncoderElement, self)._report_value(value, is_input)
+    # def _report_value(self, value, is_input):
+    #     self._verify_value(value)
+    #     message = str(self.name) + ' ('
+    #     if self._msg_type == MIDI_CC_TYPE:
+    #         message += 'CC ' + str(self._msg_identifier) + ', '
+    #         message += 'Chan. ' + str(self._msg_channel)
+    #         message += ') '
+    #         message += 'received value ' if is_input else 'sent value '
+    #         message += str(value)
+    #         self._log_message(message)
+    #     else:
+    #         super(C4EncoderElement, self)._report_value(value, is_input)
 
 
     # V2C4 specific methods

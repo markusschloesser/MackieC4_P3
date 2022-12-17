@@ -65,9 +65,9 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
             self._control_elements.append(c)
         # self._register_timer_callback(self._on_timer)
 
-        identify_sender = True
-        for encoder in self._device_encoders:
-            encoder.add_value_listener(self._parameter_value, identify_sender)
+        # identify_sender = True
+        # for encoder in self._device_encoders:
+        #     encoder.add_value_listener(self._parameter_value, identify_sender)
 
         # self.set_mode(0) # displays must be connected before we set the mode
         return
@@ -75,7 +75,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     def disconnect(self):
         # self._unregister_timer_callback(self._on_timer)
         for e in self._device_encoders:
-            e.remove_value_listener(self._parameter_value)
+            # e.remove_value_listener(self._parameter_value)
             e.send_led_ring_full_off()
 
         for c in self._control_elements:
@@ -184,8 +184,8 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     def update(self):
         super(C4ModeSelector, self).update()
         if self.is_enabled():
-            for c in self._control_elements:
-                c.release_parameter()
+            # for c in self._control_elements:
+            #     c.release_parameter()
 
             # the mixer track and bank select buttons stay set in both modes
             # but these "transport buttons" are also "device encoder buttons"
@@ -198,7 +198,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                 self._device.set_bank_buttons(None)
                 for e in self._device_encoders:
                     e.send_led_ring_full_off()
-                    e.disconnect()
+                    # e.disconnect()
 
                 # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
                 self._channel_encoders[0].update_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
@@ -242,7 +242,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
 
                 for e in self._channel_encoders:
                     e.send_led_ring_full_off()
-                    e.disconnect()
+                    # e.disconnect()
 
                 self._device.set_parameter_controls(self._device_encoders)
                 for e in self._device_encoders:

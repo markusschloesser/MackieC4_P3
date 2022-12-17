@@ -111,44 +111,44 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
 
         return
 
-    # override to add logging
-    def _connect_parameters(self):
-        if self._pan_control is not None:
-            self._log_message("super connecting pan encoder<{}>".format(self._pan_control.c4_encoder.encoder_index))
-        if self._volume_control is not None:
-            self._log_message("super connecting volume encoder<{}>".format(self._volume_control.c4_encoder.encoder_index))
-
-        super(C4ChannelStripComponent, self)._connect_parameters()
-
-        if self._pan_control is not None:
-            self._pan_control.add_value_listener(self._pan_control.receive_value)
-            self._log_message("added receive_value value listener to connected pan param<{}>".
-                              format(self._pan_control.mapped_parameter().__str__()))
-        if self._volume_control is not None:
-            self._volume_control.add_value_listener(self._volume_control.receive_value)
-            self._log_message("added receive_value value listener to connected volume param<{}>".
-                              format(self._volume_control.mapped_parameter().__str__()))
-
-        return
-
-    def _disconnect_parameters(self):
-
-        if self._pan_control is not None:
-            self._pan_control.remove_value_listener(self._pan_control.receive_value)
-            self._log_message("removed value listener from disconnected pan param<{}>".
-                              format(self._pan_control.mapped_parameter().__str__()))
-        if self._volume_control is not None:
-            self._volume_control.remove_value_listener(self._volume_control.receive_value)
-            self._log_message("removed value listener from disconnected volume param<{}>".
-                              format(self._volume_control.mapped_parameter().__str__()))
-
-        if self._pan_control is not None:
-            self._log_message("disconnecting pan encoder<{}>".format(self._pan_control.c4_encoder.encoder_index))
-        if self._volume_control is not None:
-            self._log_message("disconnecting volume encoder<{}>".format(self._volume_control.c4_encoder.encoder_index))
-
-        super(C4ChannelStripComponent, self)._disconnect_parameters()
-        return
+    # # override to add logging
+    # def _connect_parameters(self):
+    #     if self._pan_control is not None:
+    #         self._log_message("super connecting pan encoder<{}>".format(self._pan_control.c4_encoder.encoder_index))
+    #     if self._volume_control is not None:
+    #         self._log_message("super connecting volume encoder<{}>".format(self._volume_control.c4_encoder.encoder_index))
+    #
+    #     super(C4ChannelStripComponent, self)._connect_parameters()
+    #
+    #     if self._pan_control is not None:
+    #         self._pan_control.add_value_listener(self._pan_control.receive_value)
+    #         self._log_message("added receive_value value listener to connected pan param<{}>".
+    #                           format(self._pan_control.mapped_parameter().__str__()))
+    #     if self._volume_control is not None:
+    #         self._volume_control.add_value_listener(self._volume_control.receive_value)
+    #         self._log_message("added receive_value value listener to connected volume param<{}>".
+    #                           format(self._volume_control.mapped_parameter().__str__()))
+    #
+    #     return
+    #
+    # def _disconnect_parameters(self):
+    #
+    #     if self._pan_control is not None:
+    #         self._pan_control.remove_value_listener(self._pan_control.receive_value)
+    #         self._log_message("removed value listener from disconnected pan param<{}>".
+    #                           format(self._pan_control.mapped_parameter().__str__()))
+    #     if self._volume_control is not None:
+    #         self._volume_control.remove_value_listener(self._volume_control.receive_value)
+    #         self._log_message("removed value listener from disconnected volume param<{}>".
+    #                           format(self._volume_control.mapped_parameter().__str__()))
+    #
+    #     if self._pan_control is not None:
+    #         self._log_message("disconnecting pan encoder<{}>".format(self._pan_control.c4_encoder.encoder_index))
+    #     if self._volume_control is not None:
+    #         self._log_message("disconnecting volume encoder<{}>".format(self._volume_control.c4_encoder.encoder_index))
+    #
+    #     super(C4ChannelStripComponent, self)._disconnect_parameters()
+    #     return
 
     def set_displays(self, display, device_name_data_source):
         assert isinstance(display, dict)
