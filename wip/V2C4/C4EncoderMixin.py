@@ -5,29 +5,30 @@ from .Utils import *
 class LedMappingType(object):
     """ The various types of parameter mappings that correspond to C4 LED ring modes. """
     __module__ = __name__
-    VPOT_DISPLAY_SINGLE_DOT = 0
-    VPOT_DISPLAY_BOOST_CUT = 1
-    VPOT_DISPLAY_WRAP = 2
-    VPOT_DISPLAY_SPREAD = 3
-    VPOT_DISPLAY_BOOLEAN = 4
+    LED_RING_MODE_SINGLE_DOT = 0
+    LED_RING_MODE_BOOST_CUT = 1
+    LED_RING_MODE_WRAP = 2
+    LED_RING_MODE_SPREAD = 3
+    LED_RING_MODE_BOOLEAN = 4
 
 
 # min  max leds in ring illuminated
 # (multiples of 0x10 mean "all ring LEDS OFF" [0, 16, 32, 48]
 encoder_ring_led_mode_cc_min_max_values = {
-    LedMappingType.VPOT_DISPLAY_SINGLE_DOT: (0x01, 0x0B),  # 01 - 0B
-    LedMappingType.VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B),  # 11 - 1B
-    LedMappingType.VPOT_DISPLAY_WRAP: (0x21, 0x2B),  # 21 - 2B
-    LedMappingType.VPOT_DISPLAY_SPREAD: (0x31, 0x36),  # 31 - 36
+    LedMappingType.LED_RING_MODE_SINGLE_DOT: (0x01, 0x0B),  # 01 - 0B
+    LedMappingType.LED_RING_MODE_BOOST_CUT: (0x11, 0x1B),  # 11 - 1B
+    LedMappingType.LED_RING_MODE_WRAP: (0x21, 0x2B),  # 21 - 2B
+    LedMappingType.LED_RING_MODE_SPREAD: (0x31, 0x36),  # 31 - 36
     # -- goes to ON in about 6 steps
-    LedMappingType.VPOT_DISPLAY_BOOLEAN: (0x20, 0x2B)}  # 20 - 2B
+    LedMappingType.LED_RING_MODE_BOOLEAN: (0x20, 0x2B)}  # 20 - 2B
 
 encoder_ring_led_mode_mode_select_values = {
-    LedMappingType.VPOT_DISPLAY_SINGLE_DOT: 0x01,
-    LedMappingType.VPOT_DISPLAY_BOOST_CUT: 0x16,
-    LedMappingType.VPOT_DISPLAY_WRAP: 0x26,
-    LedMappingType.VPOT_DISPLAY_SPREAD: 0x33,
-    LedMappingType.VPOT_DISPLAY_BOOLEAN: 0x2B}
+    LedMappingType.LED_RING_MODE_SINGLE_DOT: 0x01,
+    LedMappingType.LED_RING_MODE_BOOST_CUT: 0x16,
+    LedMappingType.LED_RING_MODE_WRAP: 0x26,
+    LedMappingType.LED_RING_MODE_SPREAD: 0x33,
+    LedMappingType.LED_RING_MODE_BOOLEAN: 0x2B}
+
 
 class C4EncoderMixin(object):
     """
@@ -71,23 +72,24 @@ class C4EncoderMixin(object):
         param = self.mapped_parameter()
         if self._property_to_map_to:
             param = self._property_to_map_to
+
         if self.is_mapped_manually():
-            self.set_ring_mode(LedMappingType.VPOT_DISPLAY_WRAP)
+            self.set_ring_mode(LedMappingType.LED_RING_MODE_WRAP)
         else:
             if live_object_is_valid(param):
                 p_range = param.max - param.min
                 if p_range > 0:
                     value = parameter_value_to_midi_value(param.value, param.min, param.max)
                     if param.min == -1 * param.max:
-                        self.set_ring_mode(LedMappingType.VPOT_DISPLAY_BOOST_CUT)
+                        self.set_ring_mode(LedMappingType.LED_RING_MODE_BOOST_CUT)
                     else:
                         if parameter_is_quantized(param):
-                            self.set_ring_mode(LedMappingType.VPOT_DISPLAY_SINGLE_DOT)
+                            self.set_ring_mode(LedMappingType.LED_RING_MODE_SINGLE_DOT)
                         else:
-                            self.set_ring_mode(LedMappingType.VPOT_DISPLAY_WRAP)
+                            self.set_ring_mode(LedMappingType.LED_RING_MODE_WRAP)
                     value_to_send = int(value)
                 else:
-                    self.set_ring_mode(LedMappingType.VPOT_DISPLAY_BOOLEAN)
+                    self.set_ring_mode(LedMappingType.LED_RING_MODE_BOOLEAN)  # only when p_range <= 0
             else:
-                self.set_ring_mode(LedMappingType.VPOT_DISPLAY_SPREAD)
+                self.set_ring_mode(LedMappingType.LED_RING_MODE_SPREAD)  # only when not live_object_is_valid(param)
         self.send_value_on_ring_mode_change(value_to_send)

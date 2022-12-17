@@ -126,11 +126,11 @@ class V2C4(ControlSurface):
             volume_encoder = self._model.get_encoder(C4_ENCODER_32_CC_ID)
             assert volume_encoder in encoders
             volume_encoder.set_script_handle(self)
-            volume_encoder.c4_encoder.set_led_ring_display_mode(LedMappingType.VPOT_DISPLAY_SINGLE_DOT)
+            volume_encoder.set_led_ring_display_mode(LedMappingType.LED_RING_MODE_SINGLE_DOT)
             mixer.set_selected_strip_volume_control(volume_encoder)
 
             pan_encoder = self._model.get_encoder(C4_ENCODER_31_CC_ID)
-            pan_encoder.c4_encoder.set_led_ring_display_mode(LedMappingType.VPOT_DISPLAY_BOOST_CUT)
+            pan_encoder.set_led_ring_display_mode(LedMappingType.LED_RING_MODE_BOOST_CUT)
             pan_encoder.set_script_handle(self)
             mixer.set_selected_strip_pan_control(pan_encoder)
             channel_encoders = tuple([volume_encoder, pan_encoder])

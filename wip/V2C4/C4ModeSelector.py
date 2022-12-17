@@ -202,12 +202,12 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                     # e.disconnect()
 
                 # encoder_32_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_32)
-                self._channel_encoders[0].update_led_ring_display_mode(LedMappingType.VPOT_DISPLAY_SINGLE_DOT)
+                self._channel_encoders[0].update_led_ring_display_mode(LedMappingType.LED_RING_MODE_SINGLE_DOT)
                 self._log_message("mode<0> setting selected strip volume")
                 self._mixer.set_selected_strip_volume_control(self._channel_encoders[0])
 
                 # encoder_31_index = V2C4Component.convert_encoder_id_value(C4SID_VPOT_CC_ADDRESS_31)
-                self._channel_encoders[1].update_led_ring_display_mode(LedMappingType.VPOT_DISPLAY_BOOST_CUT)
+                self._channel_encoders[1].update_led_ring_display_mode(LedMappingType.LED_RING_MODE_BOOST_CUT)
                 self._mixer.set_selected_strip_pan_control(self._channel_encoders[1])
 
                 if self._channel_strip_displays is not None:
@@ -247,7 +247,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
 
                 self._device.set_parameter_controls(self._device_encoders)
                 for e in self._device_encoders:
-                    e.update_led_ring_display_mode(LedMappingType.VPOT_DISPLAY_WRAP)
+                    e.update_led_ring_display_mode(LedMappingType.LED_RING_MODE_WRAP)
 
                 self._device.set_bank_buttons(self._device_bank_buttons)
 
