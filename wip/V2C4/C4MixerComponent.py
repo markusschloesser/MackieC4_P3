@@ -26,7 +26,7 @@ class C4MixerComponent(MixerComponent, V2C4Component):
         self._displays = {LCD_ANGLED_ADDRESS: {LCD_BOTTOM_ROW_OFFSET: None}}
         self._device_name_data_source = None
 
-        MixerComponent.__init__(self, num_tracks=1, *a, **k)
+        MixerComponent.__init__(self, num_tracks=0, num_returns=0, auto_name=True, *a, **k)
 
     def disconnect(self):
         self._disconnect_selected_strip_controls()
@@ -67,7 +67,8 @@ class C4MixerComponent(MixerComponent, V2C4Component):
             self.selected_strip().set_displays(self._displays, self._device_name_data_source)
     
     def set_selected_strip_volume_control(self, control):
-        self._log_message("setting volume control<{}> on selected strip<{}>".format(control.__str__(), self.selected_strip()))
+        self._log_message("setting volume control<{}> on selected strip<{}>".format(control.__str__(),
+                                                                                    self.selected_strip().name))
         self._selected_strip_volume_control = control
         self._set_selected_strip_volume_control()
 
@@ -75,7 +76,8 @@ class C4MixerComponent(MixerComponent, V2C4Component):
         self.selected_strip().set_volume_control(self._selected_strip_volume_control)
 
     def set_selected_strip_pan_control(self, control):
-        self._log_message("setting pan control<{}> on selected strip<{}>".format(control.__str__(), self.selected_strip()))
+        self._log_message("setting pan control<{}> on selected strip<{}>".format(control.__str__(),
+                                                                                 self.selected_strip().name))
         self._selected_strip_pan_control = control
         self._set_selected_strip_pan_control()
 
