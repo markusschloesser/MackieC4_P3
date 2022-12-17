@@ -192,18 +192,35 @@ class V2C4(ControlSurface):
 
         super(V2C4, self).build_midi_map(midi_map_handle)
 
-    # def _install_mapping(self, midi_map_handle, control, parameter, feedback_delay, feedback_map):
-    #     assert self._in_build_midi_map
-    #     assert control is not None and parameter is not None
-    #     self.log_message("control and parameter are not None")
-    #     self.log_message("<{}> {}".format(control.__str__(), parameter.__str__()))
-    #     assert isinstance(parameter, Live.DeviceParameter.DeviceParameter)
-    #     assert isinstance(control, InputControlElement)
-    #     self.log_message("control and parameter are instances")
-    #     assert isinstance(feedback_delay, int)
-    #     assert isinstance(feedback_map, tuple)
-    #     self.log_message("feedback delay<{}> and map<{}> are instances".format(feedback_delay, feedback_map))
-    #     super(V2C4, self)._install_mapping(midi_map_handle, control, parameter, feedback_delay, feedback_map)
+    def _install_mapping(self, midi_map_handle, control, parameter, feedback_delay, feedback_map):
+        assert self._in_build_midi_map
+        assert control is not None and parameter is not None
+        assert isinstance(parameter, Live.DeviceParameter.DeviceParameter)
+        assert isinstance(control, InputControlElement)
+        assert isinstance(feedback_delay, int)
+        assert isinstance(feedback_map, tuple)
+        # success = False
+        if not isinstance(control, C4EncoderElement):
+            success = super(V2C4, self)._install_mapping(midi_map_handle, control, parameter,
+                                                         feedback_delay, feedback_map)
+        else:
+            self.log_message("V2C4 main script _install_mapping for <{}> with CC ID {} and feedback CC ID {} ".
+                             format(control.name, control.message_identifier(), control.feedback_cc_id()))
+            feedback_rule = Live.MidiMap.CCFeedbackRule()
+            feedback_rule.cc_no = control.feedback_cc_id()
+            feedback_rule.cc_value_map = feedback_map
+            feedback_rule.channel = control.message_channel()
+            feedback_rule.delay_in_ms = feedback_delay
+            success = Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, parameter, control.message_channel(),
+                                                                 control.message_identifier(),
+                                                                 control.message_map_mode(), feedback_rule,
+                                                                 not control.needs_takeover(),
+                                                                 control.mapping_sensitivity)
+            if success:
+                Live.MidiMap.send_feedback_for_parameter(midi_map_handle, parameter)
+
+            self.log_message("mapping was successful <{}>".format(success))
+        return success
 
     def receive_midi(self, midi_bytes):
         """ only need to handle CC or Note message types here """
