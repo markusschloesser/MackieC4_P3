@@ -2,10 +2,7 @@
 #
 from __future__ import absolute_import, print_function, unicode_literals
 
-import itertools
-
 from .MackieC4Component import *
-from ableton.v2.base import liveobj_valid  # MS
 
 import sys
 # from Live import DeviceParameter
@@ -14,13 +11,11 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
     from past.builtins import unicode
 
-from itertools import chain
-from ableton.v2.base import liveobj_valid, listenable_property, listens  # MS not needed right now, but will in the future
-from ableton.v2.control_surface import InternalParameterBase, ParameterInfo, PitchParameter
+from ableton.v2.base import liveobj_valid, listens  # MS not needed right now, but will be in the future
 
 
 class EncoderDisplaySegment(MackieC4Component):
-    """ Represents what to display on the LCD over one encoder of the Mackie C4 """
+    """ Represents what to display on the LCD over ONE encoder of the Mackie C4 """
     __module__ = __name__
 
     def __init__(self, main_script, vpot_index):
@@ -40,7 +35,7 @@ class EncoderDisplaySegment(MackieC4Component):
         return
 
     def set_encoder_controller(self, encoder_controller):
-        """ The EncoderController that controls the Encoders should also control these EncoderDisplayParameters"""
+        """ The EncoderController that controls the Encoders, should also control these EncoderDisplayParameters"""
         self.__encoder_controller = encoder_controller
         self.__set_encoder()
 

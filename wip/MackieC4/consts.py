@@ -29,7 +29,7 @@ assert SETUP_DB_PARAM_BANK_SIZE * SETUP_DB_MAX_PARAM_BANKS == SETUP_DB_DEFAULT_S
 NOTE_OFF_STATUS = 0x80  # 128  0x80 - 0x8F represent the 16 channels a NOTE_OFF message can be sent to (noteNbr, noteVelocity)
 NOTE_ON_STATUS = 0x90  # 144  0x90 - 0x9F represent the 16 channels a NOTE_ON message can be sent to (noteNbr, noteVelocity)
 PAT_STATUS = 0xA0  # 160  0xA0 - 0xAF represent the 16 channels a POLYPHONIC AFTERTOUCH message can be sent to (noteNbr, aftertouchPressure)
-CC_STATUS = 0xB0  # 176  0xB0 - 0xBF represent the 16 channels a CC message can be sent to (ccParamNbr, ccParamData)
+CC_STATUS = 0xB0  # equals 176  0xB0 - 0xBF represent the 16 channels a CC message can be sent to (ccParamNbr, ccParamData)
 PGM_CHG_STATUS = 0xC0  # 192  0xC0 - 0xCF represent the 16 channels a Program Change message can be sent to (pgmNbr)
 CAT_STATUS = 0xD0  # 208  0xD0 - 0xDF represent the 16 channels a CHANNEL AFTERTOUCH message can be sent to (aftertouchPressure)
 PB_STATUS = 0xE0  # 224  0xE0 - 0xEF represent the 16 channels a PITCHBEND message can be sent to (pbLSB, pbMSB)
@@ -184,6 +184,16 @@ encoder_ring_led_mode_values = {VPOT_DISPLAY_SINGLE_DOT: 0x01,
                                 VPOT_DISPLAY_SPREAD: 0x33,
                                 VPOT_DISPLAY_BOOLEAN: 0x2B}
 
+
+# When an encoder is set for a "wrap" style LED ring display
+# encoder_ring_led_mode_values[VPOT_DISPLAY_WRAP] == 0x26, for example
+# then the VPOT_CURRENT_CC_VALUE list is directly populated with the associated forward sequence "wrapping values"
+# VPOT_DISPLAY_WRAP: == 21, 22, 23, 24, 25...2B
+# and the VPOT_NEXT_CC_VALUE list is populated with the reversed "wrapping values"
+# VPOT_DISPLAY_WRAP: == 2B, 2A, 29, 28, 27...21
+VPOT_CURRENT_CC_VALUE = 0
+VPOT_NEXT_CC_VALUE = 1
+
 RING_LED_ALL_OFF = 0  # encoder disable?
 
 LED_ON_DATA = 0x7F  # any value 40 - 4F?
@@ -218,7 +228,7 @@ C4SID_FIRST = 0
 # while 1/3 would mean apply the "current layout" to the top row of encoders (and the angled display) only
 # and then apply the "next layout loaded" to the other three rows of encoders (and their associated displays)
 #
-# these are Note messages so they correspond to midi notes
+# these are Note messages, so they correspond to midi notes
 C4SID_SPLIT = 0  # C -1
 C4SID_LOCK = 0x03  # 3  Eb-1
 C4SID_SPLIT_ERASE = 0x04  # 4 E -1
@@ -265,14 +275,15 @@ C4SID_SINGLE_RIGHT = 0x0C  # 12   C 0
 
 # buttons inside the 'Parameter' box on the C4 graphics
 single_switch_ids = range(C4SID_SINGLE_LEFT, C4SID_SINGLE_RIGHT + 1)
-C4SID_SHIFT = 0x0D  # 13  C# 0
-C4SID_OPTION = 0x0E  # 14  D  0
 
 # control functions just like the channel button: toggles between bottom row LCD displays
+
+
 C4SID_CONTROL = 0x0F  # 15  Eb 0
 C4SID_ALT = 0x10  # 16  E  0
-
-# buttons inside the 'Modifiers' box on the C4 graphics
+C4SID_SHIFT = 0x0D  # 13  C# 0
+C4SID_OPTION = 0x0E  # 14  D  0
+# buttons inside the 'Modifiers' box on the C4 graphics (MackieControl calls them software_controls_switch_ids)
 modifier_switch_ids = range(C4SID_SHIFT, C4SID_ALT + 1)
 
 # if Commander and the C4 are communicating, then you can move up and down
@@ -328,7 +339,7 @@ C4SID_VPOT_PUSH_29 = 0x3C  # 60  C  4
 C4SID_VPOT_PUSH_30 = 0x3D  # 61  C# 4
 C4SID_VPOT_PUSH_31 = 0x3E  # 62  D  4
 C4SID_VPOT_PUSH_32 = 0x3F  # 63  Eb 4
-encoder_switch_ids = range(C4SID_VPOT_PUSH_1, C4SID_VPOT_PUSH_32 + 1)
+encoder_switch_ids = range(C4SID_VPOT_PUSH_1, C4SID_VPOT_PUSH_32 + 1)  # sum of all vpot push
 C4SID_LAST = 0x3F  # 63
 
 """
@@ -383,6 +394,7 @@ C4SID_VPOT_CC_ADDRESS_29 = 0x3C  # 60
 C4SID_VPOT_CC_ADDRESS_30 = 0x3D  # 61
 C4SID_VPOT_CC_ADDRESS_31 = 0x3E  # 62
 C4SID_VPOT_CC_ADDRESS_32 = 0x3F  # 63
+
 encoder_cc_ids = range(C4SID_VPOT_CC_ADDRESS_1, C4SID_VPOT_CC_ADDRESS_32 + 1)
 encoder_cw_values = range(0x01, 0x10)  # larger values means knob is turning faster / bigger CW increments
 encoder_ccw_values = range(0x41, 0x50)  # larger values means knob is turning faster / bigger CCW increments
