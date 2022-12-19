@@ -44,28 +44,58 @@ class C4ElementFactory:
 
     __module__ = __name__
 
-    def make_button(self, identifier, channel=0, is_momentary=True, *a, **k):
-        #   is_momentary: True because C4 buttons send a message on being released
-        # MIDI_NOTE_TYPE: because C4 buttons send and receive "Midi Note" messages (0x90 id byte)
-        #        channel: 0 because the C4 communicates on channel 0
-        return ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, identifier, *a, **k)
+    midi_map = {}
 
-    def make_encoder(self, identifier, name=None, *a, **k):
-        return C4EncoderElement(identifier, name, *a, **k)
+    def make_framework_encoder(self, cc_id=C4_ENCODER_1_CC_ID, *a, **k):
+        if self.midi_map[MIDI_CC_TYPE][cc_id] is None:
+            name = 'Encoder_Control_%d' % cc_id
+            self.midi_map[MIDI_CC_TYPE][cc_id] = EncoderElement(MIDI_CC_TYPE, C4_MIDI_CHANNEL, cc_id,
+                                                              Live.MidiMap.MapMode.relative_signed_bit, *a, **k)
+        else:
+            assert False
+        return self.midi_map[MIDI_CC_TYPE][cc_id]
 
-    def make_framework_encoder(self, identifier, *a, **k):
-        return EncoderElement(MIDI_CC_TYPE, C4_MIDI_CHANNEL, identifier,
-                              Live.MidiMap.MapMode.relative_signed_bit, *a, **k)
+    def make_encoder(self, cc_id=C4_ENCODER_1_CC_ID, nm=None, *a, **k):
+        if self.midi_map[MIDI_CC_TYPE][cc_id] is None:
+            self.midi_map[MIDI_CC_TYPE][cc_id] = C4EncoderElement(cc_id, name=nm, *a, **k)
+        else:
+            assert False
+        return self.midi_map[MIDI_CC_TYPE][cc_id]
 
-    def make_encoder_and_button(self, common_identifier, channel=0, is_momentary=True, name='', *a, **k):
-        # if len(name) < 1:
-        #     name = 'Encoder'
-        # button_name = '%s_Button' % name
-        # button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, common_identifier, name=button_name, *a, **k)
-        # encoder = C4EncoderElement(common_identifier, name=name, *a, **k)
-        button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, common_identifier, *a, **k)
-        encoder = C4EncoderElement(common_identifier, *a, **k)
-        encoder.set_encoder_button(button)
-        return encoder
+    def make_all_encoders(self, *a, **k):
+        for cc_id in encoder_cc_ids:
+            self.make_encoder(cc_id, *a, **k)
+
+    def make_button(self, note_id=C4BTN_SPLIT_NOTE_ID, channel=0, is_momentary=True, *a, **k):
+        if self.midi_map[MIDI_NOTE_TYPE][note_id] is None:
+            self.midi_map[MIDI_NOTE_TYPE][note_id] = ButtonElement(is_momentary, MIDI_NOTE_TYPE,
+                                                                 channel, note_id, *a, **k)
+        else:
+            assert False
+        return self.midi_map[MIDI_NOTE_TYPE][note_id]
+
+    # def make_button(self, identifier, channel=0, is_momentary=True, *a, **k):
+    #     #   is_momentary: True because C4 buttons send a message on being released
+    #     # MIDI_NOTE_TYPE: because C4 buttons send and receive "Midi Note" messages (0x90 id byte)
+    #     #        channel: 0 because the C4 communicates on channel 0
+    #     return ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, identifier, *a, **k)
+    #
+    # def make_encoder(self, identifier, name=None, *a, **k):
+    #     return C4EncoderElement(identifier, name, *a, **k)
+    #
+    # def make_framework_encoder(self, identifier, *a, **k):
+    #     return EncoderElement(MIDI_CC_TYPE, C4_MIDI_CHANNEL, identifier,
+    #                           Live.MidiMap.MapMode.relative_signed_bit, *a, **k)
+    #
+    # def make_encoder_and_button(self, common_identifier, channel=0, is_momentary=True, name='', *a, **k):
+    #     # if len(name) < 1:
+    #     #     name = 'Encoder'
+    #     # button_name = '%s_Button' % name
+    #     # button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, common_identifier, name=button_name, *a, **k)
+    #     # encoder = C4EncoderElement(common_identifier, name=name, *a, **k)
+    #     button = ButtonElement(is_momentary, MIDI_NOTE_TYPE, channel, common_identifier, *a, **k)
+    #     encoder = C4EncoderElement(common_identifier, *a, **k)
+    #     encoder.set_encoder_button(button)
+    #     return encoder
 
 
