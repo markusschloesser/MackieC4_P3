@@ -1,96 +1,82 @@
-
 from .V2C4Component import *
 
-import Live
-
-from _Framework.EncoderElement import EncoderElement  # , _not_implemented  # , ENCODER_VALUE_NORMALIZER
+from _Framework.EncoderElement import EncoderElement, map_modes
 from _Framework.ButtonElement import ButtonElement, DummyUndoStepHandler
-from _Framework.CompoundElement import CompoundElement
-from _Framework.InputControlElement import InputControlElement, MIDI_NOTE_TYPE, MIDI_CC_TYPE, InputSignal
-from _Framework.SubjectSlot import SubjectEvent, subject_slot
+from _Framework.InputControlElement import MIDI_CC_TYPE
 from _Framework.Skin import Skin
-from _Framework.Util import nop, const, in_range
 
-# from .C4Encoders import C4Encoders
+
 from .C4EncoderMixin import C4EncoderMixin, LedMappingType
-from .C4EncoderMixin import encoder_ring_led_mode_mode_select_values, encoder_ring_led_mode_cc_min_max_values
 
+# # from ableton.v2.control_surface.elements.encoder import signed_bit_delta
+# def signed_bit_delta(value):
+#     delta = SIGNED_BIT_DEFAULT_DELTA
+#     is_increment = value <= 64
+#     index = value - 1 if is_increment else value - 64
+#     if in_range(index, 0, len(SIGNED_BIT_VALUE_MAP)):
+#         delta = SIGNED_BIT_VALUE_MAP[index]
+#     if is_increment:
+#         return delta
+#     return -delta
 
-def _not_implemented(value):
-    raise NotImplementedError
-
-def signed_bit_delta(value):
-    delta = SIGNED_BIT_DEFAULT_DELTA
-    is_increment = value <= 64
-    index = value - 1 if is_increment else value - 64
-    if in_range(index, 0, len(SIGNED_BIT_VALUE_MAP)):
-        delta = SIGNED_BIT_VALUE_MAP[index]
-    if is_increment:
-        return delta
-    return -delta
-
-
-SIGNED_BIT_DEFAULT_DELTA = 20.0
 SIGNED_BIT_VALUE_MAP = (1, 1, 2, 3, 4, 5, 8, 11, 11, 13, 13, 15, 15, 20, 50)  # length is 15
-
-_map_modes = map_modes = Live.MidiMap.MapMode
-ENCODER_VALUE_NORMALIZER = {_map_modes.relative_smooth_two_compliment: lambda v: v if v <= 64 else v - 128,
-   _map_modes.relative_smooth_signed_bit: lambda v: v if v <= 64 else 64 - v,
-   _map_modes.relative_smooth_binary_offset: lambda v: v - 64,
-   _map_modes.relative_signed_bit: signed_bit_delta}
 
 
 class C4EncoderElement(EncoderElement, C4EncoderMixin, V2C4Component):
     """
-
+        The direct modeling heritage of this class has changed so many times, it's too much work for too little payoff
+        to document all the change details accurately now.  This class directly imports from the framework
+        EncoderElement class again.  Almost all C4 custom functionality is now implemented in the C4EncoderElementMixin
+        class.
     """
 
     __module__ = __name__
 
     def __init__(self, identifier=C4_ENCODER_CC_ID_BASE, extended=False, channel=C4_MIDI_CHANNEL,
-                 map_mode=_map_modes.relative_signed_bit, encoder_sensitivity=None, name=None, *a, **k):
+                 map_mode=map_modes.relative_signed_bit, encoder_sensitivity=None, name=None, *a, **k):
         if name is None:
             name = 'Encoder_Control_%d' % identifier
         super(C4EncoderElement, self).__init__(MIDI_CC_TYPE, channel, identifier, map_mode,
                                                encoder_sensitivity, name=name, *a, **k)
 
+        # C4EncoderElement.__init__() specific overrides of InputControlElement defaults
+        self.set_feedback_delay(self.led_ring_feedback_delay())
+        self.set_needs_takeover(False)
+        # self.set_report_values(True, True)
+
         # C4EncoderElement.__init__() additions
         V2C4Component.__init__(self)
-        # self._feedback_rule = None  # Live.MidiMap.CCFeedbackRule()
-        self.set_feedback_delay(self.led_ring_feedback_delay())
-        self._button = None  # maybe this could be nested?
+
+        # not currently used (bug hunting leftovers that might become useful?)
+        self._button = None
+        # see v2 "TouchEncoderElement" and _Framework ButtonElement
+        # (also _NKFW2 "SpecialEncoderElement")
         self._undo_step_handler = DummyUndoStepHandler()
         self._skin = Skin()
         self._last_received_value = 0
-        # self._last_received_raw_value = 0
-        # self._input_signal_listener_count = 1
-
-        # InputControlElement.set_report_values
-        # self.set_report_values(True, True)
-        self.set_needs_takeover(False)
 
     def disconnect(self):
         super(C4EncoderElement, self).disconnect()
         self._undo_step_handler = None
         return
 
-    # inherited abstract methods from InputControlElement
-    def message_map_mode(self):
-        assert self.message_type() is MIDI_CC_TYPE
-        return self.map_mode()
+    # inherited abstract methods from C4EncoderElementMixin
+    def update_led_ring_display_mode(self, display_mode=LedMappingType.LED_RING_MODE_SINGLE_DOT):
+        self.set_led_ring_display_mode(display_mode)
+        self._request_rebuild()
 
     # override methods from InputControlElement
     def _mapping_feedback_values(self):
-        # see def update_led_ring_display_mode(self, display_mode)
         return self.led_ring_cc_values()
 
     def receive_value(self, value):
-        # self._last_received_raw_value = value
-        # self._log_message("encoder<{}> received raw value<{}>".format(self.encoder_index(), value))
+        # override standard to store _last_received_value and maybe log
+        # see InputControlElement._last_sent_value
         super(C4EncoderElement, self).receive_value(value)
-        # self._log_message("after super did getattr on midi_value<{}>".format(value))
+        # self._log_message("encoder<{}> received value<{}>".format(self.encoder_index(), value))
         self._last_received_value = value
 
+    # # override standard to report values in normal script log (not DEBUG log mode)
     # def _report_value(self, value, is_input):
     #     self._verify_value(value)
     #     message = str(self.name) + ' ('
@@ -108,16 +94,7 @@ class C4EncoderElement(EncoderElement, C4EncoderMixin, V2C4Component):
     def set_script_handle(self, main_script=None):
         self._set_script_handle(main_script)
 
-    def update_led_ring_display_mode(self, display_mode=LedMappingType.LED_RING_MODE_SINGLE_DOT):
-        self.set_led_ring_display_mode(display_mode)
-        # self.set_midi_feedback_data()
-
-    # def set_midi_feedback_data(self):
-    #     self.set_feedback_delay(self.led_ring_feedback_delay())
-    #     # specialize_feedback_rule() returns a Live.MidiMap.CCFeedbackRule() instance
-    #     self._feedback_rule = self.specialize_feedback_rule()
-    #     self._request_rebuild()
-
+    # C4EncoderElement specific methods
     def set_encoder_button(self, new_button):
         assert new_button is None or isinstance(new_button, ButtonElement)
         # if self._button is not None:
@@ -126,4 +103,10 @@ class C4EncoderElement(EncoderElement, C4EncoderMixin, V2C4Component):
 
     def get_encoder_button(self):
         return self._button
+
+    # def set_midi_feedback_data(self):
+    #     self.set_feedback_delay(self.led_ring_feedback_delay())
+    #     # specialize_feedback_rule() returns a Live.MidiMap.CCFeedbackRule() instance
+    #     self._feedback_rule = self.specialize_feedback_rule()
+    #     self._request_rebuild()
 

@@ -87,17 +87,22 @@ class C4EncoderMixin(object):
         return V2C4Component.convert_encoder_id_value(self.message_identifier())
 
     def led_ring_feedback_delay(self):
-        return -1
+        return -1  # this is where the const -1 delay value is defined
+
+    def update_led_ring_display_mode(self, mode):
+        """ Called to set the ring mode based on the passed mode. To be overridden. """
+        raise NotImplementedError
 
     def set_led_ring_display_mode(self, display_mode):
         """ no change unless display_mode is in C4EncoderMixin.encoder_ring_led_mode_mode_select_values.keys() """
         if display_mode in encoder_ring_led_mode_mode_select_values.keys():
             self._feedback_ring_mode = display_mode
             display_mode_min_value = encoder_ring_led_mode_cc_min_max_values[display_mode][0]
-            feedback_val_range_max = encoder_ring_led_mode_cc_min_max_values[display_mode][1]
-            feedback_val_range_len = feedback_val_range_max - display_mode_min_value + 1
+            display_mode_max_value = encoder_ring_led_mode_cc_min_max_values[display_mode][1]
+            feedback_val_range_len = display_mode_max_value - display_mode_min_value + 1
             if display_mode == LedMappingType.LED_RING_MODE_BOOLEAN:
-                bool_values = [display_mode_min_value if x < feedback_val_range_len/2 else feedback_val_range_max
+                halfway = feedback_val_range_len / 2
+                bool_values = [display_mode_min_value if x < halfway else display_mode_max_value
                                for x in range(feedback_val_range_len)]
                 self._cc_feedback_value_map = tuple(bool_values)
             else:
@@ -105,7 +110,7 @@ class C4EncoderMixin(object):
 
             self.feedback_value_scaler = V2C4Component.make_scaling_function(0, 127,
                                                                              display_mode_min_value,
-                                                                             feedback_val_range_max)
+                                                                             display_mode_max_value)
 
     def specialize_feedback_rule(self, feedback_rule=Live.MidiMap.CCFeedbackRule()):
         feedback_rule.channel = self.message_channel()
@@ -130,16 +135,17 @@ class C4EncoderMixin(object):
            for Spread mode "minimum ON" means in effect "pan Center"
            for Boolean mode "minimum ON" means in effect "OFF"
         """
-        min_on_value = 0
-        min_on_value = encoder_ring_led_mode_cc_min_max_values[self.feedback_map_mode()][min_on_value]
+        min_on_value_index = 0
+        min_on_value = encoder_ring_led_mode_cc_min_max_values[self.feedback_map_mode()][min_on_value_index]
         self.send_led_ring_midi_cc(min_on_value, force)
 
     def send_led_ring_max_on(self, force=False):
         """
             for Boost Cut Mode "maximum ON" means in effect "full pan right"
+            for all other ring modes "maximum ON" means all leds illuminated
         """
-        max_on_value = 1
-        max_on_value = encoder_ring_led_mode_cc_min_max_values[self.feedback_map_mode()][max_on_value]
+        max_on_value_index = 1
+        max_on_value = encoder_ring_led_mode_cc_min_max_values[self.feedback_map_mode()][max_on_value_index]
         self.send_led_ring_midi_cc(max_on_value, force)
 
     def map_mode(self):
@@ -147,11 +153,6 @@ class C4EncoderMixin(object):
 
     def feedback_map_mode(self):
         return self._feedback_ring_mode
-
-    def set_ring_mode(self, mode):
-        """ Called to set the ring mode based on the passed mode. To be overridden. """
-        # raise NotImplementedError
-        self.set_led_ring_display_mode(mode)
 
     def send_value_on_ring_mode_change(self, value):
         """ Sends a value to the ring mode button upon the ring mode being changed.  This
