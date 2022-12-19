@@ -6,6 +6,10 @@ I suggest though to open the Live logfile to monitor what's going on, as there's
 What is it?
 A midi remote script for Ableton Live 10 and 11 for the Mackie C4 controller in Python 3 with backwards compatibility to Py2.7 for Live 10.
 
+How to use it?
+See the Wiki https://github.com/markusschloesser/MackieC4_P3/wiki
+With pictures showing ChannelStrip, Devices and Function mode
+
 What works:
 
 			1. Script gets detected in Live 10 and 11
@@ -23,18 +27,15 @@ What doesn't work / ToDo:
 
     1. undoing certain things can cause errors see #1 https://github.com/markusschloesser/MackieC4_P3/issues/1
     2. for the other stuff, see "Issues" here
-    3. next steps: migrate to v2 framework utilizing (ControlSurface)
+    3. next steps: migrate to v2/v3 framework utilizing (ControlSurface): If anyone has ANY documentation (besides the old docstrings) about the v2/v3 framework, I'd be most appreciative!
    
-How to use it?
-See the Wiki https://github.com/markusschloesser/MackieC4_P3/wiki 
 
-
-Any help is welcome! Suggestions, Ideas for enhancement, bug reports, especially code contributions. Please check, if we already thought about it, and it's in issues 😉 
+Any help is welcome! Suggestions, Ideas for enhancement, bug reports, especially code contributions. Please check, if we already thought about it, and if it's in issues https://github.com/markusschloesser/MackieC4_P3/issues 😉 
 I also uploaded the decompiled Ableton Live 11 / Python 3 remote scripts in a separate repository. If you want access to those, write me
 
 
 
-
+History of the code:
 Old Status:
 1. Only had a compiled script from Leigh Hunt (massive credits to him!)
 2. Script was written for Live 8 (LOM)
@@ -57,3 +58,6 @@ What we did in 2021:
   7. fixed a tremendous amount of ugly errors
   8. Integrated liveobj_valid and liveobj_changed
   9. introduced lots of new functionality 
+
+2022:
+more functionality, less bugs, shorter code, etc
