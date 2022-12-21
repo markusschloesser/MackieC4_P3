@@ -196,7 +196,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
 
             if self._mode_index == 0:
                 self._device.set_parameter_controls(None)
-                self._device.set_bank_buttons(None)
+                self._device.set_bank_nav_buttons(None)
                 for e in self._device_encoders:
                     e.send_led_ring_full_off()
                     # e.disconnect()
@@ -249,7 +249,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                 for e in self._device_encoders:
                     e.update_led_ring_display_mode(LedMappingType.LED_RING_MODE_WRAP)
 
-                self._device.set_bank_buttons(self._device_bank_buttons)
+                self._device.set_bank_nav_buttons(self._device_bank_buttons)
 
                 if self._channel_strip_displays is not None:
                     self._channel_strip_displays[0].reset()

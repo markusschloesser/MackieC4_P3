@@ -178,13 +178,13 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         else:
             self.reset_device_displays()
 
-    def set_bank_buttons(self, buttons):
-        assert buttons is None or isinstance(buttons, tuple) and len(buttons) == 2
-        if buttons is not None:
-            DeviceComponent.set_bank_nav_buttons(self, buttons[1], buttons[0])
-        else:
-            DeviceComponent.set_bank_nav_buttons(self, None, None)
-        return
+    # def set_bank_buttons(self, buttons):
+    #     assert buttons is None or isinstance(buttons, tuple) and len(buttons) == 2
+    #     if buttons is not None:
+    #         DeviceComponent.set_bank_nav_buttons(self, buttons[1], buttons[0])
+    #     else:
+    #         DeviceComponent.set_bank_nav_buttons(self, None, None)
+    #     return
 
     def set_parameter_controls(self, encoder_controls):
         assert encoder_controls is None or \
@@ -232,50 +232,21 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
     def _on_parameters_changed(self):
         self.update()
 
-    def _bank_value(self, value, button):
-        if self._bank_buttons is None:
-            raise AssertionError
-        assert value is not None
-        assert button is not None
-        assert isinstance(value, int)
-        assert isinstance(button, ButtonElement)
-        assert list(self._bank_buttons).count(button) == 1
+    def _bank_up_value(self, value):
+        """ Overrides standard to properly deal with more than 8 parameter controls. """
+        if self.is_enabled() and self._device and value and self._can_bank_up():
+            self._increment_bank_index(1)
 
-        # DeMorgan's Law: (not B or not C) == not (B and C)
-        mome = button.is_momentary()
-        zero = value is 0
-        # if self.is_enabled() and (not button.is_momentary() or value is not 0):
-        # if self.is_enabled() and (not mome or not zero):
-        if self.is_enabled() and not (mome and zero):
-            # a C4 button is always momentary, so
-            # this code won't run when the connected bank button press gets released
-            # (won't run when zero is True)
-            encoder_count = len(self._parameter_controls)
-            max_full_banks = LIVE_DEFAULT_MAX_SIZE / encoder_count
-            partial_bank = LIVE_DEFAULT_MAX_SIZE % encoder_count
-            if (max_full_banks == 4 and partial_bank > 0) or encoder_count != NUM_ENCODERS:
-                raise AssertionError
+    def _bank_down_value(self, value):
+        """ Overrides standard to properly deal with more than 8 parameter controls. """
+        if self.is_enabled() and self._device and value and self._can_bank_down():
+            self._increment_bank_index(-1)
 
-            prev_index = self._bank_index
-            self._log_message("Bank Button <{}> pressed, value is <{}>".format(button, value))
-            if self._bank_down_button == button:
-                if self._bank_index > 0:
-                    self._bank_index -= 1
-                    self._log_message("Bank Down pressed old index<{}> new index<{}>".format(prev_index,
-                                                                                             self._bank_index))
-                else:
-                    if self._page_index[self._bank_index] > 0:
-                        self._page_index[self._bank_index] -= 1
-            elif self._bank_next_button == button:
-                if self._bank_index < 3:
-                    self._bank_index += 1
-                    self._log_message("Bank Next pressed old index<{}> new index<{}>".format(prev_index,
-                                                                                             self._bank_index))
-                else:
-                    self._page_index[-1] += 1
-            if self._device is not None:
-                self.update()
-        return
+    def _increment_bank_index(self, delta):
+        delta = self._num_filled_banks * delta
+        self._bank_name = ''
+        self._bank_index = max(0, min(self._number_of_parameter_banks() - 1, self._bank_index + delta))
+        self.update()
 
     def _assign_parameters(self):
         assert self.is_enabled()
