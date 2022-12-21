@@ -16,6 +16,12 @@ class C4MixerComponent(MixerComponent, V2C4Component):
     """
     __module__ = __name__
 
+    # need to declare listener methods to the "button event subjects" so we can send appropriate
+    # button feedback LED ON or OFF signals.  Currently, each button press toggles the LED state more
+    # or less independently of the button's associated parameter's state in Live.  We should just listen for
+    # changes to the subject and "feedback" that change value to the LED.  If "track mute status" changed
+    # for example, and now that "device parameter" is OFF, then send the OFF feedback value to the LED.
+
     def __init__(self, *a, **k):
         V2C4Component.__init__(self)
         self._selected_strip_volume_control = None
