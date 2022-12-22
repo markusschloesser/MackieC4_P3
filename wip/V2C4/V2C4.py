@@ -107,7 +107,6 @@ class V2C4(ControlSurface):
                 self._chan_strip_display[i][j].set_clear_all_message(
                     head_part + self.clear_display_msg + foot_part)
                 self._chan_strip_display[i][j].set_message_parts(head_part, foot_part)
-                # .set_position_identifier here too?
 
             mixer.set_displays(self._chan_strip_display,
                                self._device_component.device_name_data_source())
@@ -209,8 +208,8 @@ class V2C4(ControlSurface):
             success = super(V2C4, self)._install_mapping(midi_map_handle, control, parameter,
                                                          feedback_delay, feedback_map)
         else:
-            self.log_message("V2C4 main script _install_mapping for <{}> with CC ID {} and feedback CC ID {} ".
-                             format(control.name, control.message_identifier(), control.message_feedback_identifier()))
+            # self.log_message("V2C4 main script _install_mapping for <{}> with CC ID {} and feedback CC ID {} ".
+            #                  format(control.name, control.message_identifier(), control.message_feedback_identifier()))
             feedback_rule = Live.MidiMap.CCFeedbackRule()
             feedback_rule.cc_no = control.message_feedback_identifier()
             feedback_rule.cc_value_map = feedback_map
@@ -224,7 +223,7 @@ class V2C4(ControlSurface):
             if success:
                 Live.MidiMap.send_feedback_for_parameter(midi_map_handle, parameter)
 
-            self.log_message("mapping was successful <{}>".format(success))
+            # self.log_message("mapping was successful <{}>".format(success))
         return success
 
     def receive_midi(self, midi_bytes):
