@@ -10,7 +10,7 @@ from _Framework.MixerComponent import MixerComponent
 
 from .C4EncoderElement import C4EncoderElement
 # from .C4Encoders import C4Encoders
-from .C4EncoderMixin import LedMappingType
+from .C4EncoderMixin import LedMappingType, encoder_ring_led_mode_cc_min_max_values
 from .C4ChannelStripComponent import C4ChannelStripComponent
 from .C4MidiMap import C4MidiMap
 from .C4ModeSelector import C4ModeSelector
@@ -117,6 +117,7 @@ class V2C4(ControlSurface):
             for cc_id in encoder_cc_ids:
                 e = self._model.make_encoder(cc_id, *a, **k)
                 e.set_script_handle(self)
+                e.send_led_ring_full_off(force=True)
                 encoders.append(e)
                 # self.log_message("<{}> index<{}> row<{}> rowIndex<{}> cc nbr<{}> fb cc nbr<{}>".format(
                 #     e.name, e.encoder_index(), e.c4_row_id(),
@@ -171,8 +172,11 @@ class V2C4(ControlSurface):
         ControlSurface.refresh_state(self)
         self._waiting_for_first_response = True
         self.request_firmware_version()
+        # always blank the LED Rings when refreshing state?
+        for e in self._model.get_all_encoders():
+            if e is not None and isinstance(e, C4EncoderElement):
+                e.send_led_ring_full_off(force=True)
         # always blank the LCDs when refreshing state?
-        # what about the LED rings?
         foot_part = (SYSEX_FOOTER, )
         for i in LCD_DISPLAY_ADDRESSES:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
@@ -274,13 +278,27 @@ class V2C4(ControlSurface):
                     self._send_midi(sysex)
 
     def disconnect(self):
+
+        for e in self._model.get_all_encoders():
+            if e is not None and isinstance(e, C4EncoderElement):
+                e.send_led_ring_max_on(force=True)
+                e.send_led_ring_full_off(force=True)
+
+                # "hardcode a midi message" alternative
+                # led_full_off_value = encoder_ring_led_mode_cc_min_max_values[LedMappingType.LED_RING_MODE_BOOLEAN][0]
+                # led_max_on_value = encoder_ring_led_mode_cc_min_max_values[LedMappingType.LED_RING_MODE_BOOLEAN][1]
+                # CC_STATUS message channel "hex digit" is 0 by default, the C4 default channel
+                # ring_on_msg = (CC_STATUS, e.message_feedback_identifier(), led_max_on_value)
+                # self._send_midi(ring_on_msg)
+                # ring_off_msg = (CC_STATUS, e.message_feedback_identifier(), led_full_off_value)
+                # self._send_midi(ring_off_msg)
+
         foot_part = (SYSEX_FOOTER, )
         for i in LCD_DISPLAY_ADDRESSES:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                 head_part = tuple(SYSEX_HEADER + (i, j))
-                # here, we could display a "goodbye message" instead of blanking the screens again
+                # display a "goodbye message" instead of blanking the screens again
                 sysex = head_part + self.goodbye_display_msg + foot_part
-                # self.schedule_message(1, self._send_midi, sysex)
                 self._send_midi(sysex)
 
         ControlSurface.disconnect(self)

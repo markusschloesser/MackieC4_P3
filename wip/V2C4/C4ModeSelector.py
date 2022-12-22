@@ -185,8 +185,8 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     def update(self):
         super(C4ModeSelector, self).update()
         if self.is_enabled():
-            # for c in self._control_elements:
-            #     c.release_parameter()
+            for e in self._device_encoders:
+                e.send_led_ring_full_off(force=True)
 
             # the mixer track and bank select buttons stay set in both modes
             # but these "transport buttons" are also "device encoder buttons"

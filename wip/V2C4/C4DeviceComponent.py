@@ -158,6 +158,13 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         self._parameter_value_property_slot.subject = self._on_parameter_value_changed()
         self.update_device_displays()
 
+    def reset_encoder_ring_leds(self, controls=None):
+        if controls is None and self._parameter_controls is not None:
+            controls = self._parameter_controls
+        if controls is not None:
+            for control in controls:
+                control.send_led_ring_full_off(force=True)
+
     def reset_device_displays(self):
         for source in self._parameter_name_data_sources:
             source.set_display_string(' - ')
@@ -196,8 +203,10 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
     #     return
 
     def set_parameter_controls(self, encoder_controls):
-        assert encoder_controls is None or \
-               isinstance(encoder_controls, tuple) and len(encoder_controls) == NUM_ENCODERS
+        assert encoder_controls is None or (isinstance(encoder_controls, tuple) and len(encoder_controls) == NUM_ENCODERS)
+
+        if encoder_controls is None and self._parameter_controls is not None:
+            self.reset_encoder_ring_leds(encoder_controls)
 
         filled = [ p for p in encoder_controls if p ] if encoder_controls else None
         self._num_filled_banks = len(filled) / NUM_ENCODERS_ONE_ROW if filled else 0
@@ -266,6 +275,9 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         self._bank_name, bank = self._current_bank_details()
         for control, parameter in zip(self._parameter_controls, bank):
             if control is not None:
+                if isinstance(control, C4EncoderElement):
+                    control.send_led_ring_full_off(force=True)
+
                 if live_object_is_valid(parameter):
                     control.connect_to(parameter)
                 else:
@@ -276,7 +288,12 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         return
 
     def _release_parameters(self, controls):
-        """ Extends standard to add listeners for unused controls to prevent leaking. """
+        """
+            Extends standard to add listeners for unused controls to prevent leaking and
+            turn off any connected LED rings
+        """
+        self.reset_encoder_ring_leds(controls)
+
         super(C4DeviceComponent, self)._release_parameters(controls)
         if controls:
             for control in controls:
