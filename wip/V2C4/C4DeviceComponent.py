@@ -256,6 +256,13 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
     def _on_parameters_changed(self):
         self.update()
 
+    def _can_bank_up(self):
+        num_banks = self._number_of_parameter_banks()
+        return self._bank_index is None or num_banks > self._bank_index + self._num_filled_banks
+
+    def _can_bank_down(self):
+        return self._bank_index is None or self._bank_index > 0
+
     def _bank_up_value(self, value):
         """ Overrides standard to properly deal with more than 8 parameter controls. """
         if self.is_enabled() and self._device and value and self._can_bank_up():
