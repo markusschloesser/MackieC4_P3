@@ -147,8 +147,8 @@ class V2C4(ControlSurface):
                                 # self._model.make_button(C4BTN_ALT_NOTE_ID)]
             modifier_buttons = tuple(modifier_buttons)
 
-            device_bank_buttons = tuple([self._model.make_button(C4BTN_SINGLE_RIGHT_NOTE_ID),
-                                         self._model.make_button(C4BTN_SINGLE_LEFT_NOTE_ID)])
+            device_bank_buttons = tuple([self._model.make_button(C4BTN_SINGLE_LEFT_NOTE_ID),
+                                         self._model.make_button(C4BTN_SINGLE_RIGHT_NOTE_ID)])
 
             mode_selector = C4ModeSelector(mixer, device, session, channel_encoders, encoders,
                                            assignment_buttons, modifier_buttons, device_bank_buttons,
