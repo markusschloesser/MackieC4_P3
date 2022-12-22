@@ -69,6 +69,18 @@ class C4EncoderElement(EncoderElement, C4EncoderMixin, V2C4Component):
     def _mapping_feedback_values(self):
         return self.led_ring_cc_values()
 
+    def _do_send_value(self, value, channel=None):
+        data_byte1 = self.message_feedback_identifier()
+        data_byte2 = value
+        status_byte = self._status_byte(self._original_channel)
+        if self.send_midi((status_byte, data_byte1, data_byte2)):
+            # following probably still uses "message_identifier" not "message_feedback_identifier"
+            self._last_sent_message = (value, channel)
+            if self._report_output:
+                is_input = False
+                self._report_value(value, is_input)
+        return
+
     def receive_value(self, value):
         # override standard to store _last_received_value and maybe log
         # see InputControlElement._last_sent_value
