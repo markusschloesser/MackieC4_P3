@@ -212,11 +212,17 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         self._num_filled_banks = len(filled) / NUM_ENCODERS_ONE_ROW if filled else 0
         super(C4DeviceComponent, self).set_parameter_controls(encoder_controls)
 
-        encoder_count = len(self._parameter_controls)
-        max_full_banks = LIVE_DEFAULT_MAX_SIZE / encoder_count
-        partial_bank = LIVE_DEFAULT_MAX_SIZE % encoder_count
-        if (max_full_banks == 4 and partial_bank > 0) or encoder_count != NUM_ENCODERS:
-            raise AssertionError("encoder control count mismatch")
+        if self._parameter_controls is not None:
+            encoder_count = len(self._parameter_controls)
+            if encoder_count > 0:
+                max_full_banks = LIVE_DEFAULT_MAX_SIZE / encoder_count
+                partial_bank = LIVE_DEFAULT_MAX_SIZE % encoder_count
+                # enforcing maximum 32 encoder controls and multiples of 8 here
+                # mismatch check logic probably represents a tautology, likely both unnecessary?
+                c4_encoder_mismatch = encoder_count <= NUM_ENCODERS and encoder_count % NUM_ENCODERS_ONE_ROW != 0
+                api_encoder_mismatch = max_full_banks == 4 and partial_bank > 0
+                if api_encoder_mismatch or c4_encoder_mismatch:
+                    raise AssertionError("encoder control count mismatch")
         return
 
     def parameter_value_data_sources(self):
