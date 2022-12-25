@@ -163,9 +163,8 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
     # add or remove _value_listener methods, and neither can "find in files" except in
     # _Framework.CompoundElement, but CompoundElement defers to a super class.
     # ButtonElement and CompoundElement are unrelated descendants of
-    # the common super class ControlElement. Actual add or remove _value_listener
-    # methods don't seem to be present in the _Framework (or v2), but lots of scripts
-    # call them like this, not just "Axiom scripts"
+    # the common super class ControlElement. All actual add or remove _value_listener
+    # style methods are dynamically produced at runtime.
     def set_peek_button(self, button):
         assert button is None or isinstance(button, ButtonElement)
         if self._peek_button is not button:
