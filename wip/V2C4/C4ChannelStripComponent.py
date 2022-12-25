@@ -17,9 +17,6 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
 
     def __init__(self):
         V2C4Component.__init__(self)
-        # self._mixer = None
-        # self.selected_track = None
-        # self.selected_strip = None
         # self._update_callback = None
         self._data_display = None
         self._static_display = None
@@ -34,38 +31,18 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         self.static_data_sources = [self._track_name_static_ds, self._device_name_static_ds]
 
         ChannelStripComponent.__init__(self)
-        # self._register_timer_callback(self._on_timer)
         return
 
     def disconnect(self):
         ChannelStripComponent.disconnect(self)
         # self._update_callback = None
-        # self._unregister_timer_callback(self._on_timer)
         self._data_display = None
         self._static_display = None
-        # self._mixer = None
-        # self.selected_track = None
-        # self.selected_strip = None
         return
 
     def set_script_handle(self, main_script):
-        """ to log in Live's log from this class, for example, need to set this script """
         self._set_script_handle(main_script)
 
-    # def on_selected_track_changed(self):
-    #     super(C4ChannelStripComponent, self).on_selected_track_changed()
-    #
-    #     if self.selected_track != self.song().view.selected_track:
-    #         # this C4 Channel Strip is not "known" to the mixer component
-    #         self.selected_track = self.song().view.selected_track
-    #         self.set_track(self.selected_track)
-    #         self.selected_strip = self._mixer.selected_strip
-    #         #
-    #     return
-    #
-    # def set_mixer(self, mixer):
-    #     assert isinstance(mixer, MixerComponent)
-    #     self._mixer = mixer
     #
     # def set_update_callback(self, callback):
     #     # pops if callback function arg does NOT contain an attribute named im_func
@@ -110,45 +87,6 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
                                        self._track.view.selected_device is not None else ' Device Label ')
 
         return
-
-    # # override to add logging
-    # def _connect_parameters(self):
-    #     if self._pan_control is not None:
-    #         self._log_message("super connecting pan encoder<{}>".format(self._pan_control.encoder_index()))
-    #     if self._volume_control is not None:
-    #         self._log_message("super connecting volume encoder<{}>".format(self._volume_control.encoder_index()))
-    #
-    #     super(C4ChannelStripComponent, self)._connect_parameters()
-    #
-    #     if self._pan_control is not None:
-    #         self._pan_control.add_value_listener(self._pan_control.receive_value)
-    #         self._log_message("added receive_value value listener to connected pan param<{}>".
-    #                           format(self._pan_control.mapped_parameter().__str__()))
-    #     if self._volume_control is not None:
-    #         self._volume_control.add_value_listener(self._volume_control.receive_value)
-    #         self._log_message("added receive_value value listener to connected volume param<{}>".
-    #                           format(self._volume_control.mapped_parameter().__str__()))
-    #
-    #     return
-    #
-    # def _disconnect_parameters(self):
-    #
-    #     if self._pan_control is not None:
-    #         self._pan_control.remove_value_listener(self._pan_control.receive_value)
-    #         self._log_message("removed value listener from disconnected pan param<{}>".
-    #                           format(self._pan_control.mapped_parameter().__str__()))
-    #     if self._volume_control is not None:
-    #         self._volume_control.remove_value_listener(self._volume_control.receive_value)
-    #         self._log_message("removed value listener from disconnected volume param<{}>".
-    #                           format(self._volume_control.mapped_parameter().__str__()))
-    #
-    #     if self._pan_control is not None:
-    #         self._log_message("disconnecting pan encoder<{}>".format(self._pan_control.encoder_index()))
-    #     if self._volume_control is not None:
-    #         self._log_message("disconnecting volume encoder<{}>".format(self._volume_control.encoder_index()))
-    #
-    #     super(C4ChannelStripComponent, self)._disconnect_parameters()
-    #     return
 
     def set_displays(self, display, device_name_data_source):
         assert isinstance(display, dict)
