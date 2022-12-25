@@ -32,7 +32,7 @@ class C4EncoderElement(EncoderElement, C4EncoderMixin, V2C4Component):
 
     __module__ = __name__
 
-    def __init__(self, identifier=C4_ENCODER_CC_ID_BASE, extended=False, channel=C4_MIDI_CHANNEL,
+    def __init__(self, identifier=C4_ENCODER_CC_ID_BASE, channel=C4_MIDI_CHANNEL,
                  map_mode=map_modes.relative_signed_bit, encoder_sensitivity=None, name=None, *a, **k):
         if name is None:
             name = 'Encoder_Control_%d' % identifier
