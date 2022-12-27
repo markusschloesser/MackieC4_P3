@@ -26,45 +26,26 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         V2C4Component.__init__(self)
         self._parameter_name_data_sources = []
         self._parameter_value_data_sources = []
-        self._page_name_data_sources = []
-        # each "page index" element in this list keeps track of which "bank of 8 parameters" page
-        # each row of encoders has loaded.
-        # self._page_index[0] represents the top row of encoders
-        # self._page_index[3] represents the bottom row of encoders
-        # if a device has 48 mappable parameters in 6 banks that all get mapped,
-        # this self._page_index list should contain [0, 1, 2, 3] to start, then [1, 2, 3, 4], then
-        # [2, 3, 4, 5] after a user hits "parameter page up" twice
-        # self._encoder_row_page_indexes = [0, 0, 0, 0]
+        self._page_name_data_sources = []  # names of parameter banks (bank pages)
+        self._parameter_value_control_slots = self.register_slot_manager()
+
         self._num_filled_banks = 0
         self._empty_control_slots = self.register_slot_manager()
         for i in range(NUM_ENCODERS):
             self._parameter_name_data_sources.append(DisplayDataSource())
             # encoder LED rings get feedback mapped, this is the same value data as display text
             self._parameter_value_data_sources.append(DisplayDataSource())
-            # not currently used
-            self._page_name_data_sources.append(DisplayDataSource())
+        # # not currently used
+        # self._page_name_data_sources.append(DisplayDataSource())
 
+        self._displays = None
         self.reset_device_displays()
-
-        def make_property_slot(name, alias=None):
-            alias = alias or name
-            return self.register_slot(None, getattr(self, '_on_%s_changed' % alias), name)
-
-        self._parameter_value_property_slot = make_property_slot('value', alias='parameter_value')
-        self.__on_selected_device_parameter_value_changed.subject = self.song().view.selected_track.view
-
-    @subject_slot('selected_device')
-    def __on_selected_device_parameter_value_changed(self):
-        self.update_device_displays()
-
-    @subject_slot_group('value')
-    def _on_parameter_value_changed(self):
-        self.update_device_displays()
 
     def disconnect(self):
         self._parameter_value_data_sources = None
         self._parameter_name_data_sources = None
         self._page_name_data_sources = None
+        self._displays = None
         DeviceComponent.disconnect(self)
         return
 
@@ -72,8 +53,34 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         self._set_script_handle(main_script)
 
     def set_device(self, device):
+        self.reset_encoder_ring_leds()
         DeviceComponent.set_device(self, device)
-        self._parameter_value_property_slot.subject = self._on_parameter_value_changed()
+        self.update_device_displays()
+
+    def set_displays(self, display_rows):
+        assert isinstance(display_rows, dict)
+        assert len(display_rows.keys()) == NUM_ENCODER_ROWS
+        assert display_rows.keys()[0] == LCD_ANGLED_ADDRESS
+        assert isinstance(display_rows[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET], PhysicalDisplayElement)
+        assert display_rows[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET].num_segments == NUM_ENCODERS_ONE_ROW
+
+        self._displays = display_rows
+        for index in range(NUM_ENCODERS):
+            p_name_ds = self.parameter_name_data_source(index)
+            p_valu_ds = self.parameter_value_data_source(index)
+            row_idx = index % NUM_ENCODERS_ONE_ROW
+            if index in row_00_encoder_indexes:
+                self._displays[LCD_ANGLED_ADDRESS][LCD_TOP_ROW_OFFSET].segment(row_idx).set_data_source(p_name_ds)
+                self._displays[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET].segment(row_idx).set_data_source(p_valu_ds)
+            elif index in row_01_encoder_indexes:
+                self._displays[LCD_TOP_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].segment(row_idx).set_data_source(p_name_ds)
+                self._displays[LCD_TOP_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].segment(row_idx).set_data_source(p_valu_ds)
+            elif index in row_02_encoder_indexes:
+                self._displays[LCD_MDL_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].segment(row_idx).set_data_source(p_name_ds)
+                self._displays[LCD_MDL_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].segment(row_idx).set_data_source(p_valu_ds)
+            elif index in row_03_encoder_indexes:
+                self._displays[LCD_BTM_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].segment(row_idx).set_data_source(p_name_ds)
+                self._displays[LCD_BTM_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].segment(row_idx).set_data_source(p_valu_ds)
         self.update_device_displays()
 
     def reset_encoder_ring_leds(self, controls=None):
@@ -93,29 +100,59 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
         for source in self._page_name_data_sources:
             source.set_display_string(' - ')
 
+        self.__update_displays()
+
     def update_device_displays(self):
         if self._device is not None:
             if self._parameter_controls is not None and len(self._parameter_controls) > 0:
-                for index in range(len(self._parameter_controls)):
-                    param = self._parameter_controls[index].mapped_parameter()
+                for control in self._parameter_controls:
+                    # index = control.message_identifier()
+                    index = control.c4_encoder_index  # no Buttons as "parameter controls" here
+                    # param = self._parameter_controls[index].mapped_parameter()
+                    param = control.mapped_parameter()
                     if param is not None:
                         # Live.Device.DeviceParameter.name
                         self._parameter_name_data_sources[index].set_display_string(param.name)
                         # Live.Device.DeviceParameter.str_for_value(Live.Device.DeviceParameter.value)
                         self._parameter_value_data_sources[index].set_display_string(param.str_for_value(param.value))
                     else:
-                        self._parameter_name_data_sources[index].set_display_string(' - ')
-                        self._parameter_value_data_sources[index].set_display_string(' * ')
+                        self._parameter_name_data_sources[index].set_display_string(' ? ')
+                        self._parameter_value_data_sources[index].set_display_string(' ??? ')
+                self.__update_displays()
             else:
                 # device is here but device parameters are not yet mapped to encoder controls or displays
                 self.reset_device_displays()
         else:
             self.reset_device_displays()
 
+    def __update_displays(self):
+        if self._displays_are_set():
+            self._displays[LCD_ANGLED_ADDRESS][LCD_TOP_ROW_OFFSET].update()
+            self._displays[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET].update()
+            self._displays[LCD_TOP_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].update()
+            self._displays[LCD_TOP_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].update()
+            self._displays[LCD_MDL_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].update()
+            self._displays[LCD_MDL_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].update()
+            self._displays[LCD_BTM_FLAT_ADDRESS][LCD_TOP_ROW_OFFSET].update()
+            self._displays[LCD_BTM_FLAT_ADDRESS][LCD_BOTTOM_ROW_OFFSET].update()
+
+    def _displays_are_set(self):
+        rtn_yes = True
+        if not isinstance(self._displays, dict) or not len(self._displays.keys()) == NUM_ENCODER_ROWS:
+            rtn_yes = False
+        elif not self._displays.keys()[0] == LCD_ANGLED_ADDRESS:
+            rtn_yes = False
+        elif not self._displays[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET].num_segments == NUM_ENCODERS_ONE_ROW:
+            rtn_yes = False
+
+        return rtn_yes
+
     def set_parameter_controls(self, encoder_controls):
-        assert encoder_controls is None or (isinstance(encoder_controls, tuple) and len(encoder_controls) == NUM_ENCODERS)
+        assert encoder_controls is None or (
+                isinstance(encoder_controls, tuple) and len(encoder_controls) == NUM_ENCODERS)
 
         if encoder_controls is None and self._parameter_controls is not None:
+            self._parameter_value_control_slots.disconnect()
             self.reset_encoder_ring_leds(encoder_controls)
 
         filled = [ p for p in encoder_controls if p ] if encoder_controls else None
@@ -133,8 +170,19 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
                 api_encoder_mismatch = max_full_banks == 4 and partial_bank > 0
                 if api_encoder_mismatch or c4_encoder_mismatch:
                     raise AssertionError("encoder control count mismatch")
+                for control in self._parameter_controls:
+                    self._parameter_value_control_slots.register_slot(control, self.__param_value_changed, 'value')
+
+                self.update_device_displays()
         return
 
+    def __param_value_changed(self, control, value):
+        # index = control.c4_encoder_index (or control.message_identifier())
+        # param = control.mapped_parameter()
+        # value = param.str_for_value(value)
+        self._parameter_value_data_sources[control.c4_encoder_index].set_display_string(value)
+        self.__update_displays()
+        
     def parameter_value_data_sources(self):
         return self._parameter_value_data_sources
 
@@ -161,10 +209,21 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
             return
         self._empty_control_slots.disconnect()
         super(C4DeviceComponent, self).update()
+        self._log_message("calling update_device_displays() from update()")
         self.update_device_displays()
 
+    # override adds logging
     def _on_parameters_changed(self):
-        self.update()
+        # release current self._parameter_value_control_slots
+        self._log_message(
+            "_on_parameters_changed, disconnecting _parameter_value_control_slots before super.update()")
+        self._parameter_value_control_slots.disconnect()
+
+        super(C4DeviceComponent, self).update()
+
+        self._log_message("_on_parameters_changed, registering new _parameter_value_control_slots after super.update()")
+        for control in self._parameter_controls:
+            self._parameter_value_control_slots.register_slot(control, self.__param_value_changed, 'value')
 
     def _can_bank_up(self):
         num_banks = self._number_of_parameter_banks()

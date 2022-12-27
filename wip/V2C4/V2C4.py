@@ -56,10 +56,6 @@ class V2C4(ControlSurface):
             mixer.set_selected_strip_arm_button(self._model.make_button(C4_ENCODER_BUTTON_28_NOTE_ID, *a, **k))
             mixer.set_shift_button(self._model.make_button(C4BTN_SHIFT_NOTE_ID, *a, **k))
 
-            device = C4DeviceComponent(device_selection_follows_track_selection=True)
-            device.set_script_handle(self)
-            self.set_device_component(device)
-
             stop_button = self._model.make_button(C4_ENCODER_BUTTON_25_NOTE_ID, *a, **k)
             play_button = self._model.make_button(C4_ENCODER_BUTTON_26_NOTE_ID, *a, **k)
             record_button = self._model.make_button(C4_ENCODER_BUTTON_27_NOTE_ID, *a, **k)
@@ -108,9 +104,6 @@ class V2C4(ControlSurface):
                     head_part + self.clear_display_msg + foot_part)
                 self._chan_strip_display[i][j].set_message_parts(head_part, foot_part)
 
-            mixer.set_displays(self._chan_strip_display,
-                               self._device_component.device_name_data_source())
-
             assert len(encoder_cc_ids) == NUM_ENCODERS
             encoders = []
             for cc_id in encoder_cc_ids:
@@ -149,6 +142,13 @@ class V2C4(ControlSurface):
             device_bank_buttons = tuple([self._model.make_button(C4BTN_SINGLE_LEFT_NOTE_ID),
                                          self._model.make_button(C4BTN_SINGLE_RIGHT_NOTE_ID)])
 
+            device = C4DeviceComponent(device_selection_follows_track_selection=True)
+            device.set_script_handle(self)
+            self.set_device_component(device)
+
+            mixer.set_displays(self._chan_strip_display,
+                               self._device_component.device_name_data_source())
+
             mode_selector = C4ModeSelector(mixer, device, session, channel_encoders, encoders,
                                            assignment_buttons, modifier_buttons, device_bank_buttons,
                                            transport_buttons, *a, **k)
@@ -167,6 +167,11 @@ class V2C4(ControlSurface):
             self.show_message("Mackie C4 v2 script initialize finished")
             self.log_message("Mackie C4 v2 script initialize finished")
 
+    def set_device_component(self, device_component):
+        super(V2C4, self).set_device_component(device_component)
+        if self._device_component is not None:
+            self._device_component.set_displays(self._device_parameter_displays)
+
     def refresh_state(self):
         ControlSurface.refresh_state(self)
         self._waiting_for_first_response = True
@@ -184,10 +189,7 @@ class V2C4(ControlSurface):
 
     def build_midi_map(self, midi_map_handle):
 
-        # for encoder in self._encoders_component.encoder_components():
-        #     encoder.build_midi_map(midi_map_handle)
-
-        # uncomment to see "unknown midi messages" from the C4 in the logs
+        # uncomment to see "unknown midi messages" from the C4 in the logs (logged in receive_midi() method)
         # of if you want to directly implement handlers for those midi messages
         # for i in range(C4BTN_FIRST, C4_LAST_NOTE_ID + 1):
         #     Live.MidiMap.forward_midi_note(self._c_instance.handle(), midi_map_handle, 0, i)
@@ -230,8 +232,8 @@ class V2C4(ControlSurface):
     def receive_midi(self, midi_bytes):
         """ only need to handle CC or Note message types here """
         # superclass will call back separately to handle any SYSEX messages
-        self.log_message("V2C4 main script received midi bytes<{}>".format(midi_bytes))
-        # this call forces any "unknown midi messages" logging mentioned above
+        # self.log_message("V2C4 main script received midi bytes<{}>".format(midi_bytes))
+        # this call forces any "unknown midi messages" logging mentioned in build_midi_map() comments
         ControlSurface.receive_midi(self, midi_bytes)
 
     #                            v   3   .   0   0       <--- C4 firmware version

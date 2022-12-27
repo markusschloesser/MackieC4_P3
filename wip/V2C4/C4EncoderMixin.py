@@ -33,6 +33,11 @@ encoder_ring_led_mode_mode_select_values = {
     LedMappingType.LED_RING_MODE_SPREAD: 0x33,
     LedMappingType.LED_RING_MODE_BOOLEAN: 0x2B}
 
+MAP = Live.MidiMap.MapMode
+TWO_COMP = (
+ MAP.relative_smooth_two_compliment, MAP.relative_two_compliment)
+SIGNED_BIT = (MAP.relative_smooth_signed_bit, MAP.relative_signed_bit)
+
 
 class C4EncoderMixin(object):
     """
