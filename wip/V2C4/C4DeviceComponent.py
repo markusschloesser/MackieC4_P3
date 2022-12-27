@@ -22,7 +22,7 @@ class C4DeviceComponent(DeviceComponent, V2C4Component):
     __module__ = __name__
 
     def __init__(self, *a, **k):
-        super(C4DeviceComponent, self).__init__(*a, **k)
+        super(C4DeviceComponent, self).__init__(name='V2C4DeviceComponent', *a, **k)
         V2C4Component.__init__(self)
         self._parameter_name_data_sources = []
         self._parameter_value_data_sources = []

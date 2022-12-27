@@ -28,11 +28,11 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         assert isinstance(modifier_buttons, tuple)
         assert isinstance(bank_buttons, tuple)
         assert isinstance(transport_buttons, tuple)
-        ModeSelectorComponent.__init__(self)
+        ModeSelectorComponent.__init__(self, name='V2C4ModeSelector', *a, **k)
         V2C4Component.__init__(self)
         self._mixer = mixer
         self._device = device
-        self._transport = TransportComponent(*a, **k)
+        self._transport = TransportComponent(name='V2C4Transport', *a, **k)
         self._transport_buttons = transport_buttons
         self._transport.set_stop_button(transport_buttons[0])
         self._transport.set_play_button(transport_buttons[1])
@@ -106,6 +106,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         ModeSelectorComponent.disconnect(self)
         return
 
+    # need to "observe" "parameter_changed" events somehow and then "update_displays" accordingly?
     def set_displays(self, device_displays, channel_strip_display, value_display=None):
         # if self.is_enabled():
         assert isinstance(device_displays, dict)
@@ -258,26 +259,21 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                     len(self._encoder_row02_displays) == 2 and \
                     len(self._encoder_row03_displays) == 2:
                     for index in range(len(self._device_encoders)):
+                        p_name_ds = self._device.parameter_name_data_source(index)
+                        p_valu_ds = self._device.parameter_value_data_source(index)
+                        row_index = index % NUM_ENCODERS_ONE_ROW
                         if index in row_00_encoder_indexes:
-                            self._encoder_row00_displays[0].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
-                                self._device.parameter_name_data_source(index))
-                            self._encoder_row00_displays[1].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
-                                self._device.parameter_value_data_source(index))
+                            self._encoder_row00_displays[0].segment(row_index).set_data_source(p_name_ds)
+                            self._encoder_row00_displays[1].segment(row_index).set_data_source(p_valu_ds)
                         elif index in row_01_encoder_indexes:
-                            self._encoder_row01_displays[0].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
-                                self._device.parameter_name_data_source(index))
-                            self._encoder_row01_displays[1].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
-                                self._device.parameter_value_data_source(index))
+                            self._encoder_row01_displays[0].segment(row_index).set_data_source(p_name_ds)
+                            self._encoder_row01_displays[1].segment(row_index).set_data_source(p_valu_ds)
                         elif index in row_02_encoder_indexes:
-                            self._encoder_row02_displays[0].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
-                                self._device.parameter_name_data_source(index))
-                            self._encoder_row02_displays[1].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
-                                self._device.parameter_value_data_source(index))
+                            self._encoder_row02_displays[0].segment(row_index).set_data_source(p_name_ds)
+                            self._encoder_row02_displays[1].segment(row_index).set_data_source(p_valu_ds)
                         elif index in row_03_encoder_indexes:
-                            self._encoder_row03_displays[0].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
-                                self._device.parameter_name_data_source(index))
-                            self._encoder_row03_displays[1].segment(index % NUM_ENCODERS_ONE_ROW).set_data_source(
-                                self._device.parameter_value_data_source(index))
+                            self._encoder_row03_displays[0].segment(row_index).set_data_source(p_name_ds)
+                            self._encoder_row03_displays[1].segment(row_index).set_data_source(p_valu_ds)
 
                 # if self._page_displays is not None:
                 #     for index in range(len(self._page_displays)):

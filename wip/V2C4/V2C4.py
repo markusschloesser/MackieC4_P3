@@ -65,7 +65,7 @@ class V2C4(ControlSurface):
             record_button = self._model.make_button(C4_ENCODER_BUTTON_27_NOTE_ID, *a, **k)
             transport_buttons = tuple([stop_button, play_button, record_button])
 
-            session = SessionComponent(0, 0)
+            session = SessionComponent(0, 0, auto_name=True)
 
             self._device_parameter_displays = {
                 LCD_ANGLED_ADDRESS:
@@ -208,8 +208,9 @@ class V2C4(ControlSurface):
             success = super(V2C4, self)._install_mapping(midi_map_handle, control, parameter,
                                                          feedback_delay, feedback_map)
         else:
-            # self.log_message("V2C4 main script _install_mapping for <{}> with CC ID {} and feedback CC ID {} ".
-            #                  format(control.name, control.message_identifier(), control.message_feedback_identifier()))
+            # self.log_message(
+            # "V2C4 main script _install_mapping for <{}> with CC ID {} and feedback CC ID {} ".
+            # format(control.name, control.message_identifier(), control.message_feedback_identifier()))
             feedback_rule = Live.MidiMap.CCFeedbackRule()
             feedback_rule.cc_no = control.message_feedback_identifier()
             feedback_rule.cc_value_map = feedback_map
@@ -247,7 +248,7 @@ class V2C4(ControlSurface):
             self.log_message("C4 responded, enabling <{}> components".format(len(self.components)))
             i = 1
             for component in self.components:
-                self.log_message("<{}> {}".format(i, component.__str__()))
+                self.log_message("<{}> {}".format(i, component.name))
                 component.set_enabled(True)
                 i = i + 1
 
