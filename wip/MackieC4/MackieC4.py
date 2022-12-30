@@ -229,10 +229,8 @@ class MackieC4(object):
             """here one can use vpot_rotation to forward CC data to a function"""
             cc_no = midi_bytes[1]
             cc_value = midi_bytes[2]
-            #self.log_message("CCnbr<{}> CCval<{}> logged because is_cc_msg in receive_midi in MackieC4".format(cc_no, cc_value))
 
             if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
-                #self.log_message("rawMidiMsg<{0}> receiving MIDI encoder from FORWARD CC in MackieC4 coming from receive_midi".format(midi_bytes))
 
                 # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
                 # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
@@ -403,8 +401,7 @@ class MackieC4(object):
         tracks = self.song().visible_tracks + self.song().return_tracks  # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
-            self.log_message("nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE"
-                             .format(len(tracks), self.track_count))
+            self.log_message("nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE".format(len(tracks), self.track_count))
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
             self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range".format(len(tracks), self.track_count))
@@ -444,7 +441,7 @@ class MackieC4(object):
         else:
             self.__encoder_controller.track_changed(selected_index)
 
-        assert self.track_count == len(tracks)
+        # assert self.track_count == len(tracks)
 
     def scene_change(self):   # do we need scenes? TESTED, without scene stuff, display on C4 doesn't get updated (WTF??)'
         selected_scene = self.song().view.selected_scene

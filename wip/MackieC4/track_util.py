@@ -130,9 +130,11 @@ def get_chains_recursive(track_or_chain):
             for chain in instruments[0].chains:
                 chains.append(chain)
                 instruments = list(find_instrument_devices(chain))
-                if instruments and old_hasattr(instruments[0], 'chains') and instruments[0].is_showing_chains:
-                    nested_chains = get_chains_recursive(chain)
-                    chains.extend(nested_chains)
+                if instruments:
+                    if old_hasattr(instruments[0], 'chains'):
+                        if instruments[0].is_showing_chains:
+                            nested_chains = get_chains_recursive(chain)
+                            chains.extend(nested_chains)
 
     return chains
 
@@ -145,9 +147,11 @@ def get_racks_recursive(track_or_chain):
             racks.append(instruments[0])
             for chain in instruments[0].chains:
                 instruments = list(find_instrument_devices(chain))
-                if instruments and old_hasattr(instruments[0], 'chains') and instruments[0].can_have_chains:
-                    nested_racks = get_racks_recursive(chain)
-                    racks.extend(nested_racks)
+                if instruments:
+                    if old_hasattr(instruments[0], 'chains'):
+                        if instruments[0].can_have_chains:
+                            nested_racks = get_racks_recursive(chain)
+                            racks.extend(nested_racks)
 
     return racks
 
@@ -171,5 +175,4 @@ def get_all_mixer_tracks(song):
 
 def _crossfade_toggle_value(self, value):
     if liveobj_valid(self.selected_track):
-        # self.selected_track.mixer_device.crossfade_assign = value != 0 or self._crossfade_toggle.is_momentary() or (self.selected_track.mixer_device.crossfade_assign - 1) % len(self.selected_track.mixer_device.crossfade_assignments.values)  # this only switches assignments OFF, but it's a start
         self.selected_track.mixer_device.crossfade_assign = (self.selected_track.mixer_device.crossfade_assign - 1) % len(self.selected_track.mixer_device.crossfade_assignments.values)
