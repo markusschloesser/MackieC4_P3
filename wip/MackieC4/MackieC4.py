@@ -206,7 +206,7 @@ class MackieC4(object):
             channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
             note = midi_bytes[1]  # data1
             velocity = midi_bytes[2]  # data2
-            #self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
+            # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
             if note in range(C4SID_FIRST, C4SID_LAST + 1) and ignore_note_offs:

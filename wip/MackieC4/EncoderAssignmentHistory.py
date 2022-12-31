@@ -160,8 +160,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.t_d_p_bank_count[mt_idx][mt_d_idx] = int(max_param_banks)
             self.t_d_p_bank_current[mt_idx][mt_d_idx] = 0
 
-        self.main_script().log_message(
-            "t_current idx <{0}> t_count <{1}> AFTER setup_db".format(self.t_current, self.t_count))
+        self.main_script().log_message("t_current idx <{0}> t_count <{1}> AFTER setup_db".format(self.t_current, self.t_count))
 
     def track_changed(self, track_index):
         rtn = -1
