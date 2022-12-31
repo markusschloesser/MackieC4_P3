@@ -136,9 +136,9 @@ class EncoderController(MackieC4Component):
         return self.__encoders
 
     def get_device_list(self, container):
-        # add each device in order. if device is a rack, process each chain recursively
-        # don't add racks that are not showing devices.
-        # device_list = track_util.get_racks_recursive(track)  # this refers method used by Ableton in track_selection
+        """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively.
+        Don't add racks that are not showing devices. """
+        # device_list = track_util.get_racks_recursive(track)  # this refers to the method used by Ableton in track_selection (which didn't work, but I'll leave it in here for now)
         device_list = []
         for device in container:
             device_list.append(device)
@@ -329,8 +329,7 @@ class EncoderController(MackieC4Component):
     #   stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
-        self.main_script().log_message("self.__assignment_mode == C4M_CHANNEL_STRIP is <{0}>"
-                                       .format(self.__assignment_mode == C4M_CHANNEL_STRIP))
+        self.main_script().log_message("self.__assignment_mode == C4M_CHANNEL_STRIP is <{0}>".format(self.__assignment_mode == C4M_CHANNEL_STRIP))
         current_bank_nbr = self.__eah.get_current_track_device_parameter_bank_nbr()
         update_self = False
         if switch_id == C4SID_BANK_LEFT:
@@ -382,7 +381,7 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
 
     def handle_assignment_switch_ids(self, switch_id):
-
+        """the 4 Assignment buttons on the C4, which handle the mode switching"""
         # C4 assignment.marker button == C4M_USER mode
         update_self = False
         if switch_id == C4SID_MARKER:
@@ -423,8 +422,8 @@ class EncoderController(MackieC4Component):
             self.request_rebuild_midi_map()
         # else don't update because nothing changed here
 
-    def handle_slot_nav_switch_ids(self, switch_id):  # MS currently only half working, only works for normal devices, not grouped devices
-        """ "slot navigation" only functions if the current mode is C4M_PLUGINS """
+    def handle_slot_nav_switch_ids(self, switch_id):
+        """ "slot navigation" switches between Devices in C4M_PLUGINS mode (up/down) """
         if self.__assignment_mode == button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
             current_trk_device_index = self.__eah.get_selected_device_index()
             max_trk_device_index = self.__eah.get_max_device_count() - 1
@@ -465,8 +464,8 @@ class EncoderController(MackieC4Component):
 
     def update_assignment_mode_leds(self):
         """
-          Make C4 device turn off the button LED of the button associated with the last assignment mode
-          Make C4 device turn  on the button LED of the button associated with the current assignment mode
+          Make C4 device turn off the button LED of the button associated with the last/old assignment mode
+          Make C4 device turn  on the button LED of the button associated with the current/new assignment mode
         """
         # sends for example (90, 08, 00, channel)  channel value provided by Live?, if any
         self.send_midi((NOTE_ON_STATUS, assignment_mode_to_button_id[self.__last_assignment_mode], BUTTON_STATE_OFF))
@@ -474,7 +473,7 @@ class EncoderController(MackieC4Component):
         self.send_midi((NOTE_ON_STATUS, assignment_mode_to_button_id[self.__assignment_mode], BUTTON_STATE_ON))
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
-        """ currently does nothing. If we want something done here, it needs to be forwarded by MackieC4/receive_midi """
+        """ currently does nothing. If we want something done here, it needs to be forwarded by MackieC4/receive_midi. BUT currently all forwarding functions are handled directly in MackieC4.py """
         # coming from the C4 these midi messages look like: B0  20  01  1 or B0  21  01  1, where vpot_index here would be 00 or 01 (after subtracting 0x20 from 0x20 or 0x21),
         # and cc_value would be 01 in both examples but could be any value 01 - 0x7F, however in here (because coming from the C4) if cc_value is in the range 01 - 0F (0-64),
         # the encoder is being turned clockwise, and if cc_value is in the range 41 - 4F (65-128), the encoder is being turned counter-clockwise the higher the value,
@@ -518,7 +517,7 @@ class EncoderController(MackieC4Component):
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
 
     def handle_pressed_v_pot(self, vpot_index):
-        """ 'encoder button' clicks are not handled in C4M_USER assignment mode  """
+        """ 'encoder button' /vpot push clicks. are not handled in C4M_USER assignment mode  """
         encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
         selected_device_bank_index = self.__eah.get_selected_device_bank_index()
         old_selected_bank = selected_device_bank_index
@@ -1030,6 +1029,8 @@ class EncoderController(MackieC4Component):
                             s.show_full_enlighted_poti()
                         else:
                             s.unlight_vpot_leds()
+                    else:
+                        s.unlight_vpot_leds()
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index in row_01_encoders:
 
@@ -1366,6 +1367,7 @@ class EncoderController(MackieC4Component):
                 lower_string1 += '                      '
 
             # This text 'covers' display segments over all 8 encoders in the second row
+            # MS maybe try to visualize Racks/Groups here?
             upper_string2 += '------------------------Devices------------------------'
 
             for t in encoder_range:

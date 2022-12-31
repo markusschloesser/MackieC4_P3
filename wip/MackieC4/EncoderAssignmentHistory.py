@@ -146,7 +146,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.__master_track_index = idx_nrml_and_rtn_trks + 1
         mt_idx = self.__master_track_index
         assert mt_idx == self.t_count # the master track index == the number of tracks and returns
-        devices_on_mstr_track = self.get_device_list(self.song().master_track)
+        devices_on_mstr_track = self.get_device_list(self.song().master_track.devices)
         # devices_on_mstr_track = song_ref.master_track.devices
         self.t_d_count[mt_idx] = len(devices_on_mstr_track)
         max_device_banks = math.ceil(len(devices_on_mstr_track) // SETUP_DB_DEVICE_BANK_SIZE)
