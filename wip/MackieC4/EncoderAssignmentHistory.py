@@ -226,11 +226,9 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.t_d_p_bank_current[track_index][d] = 0
 
     def track_deleted(self, track_index):
-        self.main_script().log_message(
-            "t_current idx <{0}> t_count <{1}> BEFORE track delete device slide activity".format(self.t_current, self.t_count))
+        self.main_script().log_message("t_current idx <{0}> t_count <{1}> BEFORE track delete device slide activity".format(self.t_current, self.t_count))
         for t in range(self.t_current + 1, self.t_count, 1):
-            self.main_script().log_message(
-                "t <{0}> t_d_count[t] <{1}> during device delete activity".format(t, self.t_d_count[t]))
+            self.main_script().log_message("t <{0}> t_d_count[t] <{1}> during device delete activity".format(t, self.t_d_count[t]))
             for d in range(self.t_d_count[t]):
                 self.main_script().log_message("d <{0}> t_d_p_count[t][d] <{1}> during device param slide down activity".format(d, self.t_d_p_count[t][d]))
                 self.t_d_p_count[(t - 1)][d] = self.t_d_p_count[t][d]
@@ -278,8 +276,8 @@ class EncoderAssignmentHistory(MackieC4Component):
         if selected_device_idx == -1:
             assert no_devices_on_track  # == True
 
-        self.main_script().log_message("no devices currently on track <{0}>".format(no_devices_on_track))
-        self.main_script().log_message("add event <{0}> delete event <{1}> change event <{2}>".format(device_was_added, device_was_removed, selected_device_was_changed))
+        self.main_script().log_message("EAH no devices currently on track <{0}>".format(no_devices_on_track))
+        self.main_script().log_message("EAH device_added_deleted_or_changed: add event <{0}>, delete event <{1}>, change event <{2}>".format(device_was_added, device_was_removed, selected_device_was_changed))
 
         index = 0
         new_device_index = 0
@@ -334,14 +332,12 @@ class EncoderAssignmentHistory(MackieC4Component):
             new_current_device_bank_offset = incremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
             if incremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 1:
                 self.t_d_bank_current[self.t_current] += 1
-                self.main_script().log_message("updated current track device bank to <{0}>"
-                                               .format(self.t_d_bank_current[self.t_current]))
+                self.main_script().log_message("updated current track device bank to <{0}>".format(self.t_d_bank_current[self.t_current]))
             else:
-                self.main_script().log_message("not updating current track device bank from <{0}>"
-                                               .format(self.t_d_bank_current[self.t_current]))
+                self.main_script().log_message("not updating current track device bank from <{0}>".format(self.t_d_bank_current[self.t_current]))
 
         elif device_was_removed:
-            self.main_script().log_message("for 'delete' device event handling")
+            self.main_script().log_message("EAH/device_added_deleted_or_changed/device_was_removed: for 'delete' device event handling")
 
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
