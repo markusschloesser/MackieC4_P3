@@ -276,26 +276,25 @@ class EncoderController(MackieC4Component):
 
             if liveobj_valid(self.selected_track):
                 if liveobj_valid(self.selected_track.view.selected_device):
-                    extended_device_list = self.get_device_list(self.selected_track.devices)  # extended_device_list is the device list with enumerated/flattened rack devices
-                    if liveobj_changed(self.selected_track.view.selected_device, extended_device_list):
-
-                        selected_device_idx = next((x for x in range(len(extended_device_list))
+                    self.main_script().log_message("EC/device_added_deleted_or_changed/if liveobj_valid(self.selected_track.view.selected_device): {0} ".format(self.selected_track.view.selected_device))
+                    selected_device_idx = next((x for x in range(len(extended_device_list))
                                                if extended_device_list[x] == self.selected_track.view.selected_device), -1)
-                        extended_device_list = self.get_device_list(self.selected_track.devices)  # extended_device_list is the device list with enumerated/flattened rack devices
-                        updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list, self.selected_track.view.selected_device, selected_device_idx)
+                    extended_device_list = self.get_device_list(self.selected_track.devices)
+                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list, self.selected_track.view.selected_device, selected_device_idx)
 
-                        if len(extended_device_list) > updated_idx > -1:
-                            self.__chosen_plugin = extended_device_list[updated_idx]  # == new selected device
-                            self.main_script().log_message("updated __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
-                        elif len(extended_device_list) > 0:
-                            self.__chosen_plugin = extended_device_list[0]  # == new selected device
-                            self.__eah.set_selected_device_index(0)
-                            self.main_script().log_message("only device __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
-                        else:
-                            self.__chosen_plugin = None
-                            # might happen if track with no devices deleted, and the next selected track also has no devices?
-                            self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
-                            self.main_script().log_message("__chosen_plugin is now None")
+            if len(extended_device_list) > updated_idx > -1:  # THIS doesn't get called when deleting second (or third) rack device
+                self.__chosen_plugin = extended_device_list[updated_idx]  # == new selected device
+                self.__eah.set_selected_device_index(updated_idx)
+                self.main_script().log_message("EC/device_added_deleted_or_changed updated __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+            elif len(extended_device_list) > 0:  # THIS doesn't get called
+                self.__chosen_plugin = extended_device_list[0]  # == new selected device
+                self.__eah.set_selected_device_index(0)
+                self.main_script().log_message("EC/device_added_deleted_or_changed: ONLY device __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+            else:
+                self.__chosen_plugin = None
+                # might happen if track with no devices deleted, and the next selected track also has no devices?
+                self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
+                self.main_script().log_message("__chosen_plugin is now None")
 
         self.__reorder_parameters()
         self.__reassign_encoder_parameters(for_display_only=False)

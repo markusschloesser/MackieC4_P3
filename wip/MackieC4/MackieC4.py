@@ -80,6 +80,7 @@ class MackieC4(object):
     '''pplisten is "Playing Position" Listener'''
 
     mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'oml': {}, 'omr': {}, 'color': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
+    '''mlisten is Mixer Listener'''
     '''oml is "output_meter_left, omr is output_meter_right'''
 
     rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'color': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
@@ -401,10 +402,10 @@ class MackieC4(object):
         tracks = self.song().visible_tracks + self.song().return_tracks  # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
-            self.log_message("nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE".format(len(tracks), self.track_count))
+            self.log_message("C4/track_change nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE".format(len(tracks), self.track_count))
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
-            self.log_message("nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range".format(len(tracks), self.track_count))
+            self.log_message("C4/track_change  nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range".format(len(tracks), self.track_count))
 
         index = 0
         found = 0
@@ -426,9 +427,9 @@ class MackieC4(object):
                 # signal that something bad happened - selected track
                 selected_index = 555
 
-        self.log_message("found selected index {0}".format(selected_index))
+        self.log_message("C4/track_change found selected index {0}".format(selected_index))
         if selected_index != self.track_index:
-            self.log_message("setting self.track_index {0} to selected index {1}".format(self.track_index, selected_index))
+            self.log_message("C4/track_change setting self.track_index {0} to selected index {1}".format(self.track_index, selected_index))
             self.track_index = selected_index
 
         if self.track_count > len(tracks):
@@ -521,7 +522,7 @@ class MackieC4(object):
                      'output_routing_channel', 'output_routing_type'):
             for tr in self.mlisten[type]:
                 if liveobj_valid(tr):  # and not tr.None:
-                    self.log_message("track <{0}> ltype <{1}>".format(tr.name, type))
+                    self.log_message("C4/rem_mixer_listeners track <{0}> ltype <{1}>".format(tr.name, type))
                     cb = self.mlisten[type][tr]
                     if type == 'arm':
                         if tr.can_be_armed == 1:
@@ -764,18 +765,18 @@ class MackieC4(object):
         self.rem_device_listeners()
         self.log_message("C4 add_device_listeners/rem_device_listeners: type <{0}>".format(type))
         self.do_add_device_listeners(self.song().tracks, 0)
-        self.log_message("C4 add_device_listeners/do_add: type <{0}>".format(type))
+        self.log_message("C4/add_device_listeners/do_add: type <{0}>".format(type))
         self.do_add_device_listeners(self.song().return_tracks, 1)
         self.do_add_device_listeners([self.song().master_track], 2)
 
     def do_add_device_listeners(self, tracks, type):
         for i in range(len(tracks)):
             self.add_devicelistener(tracks[i], i, type)
-            self.log_message("C4 do_add_device_listeners: type <{0}>".format(type))
+            self.log_message("C4/do_add_device_listeners: type <{0}>".format(type))
             if len(tracks[i].devices) >= 1:
                 for j in range(len(tracks[i].devices)):
                     self.add_devpmlistener(tracks[i].devices[j])
-                    self.log_message("C4 do_add_device_listeners/add_devpmlistener: type <{0}>".format(type))
+                    self.log_message("C4/do_add_device_listeners/add_devpmlistener: type <{0}>".format(type))
                     if len(tracks[i].devices[j].parameters) >= 1:
                         for k in range(len(tracks[i].devices[j].parameters)):
                             par = tracks[i].devices[j].parameters[k]
@@ -789,14 +790,16 @@ class MackieC4(object):
                     pr.remove_value_listener(ocb)
 
         self.prlisten = {}
+
         for tr in self.dlisten:
             if liveobj_valid(tr):
                 ocb = self.dlisten[tr]
-                self.log_message("C4 rem_device_listeners: type <{0}>".format(type))
+                self.log_message("C4/rem_device_listeners: type <{0}>".format(type))
                 if tr.view.selected_device_has_listener(ocb) == 1:
                     tr.view.remove_selected_device_listener(ocb)
 
         self.dlisten = {}
+
         for de in self.plisten:
             if liveobj_valid(de):
                 ocb = self.plisten[de]
@@ -829,14 +832,14 @@ class MackieC4(object):
 
     def add_devicelistener(self, track, tid, type):
         cb = lambda: self.device_changestate(track, tid, type)
-        self.log_message("C4 add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+        self.log_message("C4/add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
         if (track in self.dlisten) != 1:
             track.view.add_selected_device_listener(cb)
-            self.log_message("C4 track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+            self.log_message("C4/track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
             self.dlisten[track] = cb
 
     def device_changestate(self, track, tid, type):  # equivalent to __on_selected_device_chain_changed in MCU
-        self.log_message("MackieC4 device_changestate: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+        self.log_message("C4/device_changestate: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
         # did = self.tuple_idx(track.devices, track.view.selected_device)
         self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
         # if type == 2:
