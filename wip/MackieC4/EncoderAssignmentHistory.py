@@ -370,17 +370,17 @@ class EncoderAssignmentHistory(MackieC4Component):
                                                                                                    device_count_track)
             for d in range(deleted_device_index + 1, device_count_track, 1):
                 c = d - 1
-                self.main_script().log_message("{0}param_count_track: replacing<{1}> with<{2}>").format(
-                    log_id, param_count_track[d], param_count_track[c])
+                self.main_script().log_message("{0}param_count_track: replacing<{1}, {2}> with<{3}, {4}>").format(
+                    log_id, d, param_count_track[d], c, param_count_track[c])
                 param_count_track[d] = param_count_track[c]
-                self.main_script().log_message("{0}param_bank_count_track: replacing<{1}> with<{2}>").format(
-                    log_id, param_bank_count_track[d], param_bank_count_track[c])
+                self.main_script().log_message("{0}param_bank_count_track: replacing<{1}, {2}> with<{3}, {4}>").format(
+                    log_id, d, param_bank_count_track[d], c, param_bank_count_track[c])
                 param_bank_count_track[d] = param_bank_count_track[c]
-                self.main_script().log_message("{0}param_bank_current_track: replacing<{1}> with<{2}>").format(
-                    log_id, param_bank_current_track[d], param_bank_current_track[c])
+                self.main_script().log_message("{0}param_bank_current_track: replacing<{1}, {2}> with<{3}, {4}>").format(
+                    log_id, d, param_bank_current_track[d], c, param_bank_current_track[c])
                 param_bank_current_track[d] = param_bank_current_track[c]
 
-            # "only" device in device chain is also "last" device in device chain 
+            # "only" device in device chain is also "last" device in device chain
             empty_chain = device_count_track == 0 and deleted_device_index == 0
             if deleted_device_index == device_count_track - 1 or empty_chain:
                 # only decrement "current device" index if deleted device wasn't the only device
