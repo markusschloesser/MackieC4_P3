@@ -252,19 +252,26 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.main_script().log_message("t_current idx <{0}> t_count <{1}> AFTER track delete device slide activity".format(self.t_current, self.t_count))
 
     def device_added_deleted_or_changed(self, all_devices, selected_device, selected_device_idx):
-
+        log_id = "EAH/device_added_deleted_or_changed: "
         new_device_count_track = len(all_devices)
-        self.main_script().log_message("EAH: new device list size <{0}> BEFORE updating device index".format(new_device_count_track))
+        self.main_script().log_message(
+            "{0}input device list len<{1}>".format(log_id, new_device_count_track))
         idx = 0
+        log_msg = "{0}device in input device list at index<{1}> is ".format(log_id, idx)
         for device in all_devices:
             if liveobj_valid(device):
-                self.main_script().log_message("EAH/device_added_deleted_or_changed/for device in all_devices: idx <{0}> before <{1}>".format(idx, device.name))
+                self.main_script().log_message("{0}a valid Live object named <{1}>".format(log_msg, device.name))
             else:
-                self.main_script().log_message("EAH/device_added_deleted_or_changed idx <{0}> before <None> or lost weakref".format(idx))
+                self.main_script().log_message("{0}<None> or a lost weakref".format(log_msg))
             idx += 1
+            log_msg = "{0}device in input device list at index<{1}> is ".format(log_id, idx)
 
-        if liveobj_valid(selected_device) and selected_device_idx > -1:
-            self.main_script().log_message("EAH/device_added_deleted_or_changed passed idx <{0}> and device <{1}>".format(selected_device_idx, selected_device.name))
+        if liveobj_valid(selected_device):
+            self.main_script().log_message(
+                "{0}input selected_device is a valid Live object named<{1}>".format(log_id, selected_device.name))
+        if selected_device_idx > -1:
+            self.main_script().log_message(
+                "{0}input selected_device_idx<{1}> points to a forward index".format(log_id, selected_device_idx))
 
         # this is the "old count"
         device_count_track = self.t_d_count[self.t_current]
@@ -273,11 +280,21 @@ class EncoderAssignmentHistory(MackieC4Component):
         device_was_removed = new_device_count_track < device_count_track
         selected_device_was_changed = new_device_count_track == device_count_track
         no_devices_on_track = new_device_count_track == 0
+        log_msg = "{0}input selected_device_idx<{1}> and input device list len<{2}> ".format(log_id,
+                                                                                             selected_device_idx,
+                                                                                             new_device_count_track)
         if selected_device_idx == -1:
+            self.main_script().log_message(
+                "{0}agree that no devices currently populate the device chain for this track".format(log_msg))
             assert no_devices_on_track  # == True
+        else:
+            self.main_script().log_message(
+                "{0}agree that at least one device currently populates the device chain for this track".format(log_msg))
 
-        self.main_script().log_message("EAH no devices currently on track <{0}>".format(no_devices_on_track))
-        self.main_script().log_message("EAH device_added_deleted_or_changed: add event <{0}>, delete event <{1}>, change event <{2}>".format(device_was_added, device_was_removed, selected_device_was_changed))
+        self.main_script().log_message(
+            "{0}}add event <{1}>, delete event <{2}>, change event <{3}>".format(log_id, device_was_added,
+                                                                                 device_was_removed,
+                                                                                 selected_device_was_changed))
 
         index = 0
         new_device_index = 0
@@ -285,15 +302,17 @@ class EncoderAssignmentHistory(MackieC4Component):
         changed_device_index = 0
         rtn_device_index = -1
 
-        # if there are no devices on track, all indexes are 0
-        # which is a valid index??
+        # if there are no devices on track, there are no devices in input all_devices list
+        # and this loop is not entered, all "change indexes" stay 0
         for device in all_devices:
             if selected_device == device:
                 new_device_index = index
                 deleted_device_index = index
                 changed_device_index = index
                 rtn_device_index = index
-                self.main_script().log_message("EAH/device_added_deleted_or_changed found event index <{0}> and device <{1}>".format(index, device.name))
+                self.main_script().log_message(
+                    "{0}matched input selected_device<{1}> with device<{2}> at index<{3}> of input device list".format(
+                        log_id, selected_device.name, device.name, index))
                 break
             else:
                 index += 1
@@ -301,7 +320,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         # FROM HERE: "found event index <{0}> and device <{1}>".format(index, device.name)
         # represent "source of truth"   device == self.selected_track.devices[index]
         if device_was_added:
-            self.main_script().log_message("EAH/device_added_deleted_or_changed/if device_was_added:")
+            self.main_script().log_message("{0}device_was_added:".format(log_id))
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
@@ -330,31 +349,47 @@ class EncoderAssignmentHistory(MackieC4Component):
             # and is inside the max page boundary
             # page 0 is devices 1 - 8  page 16 is devices 121 - 128
             new_current_device_bank_offset = incremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
+            cb = self.t_d_bank_current[self.t_current]
+            log_msg = "{0}device_was_added current track device bank ".format(log_id)
             if incremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 1:
                 self.t_d_bank_current[self.t_current] += 1
-                self.main_script().log_message("EAH/device_added_deleted_or_changed/added updated current track device bank to <{0}>".format(self.t_d_bank_current[self.t_current]))
+                cb = self.t_d_bank_current[self.t_current]
+                self.main_script().log_message("{0}updated to <{1}>".format(log_msg, cb))
             else:
-                self.main_script().log_message("EAH/device_added_deleted_or_changed/added not updating current track device bank from <{0}>".format(self.t_d_bank_current[self.t_current]))
+                self.main_script().log_message("{0}remains <{1}>".format(log_msg, cb))
 
         elif device_was_removed:
-            self.main_script().log_message("EAH/device_added_deleted_or_changed/device_was_removed: for 'delete' device event handling")
+            self.main_script().log_message("{0}device_was_removed: for 'delete' device event handling").format(log_id)
 
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
+            self.main_script().log_message(
+                "{0}device_was_removed: deleted_device_index<{1}> device_count_track<{2}>").format(log_id,
+                                                                                                   deleted_device_index,
+                                                                                                   device_count_track)
             for d in range(deleted_device_index + 1, device_count_track, 1):
                 c = d - 1
+                self.main_script().log_message("{0}param_count_track: replacing<{1}> with<{2}>").format(
+                    log_id, param_count_track[d], param_count_track[c])
                 param_count_track[d] = param_count_track[c]
+                self.main_script().log_message("{0}param_bank_count_track: replacing<{1}> with<{2}>").format(
+                    log_id, param_bank_count_track[d], param_bank_count_track[c])
                 param_bank_count_track[d] = param_bank_count_track[c]
+                self.main_script().log_message("{0}param_bank_current_track: replacing<{1}> with<{2}>").format(
+                    log_id, param_bank_current_track[d], param_bank_current_track[c])
                 param_bank_current_track[d] = param_bank_current_track[c]
 
-            if deleted_device_index == device_count_track - 1:  # "last" device in list or "only" device in list
+            # "only" device in device chain is also "last" device in device chain 
+            empty_chain = device_count_track == 0 and deleted_device_index == 0
+            if deleted_device_index == device_count_track - 1 or empty_chain:
                 # only decrement "current device" index if deleted device wasn't the only device
                 if deleted_device_index > 0:
                     self.t_d_count[self.t_current] -= 1
                 else:
                     self.t_d_count[self.t_current] = 0
             else:
+                # device chain is not empty and "current device" isn't the only device
                 self.t_d_count[self.t_current] -= 1
 
             assert new_device_count_track == self.t_d_count[self.t_current]
@@ -374,7 +409,8 @@ class EncoderAssignmentHistory(MackieC4Component):
                 self.t_d_bank_current[self.t_current] -= 1
 
         elif selected_device_was_changed:
-            self.main_script().log_message("EAH for 'change' device event handling")
+            self.main_script().log_message(
+                "{0}selected_device_was_changed: for 'change' device event handling").format(log_id)
             # param_count_track = self.t_d_p_count[self.t_current]
             # param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             # param_bank_current_track = self.t_d_p_bank_current[self.t_current]
