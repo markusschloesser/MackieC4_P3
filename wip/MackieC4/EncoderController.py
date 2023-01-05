@@ -265,52 +265,86 @@ class EncoderController(MackieC4Component):
         return
 
     def device_added_deleted_or_changed(self, track, tid, type):
+        log_id = "EC/device_added_deleted_or_changed: "
         updated_idx = -1
-        extended_device_list = self.get_device_list(self.selected_track.devices)  # extended_device_list is the device list with enumerated/flattened rack devices
+        # extended_device_list is the device list with enumerated/flattened rack devices
+        extended_device_list = self.get_device_list(self.selected_track.devices)
         if liveobj_valid(track):
-            self.main_script().log_message("EC: processing device changestate of type <{0}> on track <{1}> at index {2}".format(type, track.name, tid))
+            self.main_script().log_message("{0}processing device changestate of type <{1}> on track <{2}> at index {3}".
+                                           format(log_id, type, track.name, tid))
             if liveobj_changed(self.selected_track, track):
-                self.main_script().log_message("because liveobj_changed() track, updating selected track to <{0}> ".format(track.name) + "and track_changed() at index {0}".format(tid))
+                log_msg = "{0}because selected_track changed, updating selected track to <{1}> ".format(log_id,
+                                                                                                        track.name)
+                self.main_script().log_message(log_msg + "and calling track_changed() passing index {0}".format(tid))
                 self.selected_track = track
                 self.track_changed(tid)
+            # else:
+            #     # self.selected_track did NOT CHANGE
 
             if liveobj_valid(self.selected_track):
-                if liveobj_valid(self.selected_track.view.selected_device):
-                    self.main_script().log_message("EC/device_added_deleted_or_changed/if liveobj_valid(self.selected_track.view.selected_device): {0} ".format(self.selected_track.view.selected_device))
-                    selected_device_idx = next((x for x in range(len(extended_device_list))
-                                               if extended_device_list[x] == self.selected_track.view.selected_device), -1)
+                selected_device = self.selected_track.view.selected_device
+                if liveobj_valid(selected_device):
+                    log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(
+                        log_id, selected_device)
+                    self.main_script().log_message(log_msg)
+                    current_selected_indexes = (x for x in range(len(extended_device_list))
+                                                if extended_device_list[x] == selected_device)
+                    selected_device_idx = next(current_selected_indexes, -1)
                     extended_device_list = self.get_device_list(self.selected_track.devices)
-                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list, self.selected_track.view.selected_device, selected_device_idx)
+                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list,
+                                                                             selected_device, selected_device_idx)
+                # else:
+                #     # self.selected_track.view.selected_device is NOT VALID
+            # else:
+            #     # self.selected_track is NOT VALID
 
-            if len(extended_device_list) > updated_idx > -1:  # THIS doesn't get called when deleting second (or third) rack device
-                self.__chosen_plugin = extended_device_list[updated_idx]  # == new selected device
+            if updated_idx == -1:
+                self.__chosen_plugin = None
+                # might happen if track with no devices deleted, and the next selected track also has no devices?
+                self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
+                self.main_script().log_message(
+                    "{0}__chosen_plugin is now None because no EAH updated index".format(log_id))
+            elif len(extended_device_list) > updated_idx:
+                self.__chosen_plugin = extended_device_list[updated_idx]
                 self.__eah.set_selected_device_index(updated_idx)
-                self.main_script().log_message("EC/device_added_deleted_or_changed updated __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
-            elif len(extended_device_list) > 0:  # THIS doesn't get called
-                self.__chosen_plugin = extended_device_list[0]  # == new selected device
+                self.main_script().log_message("{0}__chosen_plugin is now {1} because updated index is <{2}>".format(
+                    log_id, self.__chosen_plugin.name, updated_idx))
+            elif len(extended_device_list) > 0:  # evaluation never reaches here if updated_idx == 0
+                self.__chosen_plugin = extended_device_list[0]
                 self.__eah.set_selected_device_index(0)
-                self.main_script().log_message("EC/device_added_deleted_or_changed: ONLY device __chosen_plugin is now {0} ".format(self.__chosen_plugin.name))
+                self.main_script().log_message(
+                    "{0}ONLY device __chosen_plugin is now {1} ".format(log_id, self.__chosen_plugin.name))
             else:
                 self.__chosen_plugin = None
                 # might happen if track with no devices deleted, and the next selected track also has no devices?
                 self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
-                self.main_script().log_message("__chosen_plugin is now None")
+                self.main_script().log_message(
+                    "{0}}__chosen_plugin is now None because else-fell-through".format(log_id))
+        # else:
+        #     # track input parameter is NOT VALID
 
         self.__reorder_parameters()
         self.__reassign_encoder_parameters(for_display_only=False)
         self.request_rebuild_midi_map()
 
         new_device_count_track = len(extended_device_list)
-        self.main_script().log_message("EC device_added_deleted_or_changed device list size <{0}> AFTER device_added_deleted_or_changed update".format(new_device_count_track))
+        self.main_script().log_message(
+            "{0}device count AFTER update <{1}>".format(log_id, new_device_count_track))
 
         idx = 0
-        for device in extended_device_list:
-            if liveobj_valid(device):
-                self.main_script().log_message("EC device_added_deleted_or_changed: idx <{0}> after <{1}>".format(idx, device.name))
-            else:
-                self.main_script().log_message("EC device_added_deleted_or_changed: no liveobj_valid device. idx <{0} after <None>".format(idx))
+        if new_device_count_track > 0:
+            self.main_script().log_message("{0}device at index <{1}> is".format(log_id, idx))
+            for device in extended_device_list:
+                if liveobj_valid(device):
+                    self.main_script().log_message("{0} <{1}>".format(log_id, device.name))
+                else:
+                    self.main_script().log_message("{0} <None>".format(log_id))
 
-            idx += 1
+                idx += 1
+                self.main_script().log_message("{0}device at index <{1}> is".format(log_id, idx))
+        else:
+            self.main_script().log_message(
+                "{0} new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
     def assignment_mode(self):
         return self.__assignment_mode
