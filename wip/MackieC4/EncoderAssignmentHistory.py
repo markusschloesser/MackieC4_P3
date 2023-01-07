@@ -381,8 +381,10 @@ class EncoderAssignmentHistory(MackieC4Component):
                 param_bank_current_track[d] = param_bank_current_track[c]
 
             # "only" device in device chain is also "last" device in device chain
-            empty_chain = device_count_track == 0 and deleted_device_index == 0
-            if deleted_device_index == device_count_track - 1 or empty_chain:
+            last_device_in_chain = deleted_device_index == device_count_track - 1  # 0 != -1 here
+            # input_device_index_not_found = deleted_device_index == 0
+            empty_chain = device_count_track == 0 and input_device_index_not_found
+            if last_device_in_chain or empty_chain:
                 # only decrement "current device" index if deleted device wasn't the only device
                 if deleted_device_index > 0:
                     self.t_d_count[self.t_current] -= 1
