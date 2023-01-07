@@ -292,7 +292,7 @@ class EncoderAssignmentHistory(MackieC4Component):
                 "{0}agree that at least one device currently populates the device chain for this track".format(log_msg))
 
         self.main_script().log_message(
-            "{0}}add event <{1}>, delete event <{2}>, change event <{3}>".format(log_id, device_was_added,
+            "{0}add event <{1}>, delete event <{2}>, change event <{3}>".format(log_id, device_was_added,
                                                                                  device_was_removed,
                                                                                  selected_device_was_changed))
 
@@ -359,25 +359,25 @@ class EncoderAssignmentHistory(MackieC4Component):
                 self.main_script().log_message("{0}remains <{1}>".format(log_msg, cb))
 
         elif device_was_removed:
-            self.main_script().log_message("{0}device_was_removed: for 'delete' device event handling").format(log_id)
+            self.main_script().log_message("{0}device_was_removed: for 'delete' device event handling".format(log_id))
 
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
             self.main_script().log_message(
-                "{0}device_was_removed: deleted_device_index<{1}> device_count_track<{2}>").format(log_id,
+                "{0}device_was_removed: deleted_device_index<{1}> device_count_track<{2}>".format(log_id,
                                                                                                    deleted_device_index,
-                                                                                                   device_count_track)
+                                                                                                   device_count_track))
             for d in range(deleted_device_index + 1, device_count_track, 1):
                 c = d - 1
-                self.main_script().log_message("{0}param_count_track: replacing<{1}, {2}> with<{3}, {4}>").format(
-                    log_id, d, param_count_track[d], c, param_count_track[c])
+                self.main_script().log_message("{0}param_count_track: replacing<{1}, {2}> with<{3}, {4}>".format(
+                    log_id, d, param_count_track[d], c, param_count_track[c]))
                 param_count_track[d] = param_count_track[c]
-                self.main_script().log_message("{0}param_bank_count_track: replacing<{1}, {2}> with<{3}, {4}>").format(
-                    log_id, d, param_bank_count_track[d], c, param_bank_count_track[c])
+                self.main_script().log_message("{0}param_bank_count_track: replacing<{1}, {2}> with<{3}, {4}>".format(
+                    log_id, d, param_bank_count_track[d], c, param_bank_count_track[c]))
                 param_bank_count_track[d] = param_bank_count_track[c]
-                self.main_script().log_message("{0}param_bank_current_track: replacing<{1}, {2}> with<{3}, {4}>").format(
-                    log_id, d, param_bank_current_track[d], c, param_bank_current_track[c])
+                self.main_script().log_message("{0}param_bank_current_track: replacing<{1}, {2}> with<{3}, {4}>".format(
+                    log_id, d, param_bank_current_track[d], c, param_bank_current_track[c]))
                 param_bank_current_track[d] = param_bank_current_track[c]
 
             # "only" device in device chain is also "last" device in device chain
@@ -412,7 +412,7 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         elif selected_device_was_changed:
             self.main_script().log_message(
-                "{0}selected_device_was_changed: for 'change' device event handling").format(log_id)
+                "{0}selected_device_was_changed: for 'change' device event handling".format(log_id))
             # param_count_track = self.t_d_p_count[self.t_current]
             # param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             # param_bank_current_track = self.t_d_p_bank_current[self.t_current]
