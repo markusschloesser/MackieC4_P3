@@ -319,6 +319,11 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         # FROM HERE: "found event index <{0}> and device <{1}>".format(index, device.name)
         # represent "source of truth"   device == self.selected_track.devices[index]
+        # and we could
+        # return rtn_device_index
+        # right here, except for "housekeeping"
+        input_device_index_not_found = deleted_device_index == 0  # selected_device was not in all_devices
+
         if device_was_added:
             self.main_script().log_message("{0}device_was_added:".format(log_id))
             param_count_track = self.t_d_p_count[self.t_current]
