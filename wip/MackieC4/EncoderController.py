@@ -269,9 +269,18 @@ class EncoderController(MackieC4Component):
         updated_idx = -1
         # extended_device_list is the device list with enumerated/flattened rack devices
         extended_device_list = self.get_device_list(self.selected_track.devices)
+        if type == 0:
+            listener_type = "normal"
+        elif type == 1:
+            listener_type = "return"
+        elif type == 2:
+            listener_type = "master"
+        else:
+            listener_type = "None"
         if liveobj_valid(track):
-            self.main_script().log_message("{0}processing device changestate of type <{1}> on track <{2}> at index {3}".
-                                           format(log_id, type, track.name, tid))
+            self.main_script().log_message(
+                "{0}processing device change-state of Track listener type <{1}> on track <{2}> at index {3}".
+                format(log_id, listener_type, track.name, tid))
             if liveobj_changed(self.selected_track, track):
                 log_msg = "{0}because selected_track changed, updating selected track to <{1}> ".format(log_id,
                                                                                                         track.name)
@@ -285,7 +294,7 @@ class EncoderController(MackieC4Component):
                 selected_device = self.selected_track.view.selected_device
                 if liveobj_valid(selected_device):
                     log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(
-                        log_id, selected_device)
+                        log_id, selected_device.name)
                     self.main_script().log_message(log_msg)
                     current_selected_indexes = (x for x in range(len(extended_device_list))
                                                 if extended_device_list[x] == selected_device)
@@ -313,7 +322,8 @@ class EncoderController(MackieC4Component):
                 self.__chosen_plugin = extended_device_list[0]
                 self.__eah.set_selected_device_index(0)
                 self.main_script().log_message(
-                    "{0}ONLY device __chosen_plugin is now {1} ".format(log_id, self.__chosen_plugin.name))
+                    "{0}ONLY device __chosen_plugin is now {1} because don't know".format(
+                        log_id, self.__chosen_plugin.name))
             else:
                 self.__chosen_plugin = None
                 # might happen if track with no devices deleted, and the next selected track also has no devices?
