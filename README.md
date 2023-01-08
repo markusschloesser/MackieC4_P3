@@ -1,6 +1,6 @@
 Disclaimer:
-This is still a work in progress, but mostly fully functioning! We already use it a lot in daily projects.
-I suggest though to open the Live logfile to monitor what's going on, as there's still some errors. 
+This is still a work in progress, but fully functional! We have been using it for over 1,5 years a lot in daily studio projects.
+I suggest though to open the Live logfile to monitor what's going on, as there still might be some errors. 
 
 
 What is it?
