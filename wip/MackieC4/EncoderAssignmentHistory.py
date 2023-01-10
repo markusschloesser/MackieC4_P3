@@ -273,12 +273,11 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.main_script().log_message(
                 "{0}input selected_device_idx<{1}> points to a forward index".format(log_id, selected_device_idx))
 
-        # this is the "old count"
-        device_count_track = self.t_d_count[self.t_current]
+        old_device_count_track = self.t_d_count[self.t_current]
 
-        device_was_added = new_device_count_track > device_count_track
-        device_was_removed = new_device_count_track < device_count_track
-        selected_device_was_changed = new_device_count_track == device_count_track
+        device_was_added = new_device_count_track > old_device_count_track
+        device_was_removed = new_device_count_track < old_device_count_track
+        selected_device_was_changed = new_device_count_track == old_device_count_track
         no_devices_on_track = new_device_count_track == 0
         log_msg = "{0}input selected_device_idx<{1}> and input device list len<{2}> ".format(log_id,
                                                                                              selected_device_idx,
@@ -329,7 +328,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             param_count_track = self.t_d_p_count[self.t_current]
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
-            for d in range(device_count_track, new_device_index + 1, -1):
+            for d in range(old_device_count_track, new_device_index + 1, -1):
                 c = d - 1
                 param_count_track[d] = param_count_track[c]
                 param_bank_count_track[d] = param_bank_count_track[c]
@@ -370,10 +369,10 @@ class EncoderAssignmentHistory(MackieC4Component):
             param_bank_count_track = self.t_d_p_bank_count[self.t_current]
             param_bank_current_track = self.t_d_p_bank_current[self.t_current]
             self.main_script().log_message(
-                "{0}device_was_removed: deleted_device_index<{1}> device_count_track<{2}>".format(log_id,
+                "{0}device_was_removed: deleted_device_index<{1}> old_device_count_track<{2}>".format(log_id,
                                                                                                    deleted_device_index,
-                                                                                                   device_count_track))
-            for d in range(deleted_device_index + 1, device_count_track, 1):
+                                                                                                   old_device_count_track))
+            for d in range(deleted_device_index + 1, old_device_count_track, 1):
                 c = d - 1
                 self.main_script().log_message("{0}param_count_track: replacing<{1}, {2}> with<{3}, {4}>".format(
                     log_id, d, param_count_track[d], c, param_count_track[c]))
@@ -386,9 +385,9 @@ class EncoderAssignmentHistory(MackieC4Component):
                 param_bank_current_track[d] = param_bank_current_track[c]
 
             # "only" device in device chain is also "last" device in device chain
-            last_device_in_chain = deleted_device_index == device_count_track - 1  # 0 != -1 here
+            last_device_in_chain = deleted_device_index == old_device_count_track - 1  # 0 != -1 here
             # input_device_index_not_found = deleted_device_index == 0
-            empty_chain = device_count_track == 0 and input_device_index_not_found
+            empty_chain = old_device_count_track == 0 and input_device_index_not_found
             if last_device_in_chain or empty_chain:
                 # only decrement "current device" index if deleted device wasn't the only device
                 if deleted_device_index > 0:
