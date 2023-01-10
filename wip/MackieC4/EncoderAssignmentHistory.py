@@ -362,9 +362,9 @@ class EncoderAssignmentHistory(MackieC4Component):
             if incremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 1:
                 self.t_d_bank_current[self.t_current] += 1
                 cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message("{0}updated to <{1}>".format(log_id, log_msg, cb))
+                self.main_script().log_message("{0}<{1}> updated to <{2}>".format(log_id, log_msg, cb))
             else:
-                self.main_script().log_message("{0}remains <{1}>".format(log_id, log_msg, cb))
+                self.main_script().log_message("{0}<{1}> remains <{2}>".format(log_id, log_msg, cb))
 
         elif device_was_removed:
             self.main_script().log_message("{0}device_was_removed: for 'delete' device event handling".format(log_id))
@@ -420,9 +420,9 @@ class EncoderAssignmentHistory(MackieC4Component):
             if decremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
                 self.t_d_bank_current[self.t_current] -= 1
                 cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message("{0}updated to <{1}>".format(log_id, log_msg, cb))
+                self.main_script().log_message("{0}<{1}> updated to <{2}>".format(log_id, log_msg, cb))
             else:
-                self.main_script().log_message("{0}remains <{1}>".format(log_id, log_msg, cb))
+                self.main_script().log_message("{0}<{1}> remains <{2}>".format(log_id, log_msg, cb))
 
         elif selected_device_was_changed:
             self.main_script().log_message(
