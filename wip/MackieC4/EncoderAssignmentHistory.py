@@ -304,6 +304,7 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         # if there are no devices on track, there are no devices in input all_devices list
         # and this loop is not entered, all "change indexes" stay 0
+        # if a device was deleted, selected_device will be at the index before the deleted device
         for device in all_devices:
             if selected_device == device:
                 new_device_index = index
