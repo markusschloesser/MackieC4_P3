@@ -795,7 +795,7 @@ class MackieC4(object):
             if liveobj_valid(tr):
                 ocb = self.dlisten[tr]
                 self.log_message("C4/rem_device_listeners: type <{0}>".format(type))
-                if tr.view.selected_device_has_listener(ocb) == 1:
+                if tr.view.selected_device_has_listener(ocb) == 1:  # this is a direct call/check with to a function from Live (def selected_device_has_listener)
                     tr.view.remove_selected_device_listener(ocb)
 
         self.dlisten = {}
@@ -809,7 +809,7 @@ class MackieC4(object):
         self.plisten = {}
         return
 
-    def add_devpmlistener(self, device):
+    def add_devpmlistener(self, device):  # devpmlistener is device parameter listener
         cb = lambda: self.devpm_change()
         if (device in self.plisten) != 1:
             device.add_parameters_listener(cb)
@@ -834,7 +834,7 @@ class MackieC4(object):
         cb = lambda: self.device_changestate(track, tid, type)
         self.log_message("C4/add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
         if (track in self.dlisten) != 1:
-            track.view.add_selected_device_listener(cb)
+            track.view.add_selected_device_listener(cb)   # # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
             self.log_message("C4/track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
             self.dlisten[track] = cb
 

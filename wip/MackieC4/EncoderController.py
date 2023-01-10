@@ -143,9 +143,9 @@ class EncoderController(MackieC4Component):
         for device in container:
             device_list.append(device)
             if device.can_have_chains:  # is a rack and it's open
-                if device.view.is_showing_chain_devices:
-                    for ch in device.chains:
-                        device_list += self.get_device_list(ch.devices)
+                # if device.view.is_showing_chain_devices:
+                for ch in device.chains:
+                    device_list += self.get_device_list(ch.devices)
         return device_list
 
     def build_setup_database(self):
