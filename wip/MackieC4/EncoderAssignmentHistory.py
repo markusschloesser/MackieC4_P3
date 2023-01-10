@@ -279,6 +279,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         device_was_removed = new_device_count_track < old_device_count_track
         selected_device_was_changed = new_device_count_track == old_device_count_track
         no_devices_on_track = new_device_count_track == 0
+        rack_devices_deleted = old_device_count_track - new_device_count_track if device_was_removed else 0
         log_msg = "{0}input selected_device_idx<{1}> and input device list len<{2}> ".format(log_id,
                                                                                              selected_device_idx,
                                                                                              new_device_count_track)
@@ -391,12 +392,12 @@ class EncoderAssignmentHistory(MackieC4Component):
             if last_device_in_chain or empty_chain:
                 # only decrement "current device" index if deleted device wasn't the only device
                 if deleted_device_index > 0:
-                    self.t_d_count[self.t_current] -= 1
+                    self.t_d_count[self.t_current] -= rack_devices_deleted
                 else:
                     self.t_d_count[self.t_current] = 0
             else:
                 # device chain is not empty and "current device" isn't the only device
-                self.t_d_count[self.t_current] -= 1
+                self.t_d_count[self.t_current] -= rack_devices_deleted
 
             assert new_device_count_track == self.t_d_count[self.t_current]
             decremented_device_count_track = self.t_d_count[self.t_current]
