@@ -589,7 +589,7 @@ class EncoderController(MackieC4Component):
 
                 if update_self:
 
-                    self.main_script().log_message("updating selected device bank index from <{0}> to <{1}>".format(old_selected_bank, selected_device_bank_index))
+                    self.main_script().log_message("EC/ updating selected device bank index from <{0}> to <{1}>".format(old_selected_bank, selected_device_bank_index))
                     self.__eah.set_selected_device_bank_index(selected_device_bank_index)
                     self.__reassign_encoder_parameters(for_display_only=False)
 
@@ -751,7 +751,7 @@ class EncoderController(MackieC4Component):
 
             if update_self:
                 self.main_script().log_message(
-                    "updating current_track_device_parameter_bank_nbr from <{0}> to {1}".format(
+                    "EC/ updating current_track_device_parameter_bank_nbr from <{0}> to {1}".format(
                         self.__eah.get_current_track_device_parameter_bank_nbr(), current_parameter_bank_track))
                 self.__eah.set_current_track_device_parameter_bank_nbr(current_parameter_bank_track)
                 self.__reassign_encoder_parameters(for_display_only=False)

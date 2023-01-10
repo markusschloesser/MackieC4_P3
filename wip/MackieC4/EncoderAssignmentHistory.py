@@ -39,19 +39,19 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_current = 0  # index of current selected track
         """index of current selected track"""
 
-        self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # @Whiner: why is the "i" not used?
+        self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
         """current track device count"""
 
         # track device current -- the index of the currently selected device indexed by the t_current track
-        self.t_d_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # MS why is "i" not used??
+        self.t_d_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
 
         # t_d bank count -- the count of the devices on the t_current track (in banks of 8 parameters)
         # see device_counter(self, t, d): (at the same index) the same number as t_d_current but divided by 8
-        self.t_d_bank_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # MS why is "i" not used??
+        self.t_d_bank_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
 
         # t_d bank current -- the index of currently selected device indexed by the t_current track
         # (in banks of 8 parameters) the same index as t_d_current divided by 8
-        self.t_d_bank_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]  # MS why is "i" not used??
+        self.t_d_bank_current = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
 
         # t_d parameter count -- the count of remote controllable parameters available for the currently selected
         # device on the t_current track
@@ -206,6 +206,8 @@ class EncoderAssignmentHistory(MackieC4Component):
 
             # insert new values in freshly opened index
             self.t_d_count[t + 1] = self.t_d_count[t]
+            # MS: this assumes that only ONE track is ever inserted, correct? While this is true for right-clicking and adding tracks, one can also insert multiple tracks at once,
+            # by loading them from the library. I will test this. We might need to make the +1 dynamic.
             self.t_d_current[t + 1] = self.t_d_current[t]
             self.t_d_bank_count[t + 1] = self.t_d_bank_count[t]
             self.t_d_bank_current[t + 1] = self.t_d_bank_current[t]
@@ -360,9 +362,9 @@ class EncoderAssignmentHistory(MackieC4Component):
             if incremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 1:
                 self.t_d_bank_current[self.t_current] += 1
                 cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message("{0}updated to <{1}>".format(log_msg, cb))
+                self.main_script().log_message("{0}updated to <{1}>".format(log_id, log_msg, cb))
             else:
-                self.main_script().log_message("{0}remains <{1}>".format(log_msg, cb))
+                self.main_script().log_message("{0}remains <{1}>".format(log_id, log_msg, cb))
 
         elif device_was_removed:
             self.main_script().log_message("{0}device_was_removed: for 'delete' device event handling".format(log_id))
@@ -413,8 +415,14 @@ class EncoderAssignmentHistory(MackieC4Component):
             # and is not the minimum page bank already
             # page 0 is devices 1 - 8  page 16 is devices 121 - 128
             new_current_device_bank_offset = decremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
+            cb = self.t_d_bank_current[self.t_current]
+            log_msg = "{0}device_was_deleted, current track device bank ".format(log_id)
             if decremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
                 self.t_d_bank_current[self.t_current] -= 1
+                cb = self.t_d_bank_current[self.t_current]
+                self.main_script().log_message("{0}updated to <{1}>".format(log_id, log_msg, cb))
+            else:
+                self.main_script().log_message("{0}remains <{1}>".format(log_id, log_msg, cb))
 
         elif selected_device_was_changed:
             self.main_script().log_message(
