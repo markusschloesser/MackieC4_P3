@@ -1026,7 +1026,7 @@ class EncoderController(MackieC4Component):
             current_nbr_of_devices_on_selected_track = len(extended_device_list)
             self.__eah.set_max_device_count(current_nbr_of_devices_on_selected_track)
 
-            nbr_of_full_device_pages = int(current_nbr_of_devices_on_selected_track / SETUP_DB_DEVICE_BANK_SIZE)  # / 16
+            nbr_of_full_device_pages = int(current_nbr_of_devices_on_selected_track / SETUP_DB_DEVICE_BANK_SIZE)  # / 8
             nbr_of_remainder_devices = int(current_nbr_of_devices_on_selected_track % SETUP_DB_DEVICE_BANK_SIZE)
             if nbr_of_full_device_pages >= SETUP_DB_MAX_DEVICE_BANKS:
                 nbr_of_full_device_pages = SETUP_DB_MAX_DEVICE_BANKS
@@ -1036,7 +1036,7 @@ class EncoderController(MackieC4Component):
 
             if nbr_of_full_device_pages == 0 and nbr_of_remainder_devices > 0:
                 nbr_of_full_device_pages = 1
-            elif nbr_of_remainder_devices > 0:  # 0 < nbr_of_full_device_pages < SETUP_DB_MAX_DEVICE_BANKS
+            elif nbr_of_remainder_devices > 0:  # 0 < nbr_of_full_device_pages <= SETUP_DB_MAX_DEVICE_BANKS  #  <= 16
                 nbr_of_full_device_pages += 1
 
             # this is the max (channel mode) device page count (based on the current number of devices on the selected track)
