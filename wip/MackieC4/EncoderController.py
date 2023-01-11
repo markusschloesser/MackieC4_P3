@@ -1082,7 +1082,7 @@ class EncoderController(MackieC4Component):
                             device_name = extended_device_list[encoder_index_in_row].name
                             # device_name in bottom row, blanks on top (top text blocked across full LCD)
                             vpot_display_text.set_text(device_name, '')
-                            s.show_full_enlighted_poti()  # Why doesn't this work?
+                            s.show_full_enlighted_poti()  # MS: Why doesn't this work?
                         else:
                             vpot_display_text.set_text('dvcNme', 'No')  # could just leave as default blank spaces
                     else:
@@ -1390,7 +1390,10 @@ class EncoderController(MackieC4Component):
 
             # "selected track's name, centered over roughly the first 3 encoders in top row
             if liveobj_valid(self.selected_track):
-                lower_string1 += adjust_string(self.selected_track.name, 20)
+                if self.selected_track.is_frozen:
+                    lower_string1 += adjust_string(self.selected_track.name, 12) + '(Frozen)'
+                else:
+                    lower_string1 += adjust_string(self.selected_track.name, 20)
             else:
                 lower_string1 += "---------0--------1"
 
