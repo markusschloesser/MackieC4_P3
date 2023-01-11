@@ -417,7 +417,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             new_current_device_bank_offset = decremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
             cb = self.t_d_bank_current[self.t_current]
             log_msg = "{0}device_was_deleted, current track device bank ".format(log_id)
-            if decremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
+            if decremented_device_count_track >= SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
                 self.t_d_bank_current[self.t_current] -= 1
                 cb = self.t_d_bank_current[self.t_current]
                 self.main_script().log_message("{0}<{1}> updated to <{2}>".format(log_id, log_msg, cb))
