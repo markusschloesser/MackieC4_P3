@@ -363,6 +363,10 @@ class EncoderAssignmentHistory(MackieC4Component):
                 self.t_d_bank_current[self.t_current] += 1
                 cb = self.t_d_bank_current[self.t_current]
                 self.main_script().log_message("{0}<{1}> updated to <{2}>".format(log_id, log_msg, cb))
+            elif incremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 2:
+                self.t_d_bank_current[self.t_current] += 1
+                cb = self.t_d_bank_current[self.t_current]
+                self.main_script().log_message("{0}<{1}> updated to <{2}>".format(log_id, log_msg, cb))
             else:
                 self.main_script().log_message("{0}<{1}> remains <{2}>".format(log_id, log_msg, cb))
 
@@ -414,7 +418,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             # only update the current bank if this removed device puts the selected device on the previous bank page
             # and is not the minimum bank page already
             # bank page 1 is devices 1 - 8  and page 16 is devices 121 - 128
-            new_current_device_bank_offset = decremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
+            new_current_device_bank_offset = decremented_device_count_track // SETUP_DB_DEVICE_BANK_SIZE
             # offset is 0 at 0 and multiples of SETUP_DB_DEVICE_BANK_SIZE
             # offset is 1 - 7 otherwise
             # (offset is a "row index"[0 - 7] into a row of size 8) ("device banks" are size 8)
@@ -447,7 +451,7 @@ class EncoderAssignmentHistory(MackieC4Component):
 
             self.t_d_current[self.t_current] = changed_device_index
             assert new_device_count_track == self.t_d_count[self.t_current]
-            new_current_device_bank_offset = new_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
+            new_current_device_bank_offset = new_device_count_track // SETUP_DB_DEVICE_BANK_SIZE
             if new_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
                 # changing from device 9 to device 8 decrements the current bank
                 self.t_d_bank_current[self.t_current] -= 1
