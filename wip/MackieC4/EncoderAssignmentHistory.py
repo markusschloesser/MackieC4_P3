@@ -471,7 +471,6 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.main_script().log_message(
                 "{0}old selected index <{1}> new selected index <{2}>".
                 format(log_msg, old_selected_device_index, changed_device_index))
-
             if new_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
                 if do_increment:
                     self.t_d_bank_current[self.t_current] += bank_change
