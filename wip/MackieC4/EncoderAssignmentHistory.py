@@ -432,7 +432,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             # offset is 1 - 7 otherwise
             # (offset is a "bank index"[0 - 7] into a bank of size 8)
             cb = self.t_d_bank_current[self.t_current]
-            log_msg = "{0}device_was_deleted, current track device bank ".format(log_id)
+            log_msg = "{0}device_was_deleted, current track device bank <{1}>".format(log_id, cb)
             bank_decrement = int(math.ceil(rack_devices_deleted / SETUP_DB_DEVICE_BANK_SIZE))
             if decremented_device_count_track >= SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
                 self.t_d_bank_current[self.t_current] -= bank_decrement
