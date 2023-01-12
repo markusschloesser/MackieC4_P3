@@ -411,19 +411,16 @@ class EncoderAssignmentHistory(MackieC4Component):
             else:
                 self.t_d_bank_count[self.t_current] = SETUP_DB_MAX_DEVICE_BANKS
 
-            # only update the current bank if this removed device puts the selected device on the previous bank page
+            # only update the current bank if this removed device puts the selected device on a previous bank page
             # and is not the minimum bank page already
             # bank page 1 is devices 1 - 8  and page 16 is devices 121 - 128
             new_current_device_bank_offset = decremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
             # offset is 0 at 0 and multiples of SETUP_DB_DEVICE_BANK_SIZE
             # offset is 1 - 7 otherwise
-            # (offset is a "row index"[0 - 7] into a row of size 8) ("device banks" are size 8)
+            # (offset is a "bank index"[0 - 7] into a bank of size 8)
             cb = self.t_d_bank_current[self.t_current]
             log_msg = "{0}device_was_deleted, current track device bank ".format(log_id)
             if decremented_device_count_track >= SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
-                # multiples = [8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128]
-                # multiples = [SETUP_DB_DEVICE_BANK_SIZE * (x + 1) for x in range(SETUP_DB_MAX_DEVICE_BANKS)]
-                # assert decremented_device_count_track in multiples
                 self.t_d_bank_current[self.t_current] -= 1
                 cb = self.t_d_bank_current[self.t_current]
                 self.main_script().log_message(
