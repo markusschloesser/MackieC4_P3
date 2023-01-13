@@ -308,6 +308,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         deleted_device_index = 0
         changed_device_index = 0
         rtn_device_index = -1
+        found_input_device_index = False  # selected_device is in all_devices
 
         # if there are no devices on track, there are no devices in input all_devices list
         # and this loop is not entered, all "change indexes" stay 0
@@ -318,6 +319,7 @@ class EncoderAssignmentHistory(MackieC4Component):
                 deleted_device_index = index
                 changed_device_index = index
                 rtn_device_index = index
+                found_input_device_index = True
                 self.main_script().log_message(
                     "{0}matched input selected_device<{1}> with device<{2}> at index<{3}> of input device list".format(
                         log_id, selected_device.name, device.name, index))
@@ -325,12 +327,37 @@ class EncoderAssignmentHistory(MackieC4Component):
             else:
                 index += 1
 
+        cb = self.t_d_bank_current[self.t_current]
+        if found_input_device_index:
+            new_track_device_bank_index = int(math.floor(selected_device_idx / SETUP_DB_DEVICE_BANK_SIZE))
+            new_device_bank_bank_index = selected_device_idx % SETUP_DB_DEVICE_BANK_SIZE
+
+            log_msg = "{0}old_track_device_bank_index <{1}> ".format(log_id, cb)
+            if selected_device_idx >= SETUP_DB_DEVICE_BANK_SIZE and new_device_bank_bank_index == 0:
+                # new index is an exact bank size match
+                log_msg = "{0}new_track_device_bank_index <{1}> ".format(log_id, cb)
+                self.t_d_bank_current[self.t_current] = new_track_device_bank_index
+                cb = self.t_d_bank_current[self.t_current]
+                self.main_script().log_message(
+                    "{0}updated to <{1}> because exact boundary".format(log_msg, cb))
+            else:
+                log_msg = "{0}new_track_device_bank_index <{1}> ".format(log_id, cb)
+                self.t_d_bank_current[self.t_current] = new_track_device_bank_index
+                cb = self.t_d_bank_current[self.t_current]
+                self.main_script().log_message(
+                    "{0}updated to <{1}> because not boundary".format(log_msg, cb))
+        else:
+            log_msg = "{0}new_track_device_bank_index <{1}> ".format(log_id, cb)
+            self.t_d_bank_current[self.t_current] = 0  # reset to default?
+            cb = self.t_d_bank_current[self.t_current]
+            self.main_script().log_message(
+                "{0}updated to <{1}> because else".format(log_msg, cb))
+
         # FROM HERE: "found event index <{0}> and device <{1}>".format(index, device.name)
         # represent "source of truth"   device == self.selected_track.devices[index]
         # and we could
         # return rtn_device_index
-        # right here, except for "housekeeping"
-        input_device_index_not_found = deleted_device_index == 0  # selected_device was not in all_devices
+        # right here, except for updating the "assignment history" database
 
         if device_was_added:
             self.main_script().log_message("{0}device_was_added:".format(log_id))
@@ -359,26 +386,6 @@ class EncoderAssignmentHistory(MackieC4Component):
                 self.main_script().log_message("{0}because we don't need no stinking badges".format(log_id))
                 self.t_d_bank_count[self.t_current] = 1
 
-            # only update the current bank if this added device goes over the current page boundary
-            # and is inside the max page boundary
-            # page 0 is devices 1 - 8  page 16 is devices 121 - 128
-            new_current_device_bank_offset = incremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
-            cb = self.t_d_bank_current[self.t_current]
-            bank_increment = int(math.ceil(rack_devices_added / SETUP_DB_DEVICE_BANK_SIZE))
-            log_msg = "{0}device_was_added old track device bank <{1}> ".format(log_id, cb)
-            if incremented_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 1:
-                self.t_d_bank_current[self.t_current] += bank_increment
-                cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message(
-                    "{0}updated to <{1}> because exact boundary".format(log_msg, cb))
-            elif self.device_add_crosses_bank_boundary(incremented_device_count_track, old_device_count_track):
-                self.t_d_bank_current[self.t_current] += bank_increment
-                cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message(
-                    "{0}updated to <{1}> because crossed boundary".format(log_msg, cb))
-            else:
-                self.main_script().log_message("{0}remains <{1}>".format(log_msg, cb))
-
         elif device_was_removed:
             self.main_script().log_message("{0}device_was_removed: for 'delete' device event handling".format(log_id))
 
@@ -391,22 +398,15 @@ class EncoderAssignmentHistory(MackieC4Component):
 
             for d in range(deleted_device_index + 1, old_device_count_track, 1):
                 c = d - 1
-                # self.main_script().log_message("{0}param_count_track: replacing<{1}, {2}> with<{3}, {4}>".format(
-                #     log_id, d, param_count_track[d], c, param_count_track[c]))
                 param_count_track[d] = param_count_track[c]
-                # self.main_script().log_message("{0}param_bank_count_track: replacing<{1}, {2}> with<{3}, {4}>".format(
-                #     log_id, d, param_bank_count_track[d], c, param_bank_count_track[c]))
                 param_bank_count_track[d] = param_bank_count_track[c]
-                # self.main_script().log_message("{0}param_bank_current_track: replacing<{1}, {2}> with<{3}, {4}>".format(
-                #     log_id, d, param_bank_current_track[d], c, param_bank_current_track[c]))
                 param_bank_current_track[d] = param_bank_current_track[c]
 
             # "only" device in device chain is also "last" device in device chain
             last_device_in_chain = deleted_device_index == old_device_count_track - 1  # 0 != -1 here
-            # input_device_index_not_found = deleted_device_index == 0
-            empty_chain = old_device_count_track == 0 and input_device_index_not_found
+            empty_chain = old_device_count_track == 0 and not found_input_device_index
             if last_device_in_chain or empty_chain:
-                # only decrement "current device" index if deleted device wasn't the only device
+                # only decrement "device count" if deleted device wasn't the only device
                 if deleted_device_index > 0:
                     self.t_d_count[self.t_current] -= rack_devices_deleted
                 else:
@@ -424,123 +424,14 @@ class EncoderAssignmentHistory(MackieC4Component):
             else:
                 self.t_d_bank_count[self.t_current] = SETUP_DB_MAX_DEVICE_BANKS
 
-            # only update the current bank if this removed device puts the selected device on a previous bank page
-            # and is not the minimum bank page already
-            # bank page 1 is devices 1 - 8  and page 16 is devices 121 - 128
-            new_current_device_bank_offset = decremented_device_count_track % SETUP_DB_DEVICE_BANK_SIZE
-            # offset is 0 at 0 and multiples of SETUP_DB_DEVICE_BANK_SIZE
-            # offset is 1 - 7 otherwise
-            # (offset is a "bank index"[0 - 7] into a bank of size 8)
-            cb = self.t_d_bank_current[self.t_current]
-            log_msg = "{0}device_was_deleted, current track device bank <{1}>".format(log_id, cb)
-            bank_decrement = int(math.ceil(rack_devices_deleted / SETUP_DB_DEVICE_BANK_SIZE))
-            if decremented_device_count_track >= SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
-                self.t_d_bank_current[self.t_current] -= bank_decrement
-                cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message(
-                    "{0}updated to <{1}> because exact bank multiple of remaining devices".format(log_msg, cb))
-            elif self.device_delete_crosses_bank_boundary(decremented_device_count_track, old_device_count_track):
-                self.t_d_bank_current[self.t_current] -= bank_decrement
-                cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message(
-                    "{0}updated to <{1}> because crossed bank multiple to remaining devices".format(log_msg, cb))
-            else:
-                self.main_script().log_message("{0}remains <{1}>".format(log_msg, cb))
-
         elif selected_device_was_changed:
             self.main_script().log_message(
                 "{0}selected_device_was_changed: for 'change' device event handling".format(log_id))
-            # param_count_track = self.t_d_p_count[self.t_current]
-            # param_bank_count_track = self.t_d_p_bank_count[self.t_current]
-            # param_bank_current_track = self.t_d_p_bank_current[self.t_current]
 
             self.t_d_current[self.t_current] = changed_device_index
             assert new_device_count_track == self.t_d_count[self.t_current]
-            new_current_device_bank_offset = changed_device_index % SETUP_DB_DEVICE_BANK_SIZE
-
-            cb = self.t_d_bank_current[self.t_current]
-            log_msg = "{0}selected_device_was_changed: old track device bank <{1}> ".format(log_id, cb)
-            do_increment = False
-            if rack_devices_skipped < 0:
-                self.main_script().log_message(
-                    "{0}new selected_device_idx greater than current selected index".format(log_id))
-                do_increment = True
-                rack_devices_skipped = math.fabs(rack_devices_skipped)
-
-            bank_change = int(math.ceil(rack_devices_skipped / SETUP_DB_DEVICE_BANK_SIZE))
-            self.main_script().log_message(
-                "{0}old selected index <{1}> new selected index <{2}>".
-                format(log_msg, old_selected_device_index, changed_device_index))
-            if new_device_count_track > SETUP_DB_DEVICE_BANK_SIZE and new_current_device_bank_offset == 0:
-                if do_increment:
-                    self.t_d_bank_current[self.t_current] += bank_change
-                else:
-                    self.t_d_bank_current[self.t_current] -= bank_change
-
-                cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message(
-                    "{0}updated to <{1}> because exact bank multiple".format(log_msg, cb))
-            elif self.device_selection_change_crosses_bank_boundary(changed_device_index, old_selected_device_index):
-                if do_increment:
-                    self.t_d_bank_current[self.t_current] += bank_change
-                else:
-                    self.t_d_bank_current[self.t_current] -= bank_change
-
-                cb = self.t_d_bank_current[self.t_current]
-                self.main_script().log_message(
-                    "{0}updated to <{1}> because not bank multiple".format(log_msg, cb))
-            else:
-                self.main_script().log_message("{0}remains <{1}> because else".format(log_msg, cb))
 
         return rtn_device_index
-
-    @staticmethod
-    def device_delete_crosses_bank_boundary(new_count, old_count, bank_size=SETUP_DB_DEVICE_BANK_SIZE):
-        multiples = [bank_size * (x + 1) for x in range(SETUP_DB_MAX_DEVICE_BANKS)]
-        new_bank_offset = new_count % bank_size
-        rtn = False
-        if new_count >= bank_size and new_bank_offset == 0:  # from 9 to 8 for example
-            assert new_count in multiples
-            rtn = True
-        else:
-            for boundary in multiples:
-                if new_count < boundary < old_count:
-                    rtn = True
-                    break
-
-        return rtn
-
-    @staticmethod
-    def device_add_crosses_bank_boundary(new_count, old_count, bank_size=SETUP_DB_DEVICE_BANK_SIZE):
-        multiples = [bank_size * (x + 1) for x in range(SETUP_DB_MAX_DEVICE_BANKS)]
-        new_bank_offset = new_count % bank_size
-        rtn = False
-        if new_count >= bank_size and new_bank_offset == 1:  # from 8 to 9 for example
-            assert new_count in multiples
-            rtn = True
-        else:
-            for boundary in multiples:
-                if new_count > boundary > old_count:
-                    rtn = True
-                    break
-
-        return rtn
-
-    @staticmethod
-    def device_selection_change_crosses_bank_boundary(new_index, old_index, bank_size=SETUP_DB_DEVICE_BANK_SIZE):
-        multiples = [bank_size * (x + 1) for x in range(SETUP_DB_MAX_DEVICE_BANKS)]
-        new_bank_offset = new_index % bank_size
-        rtn = False
-        if new_index >= bank_size and new_bank_offset == 0:  # 16 % 8 == 0
-            assert new_index in multiples
-            rtn = True
-        else:
-            for boundary in multiples:  # change up or down across boundary
-                if new_index > boundary >= old_index or old_index >= boundary > new_index:
-                    rtn = True
-                    break
-
-        return rtn
 
     def get_current_track_device_parameter_bank_nbr(self, t_d_idx=None):
         if t_d_idx is None:
