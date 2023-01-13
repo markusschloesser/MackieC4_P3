@@ -1157,7 +1157,7 @@ class EncoderController(MackieC4Component):
                         else:
                             vpot_display_text.set_text(is_muted, 'Mute')  # text never updates from here
 
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+                    # s.set_v_pot_parameter(vpot_param[0], vpot_param[1]) # test to see if flickering if vpot ring stops
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_31_index:
                     if self.selected_track.has_audio_output:
@@ -1389,6 +1389,7 @@ class EncoderController(MackieC4Component):
                 upper_string1 += '-------Track--------       ---------------'
 
             # "selected track's name, centered over roughly the first 3 encoders in top row
+            # also indicates frozen tracks
             if liveobj_valid(self.selected_track):
                 if self.selected_track.is_frozen:
                     lower_string1 += adjust_string(self.selected_track.name, 12) + '(Frozen)'
@@ -1507,8 +1508,9 @@ class EncoderController(MackieC4Component):
                                 self.__encoders[encoder_30_index].show_full_enlighted_poti()
                             else:
                                 l_alt_text = "OFF"
+                                self.__encoders[encoder_30_index].unlight_vpot_leds()
                             lower_string4 += adjust_string(l_alt_text, 6)
-                            self.__encoders[encoder_30_index].unlight_vpot_leds()
+
                         else:
                             lower_string4 += adjust_string(l_alt_text, 6)
                         lower_string4 += ' '
