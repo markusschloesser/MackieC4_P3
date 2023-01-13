@@ -1626,6 +1626,7 @@ class EncoderController(MackieC4Component):
             encoder_14_index = 12  # because 12 is occupied, we still need 12 otherwise everything be shifted over
             encoder_15_index = 13
             encoder_16_index = 14
+            encoder_17_index = 16  # Metronome
             encoder_18_index = 17  # re-enable automation
             encoder_19_index = 18  # capture midi
             encoder_25_index = 24
@@ -1705,16 +1706,10 @@ class EncoderController(MackieC4Component):
                         upper_string2 += ('Scroll' if self.application().view.is_view_visible('Session') else 'Zoom  ')
                         lower_string2 += adjust_string(self.selected_track.name, 6)
 
-                    elif e.vpot_index() == encoder_18_index:
-                        if self.song().re_enable_automation_enabled:
-                            """Returns true if some automated parameter has been overriden"""
-                            self.__encoders[encoder_18_index].show_full_enlighted_poti()
-
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                         lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_02_encoders:
-
                     upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string3 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_03_encoders:
@@ -1732,6 +1727,18 @@ class EncoderController(MackieC4Component):
                 unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
             else:
                 unmute_all_encoder.unlight_vpot_leds()  # no tracks are muted
+
+            metronome_encoder = self.__encoders[encoder_17_index]
+            if self.song().metronome:
+                metronome_encoder.show_full_enlighted_poti()
+            else:
+                metronome_encoder.unlight_vpot_leds()
+
+            re_enable_automation_encoder = self.__encoders[encoder_18_index]
+            if self.song().re_enable_automation_enabled:
+                re_enable_automation_encoder.show_full_enlighted_poti()
+            else:
+                re_enable_automation_encoder.unlight_vpot_leds()
 
         elif self.__assignment_mode == C4M_USER:
 
