@@ -245,6 +245,8 @@ class MackieC4(object):
                     self.set_loop_start(cc_value)
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_16:
                     self.zoom_or_scroll(cc_value)
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_19:
+                    self.scrub_clip(cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -254,12 +256,14 @@ class MackieC4(object):
             self.song().jump_by(cc_value)
 
     def set_loop_length(self, cc_value):
+        """use one vpot encoder to set the loop length in Arrange mode """
         if cc_value >= 64:
             self.song().loop_length = clamp(self.song().loop_length - (4 * (cc_value - 64)), 4, 10000)
         if cc_value <= 64:
             self.song().loop_length = (self.song().loop_length + (clamp(4 * (cc_value), 4, 10000)))
 
     def set_loop_start(self, cc_value):
+        """use one vpot encoder to set the loop start point in Arrange mode """
         if cc_value >= 64:
             self.song().loop_start = clamp(self.song().loop_start - (cc_value - 64), 0, 10000)
         if cc_value <= 64:
@@ -272,6 +276,14 @@ class MackieC4(object):
             self.application().view.zoom_view(nav.left, '', self.alt_is_pressed())
         if cc_value <= 64:
             self.application().view.zoom_view(nav.right, '', self.alt_is_pressed())
+
+    def scrub_clip(self, cc_value):  # currently doesn't work properly, but doesn't cause errors either, so I leave it in for now
+        clip = self.song().view.detail_clip
+        if clip:
+            if cc_value >= 64:
+                clip.scrub(float(-(cc_value - 64)))
+            if cc_value <= 64:
+                clip.scrub(float(cc_value))
 
     def can_lock_to_devices(self):
         """Live -> Script
