@@ -834,7 +834,7 @@ class EncoderController(MackieC4Component):
                     s.unlight_vpot_leds()
             elif encoder_index == encoder_09_index:
                 if self.song().can_undo:  # if you can (still) undo something, LEDs stay lit
-                    s.show_full_enlighted_poti()
+                    # s.show_full_enlighted_poti()
                     song_util.undo(self)
                 else:
                     s.unlight_vpot_leds()
@@ -1260,9 +1260,9 @@ class EncoderController(MackieC4Component):
                 elif s.vpot_index() == encoder_08_index:
                     vpot_display_text.set_text('Arrang', 'Back 2')
                 elif s.vpot_index() == encoder_09_index:
-                    vpot_display_text.set_upper_text_and_alt('undo', '------')
+                    vpot_display_text.set_upper_text_and_alt('NoUndo', 'Undo  ')
                 elif s.vpot_index() == encoder_10_index:
-                    vpot_display_text.set_upper_text_and_alt('redo', '------')
+                    vpot_display_text.set_upper_text_and_alt('NoRedo', 'Redo  ')
                 elif s.vpot_index() == encoder_11_index:
                     vpot_display_text.set_text('all', 'unarm')
                 # elif s.vpot_index() == encoder_12_index:
@@ -1636,7 +1636,7 @@ class EncoderController(MackieC4Component):
             encoder_16_index = 14
             encoder_17_index = 16  # Metronome
             encoder_18_index = 17  # re-enable automation
-            encoder_19_index = 18  # capture midi
+            encoder_19_index = 18  # scrub clip
             encoder_25_index = 24
             encoder_26_index = 25
             for e in self.__encoders:
@@ -1649,9 +1649,17 @@ class EncoderController(MackieC4Component):
                     if e.vpot_index() == encoder_09_index:
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
                         lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+                        if self.song().can_undo:  # if you can (still) undo something, LEDs stay lit
+                            e.show_full_enlighted_poti()
+                        else:
+                            e.unlight_vpot_leds()
                     elif e.vpot_index() == encoder_10_index:
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
                         lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+                        if self.song().can_redo:  # if you can (still) redo something, LEDs stay lit
+                            e.show_full_enlighted_poti()
+                        else:
+                            e.unlight_vpot_leds()
 
                     elif e.vpot_index() == encoder_12_index:
                         # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
