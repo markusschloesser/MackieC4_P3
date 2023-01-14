@@ -98,3 +98,11 @@ def unarm_all_button(self):
     for track in self.song().tracks:
         if track.can_be_armed and track.arm:
             track.arm = False
+
+
+def any_armed_track(self):
+    tracks = tuple(self.song().tracks)
+    exists = next((x for x in tracks if x.arm), None)
+    if liveobj_valid(exists):
+        return True
+    return False

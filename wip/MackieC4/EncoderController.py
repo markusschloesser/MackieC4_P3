@@ -1629,6 +1629,7 @@ class EncoderController(MackieC4Component):
             encoder_07_index = 6  # unmute all
             encoder_09_index = 8
             encoder_10_index = 9
+            encoder_11_index = 10
             encoder_12_index = 11
             # encoder_13_index is covered / occupied by SPP from 12
             encoder_14_index = 12  # because 12 is occupied, we still need 12 otherwise everything be shifted over
@@ -1657,6 +1658,14 @@ class EncoderController(MackieC4Component):
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
                         lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                         if self.song().can_redo:  # if you can (still) redo something, LEDs stay lit
+                            e.show_full_enlighted_poti()
+                        else:
+                            e.unlight_vpot_leds()
+
+                    elif e.vpot_index() == encoder_11_index:
+                        upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
+                        lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+                        if song_util.any_armed_track(self):
                             e.show_full_enlighted_poti()
                         else:
                             e.unlight_vpot_leds()
