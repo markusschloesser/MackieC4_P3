@@ -777,7 +777,7 @@ class EncoderController(MackieC4Component):
             encoder_16_index = 15  # Scroll / Zoom
             encoder_17_index = 16  # Metronome
             encoder_18_index = 17  # re-enable automation
-            encoder_19_index = 18  # capture midi
+            encoder_19_index = 18  # stop scrub
             encoder_25_index = 24  # Stop
             encoder_26_index = 25  # Play
             encoder_27_index = 26  # continue play
@@ -867,7 +867,12 @@ class EncoderController(MackieC4Component):
                     """Returns true if some automated parameter has been overriden"""
                     self.song().re_enable_automation()
 
-                #  capture_midi
+            elif s.vpot_index() == encoder_19_index:
+                if self.song().view.detail_clip:
+                    self.song().view.detail_clip.stop_scrub()
+
+
+            #  capture_midi
 
             elif encoder_index == encoder_25_index:
                 self.song().stop_playing()
@@ -1269,6 +1274,9 @@ class EncoderController(MackieC4Component):
 
                 elif s.vpot_index() == encoder_18_index:
                     vpot_display_text.set_text('Autmtn', 'Renabl')
+
+                elif s.vpot_index() == encoder_19_index:
+                    vpot_display_text.set_text('Clip  ', 'Scrub ')
 
                 #  capture_midi
 

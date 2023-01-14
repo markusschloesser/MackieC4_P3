@@ -281,9 +281,9 @@ class MackieC4(object):
         clip = self.song().view.detail_clip
         if clip:
             if cc_value >= 64:
-                clip.scrub(float(-(cc_value - 64)))
+                clip.scrub(4*(-(cc_value - 64)))
             if cc_value <= 64:
-                clip.scrub(float(cc_value))
+                clip.scrub(4*(cc_value))
 
     def can_lock_to_devices(self):
         """Live -> Script
