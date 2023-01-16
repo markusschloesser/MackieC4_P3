@@ -284,8 +284,8 @@ class EncoderAssignmentHistory(MackieC4Component):
         no_devices_on_track = new_device_count_track == 0
 
         rack_devices_deleted = old_device_count_track - new_device_count_track if device_was_removed else 0
-        rack_devices_added = new_device_count_track - old_device_count_track if device_was_added else 0
-        rack_devices_skipped = old_selected_device_index - selected_device_idx if selected_device_was_changed else 0
+        # rack_devices_added = new_device_count_track - old_device_count_track if device_was_added else 0
+        # rack_devices_skipped = old_selected_device_index - selected_device_idx if selected_device_was_changed else 0
 
         log_msg = "{0}input selected_device_idx<{1}> and input device list len<{2}> ".format(log_id,
                                                                                              selected_device_idx,
