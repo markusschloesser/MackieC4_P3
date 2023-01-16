@@ -518,40 +518,23 @@ class MackieC4(object):
         self.request_rebuild_midi_map()
 
     def rem_mixer_listeners(self):
-        log_id = "C4/rem_mixer_listeners: "
         # Master Track
-        for type in tuple(self.masterlisten.keys()):
-        # for type in ('volume', 'panning', 'crossfader'):
+        for type in ('volume', 'panning', 'crossfader'):
             for tr in self.masterlisten[type]:
                 if liveobj_valid(tr):
-                    log_msg = "{0}track <{1}> ltype <{2}> ".format(log_id, tr.name, type)
-                    self.log_message(log_msg)
                     cb = self.masterlisten[type][tr]
-                    tst = 'tr.mixer_device.' + type + '.value_has_listener({0})'.format(cb)
-                    self.log_message("{0}eval({1})".format(log_msg, tst))
                     test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
                     if test == 1:
-                        tst = 'tr.mixer_device.' + type + '.remove_value_listener({0})'.format(cb)
-                        self.log_message("{0}eval({1})".format(log_msg, tst))
-                        test2 = eval(tst)
-                        self.log_message("{0}successfully removed value listener <{1}>".
-                                         format(log_msg, test2))
-                    else:
-                        self.log_message(
-                            "{0}track <{1}> no value listener to remove".format(log_id, tr.name))
-                else:
-                    self.log_message("{0}track <{1}> object not Live-valid, ltype <{2}>".format(log_id, tr, type))
+                        eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
 
         # Normal Tracks
-        # for type in tuple(self.mlisten.keys()):
         for type in ('arm', 'solo', 'mute', 'current_monitoring_state', 'available_input_routing_channels',
                      'available_input_routing_types', 'available_output_routing_channels',
                      'available_output_routing_types', 'input_routing_channel', 'input_routing_type',
                      'output_routing_channel', 'output_routing_type'):
             for tr in self.mlisten[type]:
                 if liveobj_valid(tr):  # and not tr.None:
-                    log_msg = "{0}track <{1}> ltype <{2}> ".format(log_id, tr.name, type)
-                    self.log_message(log_msg)
+                    self.log_message("C4/rem_mixer_listeners track <{0}> ltype <{1}>".format(tr.name, type))
                     cb = self.mlisten[type][tr]
                     if type == 'arm':
                         if tr.can_be_armed == 1:
@@ -651,8 +634,6 @@ class MackieC4(object):
                         tr.remove_color_listener(cb)
                 except:
                     pass
-
-        # finally, reset all local listener associations
         self.mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {},
                         'sends': {}, 'name': {}, 'oml': {}, 'omr': {}, 'color': {},
                         'available_input_routing_channels': {}, 'available_input_routing_types': {},
@@ -713,14 +694,7 @@ class MackieC4(object):
         if (track in self.mlisten[type]) != 1:
             cb = lambda: self.mixert_changestate(type, tid, track)
             self.mlisten[type][track] = cb
-            # now True == (track in self.mlisten[type] == 1)
             eval('track.add_' + type + '_listener(cb)')
-            # now ControlSurface global context (Live) has added the type listener lambda named cb (local context)
-            # to the track
-        else:
-            self.log_message(
-                "C4 add_mixert_listener ((track in self.mlisten[{0}]) != 1) " +
-                "means track listener already exists for type <{0}>".format(type))
 
     def add_mixerv_listener(self, tid, type, track):
         if (track in self.mlisten[type]) != 1:
@@ -776,8 +750,6 @@ class MackieC4(object):
         val = eval('track.' + type)
         if r == 1:
             pass
-        else:
-            self.log_message("C4 mixert_changestate (r != 1) why?")
 
     def send_changestate(self, tid, track, sid, send, r=0):
         val = send.value
@@ -802,43 +774,25 @@ class MackieC4(object):
     #         return 0
 
     def add_device_listeners(self):
-        log_id = "C4 add_device_listeners: "
         self.rem_device_listeners()
-        self.log_message("{0}finished removing existing device listeners, doing normal track listeners".format(log_id))
+        self.log_message("C4 add_device_listeners/rem_device_listeners: type <{0}>".format(type))
         self.do_add_device_listeners(self.song().tracks, 0)
-        self.log_message("{0}finished doing normal track listeners, doing return track listeners".format(log_id))
+        self.log_message("C4/add_device_listeners/do_add: type <{0}>".format(type))
         self.do_add_device_listeners(self.song().return_tracks, 1)
-        self.log_message("{0}finished doing return track listeners, doing master track listeners".format(log_id))
         self.do_add_device_listeners([self.song().master_track], 2)
-        self.log_message("{0}finished adding device listeners".format(log_id))
 
     def do_add_device_listeners(self, tracks, type):
-        log_id = "C4 do_add_device_listeners: "
-        nbr_trks = len(tracks)
-        log_msg = "{0}<nbr_trks {2}><type {1}> ".format(log_id, type, nbr_trks)
-        self.log_message(log_msg)
-        for i in range(nbr_trks):
-            tr = tracks[i]
-            nbr_devices = len(tr.devices)
-            self.log_message("{0}adding track device listener for track <{1}> with <{2}> existing devices".
-                             format(log_msg, tr, nbr_devices))
-            self.add_devicelistener(tr, i, type)
-
-            if nbr_devices >= 1:
-                for j in range(nbr_devices):
-                    dvs = tr.devices[j]
-                    self.add_devpmlistener(dvs)
-                    self.log_message("{0}added pm listener to device <{1}>".format(log_msg, dvs))
-                    nbr_params = len(dvs.parameters)
-                    if nbr_params >= 1:
-                        self.log_message("{0}device has <{1}> parameters".format(log_msg, nbr_params))
-                        for k in range(nbr_params):
-                            param = dvs.parameters[k]
-                            self.log_message("{0}adding param listener for parameter <{1}>".
-                                             format(log_msg, "None" if not liveobj_valid(param) else param.name))
-                            self.add_paramlistener(param, i, j, k, type)
-            else:
-                self.log_message("{0}device has no parameters".format(log_msg))
+        for i in range(len(tracks)):
+            self.add_devicelistener(tracks[i], i, type)
+            self.log_message("C4/do_add_device_listeners: type <{0}>".format(type))
+            if len(tracks[i].devices) >= 1:
+                for j in range(len(tracks[i].devices)):
+                    self.add_devpmlistener(tracks[i].devices[j])
+                    self.log_message("C4/do_add_device_listeners/add_devpmlistener: type <{0}>".format(type))
+                    if len(tracks[i].devices[j].parameters) >= 1:
+                        for k in range(len(tracks[i].devices[j].parameters)):
+                            par = tracks[i].devices[j].parameters[k]
+                            self.add_paramlistener(par, i, j, k, type)
 
     def rem_device_listeners(self):
         for pr in self.prlisten:
