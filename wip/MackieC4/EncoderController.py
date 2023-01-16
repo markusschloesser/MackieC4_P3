@@ -149,11 +149,11 @@ class EncoderController(MackieC4Component):
         return device_list
 
     def build_setup_database(self):
-        self.main_script().log_message("building setup db")
+        self.main_script().log_message("C4/building setup db")
         self.__eah.build_setup_database(self.song())        # self.track_count
 
-        self.main_script().log_message("t_count after setup <{0}>".format(self.__eah.t_count))
-        self.main_script().log_message("main_script().track_count after setup <{0}>".format(self.main_script().track_count))
+        self.main_script().log_message("C4/t_count after setup <{0}>".format(self.__eah.t_count))
+        self.main_script().log_message("C4/main_script().track_count after setup <{0}>".format(self.main_script().track_count))
 
         devices_on_selected_trk = self.get_device_list(self.song().view.selected_track.devices)
 
@@ -311,8 +311,7 @@ class EncoderController(MackieC4Component):
                 self.__chosen_plugin = None
                 # might happen if track with no devices deleted, and the next selected track also has no devices?
                 self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
-                self.main_script().log_message(
-                    "{0}__chosen_plugin is now None because no EAH updated index".format(log_id))
+                self.main_script().log_message("{0}__chosen_plugin is now None because no EAH updated index".format(log_id))
             elif len(extended_device_list) > updated_idx:
                 self.__chosen_plugin = extended_device_list[updated_idx]
                 self.__eah.set_selected_device_index(updated_idx)

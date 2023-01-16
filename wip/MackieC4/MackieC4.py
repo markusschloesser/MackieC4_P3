@@ -762,7 +762,7 @@ class MackieC4(object):
         else:
             self.trBlock(0, len(self.song().visible_tracks))
 
-    # def check_md(self, param):  # IMHO doesn't do anything
+    # def check_md(self, param):  # IMHO doesn't do anything: UPDATE: was a leftover from meter_changestate (metering), can go
     #     devices = self.song().master_track.devices
     #     if len(devices) > 0:
     #         # is this method only called with valid master track device param index values
@@ -775,7 +775,7 @@ class MackieC4(object):
 
     def add_device_listeners(self):
         self.rem_device_listeners()
-        self.log_message("C4 add_device_listeners/rem_device_listeners: type <{0}>".format(type))
+        self.log_message("C4 add_device_listenerS/rem_device_listeners: type <{0}>".format(type))
         self.do_add_device_listeners(self.song().tracks, 0)
         self.log_message("C4/add_device_listeners/do_add: type <{0}>".format(type))
         self.do_add_device_listeners(self.song().return_tracks, 1)
@@ -784,7 +784,7 @@ class MackieC4(object):
     def do_add_device_listeners(self, tracks, type):
         for i in range(len(tracks)):
             self.add_devicelistener(tracks[i], i, type)
-            self.log_message("C4/do_add_device_listeners: type <{0}>".format(type))
+            self.log_message("C4/do_add_device_listeners/add_devicelistener tracks: type <{0}>".format(type))
             if len(tracks[i].devices) >= 1:
                 for j in range(len(tracks[i].devices)):
                     self.add_devpmlistener(tracks[i].devices[j])
@@ -821,6 +821,24 @@ class MackieC4(object):
         self.plisten = {}
         return
 
+    def add_devicelistener(self, track, tid, type):
+        cb = lambda: self.device_changestate(track, tid, type)
+        self.log_message("C4/add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+        if (track in self.dlisten) != 1:
+            track.add_devices_listener(cb)
+            track.view.add_selected_device_listener(cb)   # # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
+            self.log_message("C4/track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+            self.dlisten[track] = cb
+
+    def device_changestate(self, track, tid, type):  # equivalent to __on_selected_device_chain_changed in MCU
+        self.log_message("C4/device_changestate: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+        # did = self.tuple_idx(track.devices, track.view.selected_device)
+        self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
+        # if type == 2:
+        #     pass
+        # elif type == 1:
+        #     pass
+
     def add_devpmlistener(self, device):  # devpmlistener is device parameter listener
         cb = lambda: self.devpm_change()
         if (device in self.plisten) != 1:
@@ -841,23 +859,6 @@ class MackieC4(object):
             pass
         elif type == 1:
             pass
-
-    def add_devicelistener(self, track, tid, type):
-        cb = lambda: self.device_changestate(track, tid, type)
-        self.log_message("C4/add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
-        if (track in self.dlisten) != 1:
-            track.view.add_selected_device_listener(cb)   # # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
-            self.log_message("C4/track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
-            self.dlisten[track] = cb
-
-    def device_changestate(self, track, tid, type):  # equivalent to __on_selected_device_chain_changed in MCU
-        self.log_message("C4/device_changestate: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
-        # did = self.tuple_idx(track.devices, track.view.selected_device)
-        self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
-        # if type == 2:
-        #     pass
-        # elif type == 1:
-        #     pass
 
     # def tuple_idx(self, tuple, obj):
     #     for i in range(0, len(tuple)):
