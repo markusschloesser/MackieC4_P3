@@ -59,7 +59,6 @@ class TimeDisplay(MackieC4Component):
             #         char_code += 64
             # self.send_midi((176, 64 + c, char_code))
 
-    # @property
     def _TimeDisplay__show_beat_time(self):
         return self._TimeDisplay__show_beat_time
 

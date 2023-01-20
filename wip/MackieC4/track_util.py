@@ -1,27 +1,19 @@
 # uncompyle6 version 3.7.4
 # Python bytecode 3.7 (3394)
-# Decompiled from: Python 3.9.1 (tags/v3.9.1:1e5d33e, Dec  7 2020, 17:08:21) [MSC v.1927 64 bit (AMD64)]
-# Embedded file name: ..\..\..\output\Live\win_64_static\Release\python-bundle\MIDI Remote Scripts\Blackstar_Live_Logic\track_util.py
-# Compiled at: 2021-01-27 15:20:47
-# Size of source mod 2**32: 6989 bytes
+
 from __future__ import absolute_import, print_function, unicode_literals
 from functools import partial
 from itertools import chain
 
 import sys
+import Live
 
-from Push2.decoration import TrackDecoratorFactory
 from ableton.v2.base import const, compose, depends, find_if, liveobj_valid, EventObject, listens, listenable_property, \
     liveobj_changed, nop, listens_group, flatten
-from ableton.v2.control_surface.components.item_lister import ItemProvider
-from ableton.v2.control_surface.components.mixer import RightAlignTracksTrackAssigner
-from ableton.v2.control_surface.components.session_ring import SessionRingComponent
+from ableton.v2.control_surface import Component, find_instrument_devices
 
 if sys.version_info[0] >= 3:  # Live 11
     from ableton.v2.base import old_hasattr
-
-from ableton.v2.control_surface import Component, find_instrument_devices
-import Live
 
 
 def is_group_track(track):

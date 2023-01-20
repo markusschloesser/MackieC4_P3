@@ -133,6 +133,7 @@ class MackieC4(object):
         # To display song position pointer or beats on display
         self.__time_display = TimeDisplay(self)
         self.__components.append(self.__time_display)
+
         self.__shift_is_pressed = False
         self.__option_is_pressed = False
         self.__ctrl_is_pressed = False
@@ -417,7 +418,7 @@ class MackieC4(object):
             self.log_message("C4/track_change nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE".format(len(tracks), self.track_count))
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range
-            self.log_message("C4/track_change  nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range".format(len(tracks), self.track_count))
+            # self.log_message("C4/track_change  nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range".format(len(tracks), self.track_count))
 
         index = 0
         found = 0
@@ -439,9 +440,10 @@ class MackieC4(object):
                 # signal that something bad happened - selected track
                 selected_index = 555
 
-        self.log_message("C4/track_change found selected index {0}".format(selected_index))
+        # self.log_message("C4/track_change found selected index {0}".format(selected_index))
+
         if selected_index != self.track_index:
-            self.log_message("C4/track_change setting self.track_index {0} to selected index {1}".format(self.track_index, selected_index))
+            # self.log_message("C4/track_change setting self.track_index {0} to selected index {1}".format(self.track_index, selected_index))
             self.track_index = selected_index
 
         if self.track_count > len(tracks):
@@ -534,7 +536,7 @@ class MackieC4(object):
                      'output_routing_channel', 'output_routing_type'):
             for tr in self.mlisten[type]:
                 if liveobj_valid(tr):  # and not tr.None:
-                    self.log_message("C4/rem_mixer_listeners track <{0}> ltype <{1}>".format(tr.name, type))
+                    # ("C4/rem_mixer_listeners track <{0}> ltype <{1}>".format(tr.name, type))
                     cb = self.mlisten[type][tr]
                     if type == 'arm':
                         if tr.can_be_armed == 1:
@@ -775,20 +777,20 @@ class MackieC4(object):
 
     def add_device_listeners(self):
         self.rem_device_listeners()
-        self.log_message("C4 add_device_listenerS/rem_device_listeners: type <{0}>".format(type))
+        # self.log_message("C4 add_device_listenerS/rem_device_listeners: type <{0}>".format(type))
         self.do_add_device_listeners(self.song().tracks, 0)
-        self.log_message("C4/add_device_listeners/do_add: type <{0}>".format(type))
+        # self.log_message("C4/add_device_listeners/do_add: type <{0}>".format(type))
         self.do_add_device_listeners(self.song().return_tracks, 1)
         self.do_add_device_listeners([self.song().master_track], 2)
 
     def do_add_device_listeners(self, tracks, type):
         for i in range(len(tracks)):
             self.add_devicelistener(tracks[i], i, type)
-            self.log_message("C4/do_add_device_listeners/add_devicelistener tracks: type <{0}>".format(type))
+            # self.log_message("C4/do_add_device_listeners/add_devicelistener tracks: type <{0}>".format(type))
             if len(tracks[i].devices) >= 1:
                 for j in range(len(tracks[i].devices)):
                     self.add_devpmlistener(tracks[i].devices[j])
-                    self.log_message("C4/do_add_device_listeners/add_devpmlistener: type <{0}>".format(type))
+                    # self.log_message("C4/do_add_device_listeners/add_devpmlistener: type <{0}>".format(type))
                     if len(tracks[i].devices[j].parameters) >= 1:
                         for k in range(len(tracks[i].devices[j].parameters)):
                             par = tracks[i].devices[j].parameters[k]
@@ -806,7 +808,7 @@ class MackieC4(object):
         for tr in self.dlisten:
             if liveobj_valid(tr):
                 ocb = self.dlisten[tr]
-                self.log_message("C4/rem_device_listeners: type <{0}>".format(type))
+                # self.log_message("C4/rem_device_listeners: type <{0}>".format(type))
                 if tr.view.selected_device_has_listener(ocb) == 1:  # this is a direct call/check with to a function from Live (def selected_device_has_listener)
                     tr.view.remove_selected_device_listener(ocb)
 
@@ -823,11 +825,11 @@ class MackieC4(object):
 
     def add_devicelistener(self, track, tid, type):
         cb = lambda: self.device_changestate(track, tid, type)
-        self.log_message("C4/add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+        # self.log_message("C4/add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
         if (track in self.dlisten) != 1:
-            track.add_devices_listener(cb)
-            track.view.add_selected_device_listener(cb)   # # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
-            self.log_message("C4/track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+            track.add_devices_listener(cb)  # this is a direct call/check with/ to a function from Live
+            track.view.add_selected_device_listener(cb)   # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
+            # self.log_message("C4/track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
             self.dlisten[track] = cb
 
     def device_changestate(self, track, tid, type):  # equivalent to __on_selected_device_chain_changed in MCU
@@ -912,8 +914,7 @@ class MackieC4(object):
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
         try:
-            message = '(%s) %s' % (self.__class__.__name__,
-             (' ').join(map(str, message)))
+            message = '(%s) %s' % (self.__class__.__name__,(' ').join(map(str, message)))
             logger.info(message)
         except:
             logger.info('Logging encountered illegal character(s)!')
