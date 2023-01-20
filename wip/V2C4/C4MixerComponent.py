@@ -7,6 +7,9 @@ from _Framework.ButtonElement import ButtonElement
 
 from .C4ChannelStripComponent import C4ChannelStripComponent
 
+if sys.version_info[0] >= 3:  # Live 11
+    from itertools import zip_longest
+
 
 class C4MixerComponent(MixerComponent, V2C4Component):
     """
@@ -94,11 +97,18 @@ class C4MixerComponent(MixerComponent, V2C4Component):
 
     def set_selected_strip_send_controls(self, controls):
         self._send_controls = controls
-        for control in izip_longest(controls or []):
-            if self._send_index is None:
-                self._selected_strip_send_controls = (None, )
-            else:
-                self._selected_strip_send_controls = (None, ) * self._send_index + (control,)
+        if sys.version_info[0] >= 3:  # Live 11
+            for control in zip_longest(controls or []):
+                if self._send_index is None:
+                    self._selected_strip_send_controls = (None,)
+                else:
+                    self._selected_strip_send_controls = (None,) * self._send_index + (control,)
+        else:  # Live 10
+            for control in izip_longest(controls or []):
+                if self._send_index is None:
+                    self._selected_strip_send_controls = (None, )
+                else:
+                    self._selected_strip_send_controls = (None, ) * self._send_index + (control,)
 
         self._set_selected_strip_send_controls()
 
