@@ -56,7 +56,7 @@ class C4MixerComponent(MixerComponent, V2C4Component):
 
     def set_displays(self, display_rows, device_name_data_source):
         assert isinstance(display_rows, dict)
-        assert display_rows.keys()[0] == LCD_ANGLED_ADDRESS
+        assert list(display_rows.keys())[0] == LCD_ANGLED_ADDRESS
         assert isinstance(display_rows[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET], PhysicalDisplayElement)
 
         self._displays = display_rows

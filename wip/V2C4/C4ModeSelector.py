@@ -112,7 +112,7 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
         assert isinstance(device_displays, dict)
         assert len(device_displays.keys()) == len(LCD_DISPLAY_ADDRESSES)
         assert isinstance(channel_strip_display, dict)
-        assert channel_strip_display.keys()[0] == LCD_ANGLED_ADDRESS
+        assert list(channel_strip_display.keys())[0] == LCD_ANGLED_ADDRESS
         assert isinstance(channel_strip_display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET], PhysicalDisplayElement)
 
         if self._default_displays[LCD_ANGLED_ADDRESS][0] is None and device_displays[LCD_ANGLED_ADDRESS][0] is not None:

@@ -90,7 +90,7 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
 
     def set_displays(self, display, device_name_data_source):
         assert isinstance(display, dict)
-        assert display.keys()[0] == LCD_ANGLED_ADDRESS
+        assert list(display.keys())[0] == LCD_ANGLED_ADDRESS
         assert isinstance(display[LCD_ANGLED_ADDRESS][LCD_BOTTOM_ROW_OFFSET], PhysicalDisplayElement)
 
         self._static_display = display[LCD_ANGLED_ADDRESS][LCD_TOP_ROW_OFFSET]
