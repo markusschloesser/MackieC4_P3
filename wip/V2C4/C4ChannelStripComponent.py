@@ -21,8 +21,8 @@ class C4ChannelStripComponent(ChannelStripComponent, V2C4Component):
         self._data_display = None
         self._static_display = None
 
-        self._track_name_label = 'Track Name'.center(LCD_BOTTOM_ROW_OFFSET/2)
-        self._device_name_label = 'Device Name'.center(LCD_BOTTOM_ROW_OFFSET/2)
+        self._track_name_label = 'Track Name'.center(int(LCD_BOTTOM_ROW_OFFSET/2))
+        self._device_name_label = 'Device Name'.center(int(LCD_BOTTOM_ROW_OFFSET/2))
 
         self._track_name_static_ds = DisplayDataSource(separator='|')
         self._device_name_static_ds = DisplayDataSource()
