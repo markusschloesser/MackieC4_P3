@@ -208,14 +208,10 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                 self._mixer.set_selected_strip_pan_control(self._channel_encoders[1])
 
                 if self._channel_strip_displays is not None:
-                    self._channel_strip_displays[0].segment(0).set_data_source(
-                        self._mixer.selected_strip().static_data_sources[0])
-                    self._channel_strip_displays[0].segment(1).set_data_source(
-                        self._mixer.selected_strip().static_data_sources[1])
-                    self._channel_strip_displays[1].segment(0).set_data_source(
-                        self._mixer.selected_strip().track_name_data_source())
-                    self._channel_strip_displays[1].segment(1).set_data_source(
-                        self._device.device_name_data_source())
+                    self._channel_strip_displays[0].segment(0).set_data_source(self._mixer.selected_strip().static_data_sources[0])
+                    self._channel_strip_displays[0].segment(1).set_data_source(self._mixer.selected_strip().static_data_sources[1])
+                    self._channel_strip_displays[1].segment(0).set_data_source(self._mixer.selected_strip().track_name_data_source())
+                    self._channel_strip_displays[1].segment(1).set_data_source(self._device.device_name_data_source())
 
                 if self._encoder_row00_displays is not None and \
                     len(self._encoder_row00_displays) == 2 and \
@@ -253,11 +249,8 @@ class C4ModeSelector(ModeSelectorComponent, V2C4Component):
                     self._channel_strip_displays[0].reset()
                     self._channel_strip_displays[1].reset()
 
-                if self._encoder_row00_displays is not None and \
-                    len(self._encoder_row00_displays) == 2 and \
-                    len(self._encoder_row01_displays) == 2 and \
-                    len(self._encoder_row02_displays) == 2 and \
-                    len(self._encoder_row03_displays) == 2:
+                if self._encoder_row00_displays is not None and len(self._encoder_row00_displays) == 2 and \
+                    len(self._encoder_row01_displays) == 2 and len(self._encoder_row02_displays) == 2 and len(self._encoder_row03_displays) == 2:
                     for index in range(len(self._device_encoders)):
                         p_name_ds = self._device.parameter_name_data_source(index)
                         p_valu_ds = self._device.parameter_value_data_source(index)
