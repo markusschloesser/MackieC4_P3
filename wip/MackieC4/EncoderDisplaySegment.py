@@ -5,8 +5,7 @@ from __future__ import absolute_import, print_function, unicode_literals
 from .MackieC4Component import *
 
 import sys
-# from Live import DeviceParameter
-from Push2.model import DeviceParameter
+
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
     from past.builtins import unicode
@@ -90,12 +89,6 @@ class EncoderDisplaySegment(MackieC4Component):
             return "xxXXxx"
         else:
             return self.__lower_text  # assume ascii/LCD safe
-
-        # try:
-        #     ascii_encoded = self.__lower_text.encode('ascii', 'ignore')
-        # except AttributeError:  # DeviceParameter
-        #     ascii_encoded = unicode(self.__lower_text).encode('ascii', errors='ignore')  # for Py2/Live10 and Py3
-        # return ascii_encoded.decode()
 
     def alter_lower_text(self, alter_text=True):
         if alter_text:

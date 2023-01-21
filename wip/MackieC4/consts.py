@@ -2,7 +2,7 @@
 # Embedded file name:
 #             /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/consts.py
 # Compiled at: 2011-01-22 04:37:41
-# Decompiled by https://python-decompiler.com
+
 
 # max 128 tracks per song
 from __future__ import absolute_import, print_function, unicode_literals  # MS
