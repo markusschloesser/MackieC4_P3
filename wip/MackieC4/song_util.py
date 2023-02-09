@@ -58,10 +58,7 @@ def toggle_back_to_arranger(self, name='BTA'):
 
 def any_soloed_track(self):
     tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
-    exists = next((x for x in tracks if x.solo), None)
-    if liveobj_valid(exists):
-        return True
-    return False
+    return any((t.solo for t in tracks))
 
 
 def unsolo_all(self):
@@ -72,10 +69,7 @@ def unsolo_all(self):
 
 def any_muted_track(self):
     tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
-    exists = next((x for x in tracks if x.mute), None)
-    if liveobj_valid(exists):
-        return True
-    return False
+    return any((t.mute for t in tracks))
 
 
 def unmute_all(self):
@@ -96,13 +90,9 @@ def undo(self):
 
 def unarm_all_button(self):
     for track in self.song().tracks:
-        if track.can_be_armed and track.arm:
+        if track.can_be_armed and (track.arm or track.implicit_arm):
             track.arm = False
 
 
 def any_armed_track(self):
-    tracks = tuple(self.song().tracks)
-    exists = next((x for x in tracks if x.can_be_armed and x.arm), None)
-    if liveobj_valid(exists):
-        return True
-    return False
+    return any((t.can_be_armed and t.arm for t in self.song().tracks))

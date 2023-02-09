@@ -9,8 +9,6 @@ import sys
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
 
-from _Framework.ControlSurface import ControlSurface  # MS
-from _Framework.Control import Control  # MS
 from itertools import chain
 from ableton.v2.base import liveobj_valid
 
@@ -63,7 +61,8 @@ class Encoders(MackieC4Component):
         self.update_led_ring(update_value)
 
     def set_v_pot_parameter(self, parameter, display_mode=VPOT_DISPLAY_BOOLEAN):
-        self.__update_led_ring_display_mode(display_mode)
+        if not display_mode == None:
+            self.__update_led_ring_display_mode(display_mode)
         self.__v_pot_parameter = parameter
         if not parameter:
             self.unlight_vpot_leds()
@@ -72,10 +71,8 @@ class Encoders(MackieC4Component):
 
         self.__v_pot_display_mode = display_mode
 
-        # when mode is boost-cut VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B), the C4 allows
-        # both 0x11 and 0x1B as valid "Boost Cut" values
-        # the list: self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE]
-        # should contain element 0x1B == eleven elements
+        # when mode is boost-cut VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B), the C4 allows both 0x11 and 0x1B as valid "Boost Cut" values
+        # the list: self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] should contain element 0x1B == eleven elements
         # 0x11, 0x12, 0x13...0x1B
         display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
         # for "Boost Cut": self.__v_pot_display_mode][1] - display_mode_cc_base == 0x1B - 0x11 == 0x0A == ten elements

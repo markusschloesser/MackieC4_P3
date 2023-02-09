@@ -546,7 +546,7 @@ class EncoderController(MackieC4Component):
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
 
     def handle_pressed_v_pot(self, vpot_index):
-        """ 'encoder button' /vpot push clicks. are not handled in C4M_USER assignment mode  """
+        """ 'encoder button' /vpot push clicks"""
         encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
         selected_device_bank_index = self.__eah.get_selected_device_bank_index()
         old_selected_bank = selected_device_bank_index
@@ -1151,7 +1151,6 @@ class EncoderController(MackieC4Component):
                         else:
                             vpot_display_text.set_text(is_muted, 'Mute')  # text never updates from here
 
-                    # s.set_v_pot_parameter(vpot_param[0], vpot_param[1]) # test to see if flickering if vpot ring stops
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_31_index:
                     if self.selected_track.has_audio_output:
@@ -1217,7 +1216,13 @@ class EncoderController(MackieC4Component):
                     else:
                         vpot_display_text.set_text('Param', ' No ')
 
-                s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+                if not self.selected_track.is_frozen:
+                    # disconnects vpots from the params, so you cannot change parameters when track frozen (but still see them).
+                    # Currently only works after once switching assignment mode. Needs to listen to frozen change event, which currently doesn't work
+                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+                else:
+                    s.set_v_pot_parameter(None,None)
+
                 self.__display_parameters.append(vpot_display_text)
 
         elif self.__assignment_mode == C4M_FUNCTION:
@@ -1537,7 +1542,10 @@ class EncoderController(MackieC4Component):
                 upper_string1 += '------- '
 
             if liveobj_valid(self.selected_track):
-                lower_string1a += adjust_string(self.selected_track.name, 20)
+                if self.selected_track.is_frozen:
+                    lower_string1a += adjust_string(self.selected_track.name, 12) + '(Frozen)'
+                else:
+                    lower_string1a += adjust_string(self.selected_track.name, 20)
             else:
                 lower_string1a += "---------0---------1"
             lower_string1a = lower_string1a.center(20)
