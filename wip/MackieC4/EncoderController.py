@@ -82,7 +82,7 @@ class EncoderController(MackieC4Component):
         # self.__master_track_index = 0
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
-        tracks = self.song().visible_tracks + self.song().return_tracks
+        tracks = self.song().visible_tracks + self.song().return_tracks  # MS to check if this needs to be visible tracks or all tracks
         selected_track = self.song().view.selected_track
         self.returns_switch = 0
         index = 0
@@ -861,7 +861,7 @@ class EncoderController(MackieC4Component):
                 if self.song().view.detail_clip:
                     self.song().view.detail_clip.stop_scrub()
 
-            #  capture_midi
+            #  capture_midi placeholder
 
             elif encoder_index == encoder_25_index:
                 self.song().stop_playing()
@@ -1006,6 +1006,8 @@ class EncoderController(MackieC4Component):
         encoder_17_index = 16  # Metronome
         encoder_18_index = 17
         encoder_19_index = 18
+        encoder_21_index = 20
+        encoder_22_index = 21
         encoder_24_index = 23
         encoder_25_index = 24
         encoder_26_index = 25
@@ -1271,6 +1273,9 @@ class EncoderController(MackieC4Component):
 
                 elif s.vpot_index() == encoder_19_index:
                     vpot_display_text.set_text('Clip  ', 'Scrub ')
+
+                elif s.vpot_index() == encoder_22_index:
+                    vpot_display_text.set_text(None, 'BPM   ')
 
                 #  capture_midi
 
@@ -1635,6 +1640,9 @@ class EncoderController(MackieC4Component):
             encoder_17_index = 16  # Metronome
             encoder_18_index = 17  # re-enable automation
             encoder_19_index = 18  # scrub clip
+            encoder_20_index = 19  # scroll clip
+            encoder_21_index = 20  # zoom clip
+            encoder_22_index = 21  # BPM
             encoder_25_index = 24
             encoder_26_index = 25
             for e in self.__encoders:
@@ -1732,8 +1740,13 @@ class EncoderController(MackieC4Component):
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                         lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_02_encoders:
-                    upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
-                    lower_string3 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+                    if e.vpot_index() == encoder_22_index:
+                        upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
+                        lower_string3 += adjust_string(('%3.2f' % self.song().tempo), 6) + ' '
+
+                    else:
+                        upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
+                        lower_string3 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_03_encoders:
                     upper_string4 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string4 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '

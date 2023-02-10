@@ -6,24 +6,18 @@
 # Copyright (C) 2007 Nathan Ramella (nar@remix.net)
 # MS: not sure this applies anymore ;-)
 #
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 #
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
+# This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the Free Software
+# You should have received a copy of the GNU Lesser General Public License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 This script is based off the Ableton Live supplied MIDI Remote Scripts.
 
-This is the second file that is loaded, by way of being instantiated through
-__init__.py
+This is the second file that is loaded, by way of being instantiated through __init__.py
 """
 
 from __future__ import absolute_import, print_function, unicode_literals
@@ -141,7 +135,7 @@ class MackieC4(object):
     def connect_script_instances(self, instanciated_scripts):
         """
         Called by the Application as soon as all scripts are initialized. You can connect yourself to other running
-        scripts here, as we do it connect the extension modules
+        scripts here.
         """
         pass
 
@@ -194,7 +188,7 @@ class MackieC4(object):
             self.return_resetter = 0
 
     def receive_midi(self, midi_bytes):
-        """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'.      """
+        """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
         # coming from C4 midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
         # C4 always sends and receives on channel 1
@@ -251,6 +245,8 @@ class MackieC4(object):
                     self.scroll_clip(cc_value)
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_21:
                     self.zoom_clip(cc_value)
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_22:
+                    self.tempo_change(cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -304,6 +300,15 @@ class MackieC4(object):
             self.application().view.zoom_view(scroll, 'clip', self.alt_is_pressed())
         if cc_value <= 64:
             self.application().view.zoom_view(scroll,'clip', self.alt_is_pressed())
+
+    def tempo_change(self, cc_value):
+        """Sets the current song tempo"""
+        if cc_value >= 64:
+            amount = -((cc_value - 64) / 4)
+        else:
+            amount = (cc_value / 4)
+        tempo = max(20, min(999, self.song().tempo + amount))
+        self.song().tempo = tempo
 
     def can_lock_to_devices(self):  # todo: make use of it, locking itself works
         """Live -> Script
@@ -373,7 +378,6 @@ class MackieC4(object):
         to be removed. Cyclic dependencies should be broken, so the control surface can be garbage collected."""
         self.rem_mixer_listeners()
         self.rem_scene_listeners()
-        self.rem_tempo_listener()
         self.rem_overdub_listener()
         self.rem_tracks_listener()
         self.rem_device_listeners()
@@ -387,7 +391,6 @@ class MackieC4(object):
 
         result = Live.MidiMap.MapMode.absolute
 
-        # if cc_no in range(FID_PANNING_BASE, FID_PANNING_BASE + NUM_ENCODERS):
         if cc_no in encoder_range:
             result = Live.MidiMap.MapMode.relative_signed_bit
         return result
@@ -398,7 +401,6 @@ class MackieC4(object):
         after for example having reconnecting the MIDI cables or when exiting MIDI map mode
         """
         self.add_mixer_listeners()
-        self.add_tempo_listener()
         self.add_overdub_listener()
         self.add_tracks_listener()
         self.add_device_listeners()
@@ -488,25 +490,6 @@ class MackieC4(object):
 
         if selected_index != self.scene:
             self.scene = selected_index
-
-    def add_tempo_listener(self):
-        self.rem_tempo_listener()
-        # print ('add tempo listener')
-        if self.song().tempo_has_listener(self.tempo_change) != 1:
-            self.song().add_tempo_listener(self.tempo_change)
-
-    def rem_tempo_listener(self):
-        if self.song().tempo_has_listener(self.tempo_change) == 1:
-            self.song().remove_tempo_listener(self.tempo_change)
-
-    def tempo(self):
-        """Returns the current song tempo"""
-        return self.song().tempo
-
-    def tempo_change(self, tempo):
-        """Sets the current song tempo"""
-        if tempo is not None:
-            self.song().tempo = tempo
 
     def add_transport_listener(self):
         if self.song().is_playing_has_listener(self.transport_change) != 1:
@@ -765,17 +748,6 @@ class MackieC4(object):
         else:
             self.trBlock(0, len(self.song().visible_tracks))
 
-    # def check_md(self, param):  # IMHO doesn't do anything: UPDATE: was a leftover from meter_changestate (metering), can go
-    #     devices = self.song().master_track.devices
-    #     if len(devices) > 0:
-    #         # is this method only called with valid master track device param index values
-    #         if liveobj_valid(devices[0].parameters[param].value):
-    #             return 1  # if the first or only master track device parameter value is > 0
-    #         else:
-    #             return 0
-    #     else:
-    #         return 0
-
     def add_device_listeners(self):
         self.rem_device_listeners()
         # self.log_message("C4 add_device_listenerS/rem_device_listeners: type <{0}>".format(type))
@@ -862,11 +834,6 @@ class MackieC4(object):
             pass
         elif type == 1:
             pass
-
-    # def tuple_idx(self, tuple, obj):
-    #     for i in range(0, len(tuple)):
-    #         if tuple[i] == obj:
-    #             return i
 
     def track_inc_dec(self, note):
         # self.log_message("handling note <{}> for track inc dec".format(note))
