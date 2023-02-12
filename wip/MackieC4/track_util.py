@@ -8,9 +8,8 @@ from itertools import chain
 import sys
 import Live
 
-from ableton.v2.base import const, compose, depends, find_if, liveobj_valid, EventObject, listens, listenable_property, \
-    liveobj_changed, nop, listens_group, flatten
-from ableton.v2.control_surface import Component, find_instrument_devices
+from ableton.v2.base import const, depends, find_if, liveobj_valid, liveobj_changed, flatten
+from ableton.v2.control_surface import find_instrument_devices
 
 if sys.version_info[0] >= 3:  # Live 11
     from ableton.v2.base import old_hasattr

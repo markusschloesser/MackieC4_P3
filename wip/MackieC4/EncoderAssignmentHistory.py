@@ -1,17 +1,13 @@
 
-from __future__ import absolute_import, print_function, unicode_literals  # MS
+from __future__ import absolute_import, print_function, unicode_literals
 from __future__ import division
 import sys
 
 from ableton.v2.base import liveobj_valid
 
-# from Encoders import Encoders
-
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
 
-
-# from .EncoderController import EncoderController
 from . MackieC4Component import *
 from . import track_util
 from _Generic.Devices import *
@@ -65,10 +61,6 @@ class EncoderAssignmentHistory(MackieC4Component):
         # device on the t_current track (in banks of 24 params)
         self.t_d_p_bank_current = [[0 for i in range(SETUP_DB_DEFAULT_SIZE)] for j in range(SETUP_DB_DEFAULT_SIZE)]
 
-    # def reset_device_counter(self):
-    #     self.t_d_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
-    #     self.t_d_bank_count = [0 for i in range(SETUP_DB_DEFAULT_SIZE)]
-
     def update_device_counter(self, t, d):
         self.t_d_count[t] = d
         max_device_banks = math.ceil(d // SETUP_DB_DEVICE_BANK_SIZE)
@@ -84,10 +76,11 @@ class EncoderAssignmentHistory(MackieC4Component):
         device_list = []
         for device in container:
             device_list.append(device)
-            if device.can_have_chains:  # is a rack and it's open
-                if device.view.is_showing_chain_devices:
-                    for ch in device.chains:
-                        device_list += self.get_device_list(ch.devices)
+            if device.can_have_chains:  # = is a rack
+                # if device.view.is_showing_chain_devices:  # this makes device list foldable, which wouldn't work with current script.
+                # So for now, everything is a flattened list
+                for ch in device.chains:
+                    device_list += self.get_device_list(ch.devices)
         return device_list
 
     def build_setup_database(self, song_ref=None):

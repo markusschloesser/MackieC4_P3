@@ -164,7 +164,7 @@ class Encoders(MackieC4Component):
 
     def __select_track(self):
         if self._Encoders__assigned_track:
-            all_tracks = tuple(self.song().visible_tracks) + tuple(self.song().return_tracks)  # MS tuple is new and from Mackie script
+            all_tracks = tuple(self.song().visible_tracks) + tuple(self.song().return_tracks)  # MS tuple is from Mackie script
             if self.song().view.selected_track != all_tracks[self.__assigned_track_index()]:  # MS new but seems to work
                 self.song().view.selected_track = all_tracks[self.__assigned_track_index()]
             elif self.application().view.is_view_visible('Arranger'):
