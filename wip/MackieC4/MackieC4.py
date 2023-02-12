@@ -1,7 +1,6 @@
 # was Python bytecode 2.5 (62131)
-# Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/MackieC4.py
 # Compiled at: 2011-01-22 04:38:37
-# Decompiled by https://python-decompiler.com
+
 """
 # Copyright (C) 2007 Nathan Ramella (nar@remix.net)
 # MS: not sure this applies anymore ;-)
@@ -23,7 +22,7 @@ This is the second file that is loaded, by way of being instantiated through __i
 from __future__ import absolute_import, print_function, unicode_literals
 import sys
 import Live
-from ableton.v2.base import liveobj_valid, clamp, listens
+from ableton.v2.base import liveobj_valid, clamp
 from .TimeDisplay import TimeDisplay
 from . import song_util
 import logging
@@ -61,9 +60,6 @@ class MackieC4(object):
 
     dlisten = {}
     '''dlisten is "Device Listener'''
-
-    # clisten = {}
-    # '''clisten is "Clip" Listener'''
 
     slisten = {}
     '''slisten is "Slot Listener'''
@@ -110,7 +106,6 @@ class MackieC4(object):
         tracks = self.song().visible_tracks + self.song().return_tracks
         index = 0
 
-        # if the selected Live track is in view (on computer screen?)
         # assign track to the local index of the matching selected track in Live
         for track in tracks:
             if track == self.song().view.selected_track:
@@ -120,8 +115,8 @@ class MackieC4(object):
         self.track_count = len(tracks)
 
         # if refresh_state is not already listening for visible tracks view changes
-        if self.song().visible_tracks_has_listener(self.refresh_state) != 1:
-            self.song().add_visible_tracks_listener(self.refresh_state)
+        if self.song().visible_tracks_has_listener(self.tracks_change) != 1:
+            self.song().add_visible_tracks_listener(self.tracks_change)
 
         # To display song position pointer or beats on display
         self.__time_display = TimeDisplay(self)
@@ -170,7 +165,7 @@ class MackieC4(object):
     def build_midi_map(self, midi_map_handle):
         """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
         explicitly to our receive_midi_functions. Which means that when you are not forwarding MIDI, nor mapping parameters, you will
-        never get any MIDI messages at all.        """
+        never get any MIDI messages at all. """
 
         # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
         for s in self.__encoders:
@@ -382,7 +377,8 @@ class MackieC4(object):
         self.rem_tracks_listener()
         self.rem_device_listeners()
         self.rem_transport_listener()
-        self.song().remove_visible_tracks_listener(self.refresh_state)
+        if self.song().visible_tracks_has_listener(self.tracks_change):
+            self.song().remove_visible_tracks_listener(self.tracks_change)
         for c in self.__components:
             c.destroy()
 
@@ -432,7 +428,6 @@ class MackieC4(object):
         # figure out if a track was added, deleted, or just changed
         # then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
-        #  self.log_message("selected track {0}".format(selected_track.name))
         tracks = self.song().visible_tracks + self.song().return_tracks  # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
@@ -445,7 +440,6 @@ class MackieC4(object):
         found = 0
         selected_index = 0
         for track in tracks:
-
             if track == selected_track:
                 selected_index = index
                 found = 1
@@ -460,8 +454,6 @@ class MackieC4(object):
                 # signal that something bad happened - selected track
                 selected_index = 555
 
-        # self.log_message("C4/track_change found selected index {0}".format(selected_index))
-
         if selected_index != self.track_index:
             # self.log_message("C4/track_change setting self.track_index {0} to selected index {1}".format(self.track_index, selected_index))
             self.track_index = selected_index
@@ -472,7 +464,7 @@ class MackieC4(object):
         elif self.track_count < len(tracks):
             self.__encoder_controller.track_added(selected_index)
             self.track_count += 1
-            self.return_resetter = 1
+            self.tracks_change()
         else:
             self.__encoder_controller.track_changed(selected_index)
 

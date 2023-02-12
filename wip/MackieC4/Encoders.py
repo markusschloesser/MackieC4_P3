@@ -1,7 +1,7 @@
 # was Python bytecode 2.5 (62131)
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/Encoders.py
 # Compiled at: 2011-01-13 21:07:51
-# Decompiled by https://python-decompiler.com
+
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from . MackieC4Component import *
 
