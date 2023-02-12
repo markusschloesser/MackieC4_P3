@@ -7,7 +7,7 @@ What is it:
 A midi remote script for Ableton Live 10 and 11 for the Mackie C4 controller in Python 3 with backwards compatibility to Py2.7 for Live 10.
 
 How to install it:
-Copy 'wip' folder to your 'MIDI Remote Scripts', rename it to "MackieC4" (no space!, otherwise Live won't find it). Make sure Live is not open or if it was, please restart Live.
+Copy 'wip/MackieC4' folder to your 'MIDI Remote Scripts'. Make sure Live is not open or if it was, please restart Live.
 Ports: in Live midi settings select the script "MackieC4" and set both in and out ports to Midi in/out ports. and activate 'Track' and 'Remote' for both ports. Further info @https://github.com/markusschloesser/MackieC4_P3/wiki/How-To-download-and-use-this-Mackie-C4-Remote-Script-in-Ableton-Live
 
 How to use it?
