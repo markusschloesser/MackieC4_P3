@@ -1348,11 +1348,11 @@ class EncoderController(MackieC4Component):
             # shows "fold" or "unfold" or nothing depending on if group track or grouped track
             if track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track)):
                 if track_util.is_folded(self.selected_track):
-                    upper_string1 += '-------Track--------' + ' unfold ---------------'
+                    upper_string1 += '------ Track -------' + ' unfold---------------'
                 elif not track_util.is_folded(self.selected_track):
-                    upper_string1 += '-------Track--------' + ' fold  -----------------'
+                    upper_string1 += '------ Track -------' + ' fold  ---------------'
             else:
-                upper_string1 += '-------Track--------       ---------------'
+                upper_string1 += '------ Track -------       ---------------'
 
             # 'selected track' name, centered over roughly the first 3 encoders in top row, also indicates frozen tracks
             if liveobj_valid(self.selected_track):
@@ -1374,7 +1374,7 @@ class EncoderController(MackieC4Component):
                 lower_string1 += '                      '
 
             # This text 'covers' display segments over all 8 encoders in the second row
-            upper_string2 += '------------------------Devices------------------------'  # MS maybe try to visualize Racks/Groups here by using |  |  ?
+            upper_string2 += '----------------------- Devices -----------------------'  # MS maybe try to visualize Racks/Groups here by using |  |  ?
 
             for t in encoder_range:
                 try:
@@ -1497,12 +1497,12 @@ class EncoderController(MackieC4Component):
         so_many_spaces = '                                                       '
 
         if self.__assignment_mode == C4M_PLUGINS:
-            upper_string1 += '-------Track-------- -----Device '
+            upper_string1 += '------ Track ------- ---- Device '
             upper_string1 += str(self.__eah.get_selected_device_index())
             if self.__eah.get_selected_device_index() > 9:
-                upper_string1 += '------ '
+                upper_string1 += ' ----- '
             else:
-                upper_string1 += '------- '
+                upper_string1 += ' ------ '
 
             if liveobj_valid(self.selected_track):
                 if self.selected_track.is_frozen:
