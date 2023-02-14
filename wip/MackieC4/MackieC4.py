@@ -282,19 +282,28 @@ class MackieC4(object):
 
     def scroll_clip(self, cc_value):  # todo WIP
         nav = Live.Application.Application.View.NavDirection
+
         scroll = cc_value == 1 and 3 or 2
         if cc_value >= 64:
-            self.application().view.scroll_view(nav.right, 'clip', self.alt_is_pressed())
+            if not self.application().view.is_view_visible('Detail/Clip'):
+                self.application().view.focus_view('Detail/Clip')
+                self.application().view.scroll_view(nav.left, 'Detail/Clip', False)
         if cc_value <= 64:
-            self.application().view.scroll_view(nav.left,'clip', self.alt_is_pressed())
+            if not self.application().view.is_view_visible('Detail/Clip'):
+                self.application().view.focus_view('Detail/Clip')
+                self.application().view.scroll_view(nav.right,'Detail/Clip', False)
 
     def zoom_clip(self, cc_value):  # todo WIP
         nav = Live.Application.Application.View.NavDirection
         scroll = cc_value == 65 and 3 or 1
         if cc_value >= 64:
-            self.application().view.zoom_view(scroll, 'clip', self.alt_is_pressed())
+            if not self.application().view.is_view_visible('Detail/Clip'):
+                self.application().view.focus_view('Detail/Clip')
+                self.application().view.zoom_view(nav.left, 'Detail/Clip', False)
         if cc_value <= 64:
-            self.application().view.zoom_view(scroll,'clip', self.alt_is_pressed())
+            if not self.application().view.is_view_visible('Detail/Clip'):
+                self.application().view.focus_view('Detail/Clip')
+                self.application().view.zoom_view(nav.right,'Detail/Clip', False)
 
     def tempo_change(self, cc_value):
         """Sets the current song tempo"""
@@ -304,6 +313,8 @@ class MackieC4(object):
             amount = (cc_value / 4)
         tempo = max(20, min(999, self.song().tempo + amount))
         self.song().tempo = tempo
+
+    # def move_playing_pos with playing_position displayed
 
     def can_lock_to_devices(self):  # todo: make use of it, locking itself works
         """Live -> Script
@@ -883,3 +894,7 @@ class MackieC4(object):
     def get_logger():
         """ Returns this script's logger object. """
         return logger
+
+    def show_message(self, message):
+        """ Displays the given message in Live's status bar """
+        self.__c_instance.show_message(message)

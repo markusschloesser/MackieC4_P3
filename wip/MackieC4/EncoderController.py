@@ -153,7 +153,7 @@ class EncoderController(MackieC4Component):
             self.song().view.select_device(devices_on_selected_trk[0])
 
         self.__reorder_parameters()
-        self.__reassign_encoder_parameters(for_display_only=False)
+        self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
         return
 
@@ -185,7 +185,7 @@ class EncoderController(MackieC4Component):
                 self.main_script().log_message("len(self.t_d_current) <= self.t_current")
                 self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
 
-        self.__reassign_encoder_parameters(for_display_only=False)
+        self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
         return
 
@@ -217,7 +217,7 @@ class EncoderController(MackieC4Component):
             self.__chosen_plugin = None
             self.__reorder_parameters()
 
-        self.__reassign_encoder_parameters(for_display_only=False)
+        self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
         return
 
@@ -249,7 +249,7 @@ class EncoderController(MackieC4Component):
             self.__chosen_plugin = None
             self.__reorder_parameters()
 
-        self.__reassign_encoder_parameters(for_display_only=False)
+        self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
         return
 
@@ -307,7 +307,7 @@ class EncoderController(MackieC4Component):
                 # self.main_script().log_message("{0}}__chosen_plugin is now None because else-fell-through".format(log_id))
 
         self.__reorder_parameters()
-        self.__reassign_encoder_parameters(for_display_only=False)
+        self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
 
         new_device_count_track = len(extended_device_list)
@@ -371,7 +371,7 @@ class EncoderController(MackieC4Component):
                     self.song().view.select_device(current_selected_device)
                     self.__chosen_plugin = current_selected_device
                     self.__reorder_parameters()
-                    self.__reassign_encoder_parameters(for_display_only=False)
+                    self.__reassign_encoder_parameters()
                     self.request_rebuild_midi_map()
                     # self.main_script().log_message("new selected device <{0}>".format(self.__chosen_plugin.name))
                 else:
@@ -385,7 +385,7 @@ class EncoderController(MackieC4Component):
 
         if update_self:
             self.__eah.set_current_track_device_parameter_bank_nbr(current_bank_nbr)
-            self.__reassign_encoder_parameters(for_display_only=False)
+            self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
 
     def handle_assignment_switch_ids(self, switch_id):
@@ -426,7 +426,7 @@ class EncoderController(MackieC4Component):
 
         if update_self:
             self.update_assignment_mode_leds()
-            self.__reassign_encoder_parameters(for_display_only=False)
+            self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
         # else don't update because nothing changed here
 
@@ -462,7 +462,7 @@ class EncoderController(MackieC4Component):
                     self.__chosen_plugin = current_selected_device
                     self.__reorder_parameters()
 
-                self.__reassign_encoder_parameters(for_display_only=False)
+                self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
 
     def handle_modifier_switch_ids(self, switch_id, value):
@@ -563,7 +563,7 @@ class EncoderController(MackieC4Component):
 
                     # self.main_script().log_message("EC/ updating selected device bank index from <{0}> to <{1}>".format(old_selected_bank, selected_device_bank_index))
                     self.__eah.set_selected_device_bank_index(selected_device_bank_index)
-                    self.__reassign_encoder_parameters(for_display_only=False)
+                    self.__reassign_encoder_parameters()
 
             elif encoder_index in row_01_encoders:
                 # (row 2 "index" is 01) these encoders represent devices 1 - 8 on the selected track in C4M_CHANNEL_STRIP mode
@@ -579,7 +579,7 @@ class EncoderController(MackieC4Component):
                     self.__reorder_parameters()
                     self.__eah.set_selected_device_index(encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset)
                     self.song().view.select_device(extended_device_list[device_offset])
-                    self.__reassign_encoder_parameters(for_display_only=False)
+                    self.__reassign_encoder_parameters()
                     self.request_rebuild_midi_map()
                 else:
                     msg = "EC handle_pressed_v_pot. can't update __chosen_plugin: the calculated device_offset {0} is NOT a valid device index".format(device_offset)
@@ -722,7 +722,7 @@ class EncoderController(MackieC4Component):
             if update_self:
                 # self.main_script().log_message("EC/ updating current_track_device_parameter_bank_nbr from <{0}> to {1}".format(self.__eah.get_current_track_device_parameter_bank_nbr(), current_parameter_bank_track))
                 self.__eah.set_current_track_device_parameter_bank_nbr(current_parameter_bank_track)
-                self.__reassign_encoder_parameters(for_display_only=False)
+                self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
 
         elif self.__assignment_mode == C4M_FUNCTION:
@@ -885,7 +885,7 @@ class EncoderController(MackieC4Component):
     def __on_parameter_list_of_chosen_plugin_changed(self):
         assert liveobj_valid(self.__chosen_plugin)
         self.__reorder_parameters()
-        self.__reassign_encoder_parameters(for_display_only=False)
+        self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
         return
 
@@ -944,7 +944,7 @@ class EncoderController(MackieC4Component):
             # self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
             count += 1
 
-    def __reassign_encoder_parameters(self, for_display_only):  # this is where the real assignment is going on, not vpot_rotation
+    def __reassign_encoder_parameters(self):  # this is where the real assignment is going on, not vpot_rotation
         """ Reevaluate all v-pot -> parameter assignments """
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
@@ -1374,7 +1374,9 @@ class EncoderController(MackieC4Component):
                 lower_string1 += '                      '
 
             # This text 'covers' display segments over all 8 encoders in the second row
-            upper_string2 += '----------------------- Devices -----------------------'  # MS maybe try to visualize Racks/Groups here by using |  |  ?
+            upper_string2 += '----------------------- Devices -----------------------'
+            # MS maybe try to visualize Racks/Groups here by using |  |  ?
+            # use Live.Device.Device.is_activeProperty to show devices on/off status
 
             for t in encoder_range:
                 try:
