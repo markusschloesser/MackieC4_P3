@@ -10,7 +10,7 @@ import itertools
 
 import sys
 
-from ableton.v2.base import liveobj_valid, liveobj_changed  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
+from ableton.v2.base import liveobj_valid, liveobj_changed, find_if  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
 
@@ -944,6 +944,10 @@ class EncoderController(MackieC4Component):
             # self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
             count += 1
 
+    def get_on_off_parameter(device):
+        if liveobj_valid(device):
+            return find_if(lambda p: p.original_name.startswith('Device On') and liveobj_valid(p) and p.is_enabled, device.__ordered_plugin_parameters)
+
     def __reassign_encoder_parameters(self):  # this is where the real assignment is going on, not vpot_rotation
         """ Reevaluate all v-pot -> parameter assignments """
         self.__filter_mst_trk = 0
@@ -1041,11 +1045,10 @@ class EncoderController(MackieC4Component):
                         if encoder_index_in_row < len(extended_device_list):
 
                             device_name = extended_device_list[encoder_index_in_row].name
-                            device_active = extended_device_list[encoder_index_in_row].is_active
+
                             # device_name in bottom row, blanks on top (top text blocked across full LCD)
                             vpot_display_text.set_text(device_name, '')
-                            if device_active:
-                                s.show_full_enlighted_poti(encoder_index_in_row)  # MS: check if this shows vpot ring for active devices
+
                         else:
                             vpot_display_text.set_text('dvcNme', 'No')  # could just leave as default blank spaces
                     else:
@@ -1398,6 +1401,15 @@ class EncoderController(MackieC4Component):
                 elif t in row_01_encoders:
                     lower_string2 += adjust_string(str(l_alt_text), 6)
                     lower_string2 += ' '
+
+                    t_d_idx = self.__eah.get_selected_device_index()
+                    if t_d_idx > -1:
+                        extended_device_list = self.get_device_list(self.selected_track.devices)
+
+                        if liveobj_valid(self.selected_track) and len(extended_device_list) > t_d_idx:
+                            device_active = extended_device_list[t_d_idx].is_active
+                            if device_active:
+                                self.__encoders[t].show_full_enlighted_poti()  # MS: check if this shows vpot ring for active devices
                 elif t in row_02_encoders:
                     lower_string3 += adjust_string(l_alt_text, 6)
                     lower_string3 += ' '
