@@ -578,7 +578,7 @@ class EncoderController(MackieC4Component):
                     self.__chosen_plugin = extended_device_list[device_offset]
                     self.__reorder_parameters()
                     self.__eah.set_selected_device_index(encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset)
-                    self.song().view.select_device(extended_device_list[device_offset])
+                    self.song().view.select_device(extended_device_list[device_offset])  # todo: MS change this to enable/disable device
                     self.__reassign_encoder_parameters()
                     self.request_rebuild_midi_map()
                 else:
@@ -1041,9 +1041,11 @@ class EncoderController(MackieC4Component):
                         if encoder_index_in_row < len(extended_device_list):
 
                             device_name = extended_device_list[encoder_index_in_row].name
+                            device_active = extended_device_list[encoder_index_in_row].is_active
                             # device_name in bottom row, blanks on top (top text blocked across full LCD)
                             vpot_display_text.set_text(device_name, '')
-                            s.show_full_enlighted_poti()  # MS: Why doesn't this work?
+                            if device_active:
+                                s.show_full_enlighted_poti(encoder_index_in_row)  # MS: check if this shows vpot ring for active devices
                         else:
                             vpot_display_text.set_text('dvcNme', 'No')  # could just leave as default blank spaces
                     else:
@@ -1376,7 +1378,7 @@ class EncoderController(MackieC4Component):
             # This text 'covers' display segments over all 8 encoders in the second row
             upper_string2 += '----------------------- Devices -----------------------'
             # MS maybe try to visualize Racks/Groups here by using |  |  ?
-            # use Live.Device.Device.is_activeProperty to show devices on/off status
+            # use Live.Device.Device.is_active Property to show devices on/off status
 
             for t in encoder_range:
                 try:

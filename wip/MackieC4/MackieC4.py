@@ -219,13 +219,11 @@ class MackieC4(object):
             """here one can use vpot_rotation to forward CC data to a function"""
             cc_no = midi_bytes[1]
             cc_value = midi_bytes[2]
+            # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
+            # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
+            vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
 
             if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
-
-                # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
-                # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
-                vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
-
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_12:
                     self.handle_jog_wheel_rotation(cc_value)
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_14:  # skip encoder 13 (display space occupied)
@@ -242,6 +240,10 @@ class MackieC4(object):
                     self.zoom_clip(cc_value)
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_22:
                     self.tempo_change(cc_value)
+
+            elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
+                if vpot_range[cc_no] == range(C4SID_VPOT_CC_ADDRESS_8, C4SID_VPOT_CC_ADDRESS_15):  # row 2
+                    self.toggle_devices(cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -313,6 +315,18 @@ class MackieC4(object):
             amount = (cc_value / 4)
         tempo = max(20, min(999, self.song().tempo + amount))
         self.song().tempo = tempo
+
+    def toggle_devices(self, cc_value):
+        device = self.song().view.selected_track.view.selected_device
+        parameter = device.parameters[0]
+        if cc_value >= 64:
+            if liveobj_valid(device):
+                if parameter.is_enabled:
+                    device.parameters[0].value = False
+        elif cc_value <= 64:
+            if liveobj_valid(device):
+                if not parameter.is_enabled:
+                    device.parameters[0].value = True
 
     # def move_playing_pos with playing_position displayed
 
