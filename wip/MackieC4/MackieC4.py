@@ -819,6 +819,7 @@ class MackieC4(object):
         if (track in self.dlisten) != 1:
             track.add_devices_listener(cb)  # this is a direct call/check with/ to a function from Live
             track.view.add_selected_device_listener(cb)   # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
+
             # self.log_message("C4/track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
             self.dlisten[track] = cb
 
@@ -835,6 +836,7 @@ class MackieC4(object):
         cb = lambda: self.devpm_change()
         if (device in self.plisten) != 1:
             device.add_parameters_listener(cb)
+            device.add_is_active_listener(cb)  # MS see if that enables vpot ring on off
             self.plisten[device] = cb
 
     def devpm_change(self):

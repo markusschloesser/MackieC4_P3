@@ -1409,7 +1409,7 @@ class EncoderController(MackieC4Component):
                         if liveobj_valid(self.selected_track) and len(extended_device_list) > t_d_idx:
                             device_active = extended_device_list[t_d_idx].is_active
                             if device_active:
-                                self.__encoders[t].show_full_enlighted_poti()  # MS: check if this shows vpot ring for active devices
+                                self.__encoders[t_d_idx].show_full_enlighted_poti()  # MS: shows vpot ring for active devices (currently all 8 vpots)
                 elif t in row_02_encoders:
                     lower_string3 += adjust_string(l_alt_text, 6)
                     lower_string3 += ' '
