@@ -243,7 +243,7 @@ class MackieC4(object):
 
             elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
                 if vpot_range[cc_no] == range(C4SID_VPOT_CC_ADDRESS_8, C4SID_VPOT_CC_ADDRESS_15):  # row 2
-                    self.toggle_devices(cc_value)
+                    self.toggle_devices(cc_no, cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -316,7 +316,7 @@ class MackieC4(object):
         tempo = max(20, min(999, self.song().tempo + amount))
         self.song().tempo = tempo
 
-    def toggle_devices(self, cc_value):
+    def toggle_devices(self, cc_no, cc_value):
         device = self.song().view.selected_track.view.selected_device
         parameter = device.parameters[0]
         if cc_value >= 64:
@@ -836,7 +836,7 @@ class MackieC4(object):
         cb = lambda: self.devpm_change()
         if (device in self.plisten) != 1:
             device.add_parameters_listener(cb)
-            device.add_is_active_listener(cb)  # MS doesn't work
+            # device.add_is_active_listener(cb)  # MS doesn't work
             self.plisten[device] = cb
 
     def devpm_change(self):
