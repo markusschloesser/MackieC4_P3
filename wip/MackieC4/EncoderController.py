@@ -791,7 +791,7 @@ class EncoderController(MackieC4Component):
                         s.unlight_vpot_leds()
             elif encoder_index == encoder_07_index:
                 song_util.unmute_all(self)
-                s.unlight_vpot_leds()
+                # s.unlight_vpot_leds()
             elif encoder_index == encoder_08_index:
                 song_util.toggle_back_to_arranger(self)
                 if song_util.toggle_back_to_arranger:
@@ -990,7 +990,9 @@ class EncoderController(MackieC4Component):
         encoder_31_index = 30
         encoder_32_index = 31
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
+
             is_armable_track_selected = track_util.can_be_armed(self.selected_track)
+
             current_nbr_of_devices_on_selected_track = len(extended_device_list)
             self.__eah.set_max_device_count(current_nbr_of_devices_on_selected_track)
 
@@ -1035,6 +1037,7 @@ class EncoderController(MackieC4Component):
                     else:
                         s.unlight_vpot_leds()
                     self.__display_parameters.append(vpot_display_text)
+
                 elif s_index in row_01_encoders:
 
                     row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
@@ -1043,7 +1046,6 @@ class EncoderController(MackieC4Component):
                     if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
                         encoder_index_in_row = row_index + int(current_encoder_bank_offset)
                         if encoder_index_in_row < len(extended_device_list):
-
                             device_name = extended_device_list[encoder_index_in_row].name
 
                             # device_name in bottom row, blanks on top (top text blocked across full LCD)
@@ -1051,11 +1053,26 @@ class EncoderController(MackieC4Component):
 
                         else:
                             vpot_display_text.set_text('dvcNme', 'No')  # could just leave as default blank spaces
-                    else:
-                        s.unlight_vpot_leds()
+                    # else:
+                    #     s.unlight_vpot_leds()
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
+
+                    # to light up vpot ring for active devices
+                    # Get list of active devices
+                    active_devices = [device for device in extended_device_list if device.is_active]
+
+                    # Loop over active devices and update their LEDs
+                    for device in active_devices:
+                        # Get index of device in encoder row
+                        active_device_encoder_index_in_row = extended_device_list.index(device)  # - current_encoder_bank_offset * SETUP_DB_DEVICE_BANK_SIZE
+
+                        if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
+                            per_encoder_index_in_row = row_index + int(current_encoder_bank_offset)
+                            if per_encoder_index_in_row < len(extended_device_list):
+                                # Update LEDs for encoder corresponding to this device
+                                self.__encoders[active_device_encoder_index_in_row + 8].show_full_enlighted_poti()
 
                 elif s_index < encoder_27_index:
                     # changed from 29, which means that the 12th send will not be shown on the C4, but who needs 12 sends that anyway?
@@ -1402,14 +1419,6 @@ class EncoderController(MackieC4Component):
                     lower_string2 += adjust_string(str(l_alt_text), 6)
                     lower_string2 += ' '
 
-                    t_d_idx = self.__eah.get_selected_device_index()
-                    if t_d_idx > -1:
-                        extended_device_list = self.get_device_list(self.selected_track.devices)
-
-                        if liveobj_valid(self.selected_track) and len(extended_device_list) > t_d_idx:
-                            device_active = extended_device_list[t_d_idx].is_active
-                            if device_active:
-                                self.__encoders[t_d_idx].show_full_enlighted_poti()  # MS: shows vpot ring for active devices (currently all 8 vpots)
                 elif t in row_02_encoders:
                     lower_string3 += adjust_string(l_alt_text, 6)
                     lower_string3 += ' '

@@ -836,7 +836,7 @@ class MackieC4(object):
         cb = lambda: self.devpm_change()
         if (device in self.plisten) != 1:
             device.add_parameters_listener(cb)
-            device.add_is_active_listener(cb)  # MS see if that enables vpot ring on off
+            device.add_is_active_listener(cb)  # MS doesn't work
             self.plisten[device] = cb
 
     def devpm_change(self):
