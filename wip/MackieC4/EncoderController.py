@@ -1074,6 +1074,12 @@ class EncoderController(MackieC4Component):
                                 # Update LEDs for encoder corresponding to this device
                                 self.__encoders[active_device_encoder_index_in_row + 8].show_full_enlighted_poti()
 
+                                if extended_device_list[active_device_encoder_index_in_row].is_active_has_listener(self._update_vpot_leds_for_device_toggle):
+                                    extended_device_list[active_device_encoder_index_in_row].remove_is_active_listener(self._update_vpot_leds_for_device_toggle)
+                                extended_device_list[active_device_encoder_index_in_row].add_is_active_listener(self._update_vpot_leds_for_device_toggle)
+                            else:
+                                s.unlight_vpot_leds()
+
                 elif s_index < encoder_27_index:
                     # changed from 29, which means that the 12th send will not be shown on the C4, but who needs 12 sends that anyway?
                     # if you want to get back to 12 sends being shown, out-comment all encoder_28_index stuff and change "elif s_index < encoder_28_index" to 29
@@ -1332,6 +1338,16 @@ class EncoderController(MackieC4Component):
                 self.__display_parameters.append(vpot_display_text)
 
         return
+
+    def _update_vpot_leds_for_device_toggle(self):
+        extended_device_list = self.get_device_list(self.selected_track.devices)
+
+        for device in extended_device_list:
+            extended_device_encoder_index_in_row = extended_device_list.index(device)
+            if device.is_active:
+                self.__encoders[extended_device_encoder_index_in_row + 8].show_full_enlighted_poti()
+            else:
+                self.__encoders[extended_device_encoder_index_in_row + 8].unlight_vpot_leds()
 
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
