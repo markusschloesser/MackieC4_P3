@@ -1063,6 +1063,14 @@ class EncoderController(MackieC4Component):
                     # Get list of active devices
                     active_devices = [device for device in extended_device_list if device.is_active]
 
+                    # add listener for devices
+                    for device in extended_device_list:
+                        device_encoder_index_in_row = extended_device_list.index(device)
+
+                        if extended_device_list[device_encoder_index_in_row].is_active_has_listener(self._update_vpot_leds_for_device_toggle):
+                            extended_device_list[device_encoder_index_in_row].remove_is_active_listener(self._update_vpot_leds_for_device_toggle)
+                        extended_device_list[device_encoder_index_in_row].add_is_active_listener(self._update_vpot_leds_for_device_toggle)
+
                     # Loop over active devices and update their LEDs
                     for device in active_devices:
                         # Get index of device in encoder row
@@ -1071,12 +1079,9 @@ class EncoderController(MackieC4Component):
                         if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
                             per_encoder_index_in_row = row_index + int(current_encoder_bank_offset)
                             if per_encoder_index_in_row < len(extended_device_list):
+
                                 # Update LEDs for encoder corresponding to this device
                                 self.__encoders[active_device_encoder_index_in_row + 8].show_full_enlighted_poti()
-
-                                if extended_device_list[active_device_encoder_index_in_row].is_active_has_listener(self._update_vpot_leds_for_device_toggle):
-                                    extended_device_list[active_device_encoder_index_in_row].remove_is_active_listener(self._update_vpot_leds_for_device_toggle)
-                                extended_device_list[active_device_encoder_index_in_row].add_is_active_listener(self._update_vpot_leds_for_device_toggle)
                             else:
                                 s.unlight_vpot_leds()
 
@@ -1341,13 +1346,27 @@ class EncoderController(MackieC4Component):
 
     def _update_vpot_leds_for_device_toggle(self):
         extended_device_list = self.get_device_list(self.selected_track.devices)
+        # the current selected bank should already be updated (and accurate)?
+        current_device_bank_track = self.__eah.get_selected_device_bank_index()
 
-        for device in extended_device_list:
-            extended_device_encoder_index_in_row = extended_device_list.index(device)
-            if device.is_active:
-                self.__encoders[extended_device_encoder_index_in_row + 8].show_full_enlighted_poti()
-            else:
-                self.__encoders[extended_device_encoder_index_in_row + 8].unlight_vpot_leds()
+        for s in self.__encoders:
+            s_index = s.vpot_index()
+
+            if s_index in row_01_encoders:
+                row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
+                current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
+
+                if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
+                    encoder_index_in_row = row_index + int(current_encoder_bank_offset)
+
+                    for device in extended_device_list:
+                        extended_device_encoder_index_in_row = extended_device_list.index(device) + 8
+                        if device.is_active:
+                            if extended_device_encoder_index_in_row in row_01_encoders:
+                                self.__encoders[extended_device_encoder_index_in_row].show_full_enlighted_poti()
+                        else:
+                            if extended_device_encoder_index_in_row in row_01_encoders:
+                                self.__encoders[extended_device_encoder_index_in_row].unlight_vpot_leds()
 
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""

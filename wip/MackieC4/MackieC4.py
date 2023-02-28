@@ -319,6 +319,7 @@ class MackieC4(object):
     def toggle_devices(self, cc_no, cc_value):
         device = self.song().view.selected_track.view.selected_device
         parameter = device.parameters[0]
+        _encoder = cc_no
         if cc_value >= 64:
             if liveobj_valid(device):
                 if parameter.is_enabled:
