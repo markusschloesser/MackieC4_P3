@@ -285,11 +285,14 @@ class MackieC4(object):
     def scroll_clip(self, cc_value):  # todo WIP
         nav = Live.Application.Application.View.NavDirection
 
+        clip = self.song().view.detail_clip
+
         scroll = cc_value == 1 and 3 or 2
         if cc_value >= 64:
             if not self.application().view.is_view_visible('Detail/Clip'):
                 self.application().view.focus_view('Detail/Clip')
-                self.application().view.scroll_view(nav.left, 'Detail/Clip', False)
+                clip.move_playing_pos(- cc_value)
+                # self.application().view.scroll_view(nav.left, 'Detail/Clip', False)
         if cc_value <= 64:
             if not self.application().view.is_view_visible('Detail/Clip'):
                 self.application().view.focus_view('Detail/Clip')
@@ -317,19 +320,18 @@ class MackieC4(object):
         self.song().tempo = tempo
 
     def toggle_devices(self, cc_no, cc_value):
-        device = self.song().view.selected_track.view.selected_device
-        parameter = device.parameters[0]
+        device_index = self.song().view.selected_track.view.selected_device.index
+        parameter = device_index.parameters[0]
         _encoder = cc_no
-        if cc_value >= 64:
-            if liveobj_valid(device):
-                if parameter.is_enabled:
-                    device.parameters[0].value = False
-        elif cc_value <= 64:
-            if liveobj_valid(device):
-                if not parameter.is_enabled:
-                    device.parameters[0].value = True
 
-    # def move_playing_pos with playing_position displayed
+        for _encoder in range(C4SID_VPOT_CC_ADDRESS_8, C4SID_VPOT_CC_ADDRESS_15):
+            if cc_value >= 64:
+                if liveobj_valid(device_index) and parameter.is_enabled:
+                    _encoder[device_index].parameters[0].value = False
+            elif cc_value <= 64:
+                if liveobj_valid(device_index) and not parameter.is_enabled:
+                    _encoder[device_index].parameters[0].value = True
+
 
     def can_lock_to_devices(self):  # todo: make use of it, locking itself works
         """Live -> Script

@@ -1040,7 +1040,7 @@ class EncoderController(MackieC4Component):
 
                 elif s_index in row_01_encoders:
 
-                    row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
+                    row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE  # MS wtf?
                     current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
 
                     if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
@@ -1071,7 +1071,7 @@ class EncoderController(MackieC4Component):
                             extended_device_list[device_encoder_index_in_row].remove_is_active_listener(self._update_vpot_leds_for_device_toggle)
                         extended_device_list[device_encoder_index_in_row].add_is_active_listener(self._update_vpot_leds_for_device_toggle)
 
-                    # Loop over active devices and update their LEDs
+                    # Loop over active devices and update their LEDs once initially
                     for device in active_devices:
                         # Get index of device in encoder row
                         active_device_encoder_index_in_row = extended_device_list.index(device)  # - current_encoder_bank_offset * SETUP_DB_DEVICE_BANK_SIZE
@@ -1346,8 +1346,7 @@ class EncoderController(MackieC4Component):
 
     def _update_vpot_leds_for_device_toggle(self):
         extended_device_list = self.get_device_list(self.selected_track.devices)
-        # the current selected bank should already be updated (and accurate)?
-        current_device_bank_track = self.__eah.get_selected_device_bank_index()
+        current_device_bank_track = self.__eah.get_selected_device_bank_index()  # current_device_bank_track = selected_device_bank_index in vpot push
 
         for s in self.__encoders:
             s_index = s.vpot_index()
@@ -1355,6 +1354,7 @@ class EncoderController(MackieC4Component):
             if s_index in row_01_encoders:
                 row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
                 current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
+                device_offset = s_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + current_encoder_bank_offset
 
                 if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
                     encoder_index_in_row = row_index + int(current_encoder_bank_offset)
