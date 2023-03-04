@@ -320,7 +320,7 @@ class MackieC4(object):
         self.song().tempo = tempo
 
     def toggle_devices(self, cc_no, cc_value):
-        device_index = self.song().view.selected_track.view.selected_device.index
+        device_index = self.song().view.selected_track.view.selected_device
         parameter = device_index.parameters[0]
         _encoder = cc_no
 

@@ -1356,17 +1356,17 @@ class EncoderController(MackieC4Component):
                 current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
                 device_offset = s_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + current_encoder_bank_offset
 
-                if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
-                    encoder_index_in_row = row_index + int(current_encoder_bank_offset)
+                # if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
+                #     encoder_index_in_row = row_index + int(current_encoder_bank_offset)
 
-                    for device in extended_device_list:
-                        extended_device_encoder_index_in_row = extended_device_list.index(device) + 8
-                        if device.is_active:
-                            if extended_device_encoder_index_in_row in row_01_encoders:
-                                self.__encoders[extended_device_encoder_index_in_row].show_full_enlighted_poti()
-                        else:
-                            if extended_device_encoder_index_in_row in row_01_encoders:
-                                self.__encoders[extended_device_encoder_index_in_row].unlight_vpot_leds()
+                for device in extended_device_list:
+                    extended_device_encoder_index_in_row = (extended_device_list.index(device) + 8)
+                    if device.is_active:
+                        if len(extended_device_list) <= 8:
+                            self.__encoders[extended_device_encoder_index_in_row - current_encoder_bank_offset].show_full_enlighted_poti()
+                    else:
+                        if len(extended_device_list) <= 8:
+                            self.__encoders[extended_device_encoder_index_in_row - current_encoder_bank_offset].unlight_vpot_leds()
 
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
