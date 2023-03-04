@@ -1043,6 +1043,7 @@ class EncoderController(MackieC4Component):
                     row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE  # MS wtf?
                     current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
 
+                    # display part
                     if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
                         encoder_index_in_row = row_index + int(current_encoder_bank_offset)
                         if encoder_index_in_row < len(extended_device_list):
@@ -1072,18 +1073,19 @@ class EncoderController(MackieC4Component):
                         extended_device_list[device_encoder_index_in_row].add_is_active_listener(self._update_vpot_leds_for_device_toggle)
 
                     # Loop over active devices and update their LEDs once initially
-                    for device in active_devices:
-                        # Get index of device in encoder row
-                        active_device_encoder_index_in_row = extended_device_list.index(device)  # - current_encoder_bank_offset * SETUP_DB_DEVICE_BANK_SIZE
-
-                        if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
-                            per_encoder_index_in_row = row_index + int(current_encoder_bank_offset)
+                    active_device_encoder_indices = [extended_device_list.index(device) for device in active_devices]
+                    for encoder_index in range(len(self.__encoders)):
+                        if encoder_index in row_01_encoders:
+                            row_index = encoder_index - SETUP_DB_DEVICE_BANK_SIZE
+                            current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
+                            per_encoder_index_in_row = row_index + current_encoder_bank_offset
                             if per_encoder_index_in_row < len(extended_device_list):
-
-                                # Update LEDs for encoder corresponding to this device
-                                self.__encoders[active_device_encoder_index_in_row + 8].show_full_enlighted_poti()
+                                if per_encoder_index_in_row in active_device_encoder_indices:
+                                    self.__encoders[encoder_index].show_full_enlighted_poti()
+                                else:
+                                    self.__encoders[encoder_index].unlight_vpot_leds()
                             else:
-                                s.unlight_vpot_leds()
+                                self.__encoders[encoder_index].unlight_vpot_leds()
 
                 elif s_index < encoder_27_index:
                     # changed from 29, which means that the 12th send will not be shown on the C4, but who needs 12 sends that anyway?
@@ -1346,7 +1348,7 @@ class EncoderController(MackieC4Component):
 
     def _update_vpot_leds_for_device_toggle(self):
         extended_device_list = self.get_device_list(self.selected_track.devices)
-        current_device_bank_track = self.__eah.get_selected_device_bank_index()  # current_device_bank_track = selected_device_bank_index in vpot push
+        current_device_bank_track = self.__eah.get_selected_device_bank_index()
 
         for s in self.__encoders:
             s_index = s.vpot_index()
@@ -1354,19 +1356,17 @@ class EncoderController(MackieC4Component):
             if s_index in row_01_encoders:
                 row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
                 current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
-                device_offset = s_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + current_encoder_bank_offset
 
-                # if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
-                #     encoder_index_in_row = row_index + int(current_encoder_bank_offset)
+                if row_index + current_encoder_bank_offset < self.__eah.get_max_device_count():
+                    device_index = row_index + current_encoder_bank_offset
+                    if device_index < len(extended_device_list):
+                        device = extended_device_list[device_index]
+                        device_encoder_index = row_index + NUM_ENCODERS_ONE_ROW
 
-                for device in extended_device_list:
-                    extended_device_encoder_index_in_row = (extended_device_list.index(device) + 8)
-                    if device.is_active:
-                        if len(extended_device_list) <= 8:
-                            self.__encoders[extended_device_encoder_index_in_row - current_encoder_bank_offset].show_full_enlighted_poti()
-                    else:
-                        if len(extended_device_list) <= 8:
-                            self.__encoders[extended_device_encoder_index_in_row - current_encoder_bank_offset].unlight_vpot_leds()
+                        if device.is_active:
+                            self.__encoders[device_encoder_index].show_full_enlighted_poti()
+                        else:
+                            self.__encoders[device_encoder_index].unlight_vpot_leds()
 
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
