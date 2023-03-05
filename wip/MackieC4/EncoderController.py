@@ -327,6 +327,36 @@ class EncoderController(MackieC4Component):
         else:
             self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
+    def toggle_devices(self, cc_no, cc_value):
+        # self.main_script().log_message(f"toggle_devices() called with cc_no={cc_no}, cc_value={cc_value}")
+        device_list = self.song().view.selected_track.devices
+        extended_device_list = self.get_device_list(device_list)
+
+        # Calculate the index of the first device in the current device bank
+        current_device_bank_track = self.__eah.get_selected_device_bank_index()
+        bank_start_index = (current_device_bank_track) * 8
+
+        # Ensure that bank_start_index is non-negative
+        if bank_start_index < 0:
+            bank_start_index = 0
+
+        for i, device in enumerate(extended_device_list):
+            # Get the index of the encoder corresponding to this device
+            encoder_index = i % 8
+
+            # Check if the parameter is enabled and toggle it accordingly
+            parameter = device.parameters[0]
+            if cc_value > 64 and cc_no == 8 + encoder_index:
+                if liveobj_valid(parameter) and parameter.is_enabled and i >= bank_start_index and i < bank_start_index + 8:
+                    parameter.value = False
+                else:
+                    self.main_script().log_message(f"Parameter {parameter.name} on Device {device.name} is not enabled or is outside of the current device bank.")
+            elif cc_value < 64 and cc_no == 8 + encoder_index:
+                if liveobj_valid(parameter) and parameter.is_enabled and i >= bank_start_index and i < bank_start_index + 8:
+                    parameter.value = True
+                else:
+                    self.main_script().log_message(f"Parameter {parameter.name} on Device {device.name} is already enabled or is outside of the current device bank.")
+
     def assignment_mode(self):
         return self.__assignment_mode
 
@@ -1086,6 +1116,7 @@ class EncoderController(MackieC4Component):
                                     self.__encoders[encoder_index].unlight_vpot_leds()
                             else:
                                 self.__encoders[encoder_index].unlight_vpot_leds()
+
 
                 elif s_index < encoder_27_index:
                     # changed from 29, which means that the 12th send will not be shown on the C4, but who needs 12 sends that anyway?

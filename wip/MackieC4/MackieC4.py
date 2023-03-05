@@ -242,8 +242,8 @@ class MackieC4(object):
                     self.tempo_change(cc_value)
 
             elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
-                if vpot_range[cc_no] == range(C4SID_VPOT_CC_ADDRESS_8, C4SID_VPOT_CC_ADDRESS_15):  # row 2
-                    self.toggle_devices(cc_no, cc_value)
+                if 8 <= cc_no <= 15:
+                    self.__encoder_controller.toggle_devices(cc_no, cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -319,18 +319,6 @@ class MackieC4(object):
         tempo = max(20, min(999, self.song().tempo + amount))
         self.song().tempo = tempo
 
-    def toggle_devices(self, cc_no, cc_value):
-        device_index = self.song().view.selected_track.view.selected_device
-        parameter = device_index.parameters[0]
-        _encoder = cc_no
-
-        for _encoder in range(C4SID_VPOT_CC_ADDRESS_8, C4SID_VPOT_CC_ADDRESS_15):
-            if cc_value >= 64:
-                if liveobj_valid(device_index) and parameter.is_enabled:
-                    _encoder[device_index].parameters[0].value = False
-            elif cc_value <= 64:
-                if liveobj_valid(device_index) and not parameter.is_enabled:
-                    _encoder[device_index].parameters[0].value = True
 
 
     def can_lock_to_devices(self):  # todo: make use of it, locking itself works
