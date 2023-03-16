@@ -298,17 +298,24 @@ class MackieC4(object):
                 self.application().view.focus_view('Detail/Clip')
                 self.application().view.scroll_view(nav.right,'Detail/Clip', False)
 
-    def zoom_clip(self, cc_value):  # todo WIP
+    def zoom_clip(self, cc_value):
         nav = Live.Application.Application.View.NavDirection
-        scroll = cc_value == 65 and 3 or 1
-        if cc_value >= 64:
-            if not self.application().view.is_view_visible('Detail/Clip'):
-                self.application().view.focus_view('Detail/Clip')
-                self.application().view.zoom_view(nav.left, 'Detail/Clip', False)
-        if cc_value <= 64:
-            if not self.application().view.is_view_visible('Detail/Clip'):
-                self.application().view.focus_view('Detail/Clip')
-                self.application().view.zoom_view(nav.right,'Detail/Clip', False)
+        app_view = self.application().view
+        view_name = 'Detail/Clip'
+        logging.info(f'zoom_clip called with cc_value: {cc_value}')
+        # scroll = cc_value == 65 and 3 or 1
+        if cc_value > 64:
+            if not app_view.is_view_visible(view_name):
+                logging.info(f'Focusing view: {view_name}')
+                app_view.focus_view(view_name)
+                app_view.zoom_view(nav.left, view_name, False)
+                logging.info(f'Zooming view to the left')
+        if cc_value < 64:
+            if not app_view.is_view_visible(view_name):
+                logging.info(f'Focusing view: {view_name}')
+                app_view.focus_view(view_name)
+                app_view.zoom_view(nav.right, view_name, False)
+                logging.info(f'Zooming view to the right')
 
     def tempo_change(self, cc_value):
         """Sets the current song tempo"""

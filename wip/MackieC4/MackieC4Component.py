@@ -42,10 +42,10 @@ class MackieC4Component(object):
     def set_option_is_pressed(self, pressed):
         self.__main_script.option_is_pressed = pressed
 
-    def control_is_pressed(self):
-        return self.__main_script.control_is_pressed()
+    def ctrl_is_pressed(self):
+        return self.__main_script.ctrl_is_pressed()
 
-    def set_control_is_pressed(self, pressed):
+    def set_ctrl_is_pressed(self, pressed):
         self.__main_script.set_pressed = pressed
 
     def alt_is_pressed(self):

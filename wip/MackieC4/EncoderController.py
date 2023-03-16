@@ -61,9 +61,11 @@ class EncoderController(MackieC4Component):
         self.__chosen_plugin = None
 
         self.__display_parameters = []
-        for x in range(NUM_ENCODERS):
-            # initialize to blank screen segments
-            self.__display_parameters.append(EncoderDisplaySegment(self, x))
+
+        # initialize to blank screen segments
+        self.__display_parameters = [EncoderDisplaySegment(self, x) for x in range(NUM_ENCODERS)]  # by ChatGPT, instead of next 2 lines
+        # for x in range(NUM_ENCODERS):
+        #    self.__display_parameters.append(EncoderDisplaySegment(self, x))
 
         # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
         # received by the C4 from somewhere else, not-here.  Such a display change is not tracked here (obviously),
@@ -78,7 +80,10 @@ class EncoderController(MackieC4Component):
 
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
-        tracks = self.song().visible_tracks + self.song().return_tracks
+
+        song = self.song()
+        tracks = song.visible_tracks + song.return_tracks
+
         selected_track = self.song().view.selected_track
         self.returns_switch = 0
         index = 0
@@ -98,6 +103,11 @@ class EncoderController(MackieC4Component):
         self.__last_send_messages2 = {LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
         self.__last_send_messages3 = {LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
         self.__last_send_messages4 = {LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
+
+        self.__shift_state = False
+        self.__option_state = False
+        self.__control_state = False
+        self.__alt_state = False
         return
 
     def destroy(self):
@@ -144,7 +154,8 @@ class EncoderController(MackieC4Component):
         # self.main_script().log_message("C4/t_count after setup <{0}>".format(self.__eah.t_count))
         # self.main_script().log_message("C4/main_script().track_count after setup <{0}>".format(self.main_script().track_count))
 
-        devices_on_selected_trk = self.get_device_list(self.song().view.selected_track.devices)
+        self.selected_track = self.song().view.selected_track
+        devices_on_selected_trk = self.get_device_list(self.selected_track.devices)
 
         if len(devices_on_selected_trk) == 0:
             self.__chosen_plugin = None
@@ -497,8 +508,26 @@ class EncoderController(MackieC4Component):
 
     def handle_modifier_switch_ids(self, switch_id, value):
         if switch_id == C4SID_SHIFT:
-            self.main_script().set_shift_is_pressed(value == NOTE_ON_STATUS)
-        pass
+            self.main_script().log_message("Shift is pressed <{0}>".format(value))
+            self.__shift_state = value
+        elif switch_id == C4SID_OPTION:
+            self.main_script().log_message("Option is pressed <{0}>".format(value))
+            self.__option_state = value
+        elif switch_id == C4SID_CONTROL:
+            self.main_script().log_message("Control is pressed <{0}>".format(value))
+            self.__control_state = value
+        elif switch_id == C4SID_ALT:
+            self.main_script().log_message("Alt is pressed <{0}>".format(value))
+            self.__alt_state = value
+
+        if switch_id == C4SID_SHIFT:
+            self.main_script().set_shift_is_pressed(value)
+        elif switch_id == C4SID_OPTION:
+            self.main_script().set_option_is_pressed(value)
+        elif switch_id == C4SID_CONTROL:
+            self.main_script().set_ctrl_is_pressed(value)
+        elif switch_id == C4SID_ALT:
+            self.main_script().set_alt_is_pressed(value)
 
     def update_assignment_mode_leds(self):
         """
@@ -874,7 +903,15 @@ class EncoderController(MackieC4Component):
                 self.__encoders[encoder_26_index].unlight_vpot_leds()
                 self.__encoders[encoder_27_index].unlight_vpot_leds()
             elif encoder_index == encoder_26_index:
-                self.song().is_playing = True
+                if self.shift_is_pressed():
+                    if not self.song().is_playing:
+                        self.song().continue_playing()
+                    else:
+                        self.song().stop_playing()
+                elif self.ctrl_is_pressed():
+                    self.song().play_selection()
+                else:
+                    self.song().start_playing()
                 s.show_full_enlighted_poti()
             elif encoder_index == encoder_27_index:
                 self.song().continue_playing()
@@ -1464,7 +1501,6 @@ class EncoderController(MackieC4Component):
             # This text 'covers' display segments over all 8 encoders in the second row
             upper_string2 += '----------------------- Devices -----------------------'
             # MS maybe try to visualize Racks/Groups here by using |  |  ?
-            # use Live.Device.Device.is_active Property to show devices on/off status
 
             for t in encoder_range:
                 try:
@@ -1938,5 +1974,9 @@ class EncoderController(MackieC4Component):
         return ascii_text_sysex_ints
 
     def refresh_state(self):
+        self.main_script().set_shift_is_pressed(False)
+        self.main_script().set_option_is_pressed(False)
+        self.main_script().set_ctrl_is_pressed(False)
+        self.main_script().set_alt_is_pressed(False)
         for s in self.__encoders:
             s.refresh_state()
