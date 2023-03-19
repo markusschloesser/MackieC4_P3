@@ -347,7 +347,7 @@ class Application(ModuleType):
 
             def available_main_views(self, arg1):
                 """
-                Return a list of strings with the available subcomponent views, which is to be specified, when using the rest of this classes functions. A 'subcomponent view' is a main view component of a document view, like the Session view, the Arranger or Detailview and so on... C++ signature :  std::__1::vector<TString, std::__1::allocator<TString> > available_main_views(TPyViewData<ASongApp>)
+                Return a list of strings with the available subcomponent views, which is to be specified, when using the rest of this classes functions. A 'subcomponent view' is a main view component of a document view, like the Session view, the Arranger or Detail view and so on... C++ signature :  std::__1::vector<TString, std::__1::allocator<TString> > available_main_views(TPyViewData<ASongApp>)
                 :param arg1: arg1
                 :type arg1: View
                 :rtype: StringVector
@@ -704,7 +704,7 @@ class Base(ModuleType):
     class Timer(object):
         def __init__(self, *a, *k):
             """
-            A timer that will trigger a callback after a certain inverval. The timer can be repeated and will trigger the callback every interval. Errors in the callback will stop the timer.
+            A timer that will trigger a callback after a certain interval. The timer can be repeated and will trigger the callback every interval. Errors in the callback will stop the timer.
             """
             pass
 
@@ -1311,7 +1311,7 @@ class Chain(ModuleType):
         @property
         def solo(self):
             """
-            Get/Set the solo status of the chain. Note that this will not disable thesolo state of any other Chain in the same rack. If you want exclusive solo, you have to disable the solo state of the other Chains manually.
+            Get/Set the solo status of the chain. Note that this will not disable the solo state of any other Chain in the same rack. If you want exclusive solo, you have to disable the solo state of the other Chains manually.
             """
             pass
 
@@ -3596,7 +3596,7 @@ class Clip(ModuleType):
         @property
         def note_id(self):
             """
-            A numerical ID that's unique within the originating clip of the note. Not to beused directly, but important for other API calls, namely apply_note_modifications.
+            A numerical ID that's unique within the originating clip of the note. Not to be used directly, but important for other API calls, namely apply_note_modifications.
             """
             pass
 
@@ -4711,7 +4711,7 @@ class Device(ModuleType):
         @property
         def is_active(self):
             """
-            Return const access to whether this device is active. This will be false bothwhen the device is off and when it's inside a rack device which is off.
+            Return const access to whether this device is active. This will be false both when the device is off and when it's inside a rack device which is off.
             """
             pass
 
@@ -5168,7 +5168,7 @@ class DeviceParameter(ModuleType):
         @property
         def default_value(self):
             """
-            Return the default value for this parameter.  A Default value is onlyavailable for non-quantized parameter types (see 'is_quantized').
+            Return the default value for this parameter.  A Default value is only available for non-quantized parameter types (see 'is_quantized').
             """
             pass
 
@@ -5189,35 +5189,38 @@ class DeviceParameter(ModuleType):
         @property
         def max(self):
             """
-            Returns const access to the upper value of the allowed range forthis parameter
+            Returns const access to the upper value of the allowed range for this parameter
             """
             pass
 
         @property
         def min(self):
             """
-            Returns const access to the lower value of the allowed range forthis parameter
+            Returns const access to the lower value of the allowed range for this parameter
             """
             pass
 
         @property
         def name(self):
             """
-            Returns const access the name of this parameter, as visible in Livesautomation choosers.
+            Returns const access the name of this parameter, as visible in Lives automation choosers.
             """
             pass
 
         @property
         def original_name(self):
             """
-            Returns const access the original name of this parameter, unaffected ofany renamings.
+            Returns const access the original name of this parameter, unaffected of any renamings.
             """
             pass
 
         @property
         def state(self):
             """
-            Returns the state of the parameter:- enabled - the parameter's value can be changed,- irrelevant - the parameter is enabled, but value changes will not take any effect until it gets enabled,- disabled - the parameter's value cannot be changed.
+            Returns the state of the parameter:
+            - enabled - the parameter's value can be changed,
+            - irrelevant - the parameter is enabled, but value changes will not take any effect until it gets enabled,
+            - disabled - the parameter's value cannot be changed.
             """
             pass
 
@@ -5288,7 +5291,7 @@ class DeviceParameter(ModuleType):
 
         def begin_gesture(self, arg1):
             """
-            Notify the begin of a modification of the parameter, when a sequence of modifications have to be consider a consistent group -- for Sexample, when recording automation. C++ signature :  void begin_gesture(TPyHandle<ATimeableValue>)
+            Notify the begin of a modification of the parameter, when a sequence of modifications have to be consider a consistent group -- for example, when recording automation. C++ signature :  void begin_gesture(TPyHandle<ATimeableValue>)
             :param arg1: arg1
             :type arg1: DeviceParameter
             """
@@ -10495,7 +10498,7 @@ class Scene(ModuleType):
         @property
         def name(self):
             """
-            Get/Set the name of the scene. Might contain the substring BPM, whichidentifies that the scene will change the tempo when fired. To Get/Setthe temp, use the 'tempo' property of the scene.
+            Get/Set the name of the scene. Might contain the substring BPM, which identifies that the scene will change the tempo when fired. To Get/Set the temp, use the 'tempo' property of the scene.
             """
             pass
 
@@ -12141,7 +12144,7 @@ class Song(ModuleType):
         @property
         def back_to_arranger(self):
             """
-            Get/Set if triggering a Clip in the Session, disabled the playback ofClips in the Arranger.
+            Get/Set if triggering a Clip in the Session, disabled the playback of Clips in the Arranger.
             """
             pass
 
@@ -12260,7 +12263,7 @@ class Song(ModuleType):
         @property
         def last_event_time(self):
             """
-            Return the time of the last set event in the song. In contrary tosong_length, this will not add some extra beats that are mostly neededfor Display purposes in the Arrangerview.
+            Return the time of the last set event in the song. In contrary to song_length, this will not add some extra beats that are mostly needed for Display purposes in the Arrangerview.
             """
             pass
 
@@ -12323,7 +12326,7 @@ class Song(ModuleType):
         @property
         def overdub(self):
             """
-            Legacy hook for Live 8 overdub state. Now hooks tosession record, but never starts playback.
+            Legacy hook for Live 8 overdub state. Now hooks to session record, but never starts playback.
             """
             pass
 
@@ -12435,7 +12438,7 @@ class Song(ModuleType):
         @property
         def song_length(self):
             """
-            Return the time of the last set event in the song, plus som extra beatsthat are usually added for better navigation in the arrangerview.
+            Return the time of the last set event in the song, plus som extra beats that are usually added for better navigation in the arrangerview.
             """
             pass
 
@@ -12456,7 +12459,7 @@ class Song(ModuleType):
         @property
         def tracks(self):
             """
-            Const access to a list of all Player Tracks in the Live Song, exludingthe return and Master Track (see also Song.send_tracks and Song.master_track).At least one MIDI or Audio Track is always available.
+            Const access to a list of all Player Tracks in the Live Song, exluding the return and Master Track (see also Song.send_tracks and Song.master_track).At least one MIDI or Audio Track is always available.
             """
             pass
 
@@ -12470,7 +12473,7 @@ class Song(ModuleType):
         @property
         def visible_tracks(self):
             """
-            Const access to a list of all visible Player Tracks in the Live Song, exludingthe return and Master Track (see also Song.send_tracks and Song.master_track).At least one MIDI or Audio Track is always available.
+            Const access to a list of all visible Player Tracks in the Live Song, excluding the return and Master Track (see also Song.send_tracks and Song.master_track).At least one MIDI or Audio Track is always available.
             """
             pass
 
@@ -14163,7 +14166,7 @@ class Song(ModuleType):
             @property
             def detail_clip(self):
                 """
-                Get/Set the Clip that is currently visible in Lives Detailview.
+                Get/Set the Clip that is currently visible in Lives Detail view.
                 """
                 pass
 
@@ -14684,7 +14687,7 @@ class Track(ModuleType):
         @property
         def arrangement_clips(self):
             """
-            const access to the list of clips in arrangement viewThe list will be empty for the master, send and group tracks.
+            const access to the list of clips in arrangement view. The list will be empty for the master, send and group tracks.
             """
             pass
 
@@ -14803,7 +14806,7 @@ class Track(ModuleType):
         @property
         def devices(self):
             """
-            Return const access to all available Devices that are present in the TracksDevicechain. This tuple will also include the 'mixer_device' that every Trackalways has.
+            Return const access to all available Devices that are present in the TracksDevicechain. This tuple will also include the 'mixer_device' that every Track always has.
             """
             pass
 
@@ -14957,7 +14960,7 @@ class Track(ModuleType):
         @property
         def mixer_device(self):
             """
-            Return access to the special Device that every Track has: This Device containsthe Volume, Pan, Sendamounts, and Crossfade assignment parameters.
+            Return access to the special Device that every Track has: This Device contains the Volume, Pan, Send amounts, and Crossfade assignment parameters.
             """
             pass
 

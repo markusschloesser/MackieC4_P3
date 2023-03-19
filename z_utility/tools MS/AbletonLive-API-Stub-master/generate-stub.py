@@ -12,8 +12,8 @@ except ImportError:
 
 def main():
     script_dir = dirname(__file__)
-    in_file = relpath(join(script_dir, "Live.xml"))
-    out_dir = relpath(join(script_dir, "Live"))
+    in_file = relpath(join(script_dir, "Live 11.2.10_FIXED___.xml"))
+    out_dir = relpath(join(script_dir, "Live11.2.10"))
     out_file = join(out_dir, "__init__.py")
     if not exists(out_dir):
         makedirs(out_dir)
@@ -29,7 +29,10 @@ def generate(in_file, out_file):
         last_name = None
         last_doc = None
         for element in xml.findall("./*"):
-            assert isinstance(element, ElementTree.Element)
+            try:
+                assert isinstance(element, ElementTree.Element)
+            except ElementTree.ParseError:
+                continue  # Skip this element if it can't be parsed
             if element.tag == "Doc":
                 last_doc = element.text.strip()
             else:
@@ -38,6 +41,8 @@ def generate(in_file, out_file):
                 last_tag = element.tag
                 last_name = element.text.strip()
         generate_code(last_tag, last_name, last_doc, f)
+
+
 
 
 def generate_code(tag, name, doc, f):
@@ -102,8 +107,12 @@ def parse_args_from_doc(doc):
                     arg_name = "handle"
                 args.append((arg_name, arg_type))
             doc = parts[1].strip()
+        else:
+            ret = None
     except Exception:
-        pass
+        args = []
+        ret = None
+        doc = ""
 
     return args, ret, doc
 

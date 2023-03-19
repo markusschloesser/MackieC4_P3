@@ -1894,7 +1894,7 @@ Live API version 11.0.0
 
 <Property>Live.CompressorDevice.CompressorDevice.is_active<Description>Property</Description></Property>
 
-<Doc>	Return const access to whether this device is active. This will be false bothwhen the device is off and when it's inside a rack device which is off.</Doc>
+<Doc>	Return const access to whether this device is active. This will be false both when the device is off and when it's inside a rack device which is off.</Doc>
 
 <Property>Live.CompressorDevice.CompressorDevice.name<Description>Property</Description></Property>
 
