@@ -13,7 +13,6 @@ def toggle_follow(self):
     self.song().view.follow_song = not self.song().view.follow_song
 
 
-# loop on/off
 def toggle_loop(self):
     self.song().loop = not self.song().loop
 
@@ -69,22 +68,24 @@ def toggle_back_to_arranger(self, name='BTA'):
 
 def any_soloed_track(self):
     tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
-    return any((t.solo for t in tracks))
+    return bool(any(t.solo for t in tracks))
 
 
 def unsolo_all(self):
-    for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
+    tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
+    for track in tracks:
         if track.solo:
             track.solo = False
 
 
 def any_muted_track(self):
     tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
-    return any((t.mute for t in tracks))
+    return bool(any(t.mute for t in tracks))
 
 
 def unmute_all(self):
-    for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
+    tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
+    for track in tracks:
         if track.mute:
             track.mute = False
 
@@ -100,10 +101,12 @@ def undo(self):
 
 
 def unarm_all_button(self):
-    for track in self.song().tracks:
+    tracks = self.song().tracks
+    for track in tracks:
         if track.can_be_armed and (track.arm or track.implicit_arm):
             track.arm = False
 
 
 def any_armed_track(self):
-    return any((t.can_be_armed and t.arm for t in self.song().tracks))
+    tracks = self.song().tracks
+    return bool(any(track.can_be_armed and track.arm for track in tracks))

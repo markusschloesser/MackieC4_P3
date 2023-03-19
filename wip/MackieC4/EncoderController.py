@@ -6,7 +6,7 @@
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 
-import itertools
+# import itertools
 
 import sys
 
@@ -16,7 +16,7 @@ from ableton.v2.control_surface.elements.display_data_source import adjust_strin
 
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
-    from ableton.v2.base import old_hasattr
+
 
 from . import track_util
 from . import song_util
@@ -83,18 +83,20 @@ class EncoderController(MackieC4Component):
 
         song = self.song()
         tracks = song.visible_tracks + song.return_tracks
-
         selected_track = self.song().view.selected_track
-        self.returns_switch = 0
-        index = 0
-        found = 0
-        for track in tracks:
-            index = index + 1
-            if track == selected_track:
-                self.track_changed(index - 1)
-                found = 1
 
-        if found == 0:
+        self.returns_switch = 0
+
+        found = False
+        index = -1
+        for i, track in enumerate(tracks):
+            if track == selected_track:
+                self.track_changed(i)
+                found = True
+                index = i
+                break
+        if not found:
+            index = len(tracks)
             self.track_changed(index)
 
         self.selected_track = self.song().view.selected_track
@@ -269,14 +271,10 @@ class EncoderController(MackieC4Component):
         updated_idx = -1
         # extended_device_list is the device list with enumerated/flattened rack devices
         extended_device_list = self.get_device_list(self.selected_track.devices)
-        if type == 0:
-            listener_type = "normal"
-        elif type == 1:
-            listener_type = "return"
-        elif type == 2:
-            listener_type = "master"
-        else:
-            listener_type = "None"
+
+        # Use a dictionary to map type to listener_type
+        listener_types = {0: "normal", 1: "return", 2: "master"}.get(type, "None")
+
         if liveobj_valid(track):
             # self.main_script().log_message("{0}processing device change-state of Track listener type <{1}> on track <{2}> at index {3}".format(log_id, listener_type, track.name, tid))
             if liveobj_changed(self.selected_track, track):
@@ -288,15 +286,13 @@ class EncoderController(MackieC4Component):
             if liveobj_valid(self.selected_track):
                 selected_device = self.selected_track.view.selected_device
                 if liveobj_valid(selected_device):
-                    log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(
-                        log_id, selected_device.name)
+                    log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(log_id, selected_device.name)
                     # self.main_script().log_message(log_msg)
                     current_selected_indexes = (x for x in range(len(extended_device_list))
                                                 if extended_device_list[x] == selected_device)
                     selected_device_idx = next(current_selected_indexes, -1)
                     extended_device_list = self.get_device_list(self.selected_track.devices)
-                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list,
-                                                                             selected_device, selected_device_idx)
+                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list,selected_device, selected_device_idx)
 
             if updated_idx == -1:
                 self.__chosen_plugin = None
@@ -327,14 +323,12 @@ class EncoderController(MackieC4Component):
         idx = 0
         if new_device_count_track > 0:
             log_msg = "{0}device at index <{1}> is ".format(log_id, idx)
-            for device in extended_device_list:
+            for i, device in enumerate(extended_device_list):
                 if liveobj_valid(device):
                     pass  # self.main_script().log_message("{0}<{1}>".format(log_msg, device.name))
                 else:
                     self.main_script().log_message("{0}<None>".format(log_msg))
-
-                idx += 1
-                log_msg = "{0}device at index <{1}> is".format(log_id, idx)
+                log_msg = "{0}device at index <{1}> is".format(log_id, i + 1)
         else:
             self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
@@ -637,7 +631,7 @@ class EncoderController(MackieC4Component):
                     self.__chosen_plugin = extended_device_list[device_offset]
                     self.__reorder_parameters()
                     self.__eah.set_selected_device_index(encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset)
-                    self.song().view.select_device(extended_device_list[device_offset])  # todo: MS change this to enable/disable device
+                    self.song().view.select_device(extended_device_list[device_offset])
                     self.__reassign_encoder_parameters()
                     self.request_rebuild_midi_map()
                 else:
@@ -653,7 +647,7 @@ class EncoderController(MackieC4Component):
                         #                         int also doesn't have a default_value?
                         param.value = 0  # if param is never actually an int when it isn't None, this assignment just satisfies PyCharm
                     else:
-                        param.value = param.default_value  # button press == jump to default value of Send?
+                        param.value = param.default_value  # button press == jump to default value of Send
                 else:
                     self.main_script().log_message("can't update param.value to default: None object")
             elif encoder_index in row_03_encoders:
@@ -1292,76 +1286,61 @@ class EncoderController(MackieC4Component):
                 self.__display_parameters.append(vpot_display_text)
 
         elif self.__assignment_mode == C4M_FUNCTION:
-            # ????  in the "button pressed" method, "Play" and "Stop" are different encoder buttons ????
-            # here if the song is playing or stopped is written over just encoder 26
+            encoders_to_display_text = {
+                encoder_01_index: ('unfllw', 'follow'),
+                encoder_02_index: ('on/off', 'Loop'),
+                encoder_03_index: ('Detail', 'Clip/'),
+                encoder_04_index: ('Arrang', 'Sessn'),
+                encoder_05_index: ('on/off', 'Browsr'),
+                encoder_06_index: ('all', 'unsolo'),
+                encoder_07_index: ('all', 'unmute'),
+                encoder_08_index: ('Arrang', 'Back 2'),
+                encoder_11_index: ('all', 'unarm'),
+                encoder_17_index: ('nome  ', 'Metro '),
+                encoder_18_index: ('Autmtn', 'Renabl'),
+                encoder_19_index: ('Clip  ', 'Scrub '),
+                encoder_22_index: (None, 'BPM   '),
+                encoder_28_index: ('on/off', 'Ovrdub'),
+            }
 
             for s in self.__encoders:
                 s_index = s.vpot_index()
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
                 vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
-                # this is where a "placeholder" internal_parameter object could replace None
-                dummy_param = (None, VPOT_DISPLAY_BOOLEAN)
+
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
-                if s.vpot_index() == encoder_01_index:
-                    vpot_display_text.set_text('unfllw', 'follow')
-                elif s.vpot_index() == encoder_02_index:
-                    vpot_display_text.set_text('on/off', 'Loop')
-                elif s.vpot_index() == encoder_03_index:
-                    vpot_display_text.set_text('Detail', 'Clip/')
-                elif s.vpot_index() == encoder_04_index:
-                    vpot_display_text.set_text('Arrang', 'Sessn')
-                elif s.vpot_index() == encoder_05_index:
-                    vpot_display_text.set_text('on/off', 'Browsr')
-                elif s.vpot_index() == encoder_06_index:
-                    vpot_display_text.set_text('all', 'unsolo')
-                elif s.vpot_index() == encoder_07_index:
-                    vpot_display_text.set_text('all', 'unmute')
-                elif s.vpot_index() == encoder_08_index:
-                    vpot_display_text.set_text('Arrang', 'Back 2')
+                if s_index in encoders_to_display_text:
+                    display_text = encoders_to_display_text[s_index]
+                    if display_text[0] is not None:
+                        vpot_display_text.set_text(display_text[0], display_text[1])
+                    else:
+                        vpot_display_text.set_upper_text(display_text[1])
                 elif s.vpot_index() == encoder_09_index:
                     vpot_display_text.set_upper_text_and_alt('NoUndo', 'Undo  ')
                 elif s.vpot_index() == encoder_10_index:
                     vpot_display_text.set_upper_text_and_alt('NoRedo', 'Redo  ')
-                elif s.vpot_index() == encoder_11_index:
-                    vpot_display_text.set_text('all', 'unarm')
+
                 # elif s.vpot_index() == encoder_12_index:
                 #     time display was moved to on_update_display_timer because song position needs to be updated in real-time, same for LoopLength, LoopStart
-
-                elif s.vpot_index() == encoder_17_index:
-                    vpot_display_text.set_text('nome  ', 'Metro ')
-
-                elif s.vpot_index() == encoder_18_index:
-                    vpot_display_text.set_text('Autmtn', 'Renabl')
-
-                elif s.vpot_index() == encoder_19_index:
-                    vpot_display_text.set_text('Clip  ', 'Scrub ')
-
-                elif s.vpot_index() == encoder_22_index:
-                    vpot_display_text.set_text(None, 'BPM   ')
 
                 #  capture_midi
 
                 elif s.vpot_index() == encoder_25_index:
-                    dummy_param = (None, VPOT_DISPLAY_WRAP)
                     if self.song().is_playing:
                         vpot_display_text.set_text(' Play ', ' Song ')
                     else:
                         vpot_display_text.set_text(' Stop ', ' Song ')
                 elif s.vpot_index() == encoder_26_index:
-                    dummy_param = (None, VPOT_DISPLAY_WRAP)
                     if not self.song().is_playing:
                         vpot_display_text.set_text(' Play ', ' Song ')
                     else:
                         vpot_display_text.set_text(' Stop ', ' Song ')
                 elif s.vpot_index() == encoder_27_index:
-                    dummy_param = (None, VPOT_DISPLAY_WRAP)
                     if not self.song().is_playing:
                         vpot_display_text.set_text('contin', ' Song ')
                     else:
                         vpot_display_text.set_text(' Stop ', ' Song ')
-                elif s.vpot_index() == encoder_28_index:
-                    vpot_display_text.set_text('on/off', 'Ovrdub')
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                 self.__display_parameters.append(vpot_display_text)
@@ -1450,18 +1429,14 @@ class EncoderController(MackieC4Component):
         lower_string4 = ''
         self.__display_repeat_count += 1  # see comments near lines 97 - 102 in __init__
 
-        # uncommenting this condition check when the two lengths are not equal
-        # will result in spamming the log file with the indented log message
-        # If you comment out initializing self.__display_parameters with EncoderDisplaySegment objects
-        # inside __init__ above, and just leave the empty list assignment self.__display_parameters = []
-        # you can force the two lengths to not be equal here after the script loads,
-        # but for example before the first "track change" message is processed when everything "reloads"
+        # uncommenting this condition check when the two lengths are not equal will result in spamming the log file with the indented log message
+        # If you comment out initializing self.__display_parameters with EncoderDisplaySegment objects inside __init__ above, and just leave the empty list assignment self.__display_parameters = []
+        # you can force the two lengths to not be equal here after the script loads, but for example before the first "track change" message is processed when everything "reloads"
 
         # dsply_sgmts = len(self.__display_parameters)
         # encdr_range = len(encoder_range)
         # if dsply_sgmts != encdr_range:
-        #     self.main_script().log_message("display segments loaded {0} encoder range {1}"
-        #                                    .format(dsply_sgmts, encdr_range))
+        #     self.main_script().log_message("display segments loaded {0} encoder range {1}".format(dsply_sgmts, encdr_range))
         encoder_27_index = 26
         encoder_28_index = 27
         encoder_29_index = 28
@@ -1470,16 +1445,22 @@ class EncoderController(MackieC4Component):
         encoder_32_index = 31
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
 
+            selected_track = self.selected_track
+            is_group_track = track_util.is_group_track(selected_track)
+            is_grouped = track_util.is_grouped(selected_track)
+            is_folded = track_util.is_folded(selected_track) if liveobj_valid(selected_track) else False
+            is_view_visible_session = self.application().view.is_view_visible('Session')
+            is_view_visible_arranger = self.application().view.is_view_visible('Arranger')
+            selected_device_name = selected_track.view.selected_device.name if liveobj_valid(selected_track) and liveobj_valid(selected_track.view.selected_device) else '                      '
+
             # shows "fold" or "unfold" or nothing depending on if group track or grouped track
-            if track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track)):
-                if track_util.is_folded(self.selected_track):
-                    upper_string1 += '------ Track -------' + ' unfold---------------'
-                elif not track_util.is_folded(self.selected_track):
-                    upper_string1 += '------ Track -------' + ' fold  ---------------'
+            if is_group_track or is_grouped:
+                fold_text = 'unfold' if is_folded else 'fold'
+                upper_string1 += '------ Track ------- {} ---------------'.format(fold_text)
             else:
                 upper_string1 += '------ Track -------       ---------------'
 
-            # 'selected track' name, centered over roughly the first 3 encoders in top row, also indicates frozen tracks
+            # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
             if liveobj_valid(self.selected_track):
                 if self.selected_track.is_frozen:
                     lower_string1 += adjust_string(self.selected_track.name, 12) + '(Frozen)'
@@ -1488,15 +1469,13 @@ class EncoderController(MackieC4Component):
             else:
                 lower_string1 += "---------0--------1"
 
-            if self.application().view.is_view_visible('Session'):
-                lower_string1 += (' Group ' if (track_util.is_group_track(self.selected_track) or (track_util.is_grouped(self.selected_track))) else '       ')
-            elif self.application().view.is_view_visible('Arranger'):
+            if is_view_visible_session:
+                group_text = 'Group ' if (is_group_track or is_grouped) else '       '
+                lower_string1 += group_text
+            elif is_view_visible_arranger:
                 lower_string1 += ' Track '
 
-            if liveobj_valid(self.selected_track) and liveobj_valid(self.selected_track.view.selected_device):
-                lower_string1 += adjust_string(self.selected_track.view.selected_device.name, 15)
-            else:
-                lower_string1 += '                      '
+            lower_string1 += adjust_string(selected_device_name, 15)
 
             # This text 'covers' display segments over all 8 encoders in the second row
             upper_string2 += '----------------------- Devices -----------------------'
@@ -1513,25 +1492,18 @@ class EncoderController(MackieC4Component):
                 l_alt_text = text_for_display.get_lower_text()
 
                 if t in range(6, NUM_ENCODERS_ONE_ROW):
-                    upper_string1 += adjust_string(u_alt_text, 6)
-                    upper_string1 += ' '
-                    lower_string1 += adjust_string(str(l_alt_text), 6)
-                    lower_string1 += ' '
+                    upper_string1 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                    lower_string1 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
                 elif t in row_01_encoders:
-                    lower_string2 += adjust_string(str(l_alt_text), 6)
-                    lower_string2 += ' '
+                    lower_string2 += adjust_string(l_alt_text, 6) + ' '
 
                 elif t in row_02_encoders:
-                    lower_string3 += adjust_string(l_alt_text, 6)
-                    lower_string3 += ' '
-                    upper_string3 += adjust_string(u_alt_text, 6)
-                    upper_string3 += ' '
+                    upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                    lower_string3 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
                 elif t in row_03_encoders:
                     if t < encoder_27_index:
-                        lower_string4 += adjust_string(l_alt_text, 6)
-                        lower_string4 += ' '
-                        upper_string4 += adjust_string(u_alt_text, 6)
-                        upper_string4 += ' '
+                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     if t == encoder_27_index:
                         if liveobj_valid(self.selected_track):
@@ -1550,15 +1522,12 @@ class EncoderController(MackieC4Component):
                                     elif state == 2:
                                         value_to_display = 'XFadeB'
                                         spp_vpot.update_led_ring(0x1B)
-                                    upper_string4 += 'X-Fade'
-                                    upper_string4 += ' '
-                                    lower_string4 += str(value_to_display)
-                                    lower_string4 += ' '
+                                    upper_string4 += 'X-Fade' + ' '
+                                    lower_string4 += str(value_to_display) + ' '
+
                                 else:
-                                    lower_string4 += adjust_string(str(l_alt_text), 6)
-                                    lower_string4 += ' '
-                                    upper_string4 += adjust_string(u_alt_text, 6)
-                                    upper_string4 += ' '
+                                    lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                                    upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     if t == encoder_28_index:
                         if liveobj_valid(self.selected_track):
@@ -1572,10 +1541,8 @@ class EncoderController(MackieC4Component):
                             else:
                                 l_alt_text = "NoSolo"
 
-                        lower_string4 += adjust_string(l_alt_text, 6)
-                        lower_string4 += ' '
-                        upper_string4 += adjust_string(u_alt_text, 6)
-                        upper_string4 += ' '
+                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     elif t == encoder_29_index:
                         if liveobj_valid(self.selected_track):
@@ -1589,10 +1556,9 @@ class EncoderController(MackieC4Component):
                             else:
                                 l_alt_text = "No Arm"
 
-                        lower_string4 += adjust_string(l_alt_text, 6)
-                        lower_string4 += ' '
-                        upper_string4 += adjust_string(u_alt_text, 6)
-                        upper_string4 += ' '
+                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+
                     elif t == encoder_30_index:
                         if self.selected_track != self.song().master_track and liveobj_valid(self.selected_track):
                             if self.selected_track.mute:
@@ -1606,40 +1572,32 @@ class EncoderController(MackieC4Component):
                         else:
                             lower_string4 += adjust_string(l_alt_text, 6)
                         lower_string4 += ' '
-                        upper_string4 += adjust_string(u_alt_text, 6)
-                        upper_string4 += ' '
+                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     elif t == encoder_31_index:
-                        lower_string4 += adjust_string(str(l_alt_text), 6)
-                        lower_string4 += ' '
-                        upper_string4 += adjust_string(u_alt_text, 6)
-                        upper_string4 += ' '
+                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     elif t == encoder_32_index:
-                        lower_string4 += adjust_string(str(l_alt_text), 6)
-                        lower_string4 += ' '
-                        upper_string4 += adjust_string(u_alt_text, 6)
-                        upper_string4 += ' '
+                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
         so_many_spaces = '                                                       '
 
         if self.__assignment_mode == C4M_PLUGINS:
-            upper_string1 += '------ Track ------- ---- Device '
-            upper_string1 += str(self.__eah.get_selected_device_index())
+            upper_string1 += '------ Track ------- ---- Device {0}'.format(self.__eah.get_selected_device_index())
+
             if self.__eah.get_selected_device_index() > 9:
                 upper_string1 += ' ----- '
             else:
                 upper_string1 += ' ------ '
 
             if liveobj_valid(self.selected_track):
-                if self.selected_track.is_frozen:
-                    lower_string1a += adjust_string(self.selected_track.name, 12) + '(Frozen)'
-                else:
-                    lower_string1a += adjust_string(self.selected_track.name, 20)
+                lower_string1a += (adjust_string(self.selected_track.name, 12) + '(Frozen)') if self.selected_track.is_frozen else adjust_string(self.selected_track.name, 20)
             else:
                 lower_string1a += "---------0---------1"
-            lower_string1a = lower_string1a.center(20)
-            lower_string1a += ' '
+            lower_string1a = lower_string1a.center(20) + ' '
+
             if not liveobj_valid(self.__chosen_plugin):
                 # blank everything out
                 upper_string1 += '             '
@@ -1676,8 +1634,8 @@ class EncoderController(MackieC4Component):
                 lower_string1b += adjust_string(str(device_name), 20)
                 lower_string1b = lower_string1b.center(20)
                 lower_string1 += lower_string1a
-                lower_string1 += lower_string1b
-                lower_string1 += ' '
+                lower_string1 += lower_string1b + ' '
+
                 upper_string1 += '-Params Bank-'
                 for t in encoder_range:
                     try:
@@ -1690,25 +1648,19 @@ class EncoderController(MackieC4Component):
                     l_alt_text = text_for_display.get_lower_text()
 
                     if t in range(6, NUM_ENCODERS_ONE_ROW):
-                        lower_string1 += adjust_string(str(l_alt_text), 6)
-                        lower_string1 += ' '
+                        lower_string1 += adjust_string(str(l_alt_text), 6) + ' '
                     elif t in row_01_encoders:
                         # parameter name plugin_param[1] == text_for_display[1] in top display row,
                         # parameter value plugin_param[0] == text_for_display[0] in bottom row
-                        upper_string2 += adjust_string(u_alt_text, 6)
-                        upper_string2 += ' '
-                        lower_string2 += adjust_string(str(l_alt_text), 6)
-                        lower_string2 += ' '
+                        upper_string2 += adjust_string(u_alt_text, 6) + ' '
+                        lower_string2 += adjust_string(str(l_alt_text), 6) + ' '
+
                     elif t in row_02_encoders:
-                        upper_string3 += adjust_string(u_alt_text, 6)
-                        upper_string3 += ' '
-                        lower_string3 += adjust_string(str(l_alt_text), 6)
-                        lower_string3 += ' '
+                        upper_string3 += adjust_string(u_alt_text, 6) + ' '
+                        lower_string3 += adjust_string(str(l_alt_text), 6) + ' '
                     elif t in row_03_encoders:
-                        upper_string4 += adjust_string(u_alt_text, 6)
-                        upper_string4 += ' '
-                        lower_string4 += adjust_string(str(l_alt_text), 6)
-                        lower_string4 += ' '
+                        upper_string4 += adjust_string(u_alt_text, 6) + ' '
+                        lower_string4 += adjust_string(str(l_alt_text), 6) + ' '
 
         elif self.__assignment_mode == C4M_FUNCTION:
 

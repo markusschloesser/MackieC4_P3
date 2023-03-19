@@ -88,13 +88,9 @@ class MackieC4(object):
         self.__c_instance = c_instance
 
         # initialize the 32 encoders, their EncoderController and add them as __components here
-        self.__components = []
         self.__encoders = [Encoders(self, i) for i in encoder_range]
-        for s in self.__encoders:
-            self.__components.append(s)
-
         self.__encoder_controller = EncoderController(self, self.__encoders)
-        self.__components.append(self.__encoder_controller)
+        self.__components = [*self.__encoders, self.__encoder_controller]
 
         # turn off FUNCTION and ASSIGNMENT button LEDs except the default
         for cc in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
@@ -199,7 +195,8 @@ class MackieC4(object):
             # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
-            if note in range(C4SID_FIRST, C4SID_LAST + 1) and ignore_note_offs:
+            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)) and ignore_note_offs:
+
                 if note in track_nav_switch_ids:
                     self.track_inc_dec(note)
                 elif note in bank_switch_ids or note in single_switch_ids:
@@ -249,7 +246,7 @@ class MackieC4(object):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
         if cc_value >= 64:
             self.song().jump_by(-(cc_value - 64))
-        if cc_value <= 64:
+        if cc_value < 64:
             self.song().jump_by(cc_value)
 
     def set_loop_length(self, cc_value):
@@ -303,6 +300,7 @@ class MackieC4(object):
         app_view = self.application().view
         view_name = 'Detail/Clip'
         logging.info(f'zoom_clip called with cc_value: {cc_value}')
+
         # scroll = cc_value == 65 and 3 or 1
         if cc_value > 64:
             if not app_view.is_view_visible(view_name):
@@ -460,15 +458,16 @@ class MackieC4(object):
             # self.log_message("C4/track_change  nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range".format(len(tracks), self.track_count))
 
         index = 0
-        found = 0
         selected_index = 0
+        found = selected_track in tracks
+
         for track in tracks:
             if track == selected_track:
                 selected_index = index
-                found = 1
-            index = index + 1
+                found = True
+            index += 1
 
-        if found == 0:
+        if not found:
             if selected_track == self.song().master_track:
                 # index is now "one past" the last index in
                 # tracks = self.song().visible_tracks + self.song().return_tracks
@@ -853,41 +852,29 @@ class MackieC4(object):
             pass
 
     def track_inc_dec(self, note):
-        # self.log_message("handling note <{}> for track inc dec".format(note))
         selected_track = self.song().view.selected_track
         tracks = self.song().visible_tracks + self.song().return_tracks
-        index = 0
-        selected_index = 0
+        selected_index = tracks.index(selected_track)
+
         if selected_track == self.song().master_track:
-            if note == C4SID_TRACK_LEFT:  # 19: left of master track is return tracks then regular tracks
+            if note == C4SID_TRACK_LEFT:
                 selected_index = len(tracks) - 1
-                self.song().view.selected_track = tracks[selected_index]
-                self.track_index = selected_index
             # can't move right of master track
         else:
-            for track in tracks:
-                index = index + 1
+            for index, track in enumerate(tracks):
                 if track == selected_track:
-                    #  self.log_message("current selected_track <{}>".format(track.name))
-                    if note == C4SID_TRACK_LEFT:
-                        if index > 1:  # can't move selection left of track 0
-                            selected_index = index - 2
-                            self.song().view.selected_track = tracks[selected_index]
-                            #  self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
-                    elif note == C4SID_TRACK_RIGHT:
-                        if index < len(tracks):  # right of last return track goes to master track
-                            selected_index = index
-                            self.song().view.selected_track = tracks[index]
-                            #  self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
-                        else:
-                            selected_index = self.__encoder_controller.master_track_index()
-                            self.song().view.selected_track = self.song().master_track
-                            #  self.log_message("new selected_track <{}>".format(self.song().master_track.name))
+                    if note == C4SID_TRACK_LEFT and index > 0:
+                        selected_index = index - 1
+                    elif note == C4SID_TRACK_RIGHT and index < len(tracks) - 1:
+                        selected_index = index + 1
+                    elif note == C4SID_TRACK_RIGHT and index == len(tracks) - 1:
+                        selected_index = self.__encoder_controller.master_track_index()
+                        self.song().view.selected_track = self.song().master_track
 
-            self.track_index = selected_index
+        self.song().view.selected_track = tracks[selected_index]
 
     def lock_surface(self):
-        if self.surface_is_locked == 0:
+        if not self.surface_is_locked:
             self.log_message("locking surface, led state ON")
             self.surface_is_locked = 1
             self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
@@ -899,7 +886,7 @@ class MackieC4(object):
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
         try:
-            message = '(%s) %s' % (self.__class__.__name__,(' ').join(map(str, message)))
+            message = f'({self.__class__.__name__}) {" ".join(map(str, message))}'
             logger.info(message)
         except:
             logger.info('Logging encountered illegal character(s)!')
