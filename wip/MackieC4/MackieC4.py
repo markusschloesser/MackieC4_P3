@@ -854,13 +854,14 @@ class MackieC4(object):
     def track_inc_dec(self, note):
         selected_track = self.song().view.selected_track
         tracks = self.song().visible_tracks + self.song().return_tracks
-        selected_index = tracks.index(selected_track)
 
         if selected_track == self.song().master_track:
             if note == C4SID_TRACK_LEFT:
                 selected_index = len(tracks) - 1
+                self.song().view.selected_track = tracks[selected_index]
             # can't move right of master track
         else:
+            selected_index = tracks.index(selected_track)
             for index, track in enumerate(tracks):
                 if track == selected_track:
                     if note == C4SID_TRACK_LEFT and index > 0:
@@ -868,10 +869,11 @@ class MackieC4(object):
                     elif note == C4SID_TRACK_RIGHT and index < len(tracks) - 1:
                         selected_index = index + 1
                     elif note == C4SID_TRACK_RIGHT and index == len(tracks) - 1:
-                        selected_index = self.__encoder_controller.master_track_index()
                         self.song().view.selected_track = self.song().master_track
+                        return  # Return early since the master track has been selected
 
-        self.song().view.selected_track = tracks[selected_index]
+            if 0 <= selected_index < len(tracks):
+                self.song().view.selected_track = tracks[selected_index]
 
     def lock_surface(self):
         if not self.surface_is_locked:

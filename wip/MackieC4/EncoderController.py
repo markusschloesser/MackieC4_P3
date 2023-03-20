@@ -101,10 +101,12 @@ class EncoderController(MackieC4Component):
 
         self.selected_track = self.song().view.selected_track
         self.update_assignment_mode_leds()
-        self.__last_send_messages1 = {LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
-        self.__last_send_messages2 = {LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
-        self.__last_send_messages3 = {LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
-        self.__last_send_messages4 = {LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}}
+        self.__last_send_messages = {
+            LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
+            LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
+            LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
+            LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}
+        }
 
         self.__shift_state = False
         self.__option_state = False
@@ -115,14 +117,14 @@ class EncoderController(MackieC4Component):
     def destroy(self):
         # self.destroy()
         so_many_spaces = '                                                       '
-        self.send_display_string1(LCD_ANGLED_ADDRESS, '                     Ableton Live                      ', LCD_TOP_ROW_OFFSET)
-        self.send_display_string2(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
-        self.send_display_string3(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
-        self.send_display_string4(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
-        self.send_display_string1(LCD_ANGLED_ADDRESS, '                   Device is offline                   ', LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string2(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string3(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string4(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_ANGLED_ADDRESS, '                     Ableton Live                      ', LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_ANGLED_ADDRESS, '                   Device is offline                   ', LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
         for note in system_switch_ids:
             self.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
         for note in assignment_mode_switch_ids:
@@ -278,7 +280,7 @@ class EncoderController(MackieC4Component):
         if liveobj_valid(track):
             # self.main_script().log_message("{0}processing device change-state of Track listener type <{1}> on track <{2}> at index {3}".format(log_id, listener_type, track.name, tid))
             if liveobj_changed(self.selected_track, track):
-                log_msg = "{0}because selected_track changed, updating selected track to <{1}> ".format(log_id, track.name)
+                # log_msg = "{0}because selected_track changed, updating selected track to <{1}> ".format(log_id, track.name)
                 # self.main_script().log_message(log_msg + "and calling track_changed() passing index {0}".format(tid))
                 self.selected_track = track
                 self.track_changed(tid)
@@ -286,7 +288,7 @@ class EncoderController(MackieC4Component):
             if liveobj_valid(self.selected_track):
                 selected_device = self.selected_track.view.selected_device
                 if liveobj_valid(selected_device):
-                    log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(log_id, selected_device.name)
+                    # log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(log_id, selected_device.name)
                     # self.main_script().log_message(log_msg)
                     current_selected_indexes = (x for x in range(len(extended_device_list))
                                                 if extended_device_list[x] == selected_device)
@@ -953,57 +955,35 @@ class EncoderController(MackieC4Component):
     def __reorder_parameters(self):
         result = []
         if liveobj_valid(self.__chosen_plugin):
+            device_class_name = self.__chosen_plugin.class_name
 
-            # if a default Live device is chosen, iterate the DEVICE_DICT constant to reorder the local list of plugin parameters
-            if self.__chosen_plugin.class_name in list(DEVICE_DICT.keys()):
-                device_banks = DEVICE_DICT[self.__chosen_plugin.class_name]
-                device_bank_index = 0
-                for bank in device_banks:
-                    param_bank_index = 0
-                    for param_name in bank:
-                        parameter_name = ''
+            if device_class_name in DEVICE_DICT:
+                device_banks = DEVICE_DICT[device_class_name]
+
+                for device_bank_index, bank in enumerate(device_banks):
+                    for param_bank_index, param_name in enumerate(bank):
                         parameter = get_parameter_by_name(self.__chosen_plugin, param_name)
-                        if parameter:
-                            parameter_name = parameter.name
-                        else:  # get parameter by index if possible
+
+                        if not parameter:
                             param_index = param_bank_index + (SETUP_DB_DEVICE_BANK_SIZE * device_bank_index)
                             if len(self.__chosen_plugin.parameters) > param_index:
                                 parameter = self.__chosen_plugin.parameters[param_index]
-                                parameter_name = parameter.name
-                            else:
-                                parameter = None
 
-                        result.append((parameter, parameter_name))
-                        param_bank_index += 1
+                        result.append((parameter, parameter.name if parameter else None))
 
-                    device_bank_index += 1
-
-            # otherwise reorder the local list to the order provided by the parameter itself
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
 
-        self.__ordered_plugin_parameters = result  # these are tuples where index 0 is a DeviceParameter object
-        count = 0
+        self.__ordered_plugin_parameters = result
 
-        nbr_of_full_pages = int(len(self.__ordered_plugin_parameters) / SETUP_DB_PARAM_BANK_SIZE)  # len() / 24
-        nbr_of_remainders = int(len(self.__ordered_plugin_parameters) % SETUP_DB_PARAM_BANK_SIZE)  # len() % 24
-        if nbr_of_full_pages >= SETUP_DB_MAX_PARAM_BANKS:
-            nbr_of_full_pages = SETUP_DB_MAX_PARAM_BANKS
-        elif nbr_of_full_pages < 0:
-            nbr_of_full_pages = 0
-            self.main_script().log_message("Not possible, right? and yet I am logged")
+        num_params = len(self.__ordered_plugin_parameters)
+        nbr_of_full_pages = min(num_params // SETUP_DB_PARAM_BANK_SIZE, SETUP_DB_MAX_PARAM_BANKS)
+        nbr_of_remainders = num_params % SETUP_DB_PARAM_BANK_SIZE
 
-        if nbr_of_full_pages == 0 and nbr_of_remainders > 0:
-            nbr_of_full_pages = 1
-        elif nbr_of_remainders > 0:  # 0 < nbr_of_full_pages < SETUP_DB_MAX_PARAM_BANKS
-            nbr_of_full_pages += 1
+        if nbr_of_remainders > 0:
+            nbr_of_full_pages = min(nbr_of_full_pages + 1, SETUP_DB_MAX_PARAM_BANKS)
 
-        # Note: see above handle_pressed_vpot(encoder 8 click in device mode)
         self.__eah.set_max_current_track_device_parameter_bank_nbr(nbr_of_full_pages)
-        for p in self.__ordered_plugin_parameters:
-            # log the param names to the Live log in order
-            # self.main_script().log_message("Param {0} name <{1}>".format(count, p[1]))
-            count += 1
 
     def get_on_off_parameter(device):
         if liveobj_valid(device):
@@ -1462,15 +1442,12 @@ class EncoderController(MackieC4Component):
 
             # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
             if liveobj_valid(self.selected_track):
-                if self.selected_track.is_frozen:
-                    lower_string1 += adjust_string(self.selected_track.name, 12) + '(Frozen)'
-                else:
-                    lower_string1 += adjust_string(self.selected_track.name, 20)
+                lower_string1 += (adjust_string(self.selected_track.name, 12) + '(Frozen)') if self.selected_track.is_frozen else adjust_string(self.selected_track.name, 20)
             else:
                 lower_string1 += "---------0--------1"
 
             if is_view_visible_session:
-                group_text = 'Group ' if (is_group_track or is_grouped) else '       '
+                group_text = ' Group ' if (is_group_track or is_grouped) else '       '
                 lower_string1 += group_text
             elif is_view_visible_arranger:
                 lower_string1 += ' Track '
@@ -1585,15 +1562,13 @@ class EncoderController(MackieC4Component):
         so_many_spaces = '                                                       '
 
         if self.__assignment_mode == C4M_PLUGINS:
-            upper_string1 += '------ Track ------- ---- Device {0}'.format(self.__eah.get_selected_device_index())
-
-            if self.__eah.get_selected_device_index() > 9:
-                upper_string1 += ' ----- '
-            else:
-                upper_string1 += ' ------ '
+            t_d_idx = self.__eah.get_selected_device_index()
+            upper_string1 += f"------ Track ------- ---- Device {t_d_idx}"
+            upper_string1 += ' ----- ' if t_d_idx > 9 else ' ------ '
 
             if liveobj_valid(self.selected_track):
-                lower_string1a += (adjust_string(self.selected_track.name, 12) + '(Frozen)') if self.selected_track.is_frozen else adjust_string(self.selected_track.name, 20)
+                track_name = self.selected_track.name
+                lower_string1a += f"{adjust_string(track_name, 12)}(Frozen)" if self.selected_track.is_frozen else adjust_string(track_name, 20)
             else:
                 lower_string1a += "---------0---------1"
             lower_string1a = lower_string1a.center(20) + ' '
@@ -1602,8 +1577,7 @@ class EncoderController(MackieC4Component):
                 # blank everything out
                 upper_string1 += '             '
                 lower_string1b += '                                   '
-                lower_string1 += lower_string1a
-                lower_string1 += lower_string1b
+                lower_string1 += lower_string1a + lower_string1b
                 upper_string2 += '           NO DEVICES SELECTED ON THIS TRACK           '
                 lower_string2 += so_many_spaces
                 upper_string3 += so_many_spaces
@@ -1612,7 +1586,7 @@ class EncoderController(MackieC4Component):
                 lower_string4 += so_many_spaces
             else:
                 device_name = '  '
-                t_d_idx = self.__eah.get_selected_device_index()
+
                 if t_d_idx > -1:
                     extended_device_list = self.get_device_list(self.selected_track.devices)
                     if liveobj_valid(self.selected_track) and len(extended_device_list) > t_d_idx:
@@ -1620,21 +1594,16 @@ class EncoderController(MackieC4Component):
                             device_name = extended_device_list[t_d_idx].name
 
                         else:
-                            msg = "selected track and device index were valid but the device "
-                            msg += "at index {0} is not liveobj_valid() Danger! Will Robinson! Danger!"
-                            self.main_script().log_message(msg.format(t_d_idx))
+                            self.main_script().log_message(f"selected track and device index were valid but the device at index {t_d_idx} is not liveobj_valid() Danger! Will Robinson! Danger!")
+
                     else:
-                        msg = "Not enough devices loaded for index and __chosen_device is liveobj_valid()"
-                        msg += " name display blank over device index {0} Danger! Will Robinson! Danger!"
-                        self.main_script().log_message(msg.format(t_d_idx))
+                        self.main_script().log_message(f"Not enough devices loaded for index and __chosen_device is liveobj_valid() name display blank over device index {t_d_idx} Danger! Will Robinson! Danger!")
+
                 else:
-                    msg = "Current Track Device List length too short for index:"
-                    msg += " name display blank over device index {0}"
-                    self.main_script().log_message(msg.format(t_d_idx))
-                lower_string1b += adjust_string(str(device_name), 20)
-                lower_string1b = lower_string1b.center(20)
-                lower_string1 += lower_string1a
-                lower_string1 += lower_string1b + ' '
+                    self.main_script().log_message(f"Current Track Device List length too short for index: name display blank over device index {t_d_idx}")
+
+                lower_string1b = adjust_string(str(device_name), 20).center(20)
+                lower_string1 += lower_string1a + lower_string1b + ' '
 
                 upper_string1 += '-Params Bank-'
                 for t in encoder_range:
@@ -1813,93 +1782,32 @@ class EncoderController(MackieC4Component):
                 re_enable_automation_encoder.unlight_vpot_leds()
 
         elif self.__assignment_mode == C4M_USER:
-
-            this_pass = self.__display_repeat_count + 1  # + 1 so we don't begin at zero
-            for s in self.__encoders:
-
-                reverse = (this_pass % self.__display_repeat_timer) % 2 > 0
-                s.animate_v_pot_led_ring(this_pass, reverse)
-
-                s_index = s.vpot_index()
-                try:
-                    text_for_display = self.__display_parameters[s_index]  # assumes there are always 32
-                except IndexError:
-                    text_for_display = EncoderDisplaySegment(self, s_index)
-                    text_for_display.set_text('---', ' Z ')
-
-                if s_index == row_00_encoders[0]:
-                    upper_string1 += text_for_display.get_upper_text()
-                    lower_string1 += text_for_display.get_lower_text()
-                elif s_index == row_01_encoders[0]:
-                    upper_string2 += text_for_display.get_upper_text()
-                    lower_string2 += text_for_display.get_lower_text()
-                elif s_index == row_02_encoders[0]:
-                    upper_string3 += text_for_display.get_upper_text()
-                    lower_string3 += text_for_display.get_lower_text()
-                elif s_index == row_03_encoders[0]:
-                    upper_string4 += text_for_display.get_upper_text()
-                    lower_string4 += text_for_display.get_lower_text()
+            pass
 
         # each of these is sent as a 63 byte SYSEX message to the C4 LCD displays
-        self.send_display_string1(LCD_ANGLED_ADDRESS, upper_string1, LCD_TOP_ROW_OFFSET)
-        self.send_display_string2(LCD_TOP_FLAT_ADDRESS, upper_string2, LCD_TOP_ROW_OFFSET)
-        self.send_display_string3(LCD_MDL_FLAT_ADDRESS, upper_string3, LCD_TOP_ROW_OFFSET)
-        self.send_display_string4(LCD_BTM_FLAT_ADDRESS, upper_string4, LCD_TOP_ROW_OFFSET)
-        self.send_display_string1(LCD_ANGLED_ADDRESS, lower_string1, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string2(LCD_TOP_FLAT_ADDRESS, lower_string2, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string3(LCD_MDL_FLAT_ADDRESS, lower_string3, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string4(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_ANGLED_ADDRESS, upper_string1, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, upper_string2, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, upper_string3, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, upper_string4, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_ANGLED_ADDRESS, lower_string1, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, lower_string2, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, lower_string3, LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
+
         return
 
-    def send_display_string1(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
+    def send_display_string(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
         """
-            sends a sysex message to C4 device
-            (display_address == Angled display, display_row_offset == top row or bottom row)
+            Sends a sysex message to C4
+            display_address: LCD_ANGLED_ADDRESS, LCD_TOP_FLAT_ADDRESS, LCD_MDL_FLAT_ADDRESS, LCD_BTM_FLAT_ADDRESS
+            display_row_offset: top row or bottom row
         """
         ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
-        is_update = self.__last_send_messages1[display_address][display_row_offset] != ascii_text_sysex_ints
-        is_stale = self.__display_repeat_count % self.__display_repeat_timer == 3
-        if is_update or is_stale:  # don't send the same sysex message back-to-back unless the repeat timer pops
-            self.__last_send_messages1[display_address][display_row_offset] = ascii_text_sysex_ints
-            sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)
-            self.send_midi(sysex_msg)
+        is_update = self.__last_send_messages[display_address][display_row_offset] != ascii_text_sysex_ints
+        is_stale = self.__display_repeat_count % self.__display_repeat_timer == (4 - display_address)
 
-    def send_display_string2(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
-        """
-            sends a sysex message to C4 device
-            (display_address == Top-flat display, display_row_offset == top row or bottom row)
-        """
-        ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
-        is_update = self.__last_send_messages2[display_address][display_row_offset] != ascii_text_sysex_ints
-        is_stale = self.__display_repeat_count % self.__display_repeat_timer == 2
         if is_update or is_stale:
-            self.__last_send_messages2[display_address][display_row_offset] = ascii_text_sysex_ints
-            sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)
-            self.send_midi(sysex_msg)
-
-    def send_display_string3(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
-        """
-            sends a sysex message to C4 device
-            (display_address == Middle-flat display, display_row_offset == top row or bottom row)
-        """
-        ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
-        is_update = self.__last_send_messages3[display_address][display_row_offset] != ascii_text_sysex_ints
-        is_stale = self.__display_repeat_count % self.__display_repeat_timer == 1
-        if is_update or is_stale:
-            self.__last_send_messages3[display_address][display_row_offset] = ascii_text_sysex_ints
-            sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)
-            self.send_midi(sysex_msg)
-
-    def send_display_string4(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
-        """
-            sends a sysex message to C4 device
-            (display_address == Bottom-flat display, display_row_offset == top row or bottom row)
-        """
-        ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
-        is_update = self.__last_send_messages4[display_address][display_row_offset] != ascii_text_sysex_ints
-        is_stale = self.__display_repeat_count % self.__display_repeat_timer == 0
-        if is_update or is_stale:
-            self.__last_send_messages4[display_address][display_row_offset] = ascii_text_sysex_ints
+            self.__last_send_messages[display_address][display_row_offset] = ascii_text_sysex_ints
             sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)
 
