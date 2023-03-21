@@ -137,20 +137,6 @@ class EncoderController(MackieC4Component):
     def get_encoders(self):
         return self.__encoders
 
-    def get_device_list(self, container):
-        """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively.
-        Don't add racks that are not showing devices. """
-        # device_list = track_util.get_racks_recursive(track)  # this refers to the method used by Ableton in track_selection (which didn't work, but I'll leave it in here for now)
-        device_list = []
-        for device in container:
-            device_list.append(device)
-            if device.can_have_chains:  # is a rack and it's open
-                # if device.view.is_showing_chain_devices:  # this makes device list foldable, which wouldn't work with current script.
-                # So for now, everything is a flattened list
-                for ch in device.chains:
-                    device_list += self.get_device_list(ch.devices)
-        return device_list
-
     def build_setup_database(self):
         self.main_script().log_message("C4/building setup db")
         self.__eah.build_setup_database(self.song())        # self.track_count
@@ -356,13 +342,10 @@ class EncoderController(MackieC4Component):
             if cc_value > 64 and cc_no == 8 + encoder_index:
                 if liveobj_valid(parameter) and parameter.is_enabled and i >= bank_start_index and i < bank_start_index + 8:
                     parameter.value = False
-                else:
-                    self.main_script().log_message(f"Parameter {parameter.name} on Device {device.name} is not enabled or is outside of the current device bank.")
+
             elif cc_value < 64 and cc_no == 8 + encoder_index:
                 if liveobj_valid(parameter) and parameter.is_enabled and i >= bank_start_index and i < bank_start_index + 8:
                     parameter.value = True
-                else:
-                    self.main_script().log_message(f"Parameter {parameter.name} on Device {device.name} is already enabled or is outside of the current device bank.")
 
     def assignment_mode(self):
         return self.__assignment_mode

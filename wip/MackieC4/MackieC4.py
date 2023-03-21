@@ -197,20 +197,20 @@ class MackieC4(object):
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
             if note in set(range(C4SID_FIRST, C4SID_LAST + 1)) and ignore_note_offs:
 
-                if note in track_nav_switch_ids:
-                    self.track_inc_dec(note)
-                elif note in bank_switch_ids or note in single_switch_ids:
-                    self.__encoder_controller.handle_bank_switch_ids(note)
-                elif note in slot_nav_switch_ids:
-                    self.__encoder_controller.handle_slot_nav_switch_ids(note)
-                elif note == C4SID_LOCK:
-                    self.lock_surface()
-                elif note in assignment_mode_switch_ids:
-                    self.__encoder_controller.handle_assignment_switch_ids(note)
-                elif note in encoder_switch_ids:  # this is just the 'encoder switches'
-                    self.__encoder_controller.handle_pressed_v_pot(note)
-            elif note in modifier_switch_ids:
-                self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
+                note_handling_dict = {
+                    **{note: self.track_inc_dec for note in track_nav_switch_ids},
+                    **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
+                    **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
+                    **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
+                    C4SID_LOCK: lambda _: self.lock_surface(),
+                    **{note: self.__encoder_controller.handle_assignment_switch_ids for note in
+                       assignment_mode_switch_ids},
+                    **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
+                }
+                if note in note_handling_dict:
+                    note_handling_dict[note](note)
+                elif note in modifier_switch_ids:
+                    self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
 
         elif is_cc_msg:
             """here one can use vpot_rotation to forward CC data to a function"""
@@ -429,17 +429,28 @@ class MackieC4(object):
         self.trBlock(0, len(self.song().visible_tracks))
 
     def add_scene_listeners(self):
-        self.rem_scene_listeners()
-        if self.song().view.selected_scene_has_listener(self.scene_change) != 1:
+        # Instead of checking if the listener exists before adding or removing it, I've added try-except blocks to handle the cases when the listener is not present. This reduces the number of function calls
+        try:
             self.song().view.add_selected_scene_listener(self.scene_change)
-        if self.song().view.selected_track_has_listener(self.track_change) != 1:
+        except RuntimeError:
+            pass
+
+        try:
             self.song().view.add_selected_track_listener(self.track_change)
+        except RuntimeError:
+            pass
 
     def rem_scene_listeners(self):
-        if self.song().view.selected_scene_has_listener(self.scene_change) == 1:
+        # Instead of checking if the listener exists before adding or removing it, I've added try-except blocks to handle the cases when the listener is not present. This reduces the number of function calls
+        try:
             self.song().view.remove_selected_scene_listener(self.scene_change)
-        if self.song().view.selected_track_has_listener(self.track_change) == 1:
+        except RuntimeError:
+            pass
+
+        try:
             self.song().view.remove_selected_track_listener(self.track_change)
+        except RuntimeError:
+            pass
 
     def track_change(self):
         # need to do 2 things
@@ -506,36 +517,47 @@ class MackieC4(object):
             self.scene = selected_index
 
     def add_transport_listener(self):
-        if self.song().is_playing_has_listener(self.transport_change) != 1:
+        # Instead of checking if the listener exists before adding or removing it, I've added try-except blocks to handle the cases when the listener is not present. This reduces the number of function calls
+        try:
             self.song().add_is_playing_listener(self.transport_change)
+        except RuntimeError:
+            pass
 
     def rem_transport_listener(self):
-        if self.song().is_playing_has_listener(self.transport_change) == 1:
+        try:
             self.song().remove_is_playing_listener(self.transport_change)
+        except RuntimeError:
+            pass
 
     def transport_change(self):
         pass
 
     def add_overdub_listener(self):
-        self.rem_overdub_listener()
-        if self.song().overdub_has_listener(self.overdub_change) != 1:
+        try:
             self.song().add_overdub_listener(self.overdub_change)
+        except RuntimeError:
+            pass
 
     def rem_overdub_listener(self):
-        if self.song().overdub_has_listener(self.overdub_change) == 1:
+        try:
             self.song().remove_overdub_listener(self.overdub_change)
+        except RuntimeError:
+            pass
 
     def overdub_change(self):
         return Live.Song.Song.overdub
 
     def add_tracks_listener(self):
-        self.rem_tracks_listener()
-        if self.song().tracks_has_listener(self.tracks_change) != 1:
+        try:
             self.song().add_tracks_listener(self.tracks_change)
+        except RuntimeError:
+            pass
 
     def rem_tracks_listener(self):
-        if self.song().tracks_has_listener(self.tracks_change) == 1:
+        try:
             self.song().remove_tracks_listener(self.tracks_change)
+        except RuntimeError:
+            pass
 
     def tracks_change(self):
         self.request_rebuild_midi_map()
@@ -833,7 +855,6 @@ class MackieC4(object):
         cb = lambda: self.devpm_change()
         if (device in self.plisten) != 1:
             device.add_parameters_listener(cb)
-            # device.add_is_active_listener(cb)  # MS doesn't work
             self.plisten[device] = cb
 
     def devpm_change(self):

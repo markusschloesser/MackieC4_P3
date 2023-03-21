@@ -167,14 +167,19 @@ class Encoders(MackieC4Component):
             pass
 
     def __select_track(self):
+        song = self.song()
+        app_view = self.application().view
+
         if self._Encoders__assigned_track:
-            all_tracks = tuple(self.song().visible_tracks) + tuple(
-                self.song().return_tracks)  # MS tuple is from Mackie script
-            if self.song().view.selected_track != all_tracks[self.__assigned_track_index()]:  # MS new but seems to work
-                self.song().view.selected_track = all_tracks[self.__assigned_track_index()]
-            elif self.application().view.is_view_visible('Arranger'):
-                if self._Encoders__assigned_track:
-                    self._Encoders__assigned_track.view.is_collapsed = not self._Encoders__assigned_track.view.is_collapsed
+            all_tracks = tuple(song.visible_tracks) + tuple(song.return_tracks)  # MS tuple is from Mackie script
+            selected_track = song.view.selected_track
+            assigned_track_index = self.__assigned_track_index()
+
+            if selected_track != all_tracks[assigned_track_index]:  # MS new but seems to work
+                song.view.selected_track = all_tracks[assigned_track_index]
+            elif app_view.is_view_visible('Arranger'):
+                assigned_track = self._Encoders__assigned_track
+                assigned_track.view.is_collapsed = not assigned_track.view.is_collapsed
 
     def refresh_state(self):
         return ' '
