@@ -1,16 +1,15 @@
 # was Python bytecode 2.5 (62131)
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/Encoders.py
 # Compiled at: 2011-01-13 21:07:51
-# Decompiled by https://python-decompiler.com
+
 from __future__ import absolute_import, print_function, unicode_literals  # MS
-from . MackieC4Component import *
+from .MackieC4Component import *
 
 import sys
+
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
 
-from _Framework.ControlSurface import ControlSurface  # MS
-from _Framework.Control import Control  # MS
 from itertools import chain
 from ableton.v2.base import liveobj_valid
 
@@ -20,7 +19,7 @@ class Encoders(MackieC4Component):
     __module__ = __name__
 
     def __init__(self, main_script, vpot_index):
-        MackieC4Component.__init__(self, main_script)
+        super().__init__(main_script)
         self.within_destroy = False
         self.__encoder_controller = None
         self.__vpot_index = vpot_index
@@ -63,7 +62,8 @@ class Encoders(MackieC4Component):
         self.update_led_ring(update_value)
 
     def set_v_pot_parameter(self, parameter, display_mode=VPOT_DISPLAY_BOOLEAN):
-        self.__update_led_ring_display_mode(display_mode)
+        if display_mode is not None:
+            self.__update_led_ring_display_mode(display_mode)
         self.__v_pot_parameter = parameter
         if not parameter:
             self.unlight_vpot_leds()
@@ -72,10 +72,8 @@ class Encoders(MackieC4Component):
 
         self.__v_pot_display_mode = display_mode
 
-        # when mode is boost-cut VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B), the C4 allows
-        # both 0x11 and 0x1B as valid "Boost Cut" values
-        # the list: self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE]
-        # should contain element 0x1B == eleven elements
+        # when mode is boost-cut VPOT_DISPLAY_BOOST_CUT: (0x11, 0x1B), the C4 allows both 0x11 and 0x1B as valid "Boost Cut" values
+        # the list: self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE] should contain element 0x1B == eleven elements
         # 0x11, 0x12, 0x13...0x1B
         display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
         # for "Boost Cut": self.__v_pot_display_mode][1] - display_mode_cc_base == 0x1B - 0x11 == 0x0A == ten elements
@@ -113,7 +111,8 @@ class Encoders(MackieC4Component):
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
         self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data3))
 
-    def build_midi_map(self, midi_map_handle):  # why do we have an additional build_midi_map here in Encoders?? Already in MackieC4
+    def build_midi_map(self,
+                       midi_map_handle):  # why do we have an additional build_midi_map here in Encoders?? Already in MackieC4
         """Live -> Script
         Build DeviceParameter Mappings, that are processed in Audio time, or forward MIDI messages explicitly to our receive_midi_functions.
         Which means that when you are not forwarding MIDI, nor mapping parameters, you will never get any MIDI messages at all.
@@ -131,7 +130,9 @@ class Encoders(MackieC4Component):
             feedback_val_range_len = feedback_val_range_len - display_mode_cc_base + 1
             feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(feedback_val_range_len)])
             feedback_rule.delay_in_ms = -1.0
-            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder, Live.MidiMap.MapMode.relative_signed_bit, feedback_rule, needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
+            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder,
+                                                       Live.MidiMap.MapMode.relative_signed_bit, feedback_rule,
+                                                       needs_takeover, sensitivity=1.0)  # MS "sensitivity" added
             # self.main_script().log_message("potIndex<{}> feedback<{}> MAPPED, coming from build_midi_map in __encoders".format(encoder, param))
 
             Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
@@ -166,13 +167,19 @@ class Encoders(MackieC4Component):
             pass
 
     def __select_track(self):
+        song = self.song()
+        app_view = self.application().view
+
         if self._Encoders__assigned_track:
-            all_tracks = tuple(self.song().visible_tracks) + tuple(self.song().return_tracks)  # MS tuple is new and from Mackie script
-            if self.song().view.selected_track != all_tracks[self.__assigned_track_index()]:  # MS new but seems to work
-                self.song().view.selected_track = all_tracks[self.__assigned_track_index()]
-            elif self.application().view.is_view_visible('Arranger'):
-                if self._Encoders__assigned_track:
-                    self._Encoders__assigned_track.view.is_collapsed = not self._Encoders__assigned_track.view.is_collapsed
+            all_tracks = tuple(song.visible_tracks) + tuple(song.return_tracks)  # MS tuple is from Mackie script
+            selected_track = song.view.selected_track
+            assigned_track_index = self.__assigned_track_index()
+
+            if selected_track != all_tracks[assigned_track_index]:  # MS new but seems to work
+                song.view.selected_track = all_tracks[assigned_track_index]
+            elif app_view.is_view_visible('Arranger'):
+                assigned_track = self._Encoders__assigned_track
+                assigned_track.view.is_collapsed = not assigned_track.view.is_collapsed
 
     def refresh_state(self):
         return ' '

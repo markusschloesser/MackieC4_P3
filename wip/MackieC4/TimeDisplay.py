@@ -1,13 +1,8 @@
-# decompyle3 version 3.9.0
 # Python bytecode version base 3.7.0 (3394)
 # Decompiled from: Python 3.7.9 (tags/v3.7.9:13c94747c7, Aug 17 2020, 18:01:55) [MSC v.1900 32 bit (Intel)]
-# Embedded file name: ..\..\..\output\Live\win_64_static\Release\python-bundle\MIDI Remote Scripts\MackieControl\TimeDisplay.py
-# Compiled at: 2022-04-21 16:02:21
-# Size of source mod 2**32: 4062 bytes
+
 from __future__ import absolute_import, print_function, unicode_literals
 from .MackieC4Component import *
-if sys.version_info[0] >= 3:  # Live 11
-    from builtins import range, str
 
 
 class TimeDisplay(MackieC4Component):

@@ -1,7 +1,6 @@
-# was originally Python bytecode 2.5 (62131)
-# Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/MackieC4Component.py
+# was originally Python bytecode 2.5
 # Compiled at: 2011-01-12 12:23:43
-# Decompiled by https://python-decompiler.com
+
 from __future__ import absolute_import, print_function, unicode_literals
 import sys
 if sys.version_info[0] >= 3:  # Live 11
@@ -43,10 +42,10 @@ class MackieC4Component(object):
     def set_option_is_pressed(self, pressed):
         self.__main_script.option_is_pressed = pressed
 
-    def control_is_pressed(self):
-        return self.__main_script.control_is_pressed()
+    def ctrl_is_pressed(self):
+        return self.__main_script.ctrl_is_pressed()
 
-    def set_control_is_pressed(self, pressed):
+    def set_ctrl_is_pressed(self, pressed):
         self.__main_script.set_pressed = pressed
 
     def alt_is_pressed(self):
@@ -72,6 +71,20 @@ class MackieC4Component(object):
 
     def refresh_state(self):
         self.__main_script.refresh_state()
+
+    def get_device_list(self, container):
+        """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively.
+        Don't add racks that are not showing devices. """
+        # device_list = track_util.get_racks_recursive(track)  # this refers to the method used by Ableton in track_selection (which didn't work, but I'll leave it in here for now)
+        device_list = []
+        for device in container:
+            device_list.append(device)
+            if device.can_have_chains:  # is a rack and it's open
+                # if device.view.is_showing_chain_devices:  # this makes device list foldable, which wouldn't work with current script.
+                # So for now, everything is a flattened list
+                for ch in device.chains:
+                    device_list += [d for ch in device.chains for d in self.get_device_list(ch.devices)]
+        return device_list
 
 
 def make_interpolater(Live_value_min, Live_value_max, C4_min, C4_max):

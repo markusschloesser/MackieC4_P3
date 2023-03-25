@@ -1,29 +1,22 @@
 # was Python bytecode 2.5 (62131)
-# Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/MackieC4.py
 # Compiled at: 2011-01-22 04:38:37
-# Decompiled by https://python-decompiler.com
+
 """
 # Copyright (C) 2007 Nathan Ramella (nar@remix.net)
 # MS: not sure this applies anymore ;-)
 #
-# This library is free software; you can redistribute it and/or
-# modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either
-# version 2.1 of the License, or (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 #
-# This library is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Lesser General Public License for more details.
+# This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
 #
-# You should have received a copy of the GNU Lesser General Public
-# License along with this library; if not, write to the Free Software
+# You should have received a copy of the GNU Lesser General Public License along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 This script is based off the Ableton Live supplied MIDI Remote Scripts.
 
-This is the second file that is loaded, by way of being instantiated through
-__init__.py
+This is the second file that is loaded, by way of being instantiated through __init__.py
 """
 
 from __future__ import absolute_import, print_function, unicode_literals
@@ -68,9 +61,6 @@ class MackieC4(object):
     dlisten = {}
     '''dlisten is "Device Listener'''
 
-    # clisten = {}
-    # '''clisten is "Clip" Listener'''
-
     slisten = {}
     '''slisten is "Slot Listener'''
 
@@ -79,11 +69,10 @@ class MackieC4(object):
     pplisten = {}
     '''pplisten is "Playing Position" Listener'''
 
-    mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'oml': {}, 'omr': {}, 'color': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
+    mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
     '''mlisten is Mixer Listener'''
-    '''oml is "output_meter_left, omr is output_meter_right'''
 
-    rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'color': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
+    rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
     '''rlisten is "Returns" Listener '''
 
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
@@ -99,13 +88,9 @@ class MackieC4(object):
         self.__c_instance = c_instance
 
         # initialize the 32 encoders, their EncoderController and add them as __components here
-        self.__components = []
         self.__encoders = [Encoders(self, i) for i in encoder_range]
-        for s in self.__encoders:
-            self.__components.append(s)
-
         self.__encoder_controller = EncoderController(self, self.__encoders)
-        self.__components.append(self.__encoder_controller)
+        self.__components = [*self.__encoders, self.__encoder_controller]
 
         # turn off FUNCTION and ASSIGNMENT button LEDs except the default
         for cc in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
@@ -117,7 +102,6 @@ class MackieC4(object):
         tracks = self.song().visible_tracks + self.song().return_tracks
         index = 0
 
-        # if the selected Live track is in view (on computer screen?)
         # assign track to the local index of the matching selected track in Live
         for track in tracks:
             if track == self.song().view.selected_track:
@@ -127,8 +111,8 @@ class MackieC4(object):
         self.track_count = len(tracks)
 
         # if refresh_state is not already listening for visible tracks view changes
-        if self.song().visible_tracks_has_listener(self.refresh_state) != 1:
-            self.song().add_visible_tracks_listener(self.refresh_state)
+        if self.song().visible_tracks_has_listener(self.tracks_change) != 1:
+            self.song().add_visible_tracks_listener(self.tracks_change)
 
         # To display song position pointer or beats on display
         self.__time_display = TimeDisplay(self)
@@ -142,7 +126,7 @@ class MackieC4(object):
     def connect_script_instances(self, instanciated_scripts):
         """
         Called by the Application as soon as all scripts are initialized. You can connect yourself to other running
-        scripts here, as we do it connect the extension modules
+        scripts here.
         """
         pass
 
@@ -177,7 +161,7 @@ class MackieC4(object):
     def build_midi_map(self, midi_map_handle):
         """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
         explicitly to our receive_midi_functions. Which means that when you are not forwarding MIDI, nor mapping parameters, you will
-        never get any MIDI messages at all.        """
+        never get any MIDI messages at all. """
 
         # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
         for s in self.__encoders:
@@ -195,7 +179,7 @@ class MackieC4(object):
             self.return_resetter = 0
 
     def receive_midi(self, midi_bytes):
-        """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'.      """
+        """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
         # coming from C4 midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
         # C4 always sends and receives on channel 1
@@ -211,33 +195,32 @@ class MackieC4(object):
             # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
-            if note in range(C4SID_FIRST, C4SID_LAST + 1) and ignore_note_offs:
-                if note in track_nav_switch_ids:
-                    self.track_inc_dec(note)
-                elif note in bank_switch_ids or note in single_switch_ids:
-                    self.__encoder_controller.handle_bank_switch_ids(note)
-                elif note in slot_nav_switch_ids:
-                    self.__encoder_controller.handle_slot_nav_switch_ids(note)
-                elif note == C4SID_LOCK:
-                    self.lock_surface()
-                elif note in assignment_mode_switch_ids:
-                    self.__encoder_controller.handle_assignment_switch_ids(note)
-                elif note in encoder_switch_ids:  # this is just the 'encoder switches'
-                    self.__encoder_controller.handle_pressed_v_pot(note)
-            elif note in modifier_switch_ids:
-                self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
+            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)) and ignore_note_offs:
+
+                note_handling_dict = {
+                    **{note: self.track_inc_dec for note in track_nav_switch_ids},
+                    **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
+                    **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
+                    **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
+                    C4SID_LOCK: lambda _: self.lock_surface(),
+                    **{note: self.__encoder_controller.handle_assignment_switch_ids for note in
+                       assignment_mode_switch_ids},
+                    **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
+                }
+                if note in note_handling_dict:
+                    note_handling_dict[note](note)
+                elif note in modifier_switch_ids:
+                    self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
 
         elif is_cc_msg:
             """here one can use vpot_rotation to forward CC data to a function"""
             cc_no = midi_bytes[1]
             cc_value = midi_bytes[2]
+            # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
+            # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
+            vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
 
             if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
-
-                # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
-                # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
-                vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
-
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_12:
                     self.handle_jog_wheel_rotation(cc_value)
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_14:  # skip encoder 13 (display space occupied)
@@ -248,12 +231,22 @@ class MackieC4(object):
                     self.zoom_or_scroll(cc_value)
                 if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_19:
                     self.scrub_clip(cc_value)
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_20:
+                    self.scroll_clip(cc_value)
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_21:
+                    self.zoom_clip(cc_value)
+                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_22:
+                    self.tempo_change(cc_value)
+
+            elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
+                if 8 <= cc_no <= 15:
+                    self.__encoder_controller.toggle_devices(cc_no, cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
         if cc_value >= 64:
             self.song().jump_by(-(cc_value - 64))
-        if cc_value <= 64:
+        if cc_value < 64:
             self.song().jump_by(cc_value)
 
     def set_loop_length(self, cc_value):
@@ -278,15 +271,62 @@ class MackieC4(object):
         if cc_value <= 64:
             self.application().view.zoom_view(nav.right, '', self.alt_is_pressed())
 
-    def scrub_clip(self, cc_value):  # currently doesn't work properly, but doesn't cause errors either, so I leave it in for now
+    def scrub_clip(self, cc_value):
         clip = self.song().view.detail_clip
         if clip:
             if cc_value >= 64:
-                clip.scrub(4*(-(cc_value - 64)))
+                clip.scrub(8*(-(cc_value - 64)))
             if cc_value <= 64:
-                clip.scrub(4*(cc_value))
+                clip.scrub(8*(cc_value))
 
-    def can_lock_to_devices(self):
+    def scroll_clip(self, cc_value):  # todo WIP
+        nav = Live.Application.Application.View.NavDirection
+
+        clip = self.song().view.detail_clip
+
+        scroll = cc_value == 1 and 3 or 2
+        if cc_value >= 64:
+            if not self.application().view.is_view_visible('Detail/Clip'):
+                self.application().view.focus_view('Detail/Clip')
+                clip.move_playing_pos(- cc_value)
+                # self.application().view.scroll_view(nav.left, 'Detail/Clip', False)
+        if cc_value <= 64:
+            if not self.application().view.is_view_visible('Detail/Clip'):
+                self.application().view.focus_view('Detail/Clip')
+                self.application().view.scroll_view(nav.right,'Detail/Clip', False)
+
+    def zoom_clip(self, cc_value):
+        nav = Live.Application.Application.View.NavDirection
+        app_view = self.application().view
+        view_name = 'Detail/Clip'
+        logging.info(f'zoom_clip called with cc_value: {cc_value}')
+
+        # scroll = cc_value == 65 and 3 or 1
+        if cc_value > 64:
+            if not app_view.is_view_visible(view_name):
+                logging.info(f'Focusing view: {view_name}')
+                app_view.focus_view(view_name)
+                app_view.zoom_view(nav.left, view_name, False)
+                logging.info(f'Zooming view to the left')
+        if cc_value < 64:
+            if not app_view.is_view_visible(view_name):
+                logging.info(f'Focusing view: {view_name}')
+                app_view.focus_view(view_name)
+                app_view.zoom_view(nav.right, view_name, False)
+                logging.info(f'Zooming view to the right')
+
+    def tempo_change(self, cc_value):
+        """Sets the current song tempo"""
+        if cc_value >= 64:
+            amount = -((cc_value - 64) / 4)
+        else:
+            amount = (cc_value / 4)
+        tempo = max(20, min(999, self.song().tempo + amount))
+        self.song().tempo = tempo
+
+
+
+    def can_lock_to_devices(self):  # todo: make use of it, locking itself works
         """Live -> Script
             Should return True, if the ControlSurface can lock a device.
             "SimpleControlSurface" does not support controlling devices, so it will always be False."""
@@ -354,12 +394,12 @@ class MackieC4(object):
         to be removed. Cyclic dependencies should be broken, so the control surface can be garbage collected."""
         self.rem_mixer_listeners()
         self.rem_scene_listeners()
-        self.rem_tempo_listener()
         self.rem_overdub_listener()
         self.rem_tracks_listener()
         self.rem_device_listeners()
         self.rem_transport_listener()
-        self.song().remove_visible_tracks_listener(self.refresh_state)
+        if self.song().visible_tracks_has_listener(self.tracks_change):
+            self.song().remove_visible_tracks_listener(self.tracks_change)
         for c in self.__components:
             c.destroy()
 
@@ -368,7 +408,6 @@ class MackieC4(object):
 
         result = Live.MidiMap.MapMode.absolute
 
-        # if cc_no in range(FID_PANNING_BASE, FID_PANNING_BASE + NUM_ENCODERS):
         if cc_no in encoder_range:
             result = Live.MidiMap.MapMode.relative_signed_bit
         return result
@@ -379,7 +418,6 @@ class MackieC4(object):
         after for example having reconnecting the MIDI cables or when exiting MIDI map mode
         """
         self.add_mixer_listeners()
-        self.add_tempo_listener()
         self.add_overdub_listener()
         self.add_tracks_listener()
         self.add_device_listeners()
@@ -391,17 +429,28 @@ class MackieC4(object):
         self.trBlock(0, len(self.song().visible_tracks))
 
     def add_scene_listeners(self):
-        self.rem_scene_listeners()
-        if self.song().view.selected_scene_has_listener(self.scene_change) != 1:
+        # Instead of checking if the listener exists before adding or removing it, I've added try-except blocks to handle the cases when the listener is not present. This reduces the number of function calls
+        try:
             self.song().view.add_selected_scene_listener(self.scene_change)
-        if self.song().view.selected_track_has_listener(self.track_change) != 1:
+        except RuntimeError:
+            pass
+
+        try:
             self.song().view.add_selected_track_listener(self.track_change)
+        except RuntimeError:
+            pass
 
     def rem_scene_listeners(self):
-        if self.song().view.selected_scene_has_listener(self.scene_change) == 1:
+        # Instead of checking if the listener exists before adding or removing it, I've added try-except blocks to handle the cases when the listener is not present. This reduces the number of function calls
+        try:
             self.song().view.remove_selected_scene_listener(self.scene_change)
-        if self.song().view.selected_track_has_listener(self.track_change) == 1:
+        except RuntimeError:
+            pass
+
+        try:
             self.song().view.remove_selected_track_listener(self.track_change)
+        except RuntimeError:
+            pass
 
     def track_change(self):
         # need to do 2 things
@@ -411,7 +460,6 @@ class MackieC4(object):
         # figure out if a track was added, deleted, or just changed
         # then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
-        #  self.log_message("selected track {0}".format(selected_track.name))
         tracks = self.song().visible_tracks + self.song().return_tracks  # not counting Master Track?
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
@@ -421,17 +469,16 @@ class MackieC4(object):
             # self.log_message("C4/track_change  nbr visible tracks (includes rtn tracks) {0} and saved value <{1}> in expected range".format(len(tracks), self.track_count))
 
         index = 0
-        found = 0
         selected_index = 0
-        for track in tracks:
+        found = selected_track in tracks
 
+        for track in tracks:
             if track == selected_track:
                 selected_index = index
-                found = 1
+                found = True
+            index += 1
 
-            index = index + 1
-
-        if found == 0:
+        if not found:
             if selected_track == self.song().master_track:
                 # index is now "one past" the last index in
                 # tracks = self.song().visible_tracks + self.song().return_tracks
@@ -439,8 +486,6 @@ class MackieC4(object):
             else:
                 # signal that something bad happened - selected track
                 selected_index = 555
-
-        # self.log_message("C4/track_change found selected index {0}".format(selected_index))
 
         if selected_index != self.track_index:
             # self.log_message("C4/track_change setting self.track_index {0} to selected index {1}".format(self.track_index, selected_index))
@@ -452,7 +497,7 @@ class MackieC4(object):
         elif self.track_count < len(tracks):
             self.__encoder_controller.track_added(selected_index)
             self.track_count += 1
-            self.return_resetter = 1
+            self.tracks_change()
         else:
             self.__encoder_controller.track_changed(selected_index)
 
@@ -471,50 +516,48 @@ class MackieC4(object):
         if selected_index != self.scene:
             self.scene = selected_index
 
-    def add_tempo_listener(self):
-        self.rem_tempo_listener()
-        # print ('add tempo listener')
-        if self.song().tempo_has_listener(self.tempo_change) != 1:
-            self.song().add_tempo_listener(self.tempo_change)
-
-    def rem_tempo_listener(self):
-        if self.song().tempo_has_listener(self.tempo_change) == 1:
-            self.song().remove_tempo_listener(self.tempo_change)
-
-    def tempo_change(self):
-        return Live.Application.get_application().get_document().tempo
-
     def add_transport_listener(self):
-        if self.song().is_playing_has_listener(self.transport_change) != 1:
+        # Instead of checking if the listener exists before adding or removing it, I've added try-except blocks to handle the cases when the listener is not present. This reduces the number of function calls
+        try:
             self.song().add_is_playing_listener(self.transport_change)
+        except RuntimeError:
+            pass
 
     def rem_transport_listener(self):
-        if self.song().is_playing_has_listener(self.transport_change) == 1:
+        try:
             self.song().remove_is_playing_listener(self.transport_change)
+        except RuntimeError:
+            pass
 
     def transport_change(self):
         pass
 
     def add_overdub_listener(self):
-        self.rem_overdub_listener()
-        if self.song().overdub_has_listener(self.overdub_change) != 1:
+        try:
             self.song().add_overdub_listener(self.overdub_change)
+        except RuntimeError:
+            pass
 
     def rem_overdub_listener(self):
-        if self.song().overdub_has_listener(self.overdub_change) == 1:
+        try:
             self.song().remove_overdub_listener(self.overdub_change)
+        except RuntimeError:
+            pass
 
     def overdub_change(self):
         return Live.Song.Song.overdub
 
     def add_tracks_listener(self):
-        self.rem_tracks_listener()
-        if self.song().tracks_has_listener(self.tracks_change) != 1:
+        try:
             self.song().add_tracks_listener(self.tracks_change)
+        except RuntimeError:
+            pass
 
     def rem_tracks_listener(self):
-        if self.song().tracks_has_listener(self.tracks_change) == 1:
+        try:
             self.song().remove_tracks_listener(self.tracks_change)
+        except RuntimeError:
+            pass
 
     def tracks_change(self):
         self.request_rebuild_midi_map()
@@ -533,7 +576,7 @@ class MackieC4(object):
         for type in ('arm', 'solo', 'mute', 'current_monitoring_state', 'available_input_routing_channels',
                      'available_input_routing_types', 'available_output_routing_channels',
                      'available_output_routing_types', 'input_routing_channel', 'input_routing_type',
-                     'output_routing_channel', 'output_routing_type'):
+                     'output_routing_channel', 'output_routing_type', ):
             for tr in self.mlisten[type]:
                 if liveobj_valid(tr):  # and not tr.None:
                     # ("C4/rem_mixer_listeners track <{0}> ltype <{1}>".format(tr.name, type))
@@ -574,29 +617,6 @@ class MackieC4(object):
                 if tr.name_has_listener(cb) == 1:
                     tr.remove_name_listener(cb)
 
-        for tr in self.mlisten['color']:
-            if liveobj_valid(tr):
-                cb = self.mlisten['color'][tr]
-
-                try:
-                    if tr.color_has_listener(cb) == 1:
-                        tr.remove_color_listener(cb)
-                except:
-                    pass
-
-        for tr in self.mlisten['oml']:
-            if liveobj_valid(tr):
-                cb = self.mlisten['oml'][tr]
-
-                if tr.output_meter_left_has_listener(cb) == 1:
-                    tr.remove_output_meter_left_listener(cb)
-
-        for tr in self.mlisten['omr']:
-            if liveobj_valid(tr):
-                cb = self.mlisten['omr'][tr]
-                if tr.output_meter_right_has_listener(cb) == 1:
-                    tr.remove_output_meter_right_listener(cb)
-
         # Return Tracks
         for type in ('solo', 'mute', 'available_output_routing_channels', 'available_output_routing_types', 'output_routing_channel', 'output_routing_type'):
             for tr in self.rlisten[type]:
@@ -628,21 +648,12 @@ class MackieC4(object):
                 if tr.name_has_listener(cb) == 1:
                     tr.remove_name_listener(cb)
 
-        for tr in self.rlisten['color']:
-            if liveobj_valid(tr):
-                cb = self.rlisten["color"][tr]
-                try:
-                    if tr.color_has_listener(cb) == 1:
-                        tr.remove_color_listener(cb)
-                except:
-                    pass
         self.mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {},
-                        'sends': {}, 'name': {}, 'oml': {}, 'omr': {}, 'color': {},
-                        'available_input_routing_channels': {}, 'available_input_routing_types': {},
+                        'sends': {}, 'name': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {},
                         'available_output_routing_channels': {}, 'available_output_routing_types': {},
                         'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {},
-                        'output_routing_type': {}}
-        self.rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'color': {},
+                        'output_routing_type': {}, }
+        self.rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {},
                         'available_output_routing_channels': {}, 'available_output_routing_types': {},
                         'output_routing_channel': {}, 'output_routing_type': {}}
         self.masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
@@ -668,6 +679,12 @@ class MackieC4(object):
             for type in ('volume', 'panning'):
                 self.add_mixerv_listener(track, type, tr)
 
+            for type in ('is_frozen'):
+                if tr.can_be_frozen == 1:
+                    if tr.is_frozen_has_listener(self.on_is_frozen_changed):
+                        tr.remove_is_frozen_listener(self.on_is_frozen_changed)
+                    tr.add_is_frozen_listener(self.on_is_frozen_changed)
+
             for sid in range(len(tr.mixer_device.sends)):
                 self.add_send_listener(track, tr, sid, tr.mixer_device.sends[sid])
 
@@ -683,6 +700,9 @@ class MackieC4(object):
 
             for sid in range(len(tr.mixer_device.sends)):
                 self.add_retsend_listener(track, tr, sid, tr.mixer_device.sends[sid])
+
+    def on_is_frozen_changed(self):
+        self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
 
     def add_send_listener(self, tid, track, sid, send):
         if (track in self.mlisten['sends']) != 1:
@@ -764,17 +784,6 @@ class MackieC4(object):
         else:
             self.trBlock(0, len(self.song().visible_tracks))
 
-    # def check_md(self, param):  # IMHO doesn't do anything: UPDATE: was a leftover from meter_changestate (metering), can go
-    #     devices = self.song().master_track.devices
-    #     if len(devices) > 0:
-    #         # is this method only called with valid master track device param index values
-    #         if liveobj_valid(devices[0].parameters[param].value):
-    #             return 1  # if the first or only master track device parameter value is > 0
-    #         else:
-    #             return 0
-    #     else:
-    #         return 0
-
     def add_device_listeners(self):
         self.rem_device_listeners()
         # self.log_message("C4 add_device_listenerS/rem_device_listeners: type <{0}>".format(type))
@@ -829,11 +838,12 @@ class MackieC4(object):
         if (track in self.dlisten) != 1:
             track.add_devices_listener(cb)  # this is a direct call/check with/ to a function from Live
             track.view.add_selected_device_listener(cb)   # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
+
             # self.log_message("C4/track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
             self.dlisten[track] = cb
 
     def device_changestate(self, track, tid, type):  # equivalent to __on_selected_device_chain_changed in MCU
-        self.log_message("C4/device_changestate: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+        # self.log_message("C4/device_changestate: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
         # did = self.tuple_idx(track.devices, track.view.selected_device)
         self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
         # if type == 2:
@@ -862,47 +872,32 @@ class MackieC4(object):
         elif type == 1:
             pass
 
-    # def tuple_idx(self, tuple, obj):
-    #     for i in range(0, len(tuple)):
-    #         if tuple[i] == obj:
-    #             return i
-
     def track_inc_dec(self, note):
-        # self.log_message("handling note <{}> for track inc dec".format(note))
         selected_track = self.song().view.selected_track
         tracks = self.song().visible_tracks + self.song().return_tracks
-        index = 0
-        selected_index = 0
+
         if selected_track == self.song().master_track:
-            if note == C4SID_TRACK_LEFT:  # 19: left of master track is return tracks then regular tracks
+            if note == C4SID_TRACK_LEFT:
                 selected_index = len(tracks) - 1
                 self.song().view.selected_track = tracks[selected_index]
-                self.track_index = selected_index
             # can't move right of master track
         else:
-            for track in tracks:
-                index = index + 1
+            selected_index = tracks.index(selected_track)
+            for index, track in enumerate(tracks):
                 if track == selected_track:
-                    #  self.log_message("current selected_track <{}>".format(track.name))
-                    if note == C4SID_TRACK_LEFT:
-                        if index > 1:  # can't move selection left of track 0
-                            selected_index = index - 2
-                            self.song().view.selected_track = tracks[selected_index]
-                            #  self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
-                    elif note == C4SID_TRACK_RIGHT:
-                        if index < len(tracks):  # right of last return track goes to master track
-                            selected_index = index
-                            self.song().view.selected_track = tracks[index]
-                            #  self.log_message("new selected_track <{}>".format(tracks[selected_index].name))
-                        else:
-                            selected_index = self.__encoder_controller.master_track_index()
-                            self.song().view.selected_track = self.song().master_track
-                            #  self.log_message("new selected_track <{}>".format(self.song().master_track.name))
+                    if note == C4SID_TRACK_LEFT and index > 0:
+                        selected_index = index - 1
+                    elif note == C4SID_TRACK_RIGHT and index < len(tracks) - 1:
+                        selected_index = index + 1
+                    elif note == C4SID_TRACK_RIGHT and index == len(tracks) - 1:
+                        self.song().view.selected_track = self.song().master_track
+                        return  # Return early since the master track has been selected
 
-            self.track_index = selected_index
+            if 0 <= selected_index < len(tracks):
+                self.song().view.selected_track = tracks[selected_index]
 
     def lock_surface(self):
-        if self.surface_is_locked == 0:
+        if not self.surface_is_locked:
             self.log_message("locking surface, led state ON")
             self.surface_is_locked = 1
             self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
@@ -914,7 +909,7 @@ class MackieC4(object):
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
         try:
-            message = '(%s) %s' % (self.__class__.__name__,(' ').join(map(str, message)))
+            message = f'({self.__class__.__name__}) {" ".join(map(str, message))}'
             logger.info(message)
         except:
             logger.info('Logging encountered illegal character(s)!')
@@ -923,3 +918,7 @@ class MackieC4(object):
     def get_logger():
         """ Returns this script's logger object. """
         return logger
+
+    def show_message(self, message):
+        """ Displays the given message in Live's status bar """
+        self.__c_instance.show_message(message)
