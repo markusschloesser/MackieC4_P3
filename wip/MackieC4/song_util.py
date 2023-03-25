@@ -1,12 +1,4 @@
 from __future__ import absolute_import, print_function, unicode_literals
-from itertools import chain
-
-import sys
-
-if sys.version_info[0] >= 3:  # Live 11
-    from ableton.v2.base import old_hasattr
-
-import Live
 
 
 def toggle_follow(self):
