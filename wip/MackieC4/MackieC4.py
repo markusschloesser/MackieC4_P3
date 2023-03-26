@@ -195,8 +195,7 @@ class MackieC4(object):
             # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
-            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)) and ignore_note_offs:
-
+            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
                 note_handling_dict = {
                     **{note: self.track_inc_dec for note in track_nav_switch_ids},
                     **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
@@ -207,7 +206,7 @@ class MackieC4(object):
                        assignment_mode_switch_ids},
                     **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
                 }
-                if note in note_handling_dict:
+                if note in note_handling_dict and ignore_note_offs:
                     note_handling_dict[note](note)
                 elif note in modifier_switch_ids:
                     self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
@@ -285,15 +284,15 @@ class MackieC4(object):
         clip = self.song().view.detail_clip
 
         scroll = cc_value == 1 and 3 or 2
-        if cc_value >= 64:
+        if cc_value > 64:
             if not self.application().view.is_view_visible('Detail/Clip'):
                 self.application().view.focus_view('Detail/Clip')
-                clip.move_playing_pos(- cc_value)
-                # self.application().view.scroll_view(nav.left, 'Detail/Clip', False)
+                # clip.move_playing_pos(- cc_value)
+                self.application().view.scroll_view(3, 'Detail/Clip', False)
         if cc_value <= 64:
             if not self.application().view.is_view_visible('Detail/Clip'):
                 self.application().view.focus_view('Detail/Clip')
-                self.application().view.scroll_view(nav.right,'Detail/Clip', False)
+                self.application().view.scroll_view(1,'Detail/Clip', False)
 
     def zoom_clip(self, cc_value):
         nav = Live.Application.Application.View.NavDirection
@@ -315,16 +314,22 @@ class MackieC4(object):
                 app_view.zoom_view(nav.right, view_name, False)
                 logging.info(f'Zooming view to the right')
 
-    def tempo_change(self, cc_value):
+    def tempo_change(self, cc_value):  # BPM
         """Sets the current song tempo"""
-        if cc_value >= 64:
-            amount = -((cc_value - 64) / 4)
+        if self.ctrl_is_pressed():
+            multiplier = 16
+        elif self.shift_is_pressed():
+            multiplier = 0.25
         else:
-            amount = (cc_value / 4)
+            multiplier = 1
+
+        if cc_value >= 64:
+            amount = -((cc_value - 64) / 4 * multiplier)
+        else:
+            amount = (cc_value / 4 * multiplier)
+
         tempo = max(20, min(999, self.song().tempo + amount))
         self.song().tempo = tempo
-
-
 
     def can_lock_to_devices(self):  # todo: make use of it, locking itself works
         """Live -> Script

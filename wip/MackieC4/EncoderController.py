@@ -13,6 +13,7 @@ import sys
 from ableton.v2.base import liveobj_valid, liveobj_changed, find_if  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
+from ableton.v3.base import live_api_util
 
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
@@ -110,7 +111,7 @@ class EncoderController(MackieC4Component):
 
         self.__shift_state = False
         self.__option_state = False
-        self.__control_state = False
+        self.__ctrl_state = False
         self.__alt_state = False
         return
 
@@ -489,23 +490,18 @@ class EncoderController(MackieC4Component):
         if switch_id == C4SID_SHIFT:
             self.main_script().log_message("Shift is pressed <{0}>".format(value))
             self.__shift_state = value
+            self.main_script().set_shift_is_pressed(value)
         elif switch_id == C4SID_OPTION:
             self.main_script().log_message("Option is pressed <{0}>".format(value))
             self.__option_state = value
+            self.main_script().set_option_is_pressed(value)
         elif switch_id == C4SID_CONTROL:
             self.main_script().log_message("Control is pressed <{0}>".format(value))
-            self.__control_state = value
+            self.__ctrl_state = value
+            self.main_script().set_ctrl_is_pressed(value)
         elif switch_id == C4SID_ALT:
             self.main_script().log_message("Alt is pressed <{0}>".format(value))
             self.__alt_state = value
-
-        if switch_id == C4SID_SHIFT:
-            self.main_script().set_shift_is_pressed(value)
-        elif switch_id == C4SID_OPTION:
-            self.main_script().set_option_is_pressed(value)
-        elif switch_id == C4SID_CONTROL:
-            self.main_script().set_ctrl_is_pressed(value)
-        elif switch_id == C4SID_ALT:
             self.main_script().set_alt_is_pressed(value)
 
     def update_assignment_mode_leds(self):
@@ -741,21 +737,18 @@ class EncoderController(MackieC4Component):
                 # if a device has less than 24 parameters exposed on this page, param will be (None, '    ')
                 param = self.__encoders[encoder_index].v_pot_parameter()
                 if liveobj_valid(param):
-                    if param is not tuple:
-                        try:
-                            if param.is_enabled:
-                                if param.is_quantized:  # for stepped params or those that only have a limited range
-                                    if param.value + 1 > param.max:
-                                        param.value = param.min
-                                    else:
-                                        param.value = param.value + 1
-                                else:
-                                    # button press == jump to default value of device parameter
-                                    param.value = param.default_value
-                        except (RuntimeError, AttributeError):
-                            # There is no default value available for this type of parameter
-                            # 'NoneType' object has no attribute 'default_value'
-                            pass
+                    # if param is not tuple:
+                    try:
+                        if param.is_enabled:
+                            if live_api_util.is_parameter_quantized(param, current_device_track):  # for stepped params or those that only have a limited range
+                                live_api_util.toggle_or_cycle_parameter_value(param)
+                            else:
+                                # button press == jump to default value of device parameter
+                                param.value = param.default_value
+                    except (RuntimeError, AttributeError):
+                        # There is no default value available for this type of parameter
+                        # 'NoneType' object has no attribute 'default_value'
+                        pass
 
             if update_self:
                 # self.main_script().log_message("EC/ updating current_track_device_parameter_bank_nbr from <{0}> to {1}".format(self.__eah.get_current_track_device_parameter_bank_nbr(), current_parameter_bank_track))
