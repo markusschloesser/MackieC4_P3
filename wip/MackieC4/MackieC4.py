@@ -280,19 +280,22 @@ class MackieC4(object):
 
     def scroll_clip(self, cc_value):  # todo WIP
         nav = Live.Application.Application.View.NavDirection
-
+        app_view = self.application().view
+        view_name = 'Detail/DeviceChain'
         clip = self.song().view.detail_clip
 
         scroll = cc_value == 1 and 3 or 2
+        logging.info(f'scroll_clip called with cc_value: {cc_value}')
+
         if cc_value > 64:
-            if not self.application().view.is_view_visible('Detail/Clip'):
-                self.application().view.focus_view('Detail/Clip')
+            if not self.application().view.is_view_visible(view_name):
+                self.application().view.focus_view(view_name)
                 # clip.move_playing_pos(- cc_value)
-                self.application().view.scroll_view(3, 'Detail/Clip', False)
+                app_view.scroll_view(nav.left, view_name, False)
         if cc_value <= 64:
-            if not self.application().view.is_view_visible('Detail/Clip'):
-                self.application().view.focus_view('Detail/Clip')
-                self.application().view.scroll_view(1,'Detail/Clip', False)
+            if not self.application().view.is_view_visible(view_name):
+                self.application().view.focus_view(view_name)
+                app_view.scroll_view(nav.right, view_name, False)
 
     def zoom_clip(self, cc_value):
         nav = Live.Application.Application.View.NavDirection
@@ -382,15 +385,14 @@ class MackieC4(object):
         return self.__c_instance.handle()
 
     def trBlock(self, trackOffset, blocksize):
-        block = []
         tracks = self.song().visible_tracks
-        for track_index in range(0, blocksize):
-            if len(tracks) > trackOffset + track_index:
-                trk_nme = tracks[(trackOffset + track_index)].name
-                # not just adding the track name, adding a list with one element that is the track name
-                block.extend([str(trk_nme)])
-            else:
-                block.extend(['fake Track NAME'])  # MS lets try
+        block = [
+            str(tracks[trackOffset + track_index].name)
+            if len(tracks) > trackOffset + track_index
+            else 'fake Track NAME'
+            for track_index in range(0, blocksize)
+        ]
+        return block
 
     def disconnect(self):
         """Live -> Script        Called right before we get disconnected from Live.
@@ -458,14 +460,12 @@ class MackieC4(object):
             pass
 
     def track_change(self):
-        # need to do 2 things
-        # assign the new 'selected Index'
+        # need to do 2 things: assign the new 'selected Index'
         #     self.track_index = selected_index
         # and
-        # figure out if a track was added, deleted, or just changed
-        # then delegate to appropriate encoder controller methods
+        # figure out if a track was added, deleted, or just changed, then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
-        tracks = self.song().visible_tracks + self.song().return_tracks  # not counting Master Track?
+        tracks = self.song().visible_tracks + self.song().return_tracks
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
             self.log_message("C4/track_change nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE".format(len(tracks), self.track_count))
@@ -505,8 +505,6 @@ class MackieC4(object):
             self.tracks_change()
         else:
             self.__encoder_controller.track_changed(selected_index)
-
-        # assert self.track_count == len(tracks)
 
     def scene_change(self):   # do we need scenes? TESTED, without scene stuff, display on C4 doesn't get updated (WTF??)'
         selected_scene = self.song().view.selected_scene

@@ -815,36 +815,24 @@ class EncoderController(MackieC4Component):
                     s.unlight_vpot_leds()
             elif encoder_index == encoder_06_index:
                 song_util.unsolo_all(self)
-                for track in tuple(self.song().tracks) + tuple(self.song().return_tracks):
-                    if track.solo:
-                        s.show_full_enlighted_poti()
-                    else:
-                        s.unlight_vpot_leds()
+
             elif encoder_index == encoder_07_index:
                 song_util.unmute_all(self)
-                # s.unlight_vpot_leds()
+
             elif encoder_index == encoder_08_index:
                 song_util.toggle_back_to_arranger(self)
-                if song_util.toggle_back_to_arranger:
-                    s.show_full_enlighted_poti()
-                else:
-                    s.unlight_vpot_leds()
+
             elif encoder_index == encoder_09_index:
-                if self.song().can_undo:  # if you can (still) undo something, LEDs stay lit
-                    # s.show_full_enlighted_poti()
+                if self.song().can_undo:
                     song_util.undo(self)
                 else:
                     s.unlight_vpot_leds()
             elif encoder_index == encoder_10_index:
-                if self.song().can_redo:  # if you can (still) redo something, LEDs stay lit
-                    s.show_full_enlighted_poti()
+                if self.song().can_redo:
                     song_util.redo(self)
-                else:
-                    s.unlight_vpot_leds()
+
             elif encoder_index == encoder_11_index:
-                if song_util.unarm_all_button(self):
-                    s.show_full_enlighted_poti()
-                    song_util.unarm_all_button(self)
+                song_util.unarm_all_button(self)
 
             # toggle between BEAT and SMPTE mode for SPP
             elif encoder_index == encoder_12_index:
@@ -1611,6 +1599,7 @@ class EncoderController(MackieC4Component):
 
             encoder_06_index = 5  # unsolo all
             encoder_07_index = 6  # unmute all
+            encoder_08_index = 7  # BTA
             encoder_09_index = 8
             encoder_10_index = 9
             encoder_11_index = 10
@@ -1744,6 +1733,12 @@ class EncoderController(MackieC4Component):
                 unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
             else:
                 unmute_all_encoder.unlight_vpot_leds()  # no tracks are muted
+
+            back_to_arranger_encoder = self.__encoders[encoder_08_index]
+            if self.song().back_to_arranger:
+                back_to_arranger_encoder.show_full_enlighted_poti()
+            else:
+                back_to_arranger_encoder.unlight_vpot_leds()
 
             metronome_encoder = self.__encoders[encoder_17_index]
             if self.song().metronome:
