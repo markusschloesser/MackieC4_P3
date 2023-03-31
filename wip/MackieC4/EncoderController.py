@@ -322,7 +322,6 @@ class EncoderController(MackieC4Component):
             self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
     def toggle_devices(self, cc_no, cc_value):
-        # self.main_script().log_message(f"toggle_devices() called with cc_no={cc_no}, cc_value={cc_value}")
         device_list = self.song().view.selected_track.devices
         extended_device_list = self.get_device_list(device_list)
 
@@ -354,9 +353,7 @@ class EncoderController(MackieC4Component):
     def last_assignment_mode(self):
         return self.__last_assignment_mode
 
-    # no wrap around:
-    #   stop moving left at track 0,
-    #   stop moving right at master track
+    # no wrap around: stop moving left at track 0, stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
         # self.main_script().log_message("self.__assignment_mode == C4M_CHANNEL_STRIP is <{0}>".format(self.__assignment_mode == C4M_CHANNEL_STRIP))
@@ -909,12 +906,12 @@ class EncoderController(MackieC4Component):
             # The device doesn't have this many parameters
             return None, '      '  # remove this text after you see it in the LCD, just use blanks
 
-    def __on_parameter_list_of_chosen_plugin_changed(self):
-        assert liveobj_valid(self.__chosen_plugin)
-        self.__reorder_parameters()
-        self.__reassign_encoder_parameters()
-        self.request_rebuild_midi_map()
-        return
+    # def __on_parameter_list_of_chosen_plugin_changed(self):  # function not used anywhere???
+    #     assert liveobj_valid(self.__chosen_plugin)
+    #     self.__reorder_parameters()
+    #     self.__reassign_encoder_parameters()
+    #     self.request_rebuild_midi_map()
+    #     return
 
     def __reorder_parameters(self):
         result = []
@@ -1616,6 +1613,7 @@ class EncoderController(MackieC4Component):
             encoder_22_index = 21  # BPM
             encoder_25_index = 24
             encoder_26_index = 25
+            encoder_27_index = 26
             for e in self.__encoders:
 
                 dspl_sgmt = next(x for x in self.__display_parameters if x.vpot_index() == e.vpot_index())

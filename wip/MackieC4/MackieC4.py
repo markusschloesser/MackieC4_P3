@@ -36,8 +36,6 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
     from builtins import object
 
-else:  # Live 10
-    import MidiRemoteScript
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +59,6 @@ class MackieC4(object):
     dlisten = {}
     '''dlisten is "Device Listener'''
 
-    slisten = {}
-    '''slisten is "Slot Listener'''
-
-    sslisten = {}
-
-    pplisten = {}
-    '''pplisten is "Playing Position" Listener'''
-
     mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
     '''mlisten is Mixer Listener'''
 
@@ -76,7 +66,7 @@ class MackieC4(object):
     '''rlisten is "Returns" Listener '''
 
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
-    scenelisten = {}
+
     scene = 0
     track_index = 0
     track_count = 0

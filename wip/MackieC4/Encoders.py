@@ -52,15 +52,6 @@ class Encoders(MackieC4Component):
     def v_pot_parameter(self):
         return self.__v_pot_parameter
 
-    def animate_v_pot_led_ring(self, frame, reverse=False):
-        remainder = frame % self.v_pot_display_memory_len
-        if reverse:
-            update_value = self.__v_pot_display_memory[VPOT_NEXT_CC_VALUE][remainder]
-        else:
-            update_value = self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE][remainder]
-
-        self.update_led_ring(update_value)
-
     def set_v_pot_parameter(self, parameter, display_mode=VPOT_DISPLAY_BOOLEAN):
         if display_mode is not None:
             self.__update_led_ring_display_mode(display_mode)
@@ -100,17 +91,6 @@ class Encoders(MackieC4Component):
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
         self.update_led_ring(data2)
 
-    # to be deleted!?
-    def show_vpot_ring_spread(self):
-        data1 = 0x31
-        data2 = 0x36 - 0x31
-        # data3 = a tuple of (0x31, 0x32, 0x33, 0x34, 0x35) when data2 = 0x36 - 0x31 == 0x05
-        # since VPOT_DISPLAY_SPREAD: (0x31, 0x36)
-        data2 = data2 + 1  # to include the last valid "spread" value
-        data3 = tuple(data1 + x for x in range(data2))
-        # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
-        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, data3))
-
     def build_midi_map(self,
                        midi_map_handle):  # why do we have an additional build_midi_map here in Encoders?? Already in MackieC4
         """Live -> Script
@@ -149,37 +129,9 @@ class Encoders(MackieC4Component):
             else:
                 self.main_script().log_message("potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
 
-    def assigned_track(self):
-        return self._Encoders__assigned_track
-
     def handle_vpot_rotation(self, vpot_index, cc_value):
         if vpot_index is self.__vpot_index and self.__encoder_controller is not None:
             self.__encoder_controller.handle_vpot_rotation(self.__vpot_index, cc_value)
-
-    def __assigned_track_index(self):  # MS new from Mackie Control.ChannelStrip
-        index = 0
-        for t in chain(self.song().visible_tracks, self.song().return_tracks):
-            if t == self._Encoders__assigned_track:
-                return index
-            index += 1
-
-        if self._Encoders__assigned_track:
-            pass
-
-    def __select_track(self):
-        song = self.song()
-        app_view = self.application().view
-
-        if self._Encoders__assigned_track:
-            all_tracks = tuple(song.visible_tracks) + tuple(song.return_tracks)  # MS tuple is from Mackie script
-            selected_track = song.view.selected_track
-            assigned_track_index = self.__assigned_track_index()
-
-            if selected_track != all_tracks[assigned_track_index]:  # MS new but seems to work
-                song.view.selected_track = all_tracks[assigned_track_index]
-            elif app_view.is_view_visible('Arranger'):
-                assigned_track = self._Encoders__assigned_track
-                assigned_track.view.is_collapsed = not assigned_track.view.is_collapsed
 
     def refresh_state(self):
         return ' '

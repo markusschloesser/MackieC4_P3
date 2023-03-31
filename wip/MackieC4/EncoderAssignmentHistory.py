@@ -9,7 +9,7 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
 
 from . MackieC4Component import *
-from . import track_util
+
 from _Generic.Devices import *
 import math
 
@@ -123,7 +123,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         mt_idx = self.__master_track_index
         assert mt_idx == self.t_count  # the master track index == the number of tracks and returns
         devices_on_mstr_track = self.get_device_list(self.song().master_track.devices)
-        # devices_on_mstr_track = song_ref.master_track.devices
+
         self.t_d_count[mt_idx] = len(devices_on_mstr_track)
         max_device_banks = math.ceil(len(devices_on_mstr_track) // SETUP_DB_DEVICE_BANK_SIZE)
         self.t_d_bank_count[mt_idx] = int(max_device_banks)
