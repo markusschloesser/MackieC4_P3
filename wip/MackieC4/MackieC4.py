@@ -231,7 +231,7 @@ class MackieC4(object):
                 if 8 <= cc_no <= 15:
                     self.__encoder_controller.toggle_devices(cc_no, cc_value)
 
-    def handle_jog_wheel_rotation(self, cc_value):
+    def handle_jog_wheel_rotation(self, cc_value):  # aka beat_pointer
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
         if cc_value >= 64:
             self.song().jump_by(-(cc_value - 64))

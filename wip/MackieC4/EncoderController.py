@@ -65,8 +65,6 @@ class EncoderController(MackieC4Component):
 
         # initialize to blank screen segments
         self.__display_parameters = [EncoderDisplaySegment(self, x) for x in range(NUM_ENCODERS)]  # by ChatGPT, instead of next 2 lines
-        # for x in range(NUM_ENCODERS):
-        #    self.__display_parameters.append(EncoderDisplaySegment(self, x))
 
         # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
         # received by the C4 from somewhere else, not-here.  Such a display change is not tracked here (obviously),
@@ -107,6 +105,13 @@ class EncoderController(MackieC4Component):
             LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}
+        }
+
+        # definition of modes, for refactoring various code to separate functions
+        self.mode_functions = {
+            "handle_pressed_v_pot": self.handle_pressed_v_pot,
+            "reassign_encoder_parameters": self.__reassign_encoder_parameters,
+            "on_update_display_timer": self.on_update_display_timer
         }
 
         self.__shift_state = False
@@ -556,6 +561,54 @@ class EncoderController(MackieC4Component):
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
 
+    def unsolo_all_functionality(self, mode_name, vpot_index):
+        mode_function = self.mode_functions.get(mode_name)
+        if mode_function:
+            if mode_name == "handle_pressed_v_pot":
+                song_util.unsolo_all(self)
+            # elif mode_name == "reassign_encoder_parameters":
+            #     encoders_to_display_text = {vpot_index: ('all', 'unsolo')}
+            #     return encoders_to_display_text
+            elif mode_name == "on_update_display_timer":
+                if song_util.any_soloed_track(self):
+                    self.__encoders[vpot_index].show_full_enlighted_poti()
+                else:
+                    self.__encoders[vpot_index].unlight_vpot_leds()
+        else:
+            raise ValueError(f"Invalid mode name: {mode_name}")
+
+    def beat_pointer(self, mode_name, vpot_index):
+        # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
+        upper_string2 = ''
+        lower_string2 = ''
+        mode_function = self.mode_functions.get(mode_name)
+        if mode_function:
+            if mode_name == "handle_pressed_v_pot":
+                self.__time_display.toggle_mode()
+            elif mode_name == "on_update_display_timer":
+                if self.__time_display.TimeDisplay__show_beat_time:
+                    time_string = str(self.song().get_current_beats_song_time()) + ' '
+                    upper_string2 += 'Bar:Bt:Sb:Tik '
+                    lower_string2 += time_string
+                else:
+                    time_string = str(self.song().get_current_smpte_song_time(self.__time_display.TimeDisplay__smpt_format)) + ' '
+                    upper_string2 += 'Hrs:Mn:Sc:Fra '
+                    lower_string2 += time_string
+
+                # vpot ring light
+                display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][0]
+                display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][1]
+
+                scaler = make_interpolater(0, self.song().last_event_time, display_mode_cc_first, display_mode_cc_last)
+                play_head = int(self.song().current_song_time)
+                led_ring_val = int(scaler(play_head))
+
+                spp_vpot = self.__encoders[vpot_index]
+                spp_vpot.update_led_ring(led_ring_val)
+        else:
+            raise ValueError(f"Invalid mode name: {mode_name}")
+        return upper_string2, lower_string2
+
     def handle_pressed_v_pot(self, vpot_index):
         """ 'encoder button' /vpot push clicks"""
         encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
@@ -811,7 +864,7 @@ class EncoderController(MackieC4Component):
                 else:
                     s.unlight_vpot_leds()
             elif encoder_index == encoder_06_index:
-                song_util.unsolo_all(self)
+                self.unsolo_all_functionality("handle_pressed_v_pot", encoder_index)
 
             elif encoder_index == encoder_07_index:
                 song_util.unmute_all(self)
@@ -833,8 +886,7 @@ class EncoderController(MackieC4Component):
 
             # toggle between BEAT and SMPTE mode for SPP
             elif encoder_index == encoder_12_index:
-                self.__time_display.toggle_mode()
-                # displaying part moved to on_update_display_timer, also for vpot lights
+                self.beat_pointer("handle_pressed_v_pot", encoder_index)
 
             elif encoder_index == encoder_16_index:
                 nav = Live.Application.Application.View.NavDirection
@@ -1450,7 +1502,7 @@ class EncoderController(MackieC4Component):
                                     state = self.selected_track.mixer_device.crossfade_assign
                                     value_to_display = None
                                     spp_vpot_index = 26
-                                    spp_vpot = self.__encoders[spp_vpot_index]
+                                    spp_vpot = self.__encoders[t]
                                     if state == 0:
                                         value_to_display = 'XFadeA'
                                         spp_vpot.update_led_ring(0x11)
@@ -1618,6 +1670,9 @@ class EncoderController(MackieC4Component):
 
                 dspl_sgmt = next(x for x in self.__display_parameters if x.vpot_index() == e.vpot_index())
                 if e.vpot_index() in row_00_encoders:
+                    if e.vpot_index() == encoder_06_index:
+                        self.unsolo_all_functionality("on_update_display_timer", e.vpot_index())
+
                     upper_string1 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string1 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                 elif e.vpot_index() in row_01_encoders:
@@ -1646,25 +1701,9 @@ class EncoderController(MackieC4Component):
 
                     elif e.vpot_index() == encoder_12_index:
                         # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
-                        if self.__time_display.TimeDisplay__show_beat_time:
-                            time_string = str(self.song().get_current_beats_song_time()) + ' '
-                            upper_string2 += 'Bar:Bt:Sb:Tik '
-                            lower_string2 += time_string
-                        else:
-                            time_string = str(self.song().get_current_smpte_song_time(self.__time_display.TimeDisplay__smpt_format)) + ' '
-                            upper_string2 += 'Hrs:Mn:Sc:Fra '
-                            lower_string2 += time_string
-
-                        # vpot ring light
-                        display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][0]
-                        display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][1]
-
-                        scaler = make_interpolater(0, self.song().last_event_time, display_mode_cc_first, display_mode_cc_last)
-                        play_head = int(self.song().current_song_time)
-                        led_ring_val = int(scaler(play_head))
-                        spp_vpot_index = 11
-                        spp_vpot = self.__encoders[spp_vpot_index]
-                        spp_vpot.update_led_ring(led_ring_val)
+                        upper, lower = self.beat_pointer("on_update_display_timer", e.vpot_index())
+                        upper_string2 += upper
+                        lower_string2 += lower
 
                     # show loop length
                     elif e.vpot_index() == encoder_14_index:
@@ -1719,12 +1758,6 @@ class EncoderController(MackieC4Component):
                 elif e.vpot_index() in row_03_encoders:
                     upper_string4 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string4 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-
-            unsolo_all_encoder = self.__encoders[encoder_06_index]
-            if song_util.any_soloed_track(self):
-                unsolo_all_encoder.show_full_enlighted_poti()  # some track is soloed (unsolo has something to do)
-            else:
-                unsolo_all_encoder.unlight_vpot_leds()  # no tracks are soloed
 
             unmute_all_encoder = self.__encoders[encoder_07_index]
             if song_util.any_muted_track(self):
