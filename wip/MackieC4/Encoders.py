@@ -10,7 +10,6 @@ import sys
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
 
-from itertools import chain
 from ableton.v2.base import liveobj_valid
 
 

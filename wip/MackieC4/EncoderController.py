@@ -41,6 +41,14 @@ class EncoderController(MackieC4Component):
         # known as main_script here
         MackieC4Component.__init__(self, main_script)
 
+        # definition of modes, for refactoring various code to separate functions
+        # this HAS TO BE up here. If further down in init, it will produce an error during initialization
+        self.mode_functions = {
+            "handle_pressed_v_pot": self.handle_pressed_v_pot,
+            "reassign_encoder_parameters": self.__reassign_encoder_parameters,
+            "on_update_display_timer": self.on_update_display_timer
+        }
+
         self.__own_encoders = encoders  # why separate references? This reference is only used here in __init__
         self.__encoders = encoders  # why these __encoders too? This reference is used everywhere else
         # suspect the reason is because, at runtime, while this __init__ is running; the main_script here,
@@ -105,13 +113,6 @@ class EncoderController(MackieC4Component):
             LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}
-        }
-
-        # definition of modes, for refactoring various code to separate functions
-        self.mode_functions = {
-            "handle_pressed_v_pot": self.handle_pressed_v_pot,
-            "reassign_encoder_parameters": self.__reassign_encoder_parameters,
-            "on_update_display_timer": self.on_update_display_timer
         }
 
         self.__shift_state = False
@@ -490,19 +491,15 @@ class EncoderController(MackieC4Component):
 
     def handle_modifier_switch_ids(self, switch_id, value):
         if switch_id == C4SID_SHIFT:
-            self.main_script().log_message("Shift is pressed <{0}>".format(value))
             self.__shift_state = value
             self.main_script().set_shift_is_pressed(value)
         elif switch_id == C4SID_OPTION:
-            self.main_script().log_message("Option is pressed <{0}>".format(value))
             self.__option_state = value
             self.main_script().set_option_is_pressed(value)
         elif switch_id == C4SID_CONTROL:
-            self.main_script().log_message("Control is pressed <{0}>".format(value))
             self.__ctrl_state = value
             self.main_script().set_ctrl_is_pressed(value)
         elif switch_id == C4SID_ALT:
-            self.main_script().log_message("Alt is pressed <{0}>".format(value))
             self.__alt_state = value
             self.main_script().set_alt_is_pressed(value)
 
@@ -609,6 +606,93 @@ class EncoderController(MackieC4Component):
             raise ValueError(f"Invalid mode name: {mode_name}")
         return upper_string2, lower_string2
 
+    def loop_length(self, mode_name, vpot_index):
+        upper_string2 = ''
+        lower_string2 = ''
+        mode_function = self.mode_functions.get(mode_name)
+        if mode_function:
+            if mode_name == "on_update_display_timer":
+                get_loop_length = str(self.song().loop_length / 4)
+                upper_string2 += 'LoopLg '
+                lower_string2 += adjust_string(get_loop_length, 6) + ' '
+
+                # vpot ring light
+                display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_SPREAD][0]
+                display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_SPREAD][1]
+
+                scaler = make_interpolater(1, self.song().last_event_time, display_mode_cc_first, display_mode_cc_last)
+                loop_length = int(self.song().loop_length)
+                led_ring_val = int(scaler(loop_length))
+
+                spp_vpot = self.__encoders[vpot_index + 1]  # because offset due to SPP being 2 slots wide
+                spp_vpot.update_led_ring(led_ring_val)
+        else:
+            raise ValueError(f"Invalid mode name: {mode_name}")
+        return upper_string2, lower_string2
+
+    def xfade(self, mode_name, vpot_index, u_alt_text=None, l_alt_text=None):
+        # handles all Crossfade functionality for pressed_vpot, reassign and on_update_display_timer
+        upper_string4 = ''
+        lower_string4 = ''
+        mode_function = self.mode_functions.get(mode_name)
+        if mode_function:
+            if mode_name == "handle_pressed_v_pot":
+                if self.selected_track.has_audio_output:
+                    if self.__filter_mst_trk:
+                        state = self.selected_track.mixer_device.crossfade_assign
+                        value_to_send = None
+                        if state == 0:
+                            value_to_send = 'Mixer.Crossfade.A'
+                        elif state == 1:
+                            value_to_send = 'Mixer.Crossfade.Off'
+                        elif state == 2:
+                            value_to_send = 'Mixer.Crossfade.B'
+                        track_util._crossfade_toggle_value(self,value_to_send)  # vpot push for Crossfade assign A/B/off on Audio or Return tracks
+                    else:
+                        param = self.__encoders[vpot_index].v_pot_parameter()
+                        param.value = param.default_value  # button press == jump to default value for Crossfader on Master track
+
+            elif mode_name == "reassign_encoder_parameters":
+                vpot_display_text = EncoderDisplaySegment(self, vpot_index)
+                vpot_display_text.set_encoder_controller(self)
+                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+                if self.selected_track.has_audio_output:
+                    if self.__filter_mst_trk != 1:
+                        vpot_display_text.set_text(self.selected_track.mixer_device.crossfader,'X-Fade')  # Crossfader on Master track
+                        vpot_param = (self.selected_track.mixer_device.crossfader, VPOT_DISPLAY_BOOST_CUT)
+
+                xfade_vpot = self.__encoders[vpot_index]
+                xfade_vpot.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+                self.__display_parameters.append(vpot_display_text)
+
+            elif mode_name == "on_update_display_timer":
+                if liveobj_valid(self.selected_track):
+                    if self.selected_track.has_audio_output:
+                        if self.__filter_mst_trk:
+                            state = self.selected_track.mixer_device.crossfade_assign
+                            value_to_display = None
+
+                            spp_vpot = self.__encoders[vpot_index]
+                            if state == 0:
+                                value_to_display = 'XFadeA'
+                                spp_vpot.update_led_ring(0x11)
+                            elif state == 1:
+                                value_to_display = ' Off  '
+                                spp_vpot.unlight_vpot_leds()
+                            elif state == 2:
+                                value_to_display = 'XFadeB'
+                                spp_vpot.update_led_ring(0x1B)
+                            upper_string4 += 'X-Fade' + ' '
+                            lower_string4 += str(value_to_display) + ' '
+
+                        else:
+                            upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                            lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+
+        else:
+            raise ValueError(f"Invalid mode name: {mode_name}")
+        return upper_string4, lower_string4
+
     def handle_pressed_v_pot(self, vpot_index):
         """ 'encoder button' /vpot push clicks"""
         encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
@@ -701,20 +785,7 @@ class EncoderController(MackieC4Component):
                         self.main_script().log_message("can't update param.value to default: param not liveobj_valid()")
 
                 elif encoder_index == encoder_27_index:
-                    if self.selected_track.has_audio_output:
-                        if self.__filter_mst_trk:
-                            state = self.selected_track.mixer_device.crossfade_assign
-                            value_to_send = None
-                            if state == 0:
-                                value_to_send = 'Mixer.Crossfade.A'
-                            elif state == 1:
-                                value_to_send = 'Mixer.Crossfade.Off'
-                            elif state == 2:
-                                value_to_send = 'Mixer.Crossfade.B'
-                            track_util._crossfade_toggle_value(self, value_to_send)  # vpot push for Crossfade assign A/B/off on Audio or Return tracks
-                        else:
-                            param = self.__encoders[encoder_index].v_pot_parameter()
-                            param.value = param.default_value  # button press == jump to default value for Crossfader on Master track
+                    self.xfade("handle_pressed_v_pot", encoder_index)
 
                 elif encoder_index == encoder_28_index:
                     if self.__filter_mst_trk:
@@ -1121,10 +1192,10 @@ class EncoderController(MackieC4Component):
                     # add listener for devices
                     for device in extended_device_list:
                         device_encoder_index_in_row = extended_device_list.index(device)
-
-                        if extended_device_list[device_encoder_index_in_row].is_active_has_listener(self._update_vpot_leds_for_device_toggle):
-                            extended_device_list[device_encoder_index_in_row].remove_is_active_listener(self._update_vpot_leds_for_device_toggle)
-                        extended_device_list[device_encoder_index_in_row].add_is_active_listener(self._update_vpot_leds_for_device_toggle)
+                        try:
+                            extended_device_list[device_encoder_index_in_row].add_is_active_listener(self._update_vpot_leds_for_device_toggle)
+                        except RuntimeError:
+                            pass
 
                     # Loop over active devices and update their LEDs once initially
                     active_device_encoder_indices = [extended_device_list.index(device) for device in active_devices]
@@ -1140,7 +1211,6 @@ class EncoderController(MackieC4Component):
                                     self.__encoders[encoder_index].unlight_vpot_leds()
                             else:
                                 self.__encoders[encoder_index].unlight_vpot_leds()
-
 
                 elif s_index < encoder_27_index:
                     # changed from 29, which means that the 12th send will not be shown on the C4, but who needs 12 sends that anyway?
@@ -1159,13 +1229,7 @@ class EncoderController(MackieC4Component):
                     self.__display_parameters.append(vpot_display_text)
 
                 elif s_index == encoder_27_index:
-                    if self.selected_track.has_audio_output:
-                        if self.__filter_mst_trk != 1:
-                            vpot_display_text.set_text(self.selected_track.mixer_device.crossfader,'X-Fade')  # Crossfader on Master track
-                            vpot_param = (self.selected_track.mixer_device.crossfader, VPOT_DISPLAY_BOOST_CUT)
-
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                    self.__display_parameters.append(vpot_display_text)
+                    self.xfade("reassign_encoder_parameters", s.vpot_index())
 
                 elif s_index == encoder_28_index:
                     self.returns_switch = 0
@@ -1200,7 +1264,6 @@ class EncoderController(MackieC4Component):
                     self.__display_parameters.append(vpot_display_text)
 
                 elif s_index == encoder_30_index:
-                    vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
                     if self.__filter_mst_trk:
                         is_muted = self.selected_track.mute
                         if is_muted:
@@ -1211,7 +1274,6 @@ class EncoderController(MackieC4Component):
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_31_index:
                     if self.selected_track.has_audio_output:
-                        # lower == value, upper == value label
                         vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')  # static text
                         vpot_param = (self.selected_track.mixer_device.panning, VPOT_DISPLAY_BOOST_CUT)  # the actual param
 
@@ -1219,7 +1281,6 @@ class EncoderController(MackieC4Component):
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_32_index:
                     if self.selected_track.has_audio_output:
-                        # lower == value, upper == value label)
                         vpot_display_text.set_text(self.selected_track.mixer_device.volume, 'Volume')
                         vpot_param = (self.selected_track.mixer_device.volume, VPOT_DISPLAY_WRAP)
                     else:
@@ -1236,8 +1297,7 @@ class EncoderController(MackieC4Component):
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
                 vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-                # if s_index < encoder_07_index:
-                #     Only display text
+
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
                         vpot_display_text.set_text('Device', 'EditMe')
@@ -1496,28 +1556,9 @@ class EncoderController(MackieC4Component):
                         upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     if t == encoder_27_index:
-                        if liveobj_valid(self.selected_track):
-                            if self.selected_track.has_audio_output:
-                                if self.__filter_mst_trk:
-                                    state = self.selected_track.mixer_device.crossfade_assign
-                                    value_to_display = None
-                                    spp_vpot_index = 26
-                                    spp_vpot = self.__encoders[t]
-                                    if state == 0:
-                                        value_to_display = 'XFadeA'
-                                        spp_vpot.update_led_ring(0x11)
-                                    elif state == 1:
-                                        value_to_display = ' Off  '
-                                        spp_vpot.unlight_vpot_leds()
-                                    elif state == 2:
-                                        value_to_display = 'XFadeB'
-                                        spp_vpot.update_led_ring(0x1B)
-                                    upper_string4 += 'X-Fade' + ' '
-                                    lower_string4 += str(value_to_display) + ' '
-
-                                else:
-                                    lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                                    upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                        upper, lower = self.xfade("on_update_display_timer", t, u_alt_text, l_alt_text)
+                        upper_string4 += upper
+                        lower_string4 += lower
 
                     if t == encoder_28_index:
                         if liveobj_valid(self.selected_track):
@@ -1707,24 +1748,13 @@ class EncoderController(MackieC4Component):
 
                     # show loop length
                     elif e.vpot_index() == encoder_14_index:
-                        get_loop_length = str(self.song().loop_length)
-                        upper_string2 += 'LoopLg '
-                        lower_string2 += adjust_string(get_loop_length, 6) + ' '
-
-                        # vpot ring light
-                        display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_SPREAD][0]
-                        display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_SPREAD][1]
-
-                        scaler = make_interpolater(1, self.song().last_event_time, display_mode_cc_first,display_mode_cc_last)
-                        loop_length = int(self.song().loop_length)
-                        led_ring_val = int(scaler(loop_length))
-                        spp_vpot_index = 13
-                        spp_vpot = self.__encoders[spp_vpot_index]
-                        spp_vpot.update_led_ring(led_ring_val)
+                        upper, lower = self.loop_length("on_update_display_timer", e.vpot_index())
+                        upper_string2 += upper
+                        lower_string2 += lower
 
                     # show loop start
                     elif e.vpot_index() == encoder_15_index:
-                        get_loop_start = str(self.song().loop_start)
+                        get_loop_start = str(self.song().loop_start / 4)
                         upper_string2 += 'LoopSt '
                         lower_string2 += adjust_string(get_loop_start, 6) + ' '
 
