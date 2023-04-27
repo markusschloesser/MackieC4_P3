@@ -10,7 +10,6 @@ if sys.version_info[0] >= 3:  # Live 11
 
 from . MackieC4Component import *
 
-from _Generic.Devices import *
 import math
 
 

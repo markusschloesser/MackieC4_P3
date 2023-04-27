@@ -72,7 +72,7 @@ class EncoderController(MackieC4Component):
         self.__display_parameters = []
 
         # initialize to blank screen segments
-        self.__display_parameters = [EncoderDisplaySegment(self, x) for x in range(NUM_ENCODERS)]  # by ChatGPT, instead of next 2 lines
+        self.__display_parameters = [EncoderDisplaySegment(self, x) for x in range(NUM_ENCODERS)]
 
         # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
         # received by the C4 from somewhere else, not-here.  Such a display change is not tracked here (obviously),
@@ -90,7 +90,7 @@ class EncoderController(MackieC4Component):
 
         song = self.song()
         tracks = song.visible_tracks + song.return_tracks
-        selected_track = self.song().view.selected_track
+        selected_track = song.view.selected_track
 
         self.returns_switch = 0
 
@@ -106,7 +106,7 @@ class EncoderController(MackieC4Component):
             index = len(tracks)
             self.track_changed(index)
 
-        self.selected_track = self.song().view.selected_track
+        # self.selected_track = self.song().view.selected_track
         self.update_assignment_mode_leds()
         self.__last_send_messages = {
             LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
@@ -862,7 +862,7 @@ class EncoderController(MackieC4Component):
                     try:
                         if param.is_enabled:
                             if live_api_util.is_parameter_quantized(param, current_device_track):  # for stepped params or those that only have a limited range
-                                live_api_util.toggle_or_cycle_parameter_value(param)
+                                live_api_util.toggle_or_cycle_parameter_value(param)  # this is now in v3/live/util and action.py, needs to be changed when 11.3 stable is out.
                             else:
                                 # button press == jump to default value of device parameter
                                 param.value = param.default_value
@@ -1179,8 +1179,6 @@ class EncoderController(MackieC4Component):
 
                         else:
                             vpot_display_text.set_text('dvcNme', 'No')  # could just leave as default blank spaces
-                    # else:
-                    #     s.unlight_vpot_leds()
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
@@ -1233,14 +1231,10 @@ class EncoderController(MackieC4Component):
 
                 elif s_index == encoder_28_index:
                     self.returns_switch = 0
-                    if self.__filter_mst_trk:
-                        if self.selected_track.solo is not True:
-                            vpot_display_text.set_text(None, 'Solo')  # this is static text
-                        else:
-                            vpot_display_text.set_text(None, 'Solo')
-
-                    elif not self.__filter_mst_trk:
-                        vpot_display_text.set_text(None, 'Master')
+                    if self.__filter_mst_trk and not self.selected_track.solo:
+                        vpot_display_text.set_text(None, 'Solo')
+                    else:
+                        vpot_display_text.set_text(None, 'Solo' if self.__filter_mst_trk else 'Master')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
@@ -1251,13 +1245,10 @@ class EncoderController(MackieC4Component):
                         vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
                         if is_armable_track_selected:
                             is_armed = self.selected_track.arm
-                            if is_armed:
-                                vpot_display_text.set_text(is_armed, 'RecArm')  # this is static text
-                            else:
-                                vpot_display_text.set_text(is_armed, 'RecArm')
+                            vpot_display_text.set_text(is_armed, 'RecArm')  # this is static text
                         else:
                             vpot_display_text.set_text('Never', 'RecArm')
-                    elif not self.__filter_mst_trk:
+                    else:
                         vpot_display_text.set_text(None, 'Master')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
@@ -1266,10 +1257,7 @@ class EncoderController(MackieC4Component):
                 elif s_index == encoder_30_index:
                     if self.__filter_mst_trk:
                         is_muted = self.selected_track.mute
-                        if is_muted:
-                            vpot_display_text.set_text(is_muted, 'Mute')  # this is static text
-                        else:
-                            vpot_display_text.set_text(is_muted, 'Mute')
+                        vpot_display_text.set_text(is_muted, 'Mute')
 
                     self.__display_parameters.append(vpot_display_text)
                 elif s_index == encoder_31_index:

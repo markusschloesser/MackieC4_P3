@@ -4,7 +4,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 import sys
 if sys.version_info[0] >= 3:  # Live 11
-    from builtins import object  # MS needed for new object at class
+    from builtins import object
 
 from .consts import *
 import Live
@@ -73,8 +73,7 @@ class MackieC4Component(object):
         self.__main_script.refresh_state()
 
     def get_device_list(self, container):
-        """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively.
-        Don't add racks that are not showing devices. """
+        """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively."""
         # device_list = track_util.get_racks_recursive(track)  # this refers to the method used by Ableton in track_selection (which didn't work, but I'll leave it in here for now)
         device_list = []
         for device in container:

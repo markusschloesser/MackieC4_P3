@@ -92,13 +92,13 @@ def undo(self):
         self.song().undo()
 
 
+def any_armed_track(self):
+    tracks = self.song().tracks
+    return bool(any(track.can_be_armed and track.arm for track in tracks))
+
+
 def unarm_all_button(self):
     tracks = self.song().tracks
     for track in tracks:
         if track.can_be_armed and (track.arm or track.implicit_arm):
             track.arm = False
-
-
-def any_armed_track(self):
-    tracks = self.song().tracks
-    return bool(any(track.can_be_armed and track.arm for track in tracks))

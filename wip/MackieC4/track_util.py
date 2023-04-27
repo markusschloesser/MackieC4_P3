@@ -5,13 +5,8 @@ from __future__ import absolute_import, print_function, unicode_literals
 
 from itertools import chain
 
-import sys
-import Live
 
 from ableton.v2.base import const, depends, liveobj_valid
-
-if sys.version_info[0] >= 3:  # Live 11
-    from ableton.v2.base import old_hasattr
 
 
 def is_group_track(track):

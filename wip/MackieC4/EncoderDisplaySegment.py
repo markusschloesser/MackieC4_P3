@@ -85,7 +85,7 @@ class EncoderDisplaySegment(MackieC4Component):
     def get_lower_text(self):
         if liveobj_valid(self.__lower_text):  # assume unicode
             return unicode(self.__lower_text).encode('ascii', errors='ignore').decode()
-        elif not liveobj_valid(self.__lower_text):  # assume None or lost weakref
+        elif not liveobj_valid(self.__lower_text):  # assume None or lost weak ref
             return "xxXXxx"
         else:
             return self.__lower_text  # assume ascii/LCD safe
