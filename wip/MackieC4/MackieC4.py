@@ -36,8 +36,6 @@ if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
     from builtins import object
 
-else:  # Live 10
-    import MidiRemoteScript
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +59,6 @@ class MackieC4(object):
     dlisten = {}
     '''dlisten is "Device Listener'''
 
-    slisten = {}
-    '''slisten is "Slot Listener'''
-
-    sslisten = {}
-
-    pplisten = {}
-    '''pplisten is "Playing Position" Listener'''
-
     mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
     '''mlisten is Mixer Listener'''
 
@@ -76,7 +66,7 @@ class MackieC4(object):
     '''rlisten is "Returns" Listener '''
 
     masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
-    scenelisten = {}
+
     scene = 0
     track_index = 0
     track_count = 0
@@ -195,8 +185,7 @@ class MackieC4(object):
             # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
-            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)) and ignore_note_offs:
-
+            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
                 note_handling_dict = {
                     **{note: self.track_inc_dec for note in track_nav_switch_ids},
                     **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
@@ -207,7 +196,7 @@ class MackieC4(object):
                        assignment_mode_switch_ids},
                     **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
                 }
-                if note in note_handling_dict:
+                if note in note_handling_dict and ignore_note_offs:
                     note_handling_dict[note](note)
                 elif note in modifier_switch_ids:
                     self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
@@ -242,7 +231,7 @@ class MackieC4(object):
                 if 8 <= cc_no <= 15:
                     self.__encoder_controller.toggle_devices(cc_no, cc_value)
 
-    def handle_jog_wheel_rotation(self, cc_value):
+    def handle_jog_wheel_rotation(self, cc_value):  # aka beat_pointer
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
         if cc_value >= 64:
             self.song().jump_by(-(cc_value - 64))
@@ -281,19 +270,22 @@ class MackieC4(object):
 
     def scroll_clip(self, cc_value):  # todo WIP
         nav = Live.Application.Application.View.NavDirection
-
+        app_view = self.application().view
+        view_name = 'Detail/DeviceChain'
         clip = self.song().view.detail_clip
 
         scroll = cc_value == 1 and 3 or 2
-        if cc_value >= 64:
-            if not self.application().view.is_view_visible('Detail/Clip'):
-                self.application().view.focus_view('Detail/Clip')
-                clip.move_playing_pos(- cc_value)
-                # self.application().view.scroll_view(nav.left, 'Detail/Clip', False)
+        logging.info(f'scroll_clip called with cc_value: {cc_value}')
+
+        if cc_value > 64:
+            if not self.application().view.is_view_visible(view_name):
+                self.application().view.focus_view(view_name)
+                # clip.move_playing_pos(- cc_value)
+                app_view.scroll_view(nav.left, view_name, False)
         if cc_value <= 64:
-            if not self.application().view.is_view_visible('Detail/Clip'):
-                self.application().view.focus_view('Detail/Clip')
-                self.application().view.scroll_view(nav.right,'Detail/Clip', False)
+            if not self.application().view.is_view_visible(view_name):
+                self.application().view.focus_view(view_name)
+                app_view.scroll_view(nav.right, view_name, False)
 
     def zoom_clip(self, cc_value):
         nav = Live.Application.Application.View.NavDirection
@@ -315,16 +307,22 @@ class MackieC4(object):
                 app_view.zoom_view(nav.right, view_name, False)
                 logging.info(f'Zooming view to the right')
 
-    def tempo_change(self, cc_value):
+    def tempo_change(self, cc_value):  # BPM
         """Sets the current song tempo"""
-        if cc_value >= 64:
-            amount = -((cc_value - 64) / 4)
+        if self.ctrl_is_pressed():
+            multiplier = 16
+        elif self.shift_is_pressed():
+            multiplier = 0.25
         else:
-            amount = (cc_value / 4)
+            multiplier = 1
+
+        if cc_value >= 64:
+            amount = -((cc_value - 64) / 4 * multiplier)
+        else:
+            amount = (cc_value / 4 * multiplier)
+
         tempo = max(20, min(999, self.song().tempo + amount))
         self.song().tempo = tempo
-
-
 
     def can_lock_to_devices(self):  # todo: make use of it, locking itself works
         """Live -> Script
@@ -377,15 +375,14 @@ class MackieC4(object):
         return self.__c_instance.handle()
 
     def trBlock(self, trackOffset, blocksize):
-        block = []
         tracks = self.song().visible_tracks
-        for track_index in range(0, blocksize):
-            if len(tracks) > trackOffset + track_index:
-                trk_nme = tracks[(trackOffset + track_index)].name
-                # not just adding the track name, adding a list with one element that is the track name
-                block.extend([str(trk_nme)])
-            else:
-                block.extend(['fake Track NAME'])  # MS lets try
+        block = [
+            str(tracks[trackOffset + track_index].name)
+            if len(tracks) > trackOffset + track_index
+            else 'fake Track NAME'
+            for track_index in range(0, blocksize)
+        ]
+        return block
 
     def disconnect(self):
         """Live -> Script        Called right before we get disconnected from Live.
@@ -453,14 +450,12 @@ class MackieC4(object):
             pass
 
     def track_change(self):
-        # need to do 2 things
-        # assign the new 'selected Index'
+        # need to do 2 things: assign the new 'selected Index'
         #     self.track_index = selected_index
         # and
-        # figure out if a track was added, deleted, or just changed
-        # then delegate to appropriate encoder controller methods
+        # figure out if a track was added, deleted, or just changed, then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
-        tracks = self.song().visible_tracks + self.song().return_tracks  # not counting Master Track?
+        tracks = self.song().visible_tracks + self.song().return_tracks
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range
             self.log_message("C4/track_change nbr visible tracks (includes rtn tracks) {0} BUT SAVED VALUE <{1}> OUT OF EXPECTED RANGE".format(len(tracks), self.track_count))
@@ -500,8 +495,6 @@ class MackieC4(object):
             self.tracks_change()
         else:
             self.__encoder_controller.track_changed(selected_index)
-
-        # assert self.track_count == len(tracks)
 
     def scene_change(self):   # do we need scenes? TESTED, without scene stuff, display on C4 doesn't get updated (WTF??)'
         selected_scene = self.song().view.selected_scene
