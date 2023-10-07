@@ -13,7 +13,7 @@ import sys
 from ableton.v2.base import liveobj_valid, liveobj_changed, find_if  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
-from ableton.v3.base import live_api_util
+from ableton.v3.live import util
 
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
@@ -861,8 +861,8 @@ class EncoderController(MackieC4Component):
                     # if param is not tuple:
                     try:
                         if param.is_enabled:
-                            if live_api_util.is_parameter_quantized(param, current_device_track):  # for stepped params or those that only have a limited range
-                                live_api_util.toggle_or_cycle_parameter_value(param)  # this is now in v3/live/util and action.py, needs to be changed when 11.3 stable is out.
+                            if util.is_parameter_quantized(param, current_device_track):  # for stepped params or those that only have a limited range
+                                song_util.toggle_or_cycle_parameter_value(param)  # this is now in v3/live/util and action.py, needs to be changed when 11.3 stable is out.
                             else:
                                 # button press == jump to default value of device parameter
                                 param.value = param.default_value
