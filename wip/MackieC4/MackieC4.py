@@ -80,10 +80,8 @@ class MackieC4(object):
         # initialize the 32 encoders, their EncoderController and add them as __components here
         self.__encoders = [Encoders(self, i) for i in encoder_range]
         self.__encoder_controller = EncoderController(self, self.__encoders)
-        if sys.version_info[0] >= 3:  # Live 11
-            self.__components = [*self.__encoders, self.__encoder_controller]
-        else:
-            self.__components = [self.__encoders[i] for i in encoder_range].append(self.__encoder_controller)
+        self.__components = [self.__encoders[i] for i in encoder_range]
+        self.__components.append(self.__encoder_controller)
 
         # turn off FUNCTION and ASSIGNMENT button LEDs except the default
         for cc in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
@@ -189,41 +187,41 @@ class MackieC4(object):
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
             if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
-                if sys.version_info[0] >= 3:  # Live 11
-                    note_handling_dict = {
-                        **{note: self.track_inc_dec for note in track_nav_switch_ids},
-                        **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
-                        **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
-                        **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
-                        C4SID_LOCK: lambda _: self.lock_surface(),
-                        **{note: self.__encoder_controller.handle_assignment_switch_ids for note in
-                           assignment_mode_switch_ids},
-                        **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
-                    }
-                    if note in note_handling_dict and ignore_note_offs:
-                        note_handling_dict[note](note)
-                    elif note in modifier_switch_ids:
-                        self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
-                else:
-                    if note in modifier_switch_ids:
-                        self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
-                    elif ignore_note_offs:
-                        note_handling_dict = {C4SID_LOCK: lambda _: self.lock_surface()}
-                        if note in track_nav_switch_ids:
-                            note_handling_dict.update({note: self.track_inc_dec})
-                        elif note in bank_switch_ids or note in single_switch_ids:
-                            note_handling_dict.update({note: self.__encoder_controller.handle_bank_switch_ids})
-                        elif note in slot_nav_switch_ids:
-                            note_handling_dict.update({note: self.__encoder_controller.handle_slot_nav_switch_ids})
-                        elif note in assignment_mode_switch_ids:
-                            note_handling_dict.update({note: self.__encoder_controller.handle_assignment_switch_ids})
-                        elif note in encoder_switch_ids:
-                            note_handling_dict.update({note: self.__encoder_controller.handle_pressed_v_pot})
+                # if sys.version_info[0] >= 3:  # Live 11
+                #     note_handling_dict = {
+                #         **{note: self.track_inc_dec for note in track_nav_switch_ids},
+                #         **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
+                #         **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
+                #         **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
+                #         C4SID_LOCK: lambda _: self.lock_surface(),
+                #         **{note: self.__encoder_controller.handle_assignment_switch_ids for note in
+                #            assignment_mode_switch_ids},
+                #         **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
+                #     }
+                #     if note in note_handling_dict and ignore_note_offs:
+                #         note_handling_dict[note](note)
+                #     elif note in modifier_switch_ids:
+                #         self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
+                # else:
+                if note in modifier_switch_ids:
+                    self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
+                elif ignore_note_offs:
+                    note_handling_dict = {C4SID_LOCK: lambda _: self.lock_surface()}
+                    if note in track_nav_switch_ids:
+                        note_handling_dict.update({note: self.track_inc_dec})
+                    elif note in bank_switch_ids or note in single_switch_ids:
+                        note_handling_dict.update({note: self.__encoder_controller.handle_bank_switch_ids})
+                    elif note in slot_nav_switch_ids:
+                        note_handling_dict.update({note: self.__encoder_controller.handle_slot_nav_switch_ids})
+                    elif note in assignment_mode_switch_ids:
+                        note_handling_dict.update({note: self.__encoder_controller.handle_assignment_switch_ids})
+                    elif note in encoder_switch_ids:
+                        note_handling_dict.update({note: self.__encoder_controller.handle_pressed_v_pot})
 
-                        if note in note_handling_dict:
-                            note_handling_dict[note](note)
-                        else:
-                            logging.info("unhandled note value: {}".format(note))
+                    if note in note_handling_dict:
+                        note_handling_dict[note](note)
+                    else:
+                        logging.info("unhandled note value: {}".format(note))
 
 
         elif is_cc_msg:
@@ -299,12 +297,8 @@ class MackieC4(object):
         view_name = 'Detail/DeviceChain'
         clip = self.song().view.detail_clip
 
-        scroll = cc_value == 1 and 3 or 2
-        is_11 = sys.version_info[0] >= 3  # Live 11
-        if is_11:
-            log_txt = f'scroll_clip called with cc_value: {cc_value}'
-        else:
-            log_txt = 'scroll_clip called with cc_value {}'.format(cc_value)
+        scroll = cc_value == 1 and 3 or 2  # (because 'and' has higher precedence than 'or' scroll will only be assigned the value True when cc_value == 2)
+        log_txt = 'scroll_clip called with cc_value {}'.format(cc_value)
         logging.info(log_txt)
 
         if cc_value > 64:
@@ -321,11 +315,7 @@ class MackieC4(object):
         nav = Live.Application.Application.View.NavDirection
         app_view = self.application().view
         view_name = 'Detail/Clip'
-        is_11 = sys.version_info[0] >= 3  # Live 11
-        if is_11:
-            log_txt = f'zoom_clip called with cc_value: {cc_value}'
-        else:
-            log_txt = 'zoom_clip called with cc_value {}'.format(cc_value)
+        log_txt = 'zoom_clip called with cc_value {}'.format(cc_value)
         logging.info(log_txt)
 
         # scroll = cc_value == 65 and 3 or 1
@@ -937,10 +927,7 @@ class MackieC4(object):
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
         try:
-            if sys.version_info[0] >= 3:  # Live 11
-                message = f'({self.__class__.__name__}) {" ".join(map(str, message))}'
-            else:
-                message = '(%s) %s' % (self.__class__.__name__, " ".join(map(str, message)))
+            message = '(%s) %s' % (self.__class__.__name__, " ".join(map(str, message)))
             logger.info(message)
         except:
             logger.info('Logging encountered illegal character(s)!')

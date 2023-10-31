@@ -13,10 +13,11 @@ import sys
 from ableton.v2.base import liveobj_valid, liveobj_changed, find_if  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
-from ableton.v3.live import util
-
+util_gate = False
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
+    from ableton.v3.live import util
+    util_gate = True
 
 
 from . import track_util
@@ -572,7 +573,7 @@ class EncoderController(MackieC4Component):
                 else:
                     self.__encoders[vpot_index].unlight_vpot_leds()
         else:
-            raise ValueError(f"Invalid mode name: {mode_name}")
+            raise ValueError("Invalid mode name: {}".format(mode_name))
 
     def beat_pointer(self, mode_name, vpot_index):
         # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
@@ -603,7 +604,7 @@ class EncoderController(MackieC4Component):
                 spp_vpot = self.__encoders[vpot_index]
                 spp_vpot.update_led_ring(led_ring_val)
         else:
-            raise ValueError(f"Invalid mode name: {mode_name}")
+            raise ValueError("Invalid mode name: {}".format(mode_name))
         return upper_string2, lower_string2
 
     def loop_length(self, mode_name, vpot_index):
@@ -627,7 +628,7 @@ class EncoderController(MackieC4Component):
                 spp_vpot = self.__encoders[vpot_index + 1]  # because offset due to SPP being 2 slots wide
                 spp_vpot.update_led_ring(led_ring_val)
         else:
-            raise ValueError(f"Invalid mode name: {mode_name}")
+            raise ValueError("Invalid mode name: {}".format(mode_name))
         return upper_string2, lower_string2
 
     def xfade(self, mode_name, vpot_index, u_alt_text=None, l_alt_text=None):
@@ -690,7 +691,7 @@ class EncoderController(MackieC4Component):
                             lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
 
         else:
-            raise ValueError(f"Invalid mode name: {mode_name}")
+            raise ValueError("Invalid mode name: {}".format(mode_name))
         return upper_string4, lower_string4
 
     def handle_pressed_v_pot(self, vpot_index):
@@ -861,11 +862,20 @@ class EncoderController(MackieC4Component):
                     # if param is not tuple:
                     try:
                         if param.is_enabled:
-                            if util.is_parameter_quantized(param, current_device_track):  # for stepped params or those that only have a limited range
-                                song_util.toggle_or_cycle_parameter_value(param)  # this is now in v3/live/util and action.py, needs to be changed when 11.3 stable is out.
-                            else:
-                                # button press == jump to default value of device parameter
-                                param.value = param.default_value
+                            if util_gate: # Live 11
+                                if util.is_parameter_quantized(param, current_device_track):  # for stepped params or those that only have a limited range
+                                    song_util.toggle_or_cycle_parameter_value(param)  # this accounts for "unregistered quantized parameters"
+                                else:
+                                    # button press == jump to default value of device parameter
+                                    param.value = param.default_value
+                            else: # Live 10
+                                if param.is_quantized:  # this only accounts for "registered quantized parameters"
+                                    if param.value + 1 > param.max: #
+                                        param.value = param.min
+                                    else:
+                                        param.value = param.value + 1
+                                else:
+                                    param.value = param.default_value
                     except (RuntimeError, AttributeError):
                         # There is no default value available for this type of parameter
                         # 'NoneType' object has no attribute 'default_value'
@@ -1605,12 +1615,14 @@ class EncoderController(MackieC4Component):
 
         if self.__assignment_mode == C4M_PLUGINS:
             t_d_idx = self.__eah.get_selected_device_index()
-            upper_string1 += f"------ Track ------- ---- Device {t_d_idx}"
+            t_d_msg = '' + t_d_idx
+            upper_string1 += "------ Track ------- ---- Device " + t_d_msg
             upper_string1 += ' ----- ' if t_d_idx > 9 else ' ------ '
 
             if liveobj_valid(self.selected_track):
                 track_name = self.selected_track.name
-                lower_string1a += f"{adjust_string(track_name, 12)}(Frozen)" if self.selected_track.is_frozen else adjust_string(track_name, 20)
+                f_msg = adjust_string(track_name, 12)
+                lower_string1a += f_msg + "(Frozen)" if self.selected_track.is_frozen else adjust_string(track_name, 20)
             else:
                 lower_string1a += "---------0---------1"
             lower_string1a = lower_string1a.center(20) + ' '
@@ -1629,6 +1641,7 @@ class EncoderController(MackieC4Component):
             else:
                 device_name = '  '
 
+                log_msg = '' + t_d_idx
                 if t_d_idx > -1:
                     extended_device_list = self.get_device_list(self.selected_track.devices)
                     if liveobj_valid(self.selected_track) and len(extended_device_list) > t_d_idx:
@@ -1636,13 +1649,13 @@ class EncoderController(MackieC4Component):
                             device_name = extended_device_list[t_d_idx].name
 
                         else:
-                            self.main_script().log_message(f"selected track and device index were valid but the device at index {t_d_idx} is not liveobj_valid() Danger! Will Robinson! Danger!")
+                            self.main_script().log_message("selected track and device index were valid but the device is not liveobj_valid() " + log_msg)
 
                     else:
-                        self.main_script().log_message(f"Not enough devices loaded for index and __chosen_device is liveobj_valid() name display blank over device index {t_d_idx} Danger! Will Robinson! Danger!")
+                        self.main_script().log_message("Not enough devices loaded for index and __chosen_device is liveobj_valid() but no name display over " + log_msg)
 
                 else:
-                    self.main_script().log_message(f"Current Track Device List length too short for index: name display blank over device index {t_d_idx}")
+                    self.main_script().log_message("Current Track Device List length too short for List index so no name display over device index " + log_msg)
 
                 lower_string1b = adjust_string(str(device_name), 20).center(20)
                 lower_string1 += lower_string1a + lower_string1b + ' '

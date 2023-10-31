@@ -18,7 +18,8 @@ class Encoders(MackieC4Component):
     __module__ = __name__
 
     def __init__(self, main_script, vpot_index):
-        super().__init__(main_script)
+        # super().__init__(main_script)
+        MackieC4Component.__init__(self, main_script)
         self.within_destroy = False
         self.__encoder_controller = None
         self.__vpot_index = vpot_index
