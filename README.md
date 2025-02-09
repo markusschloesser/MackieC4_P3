@@ -64,3 +64,6 @@ What we did in 2021:
 
 2022/2023:
 a lot more functionality, less bugs, shorter code, etc
+
+2025:
+updating script's User mode functionality from running a simple lightshow demo to controlling the C4 sequencer Max patch found here: 

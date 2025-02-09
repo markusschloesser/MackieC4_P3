@@ -27,8 +27,11 @@ dest_rel_path = r'../MRS11'
         (venv?) G:MackieC4Pro/z_utility>  python ./chuckNorris.py
     Finally: 
     * In File>Settings>Project:MackieC4Pro*>Project Structure (*any local repository folder name)
-        * If MackieC4Pro is not already the Project "Content Root",
-            * Add the (new) MRS11 folder as Content Root. (In addition to wip/MackieC4 root)
+        * If MackieC4Pro* is already the Project "Content Root", delete the entry, then
+        * Add the (new) MRS11 folder as Content Root
+        * And the wip/MackieC4 folder as Content Root
+        ** This Project reference structure mirrors the runtime reference structure inside Live's MIDI Remote Scripts folder
+        ** meaning the python import paths in every file resolve in this project exactly like they do at runtime in Live
         * Content Root Structure settings only need to be set once (unless the Structure actually changes)
         
     NOTE: You only need to have Chuck walk the range of folders (i.e. run this script) if/when new or updated .pyc files appear in the (recursive) source path
@@ -45,13 +48,13 @@ dest_rel_path = r'../MRS11'
             commonRoot/MackieC4Pro
                 /.git
                 /.idea                      <--- gitignore .idea/
+                /MRS11 (.py dest files)     <--- gitignore MRS*/
                 /release
                     /MackieC4
                 /wip
                     /MackieC4
                         ...
                 /z_utility
-                /MRS11 (.py dest files)     <--- gitignore MRS*/
 """
 
 
