@@ -1,4 +1,4 @@
 # ignore PyCharm project files by default
 /.idea
-old/LiveUtils.py   old aber check ob noch was gebraucht wird!
-old/MackieC4 lief so lala backup vom stand 08.02.2021.zip
+/MRS*
+
