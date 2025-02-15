@@ -1611,11 +1611,9 @@ class EncoderController(MackieC4Component):
                         lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
                         upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
-        so_many_spaces = '                                                       '
-
-        if self.__assignment_mode == C4M_PLUGINS:
+        elif self.__assignment_mode == C4M_PLUGINS:
             t_d_idx = self.__eah.get_selected_device_index()
-            t_d_msg = '' + t_d_idx
+            t_d_msg = "{}".format(t_d_idx)
             upper_string1 += "------ Track ------- ---- Device " + t_d_msg
             upper_string1 += ' ----- ' if t_d_idx > 9 else ' ------ '
 
@@ -1641,7 +1639,7 @@ class EncoderController(MackieC4Component):
             else:
                 device_name = '  '
 
-                log_msg = '' + t_d_idx
+                log_msg = "{}".format(t_d_idx)
                 if t_d_idx > -1:
                     extended_device_list = self.get_device_list(self.selected_track.devices)
                     if liveobj_valid(self.selected_track) and len(extended_device_list) > t_d_idx:
