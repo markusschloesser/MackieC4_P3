@@ -146,11 +146,11 @@ class EncoderController(MackieC4Component):
         return self.__encoders
 
     def build_setup_database(self):
-        self.main_script().log_message("C4/building setup db")
+        # self.main_script().log_message("EC151: C4/building setup db")
         self.__eah.build_setup_database(self.song())        # self.track_count
 
-        # self.main_script().log_message("C4/t_count after setup <{0}>".format(self.__eah.t_count))
-        # self.main_script().log_message("C4/main_script().track_count after setup <{0}>".format(self.main_script().track_count))
+        # self.main_script().log_message("EC154: C4/t_count after setup <{0}>".format(self.__eah.t_count))
+        # self.main_script().log_message("EC155: C4/main_script().track_count after setup <{0}>".format(self.main_script().track_count))
 
         self.selected_track = self.song().view.selected_track
         devices_on_selected_trk = self.get_device_list(self.selected_track.devices)
