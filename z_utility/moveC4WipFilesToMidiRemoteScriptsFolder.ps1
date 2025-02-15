@@ -104,7 +104,7 @@ foreach($folder in $Desfolders)
         if (([string]::IsNullOrEmpty($SrcFolder)) -or !(test-path $SrcFolder))
         {
             Write-Host "Folder $folder Missing from source. Removing it from Destination"
-            Remove-Item -path $fullName -force
+            Remove-Item -path $fullName -force -Recurse # -Recurse or get confirmation prompt because __pycache__ not empty
         }
     }
 }
@@ -145,11 +145,14 @@ foreach($entry in $DesFiles)
 {
     $DesFullname = $entry.fullname
     $DesName = $entry.Name
-    $DesFilePath = $Destination -replace "\\","\\" -replace "\:","\:"
-    $SrcFile = $DesFullname -replace $DesFilePath,$Source
-    if(!(test-Path $SrcFile))
+    if (!($DesFullName.Contains("__pycache__"))) # __pycache__ always missing from source, already gone from dest
     {
-        Write-Host "$SrcFile Missing... Removing it from $DesFullname"
-        Remove-Item -path $DesFullname -force
+        $DesFilePath = $Destination -replace "\\", "\\" -replace "\:", "\:"
+        $SrcFile = $DesFullname -replace $DesFilePath,$Source
+        if (!(test-Path $SrcFile))
+        {
+            Write-Host "$SrcFile Missing... Removing it from $DesFullname"
+            Remove-Item -path $DesFullname -force
+        }
     }
 }
