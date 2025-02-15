@@ -7,16 +7,13 @@ dest_rel_path = r'../MRS11'
 """    
     ##### To run this script in this project's PyCharm Terminal (cmd.exe) #####
     NOTE 2025: a project specific virtual environment Python Interpreter will have uncompyle6.exe in the
-        venv/scripts folder.  To run this script without errors, you might need to update the Windows PATH and the 
-        Project to use the system Python Interpreter because the subprocess.call() routine below always(?) uses the 
-        system Python Interpreter to execute the uncompyle6.exe command
-        (You may need to right-click Pycharm and "Run As Administrator" before system Interpreter changes actually stick?)
+        venv/scripts folder.  
         ** in Feb. 2025, uncompyle6 only successfully decompiles code compiled by Python 3.8 or below and Live 12 midi remote 
         scripts seem to have been compiled under Python 3.11.  So, error city, "what is this 3.11 code you speak in?"
         
     * In File>Settings>Project:MackieC4Pro*>Python Interpreter (*any local repository folder name)
-        * install/update uncompyle6 in the Project's current (system) Python Interpreter (Python 3.11 for example)
-    * Add installed uncompyle6.exe location to Windows PATH environment variable (or Confirm PATH entry exists)
+        * install/update uncompyle6 in the Project's current Python Interpreter (Python 3.11 for example)
+    * If using the system Python Interpreter, add installed uncompyle6.exe location to Windows PATH environment variable (or Confirm PATH entry exists)
         C:\Program Files\Python311\Scripts
     * In File>Settings>Tools>Terminal
         * Shell Path: C:\Windows\system32\cmd.exe
