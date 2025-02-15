@@ -63,7 +63,8 @@ class EncoderController(MackieC4Component):
         self.__eah = EncoderAssignmentHistory(main_script, self)
         self.__time_display = TimeDisplay(self)
         self.__assignment_mode = C4M_CHANNEL_STRIP
-        self.__last_assignment_mode = C4M_USER
+
+        self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
         self.__current_track_name = ''  # Live's Track Name of selected track
         self.selected_track = None  # Live's selected-Track Object
 
@@ -108,7 +109,7 @@ class EncoderController(MackieC4Component):
             self.track_changed(index)
 
         # self.selected_track = self.song().view.selected_track
-        self.update_assignment_mode_leds()
+        # self.update_assignment_mode_leds()
         self.__last_send_messages = {
             LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
@@ -450,10 +451,14 @@ class EncoderController(MackieC4Component):
                 update_self = True
 
         if update_self:
-            self.update_assignment_mode_leds()
-            self.__reassign_encoder_parameters()
+            if switch_id == C4SID_MARKER:
+                self.__reassign_encoder_parameters() # first send SYSEX display update
+                self.update_assignment_mode_leds() # then send signal to Max patch to START processing messages
+            else:
+                self.update_assignment_mode_leds()
+                self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
-        # else don't update because nothing changed here
+        # else don't update self because nothing changed here
 
     def handle_slot_nav_switch_ids(self, switch_id):
         """ "slot navigation" switches between Devices in C4M_PLUGINS mode (up/down) """
@@ -509,10 +514,53 @@ class EncoderController(MackieC4Component):
           turn off button LED of the button associated with the old assignment mode
           turn  on button LED of the button associated with the current/new assignment mode
         """
-        # sends for example (90, 08, 00, channel)  channel value provided by Live?, if any
-        self.send_midi((NOTE_ON_STATUS, assignment_mode_to_button_id[self.__last_assignment_mode], BUTTON_STATE_OFF))
-        # sends for example (90, 05, 7F, channel)
-        self.send_midi((NOTE_ON_STATUS, assignment_mode_to_button_id[self.__assignment_mode], BUTTON_STATE_ON))
+        delay_assignment_led_update = False
+        if not self.main_script().init_ready:
+            self.main_script().log_message("EC519: main script not ready yet")
+            return
+        if self.__assignment_mode == C4M_USER:
+            # going INTO USER mode these feedback messages pass through the Max patch before it starts processing messages
+            self.main_script().log_message("EC522: entering USER mode")
+            for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
+                if i == assignment_mode_to_button_id[self.__assignment_mode]:
+                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
+                else:
+                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
+        elif self.__last_assignment_mode == C4M_USER:
+            # leaving USER mode, messages from here would be processed by the Max patch
+            # which would generate the feedback messages going directly to the C4 (before it receives the "button 22" signal sent below)
+            # blindly telling the Max patch to toggle the assignment LED states from here would rarely leave the LEDs
+            # accurately depicting the script's new current "assignment mode"
+            delay_assignment_led_update = True
+            self.main_script().log_message("EC535: leaving USER mode")
+        else:
+            # not in USER mode these messages pass through the Max patch
+            self.main_script().log_message("EC538: changing non USER mode")
+            for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
+                if i == assignment_mode_to_button_id[self.__assignment_mode]:
+                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
+                else:
+                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
+
+        # signal the Max patch to toggle event processing going into or coming out of user mode
+        if self.__assignment_mode == C4M_USER or self.__last_assignment_mode == C4M_USER:
+            self.main_script().log_message("EC547: sending 'button 22' signal toggling Max processing bypass")
+            self.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON))
+            self.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF))  # press + release changes button LED state
+
+        if delay_assignment_led_update:
+            # pause here long enough for Max to finish processing the "button 22" signal?
+            self.main_script().log_message("EC553: updating assignment LEDs after leaving USER mode")
+            for i in range(C4SID_MARKER, C4SID_FUNCTION + 1):
+                if i == assignment_mode_to_button_id[self.__assignment_mode]:
+                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
+                else:
+                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
+            # since the LOCK button is the second press of the "leave USER mode" button combo
+            # and this script is back in control by now, ensure the C4 (this script) is not in LOCKED mode
+            force_unlocking = True
+            self.main_script().lock_surface(force_unlocking)
+
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
         """ currently does nothing. If we want something done here, it needs to be forwarded by MackieC4/receive_midi. BUT currently all forwarding functions are handled directly in MackieC4.py """
@@ -1085,6 +1133,9 @@ class EncoderController(MackieC4Component):
 
     def __reassign_encoder_parameters(self):  # this is where the real assignment is going on, not vpot_rotation
         """ Reevaluate all v-pot -> parameter assignments """
+        if not self.main_script().init_ready:
+            return
+
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
         self.__current_track_name = self.selected_track.name
@@ -1398,50 +1449,25 @@ class EncoderController(MackieC4Component):
 
         elif self.__assignment_mode == C4M_USER:
             for s in self.__encoders:
-                s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(self, s_index)
-                vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
-                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+                s.unlight_vpot_leds()
 
-                vpot_display_text.set_text('', '')
-                # can only write a "long message" (more than 6 or 7 chars) like this if it won't interfere with subsequent Display segments
-                # only the first 56 bytes or whatever of any string fit on the LCDs
-                if s_index == row_00_encoders[0]:
-                    top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    bottom_line = 'USER mode row 0'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    vpot_display_text.set_text(bottom_line, top_line)
-                elif s_index < row_00_encoders[4]:
-                    vpot_param = (None, VPOT_DISPLAY_BOOST_CUT)
-                elif s_index < row_01_encoders[0]:
-                    vpot_param = (None, VPOT_DISPLAY_WRAP)
-                elif s_index == row_01_encoders[0]:
-                    top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    bottom_line = 'USER mode row 1'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    vpot_display_text.set_text(bottom_line, top_line)
-                elif s_index < row_01_encoders[4]:
-                    vpot_param = (None, VPOT_DISPLAY_SPREAD)
-                elif s_index < row_02_encoders[0]:
-                    vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
-                elif s_index == row_02_encoders[0]:
-                    top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    bottom_line = 'USER mode row 2'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    vpot_display_text.set_text(bottom_line, top_line)
-                elif s_index < row_02_encoders[4]:
-                    vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-                elif s_index < row_03_encoders[0]:
-                    vpot_param = (None, VPOT_DISPLAY_BOOST_CUT)
-                elif s_index == row_03_encoders[0]:
-                    top_line = 'Welcome to C4'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    bottom_line = 'USER mode row 3'.center(NUM_CHARS_PER_DISPLAY_LINE)
-                    vpot_display_text.set_text(bottom_line, top_line)
-                elif s_index < row_03_encoders[4]:
-                    vpot_param = (None, VPOT_DISPLAY_WRAP)
-                else:
-                    vpot_param = (None, VPOT_DISPLAY_SPREAD)
-
-                s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                self.__display_parameters.append(vpot_display_text)
-
+            # display these once only, here because the Max sequencer handles its own display in this mode
+            top_line = 'MackieC4Pro remote script User mode'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            bottom_line = 'Switching to Max Sequencer patch control'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            self.send_display_string(LCD_ANGLED_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
+            self.send_display_string(LCD_ANGLED_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
+            top_line = 'Press and Hold the Marker button again'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            bottom_line = 'Then Press the Lock button to Exit USER mode and'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            self.send_display_string(LCD_TOP_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
+            self.send_display_string(LCD_TOP_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
+            top_line = 'Return to the previous remote script mode. All other'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            bottom_line = 'button and pot control functions pass to the Max patch'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            self.send_display_string(LCD_MDL_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
+            self.send_display_string(LCD_MDL_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
+            top_line = 'Press and Hold Marker then Press Lock'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            bottom_line = 'to exit USER mode'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            self.send_display_string(LCD_BTM_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
+            self.send_display_string(LCD_BTM_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
         return
 
     def _update_vpot_leds_for_device_toggle(self):
@@ -1468,6 +1494,9 @@ class EncoderController(MackieC4Component):
 
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
+        if not self.main_script().init_ready:
+            return
+
         upper_string1 = ''
         lower_string1 = ''
         lower_string1a = ''
@@ -1494,6 +1523,7 @@ class EncoderController(MackieC4Component):
         encoder_30_index = 29
         encoder_31_index = 30
         encoder_32_index = 31
+        so_many_spaces = '                                                       '
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
 
             selected_track = self.selected_track
@@ -1813,17 +1843,19 @@ class EncoderController(MackieC4Component):
                 re_enable_automation_encoder.unlight_vpot_leds()
 
         elif self.__assignment_mode == C4M_USER:
+            # no "timer based" display updates in this mode
             pass
 
-        # each of these is sent as a 63 byte SYSEX message to the C4 LCD displays
-        self.send_display_string(LCD_ANGLED_ADDRESS, upper_string1, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_TOP_FLAT_ADDRESS, upper_string2, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_MDL_FLAT_ADDRESS, upper_string3, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_BTM_FLAT_ADDRESS, upper_string4, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_ANGLED_ADDRESS, lower_string1, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string(LCD_TOP_FLAT_ADDRESS, lower_string2, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string(LCD_MDL_FLAT_ADDRESS, lower_string3, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
+        # in USER mode, do NOT update any displays when this timer pops
+        if self.__assignment_mode != C4M_USER:
+            self.send_display_string(LCD_ANGLED_ADDRESS, upper_string1, LCD_TOP_ROW_OFFSET)
+            self.send_display_string(LCD_TOP_FLAT_ADDRESS, upper_string2, LCD_TOP_ROW_OFFSET)
+            self.send_display_string(LCD_MDL_FLAT_ADDRESS, upper_string3, LCD_TOP_ROW_OFFSET)
+            self.send_display_string(LCD_BTM_FLAT_ADDRESS, upper_string4, LCD_TOP_ROW_OFFSET)
+            self.send_display_string(LCD_ANGLED_ADDRESS, lower_string1, LCD_BOTTOM_ROW_OFFSET)
+            self.send_display_string(LCD_TOP_FLAT_ADDRESS, lower_string2, LCD_BOTTOM_ROW_OFFSET)
+            self.send_display_string(LCD_MDL_FLAT_ADDRESS, lower_string3, LCD_BOTTOM_ROW_OFFSET)
+            self.send_display_string(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
 
         return
 

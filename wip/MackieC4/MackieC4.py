@@ -73,8 +73,10 @@ class MackieC4(object):
     surface_is_locked = 0
     rebuild_my_database = 0
     return_resetter = 0
+    init_ready = False
 
     def __init__(self, c_instance):
+
         self.__c_instance = c_instance
 
         # initialize the 32 encoders, their EncoderController and add them as __components here
@@ -83,12 +85,6 @@ class MackieC4(object):
         self.__components = [self.__encoders[i] for i in encoder_range]
         self.__components.append(self.__encoder_controller)
 
-        # turn off FUNCTION and ASSIGNMENT button LEDs except the default
-        for cc in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
-            if cc == C4SID_CHANNEL_STRIP:
-                self.send_midi((NOTE_ON_STATUS, cc, BUTTON_STATE_ON))
-            else:
-                self.send_midi((NOTE_ON_STATUS, cc, BUTTON_STATE_OFF))
 
         tracks = self.song().visible_tracks + self.song().return_tracks
         index = 0
@@ -113,6 +109,35 @@ class MackieC4(object):
         self.__option_is_pressed = False
         self.__ctrl_is_pressed = False
         self.__alt_is_pressed = False
+        self.__marker_is_pressed = False
+        self.__user_mode_exit = False
+
+        self.__note_handling_dict = {C4SID_LOCK: lambda _: self.lock_surface() }
+        for note in range(system_switch_ids[0], track_nav_switch_ids[-1] + 1): # range(0, 21) notes 0 - 20
+            # self.log_message("MC117: adding note {} to __note_handling_dict".format(note))
+            if note in track_nav_switch_ids:
+                self.__note_handling_dict.update({note: self.track_inc_dec})
+            elif note in bank_switch_ids or note in single_switch_ids:
+                self.__note_handling_dict.update({note: self.__encoder_controller.handle_bank_switch_ids})
+            elif note in slot_nav_switch_ids:
+                self.__note_handling_dict.update({note: self.__encoder_controller.handle_slot_nav_switch_ids})
+            elif note in assignment_mode_switch_ids:
+                self.__note_handling_dict.update({note: self.__encoder_controller.handle_assignment_switch_ids})
+            elif note in encoder_switch_ids:
+                self.__note_handling_dict.update({note: self.__encoder_controller.handle_pressed_v_pot})
+
+        self.init_ready = True
+
+        # turn off FUNCTION and ASSIGNMENT button LEDs except the default
+        # self.log_message("MC132: self.__init__ firing")
+        for cc in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
+            if cc == C4SID_CHANNEL_STRIP:
+                # self.log_message("MC135: {}".format((NOTE_ON_STATUS, cc, BUTTON_STATE_ON)))
+                self.send_midi((NOTE_ON_STATUS, cc, BUTTON_STATE_ON))
+            else:
+                # self.log_message("MC137: {}".format((NOTE_ON_STATUS, cc, BUTTON_STATE_OFF)))
+                self.send_midi((NOTE_ON_STATUS, cc, BUTTON_STATE_OFF))
+
 
     def connect_script_instances(self, instanciated_scripts):
         """
@@ -134,125 +159,138 @@ class MackieC4(object):
         by calling this function. This is processed as a request, to be sure that it's not too often called, because it's
         time-critical.
         """
-        self.__c_instance.request_rebuild_midi_map()
+        if self.init_ready:
+            # self.log_message("MC163: self.request_rebuild_midi_map firing")
+            self.__c_instance.request_rebuild_midi_map()
 
     def update_display(self):
         """
         Aka on_timer. Called every 100 ms and should be used to update display relevant parts of the controller.
         """
-        for c in self.__components:
-            c.on_update_display_timer()
+        # pass
+        if self.init_ready and self.__encoder_controller.assignment_mode() != C4M_USER:
+            # self.log_message("MC172: self.update_display() firing")
+            for c in self.__components:
+                c.on_update_display_timer()
 
     def send_midi(self, midi_event_bytes):
         """
         Use this function to send MIDI events through Live to the _real_ MIDI devices that this script is assigned to.
         """
-        self.__c_instance.send_midi(midi_event_bytes)
+        if self.init_ready:
+            # self.log_message("MC167: self.__c_instance.send_midi(midi_event_bytes) firing")  # very verbose
+            self.__c_instance.send_midi(midi_event_bytes)
 
     def build_midi_map(self, midi_map_handle):
         """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
         explicitly to our receive_midi_functions. Which means that when you are not forwarding MIDI, nor mapping parameters, you will
         never get any MIDI messages at all. """
+        if self.init_ready:
+            # self.log_message("MC189: self.build_midi_map(self, midi_map_handle) firing")
+            # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
+            for s in self.__encoders:
+                s.build_midi_map(midi_map_handle)
 
-        # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
-        for s in self.__encoders:
-            s.build_midi_map(midi_map_handle)
+            # ask Live to forward all midi note and CC messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
+            for i in range(C4SID_FIRST, C4SID_LAST + 1):
+                Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
+                Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
 
-        # ask Live to forward all midi note messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
-        for i in range(C4SID_FIRST, C4SID_LAST + 1):
-            Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
-            Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
-
-        # self.rebuild_my_database = 1
-        if self.return_resetter == 1:
-            time.sleep(0.5)
-            self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
-            self.return_resetter = 0
+            # self.rebuild_my_database = 1
+            if self.return_resetter == 1:
+                time.sleep(0.5)
+                self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
+                self.return_resetter = 0
 
     def receive_midi(self, midi_bytes):
-        """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
-        # coming from C4 midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
-        # velocity of note on messages is always 7F, velocity of note off messages is always 00
-        # C4 always sends and receives on channel 1
-        is_note_on_msg = midi_bytes[0] & 0xF0 == NOTE_ON_STATUS  # (& F0 strips off any channel related bits)
+        """MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'"""
+
+        is_note_on_msg = midi_bytes[0] & 0xF0 == NOTE_ON_STATUS
         is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
-        is_cc_msg = midi_bytes[0] & 0xF0 == CC_STATUS
+        if self.__encoder_controller.assignment_mode() == C4M_USER:
+            # already in USER mode, check for exit status
+            marker_event = midi_bytes[1] == C4SID_MARKER
+            lock_event = midi_bytes[1] == C4SID_LOCK
+            is_marker_press = is_note_on_msg and marker_event
+            is_marker_release = is_note_off_msg or is_marker_press and midi_bytes[2] == BUTTON_STATE_OFF
+            previous_mode_switch_id = assignment_mode_switch_ids[self.__encoder_controller.last_assignment_mode()]
+            self.__user_mode_exit = False
+            if is_marker_press:
+                self.set_marker_is_pressed(True)
+            elif is_marker_release:
+                self.set_marker_is_pressed(False)
+            elif lock_event and self.__marker_is_pressed:
+                # conditions here do NOT need to guard against processing this button combo when NOT already in user mode
+                self.__encoder_controller.handle_assignment_switch_ids(previous_mode_switch_id)
+                self.__user_mode_exit = True
 
-        # self.log_message("noteON<{}> noteOFF<{}> cc<{}> received MS:from receive_midi in MackieC4".format(is_note_on_msg, is_note_off_msg, is_cc_msg))
-        if is_note_on_msg or is_note_off_msg:  # it will never be a note off message
-            channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
-            note = midi_bytes[1]  # data1
-            velocity = midi_bytes[2]  # data2
-            # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
-            ignore_note_offs = velocity == BUTTON_STATE_ON
-            """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
-            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
-                # if sys.version_info[0] >= 3:  # Live 11
-                #     note_handling_dict = {
-                #         **{note: self.track_inc_dec for note in track_nav_switch_ids},
-                #         **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
-                #         **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
-                #         **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
-                #         C4SID_LOCK: lambda _: self.lock_surface(),
-                #         **{note: self.__encoder_controller.handle_assignment_switch_ids for note in
-                #            assignment_mode_switch_ids},
-                #         **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
-                #     }
-                #     if note in note_handling_dict and ignore_note_offs:
-                #         note_handling_dict[note](note)
-                #     elif note in modifier_switch_ids:
-                #         self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
-                # else:
-                if note in modifier_switch_ids:
-                    self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
-                elif ignore_note_offs:
-                    note_handling_dict = {C4SID_LOCK: lambda _: self.lock_surface()}
-                    if note in track_nav_switch_ids:
-                        note_handling_dict.update({note: self.track_inc_dec})
-                    elif note in bank_switch_ids or note in single_switch_ids:
-                        note_handling_dict.update({note: self.__encoder_controller.handle_bank_switch_ids})
-                    elif note in slot_nav_switch_ids:
-                        note_handling_dict.update({note: self.__encoder_controller.handle_slot_nav_switch_ids})
-                    elif note in assignment_mode_switch_ids:
-                        note_handling_dict.update({note: self.__encoder_controller.handle_assignment_switch_ids})
-                    elif note in encoder_switch_ids:
-                        note_handling_dict.update({note: self.__encoder_controller.handle_pressed_v_pot})
-
-                    if note in note_handling_dict:
-                        note_handling_dict[note](note)
-                    else:
-                        logging.info("unhandled note value: {}".format(note))
+            if self.init_ready and self.__user_mode_exit:
+                new_mode = button_id_to_assignment_mode[previous_mode_switch_id]
+                self.log_message("MC229: self.receive_midi() C4M_USER mode (0) switching to mode ({})".format(new_mode))
+                self.__c_instance.send_midi(midi_bytes) # to the Max sequencer patch for event processing
+            elif self.init_ready:
+                # C4M_USER mode normal forwarding to Max patch
+                # (or spurious feedback to C4 if patch is not running or patch processing is manually bypassed?)
+                self.__c_instance.send_midi(midi_bytes)   # all midi (Note and CC event messages)
+        elif self.__user_mode_exit and self.__encoder_controller.last_assignment_mode() == C4M_USER:
+            # logging.info("MC236: note message: ({},{})".format(midi_bytes[1], midi_bytes[2]))
+            if midi_bytes[1] == C4SID_LOCK:
+                # logging.info("MC238: handled - LOCK button LED forced OFF")
+                force_unlocking = True
+                self.lock_surface(force_unlocking)
+            else:
+                logging.info("MC242: unhandled - note event {} dropped".format(midi_bytes[1]))
+            self.__user_mode_exit = False
+        elif self.init_ready:
+            # self.log_message("MC245: self.receive_midi() mode != C4M_USER")
+            is_cc_msg = midi_bytes[0] & 0xF0 == CC_STATUS
+            # self.log_message("noteON<{}> noteOFF<{}> cc<{}> received MS:from receive_midi in MackieC4".format(is_note_on_msg, is_note_off_msg, is_cc_msg))
+            if is_note_on_msg or is_note_off_msg:  # it will never be a note off message
+                channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
+                note = midi_bytes[1]  # data1
+                velocity = midi_bytes[2]  # data2
+                # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
+                ignore_note_offs = velocity == BUTTON_STATE_ON
+                """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
+                if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
+                    if note in modifier_switch_ids:
+                        self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
+                    elif ignore_note_offs:
+                        if note in self.__note_handling_dict:
+                            self.__note_handling_dict[note](note)
+                        else:
+                            logging.info("MC262: unhandled note value: {}".format(note))
 
 
-        elif is_cc_msg:
-            """here one can use vpot_rotation to forward CC data to a function"""
-            cc_no = midi_bytes[1]
-            cc_value = midi_bytes[2]
-            # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
-            # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
-            vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
+            elif is_cc_msg:
+                """here one can use vpot_rotation to forward CC data to a function"""
+                cc_no = midi_bytes[1]
+                cc_value = midi_bytes[2]
+                # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
+                # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
+                vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
 
-            if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
-                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_12:
-                    self.handle_jog_wheel_rotation(cc_value)
-                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_14:  # skip encoder 13 (display space occupied)
-                    self.set_loop_length(cc_value)
-                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_15:
-                    self.set_loop_start(cc_value)
-                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_16:
-                    self.zoom_or_scroll(cc_value)
-                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_19:
-                    self.scrub_clip(cc_value)
-                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_20:
-                    self.scroll_clip(cc_value)
-                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_21:
-                    self.zoom_clip(cc_value)
-                if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_22:
-                    self.tempo_change(cc_value)
+                if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
+                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_12:
+                        self.handle_jog_wheel_rotation(cc_value)
+                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_14:  # skip encoder 13 (display space occupied)
+                        self.set_loop_length(cc_value)
+                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_15:
+                        self.set_loop_start(cc_value)
+                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_16:
+                        self.zoom_or_scroll(cc_value)
+                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_19:
+                        self.scrub_clip(cc_value)
+                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_20:
+                        self.scroll_clip(cc_value)
+                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_21:
+                        self.zoom_clip(cc_value)
+                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_22:
+                        self.tempo_change(cc_value)
 
-            elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
-                if 8 <= cc_no <= 15:
-                    self.__encoder_controller.toggle_devices(cc_no, cc_value)
+                elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
+                    if 8 <= cc_no <= 15:
+                        self.__encoder_controller.toggle_devices(cc_no, cc_value)
 
     def handle_jog_wheel_rotation(self, cc_value):  # aka beat_pointer
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -387,6 +425,12 @@ class MackieC4(object):
     def set_alt_is_pressed(self, pressed):
         self.__alt_is_pressed = pressed
 
+    def marker_is_pressed(self):
+        return self.__marker_is_pressed
+
+    def set_marker_is_pressed(self, pressed):
+        self.__marker_is_pressed = pressed
+
     def application(self):
         """returns a reference to the application that we are running in"""
         return Live.Application.get_application()
@@ -439,16 +483,18 @@ class MackieC4(object):
         Send out MIDI to completely update the attached MIDI controller. Will be called when requested by the user,
         after for example having reconnecting the MIDI cables or when exiting MIDI map mode
         """
-        self.add_mixer_listeners()
-        self.add_overdub_listener()
-        self.add_tracks_listener()
-        self.add_device_listeners()
-        self.add_transport_listener()
-        self.add_scene_listeners()
-        if self.rebuild_my_database == 0:
-            self.__encoder_controller.build_setup_database()
-            self.rebuild_my_database = 1
-        self.trBlock(0, len(self.song().visible_tracks))
+        if self.init_ready:
+            # self.log_message("MC487: self.refresh_state() firing")
+            self.add_mixer_listeners()
+            self.add_overdub_listener()
+            self.add_tracks_listener()
+            self.add_device_listeners()
+            self.add_transport_listener()
+            self.add_scene_listeners()
+            if self.rebuild_my_database == 0:
+                self.__encoder_controller.build_setup_database()
+                self.rebuild_my_database = 1
+            self.trBlock(0, len(self.song().visible_tracks))
 
     def add_scene_listeners(self):
         # Instead of checking if the listener exists before adding or removing it, I've added try-except blocks to handle the cases when the listener is not present. This reduces the number of function calls
@@ -914,13 +960,17 @@ class MackieC4(object):
             if 0 <= selected_index < len(tracks):
                 self.song().view.selected_track = tracks[selected_index]
 
-    def lock_surface(self):
-        if not self.surface_is_locked:
-            self.log_message("locking surface, led state ON")
+    def lock_surface(self, force_unlock=False):
+        if force_unlock:
+            self.log_message("force unlocking surface, led state OFF")
+            self.surface_is_locked = 0
+            self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
+        elif not self.surface_is_locked:
+            self.log_message("toggle locking surface, led state ON")
             self.surface_is_locked = 1
             self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
         else:
-            self.log_message("unlocking surface, led state OFF")
+            self.log_message("toggle unlocking surface, led state OFF")
             self.surface_is_locked = 0
             self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
 
