@@ -84,6 +84,8 @@ class EncoderController(MackieC4Component):
         # turn this off to let the C4 LEDs and LCDs "go to sleep" after nothing changes for 15 or 20 minutes
         # If you randomly see the standard C4 welcome message (because of the rogue SYSEX message)
         # a "real" display update from Live always removes a standard C4 welcome message
+        # repeater not used now? partially fixed by updating display after seeing sysex "serial number response" message from C4
+        # always still seems to "blank and welcome" in the first 30 seconds after Live starts cold, but change assignment mode to repaint the display
         self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
         self.__display_repeat_count = 0
 
@@ -452,7 +454,7 @@ class EncoderController(MackieC4Component):
 
         if update_self:
             if switch_id == C4SID_MARKER:
-                self.__reassign_encoder_parameters() # first send SYSEX display update
+                self.__reassign_encoder_parameters() # first send any display update feedback
                 self.update_assignment_mode_leds() # then send signal to Max patch to START processing messages
             else:
                 self.update_assignment_mode_leds()
@@ -516,16 +518,14 @@ class EncoderController(MackieC4Component):
         """
         delay_assignment_led_update = False
         if not self.main_script().init_ready:
-            self.main_script().log_message("EC519: main script not ready yet")
+            self.main_script().log_message("EC521: main script not ready yet")
             return
         if self.__assignment_mode == C4M_USER:
             # going INTO USER mode these feedback messages pass through the Max patch before it starts processing messages
-            self.main_script().log_message("EC522: entering USER mode")
+            self.main_script().log_message("EC525: entering USER mode")
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
-                if i == assignment_mode_to_button_id[self.__assignment_mode]:
-                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
-                else:
-                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
+                self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
+
         elif self.__last_assignment_mode == C4M_USER:
             # leaving USER mode, messages from here would be processed by the Max patch
             # which would generate the feedback messages going directly to the C4 (before it receives the "button 22" signal sent below)
@@ -534,23 +534,39 @@ class EncoderController(MackieC4Component):
             delay_assignment_led_update = True
             self.main_script().log_message("EC535: leaving USER mode")
         else:
-            # not in USER mode these messages pass through the Max patch
-            self.main_script().log_message("EC538: changing non USER mode")
+            new_mode = self.__assignment_mode
+            old_mode = self.__last_assignment_mode
+            new_name = new_mode
+            old_name = old_mode
+            if new_name == 1:
+                new_name = "C4M_PLUGINS"
+                if old_mode == 2:
+                    old_name = "C4M_CHANNEL_STRIP"
+                else:
+                    old_name = "C4M_FUNCTION"
+            elif new_name == 2:
+                new_name = "C4M_CHANNEL_STRIP"
+                if old_mode == 1:
+                    old_name = "C4M_PLUGINS"
+                else:
+                    old_name = "C4M_FUNCTION"
+            elif new_name == 3:
+                new_name = "C4M_FUNCTION"
+                if old_mode == 2:
+                    old_name = "C4M_CHANNEL_STRIP"
+                else:
+                    old_name = "C4M_PLUGINS"
+            self.main_script().log_message("EC559: changing non USER mode {} ({}) to {} ({})".format(old_name, old_mode, new_name, new_mode))
+
+            # not in USER mode these feedback messages pass through the Max patch
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
                 if i == assignment_mode_to_button_id[self.__assignment_mode]:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
                 else:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
 
-        # signal the Max patch to toggle event processing going into or coming out of user mode
-        if self.__assignment_mode == C4M_USER or self.__last_assignment_mode == C4M_USER:
-            self.main_script().log_message("EC547: sending 'button 22' signal toggling Max processing bypass")
-            self.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON))
-            self.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF))  # press + release changes button LED state
-
         if delay_assignment_led_update:
-            # pause here long enough for Max to finish processing the "button 22" signal?
-            self.main_script().log_message("EC553: updating assignment LEDs after leaving USER mode")
+            self.main_script().log_message("EC569: updating assignment LEDs after leaving USER mode")
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1):
                 if i == assignment_mode_to_button_id[self.__assignment_mode]:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
@@ -563,13 +579,7 @@ class EncoderController(MackieC4Component):
 
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
-        """ currently does nothing. If we want something done here, it needs to be forwarded by MackieC4/receive_midi. BUT currently all forwarding functions are handled directly in MackieC4.py """
-        # coming from the C4 these midi messages look like: B0  20  01  1 or B0  21  01  1, where vpot_index here would be 00 or 01 (after subtracting 0x20 from 0x20 or 0x21),
-        # and cc_value would be 01 in both examples but could be any value 01 - 0x7F, however in here (because coming from the C4) if cc_value is in the range 01 - 0F (0-64),
-        # the encoder is being turned clockwise, and if cc_value is in the range 41 - 4F (65-128), the encoder is being turned counter-clockwise the higher the value,
-        # the faster the knob is turning, so theoretically 16 steps of "knob twisting speed" in either direction. Suspect this is because other encoder rotation messages
-        # are "midi mapped" through Live with feedback i.e. when you rotate encoder 32 in C4M_CHANNEL_STRIP mode, the "level number" updates itself via the
-        # midi mapping through Live (see Encoders.build_midi_map()), not via code here. MS: correct! :-)
+        """  currently all forwarding functions are handled directly in MackieC4.py """
         #  self.main_script().log_message("potIndex<{0}> cc_value<{1}> received".format(vpot_index, cc_value))
         # self.__display_parameters = []
         #  the non functionality is most probably wrong vpot hex numbers!!
@@ -1448,6 +1458,7 @@ class EncoderController(MackieC4Component):
                 self.__display_parameters.append(vpot_display_text)
 
         elif self.__assignment_mode == C4M_USER:
+            # any of these display updates only actually get seen when the max patch is not actually connected and processing
             for s in self.__encoders:
                 s.unlight_vpot_leds()
 
@@ -1507,7 +1518,7 @@ class EncoderController(MackieC4Component):
         lower_string3 = ''
         upper_string4 = ''
         lower_string4 = ''
-        self.__display_repeat_count += 1  # see comments near lines 97 - 102 in __init__
+        self.__display_repeat_count += 1  # unused now? see comments near lines 97 - 102 in __init__
 
         # uncommenting this condition check when the two lengths are not equal will result in spamming the log file with the indented log message
         # If you comment out initializing self.__display_parameters with EncoderDisplaySegment objects inside __init__ above, and just leave the empty list assignment self.__display_parameters = []
@@ -1524,7 +1535,10 @@ class EncoderController(MackieC4Component):
         encoder_31_index = 30
         encoder_32_index = 31
         so_many_spaces = '                                                       '
-        if self.__assignment_mode == C4M_CHANNEL_STRIP:
+        if self.__assignment_mode == C4M_USER:
+            # no "timer based" display updates in this mode
+            pass
+        elif self.__assignment_mode == C4M_CHANNEL_STRIP:
 
             selected_track = self.selected_track
             is_group_track = track_util.is_group_track(selected_track)
@@ -1842,11 +1856,8 @@ class EncoderController(MackieC4Component):
             else:
                 re_enable_automation_encoder.unlight_vpot_leds()
 
-        elif self.__assignment_mode == C4M_USER:
-            # no "timer based" display updates in this mode
-            pass
 
-        # in USER mode, do NOT update any displays when this timer pops
+        # ONLY update displays when Not in USER mode and this timer pops
         if self.__assignment_mode != C4M_USER:
             self.send_display_string(LCD_ANGLED_ADDRESS, upper_string1, LCD_TOP_ROW_OFFSET)
             self.send_display_string(LCD_TOP_FLAT_ADDRESS, upper_string2, LCD_TOP_ROW_OFFSET)
@@ -1867,9 +1878,9 @@ class EncoderController(MackieC4Component):
         """
         ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
         is_update = self.__last_send_messages[display_address][display_row_offset] != ascii_text_sysex_ints
-        is_stale = self.__display_repeat_count % self.__display_repeat_timer == (4 - display_address)
+        is_stale = False  # self.__display_repeat_count % self.__display_repeat_timer == (4 - display_address)
 
-        if is_update or is_stale:
+        if self.assignment_mode() != C4M_USER and is_update or is_stale:
             self.__last_send_messages[display_address][display_row_offset] = ascii_text_sysex_ints
             sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)

@@ -79,7 +79,8 @@ class Encoders(MackieC4Component):
         self.v_pot_display_memory_len = len(self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE])
 
     def update_led_ring(self, update_value):
-        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
+        if self.__encoder_controller.assignment_mode != C4M_USER:
+            self.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
 
     def unlight_vpot_leds(self):
         data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][0]
