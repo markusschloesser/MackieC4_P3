@@ -1458,9 +1458,22 @@ class EncoderController(MackieC4Component):
                 self.__display_parameters.append(vpot_display_text)
 
         elif self.__assignment_mode == C4M_USER:
-            # any of these display updates only actually get seen when the max patch is not actually connected and processing
+            # need to rebuild the midi map for every encoder disconnected from all parameters
             for s in self.__encoders:
                 s.unlight_vpot_leds()
+                s_index = s.vpot_index()
+                vpot_display_text = EncoderDisplaySegment(self, s_index)
+                vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
+
+                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+                s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+            # don't actively listen for updates in USER mode
+            for device in extended_device_list:
+                device_encoder_index_in_row = extended_device_list.index(device)
+                try:
+                    extended_device_list[device_encoder_index_in_row].remove_is_active_listener(self._update_vpot_leds_for_device_toggle)
+                except RuntimeError:
+                    pass
 
             # display these once only, here because the Max sequencer handles its own display in this mode
             top_line = 'MackieC4Pro remote script User mode'.center(NUM_CHARS_PER_DISPLAY_LINE)

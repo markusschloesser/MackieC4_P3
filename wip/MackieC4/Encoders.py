@@ -92,7 +92,7 @@ class Encoders(MackieC4Component):
         # midi CC messages (0xB0, 0x20, data) (CC_STATUS, C4SID_VPOT_CC_ADDRESS_1, data)
         self.update_led_ring(data2)
 
-    def build_midi_map(self, midi_map_handle):  # why do we have an additional build_midi_map here in Encoders?? Already in MackieC4
+    def build_midi_map(self, midi_map_handle):
         """Live -> Script
         Build DeviceParameter Mappings, that are processed in Audio time, or forward MIDI messages explicitly to our receive_midi_functions.
         Which means that when you are not forwarding MIDI, nor mapping parameters, you will never get any MIDI messages at all.
