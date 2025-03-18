@@ -782,15 +782,17 @@ class EncoderController(MackieC4Component):
                 if encoder_index == encoder_07_index:
                     if selected_device_bank_index > 0:
                         selected_device_bank_index -= 1
-                        update_self = True
                     else:
                         self.main_script().log_message("EC.handle_pressed_v_pot: selected_device_bank_index already bank 0, wrapping to max index")
+                        selected_device_bank_index = max_device_bank_index
+                    update_self = True
                 elif encoder_index == encoder_08_index:
                     if selected_device_bank_index < max_device_bank_index:
                         selected_device_bank_index += 1
-                        update_self = True
                     else:
                         self.main_script().log_message("EC.handle_pressed_v_pot: selected_device_bank_index already on last bank, wrapping to 0 index")
+                        selected_device_bank_index = 0
+                    update_self = True
 
                 if update_self:
 
@@ -901,23 +903,25 @@ class EncoderController(MackieC4Component):
             # when self.__display_parameters is always 32 EncoderDisplaySegments now
             # we might need to check the length of the actual parameter list of the selected device
             update_self = False
+            track_device_preset_bank_count = self.__eah.get_max_current_track_device_parameter_bank_nbr(current_device_track)
             if encoder_index == encoder_07_index:
                 if current_parameter_bank_track > 0:
                     current_parameter_bank_track -= 1
-                    update_self = True
                     # self.main_script().log_message("EC.handle_pressed_v_pot: self.t_d_p_bank_current[self.t_current]: {0}".format(self.__eah.get_selected_device_index()))
                 else:
                     self.main_script().log_message("EC.handle_pressed_v_pot: current_parameter_bank_track is already bank 0, wrapping to max parameter bank")
+                    current_parameter_bank_track = track_device_preset_bank_count - 1
+                update_self = True
             elif encoder_index == encoder_08_index:
                 current_track_device_preset_bank = current_parameter_bank_track
-                track_device_preset_bank_count = self.__eah.get_max_current_track_device_parameter_bank_nbr(current_device_track)
                 # self.main_script().log_message("EC.handle_pressed_v_pot: current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
                 # self.main_script().log_message("EC.handle_pressed_v_pot: track_device_preset_bank_count: {0}".format(track_device_preset_bank_count))
                 if current_track_device_preset_bank < track_device_preset_bank_count - 1:
                     current_parameter_bank_track += 1
-                    update_self = True
                 else:
                     self.main_script().log_message("EC.handle_pressed_v_pot: current_parameter_bank_track is already last bank, wrapping to parameter bank 0")
+                    current_parameter_bank_track = 0
+                update_self = True
             # should be encoders 9 - 32 (on each param page), but stopping short on last/only (short is < 24) parameter page
             elif encoder_index in display_params_range:
                 # if a device has less than 24 parameters exposed on this page, param will be (None, '    ')
