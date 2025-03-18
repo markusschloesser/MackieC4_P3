@@ -269,6 +269,8 @@ class EncoderController(MackieC4Component):
         log_id = "EC.device_added_deleted_or_changed: "
         updated_idx = -1
         # extended_device_list is the device list with enumerated/flattened rack devices
+        # if a device is added to any unselected track, this extended device list is not populated here with the new device on the freshly selected track
+        # devices cannot be updated or deleted from an unselected track, they can only be added to an unselected track. (by drag&drop, for example)
         extended_device_list = self.get_device_list(self.selected_track.devices)
 
         # Use a dictionary to map type to listener_type
@@ -283,6 +285,8 @@ class EncoderController(MackieC4Component):
                 self.track_changed(tid)
 
             if liveobj_valid(self.selected_track):
+                # update the extended (flattened) device list for the selected Track
+                extended_device_list = self.get_device_list(self.selected_track.devices)
                 selected_device = self.selected_track.view.selected_device
                 if liveobj_valid(selected_device):
                     # log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(log_id, selected_device.name)
