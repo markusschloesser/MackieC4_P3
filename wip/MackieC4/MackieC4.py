@@ -3,19 +3,20 @@
 
 """
 # Copyright (C) 2007 Nathan Ramella (nar@remix.net)
-# MS: not sure this applies anymore ;-)
+# Copyright generally applies for the life of the original Copyright owner (in the USA), even open source code remains copyright protected
+# The original source code is available as the first commit in this repository
+# All changes to the original source are Copyright (C) 201x - 2025 Markus Schloesser (and contributors)
 #
-# This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser GPL (General Public License)
+# as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 #
 # This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser GPL for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along with this library; if not, write to the Free Software
+# You should have received a copy of the GNU Lesser GPL along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 This script is based off the Ableton Live supplied MIDI Remote Scripts.
-
 This is the second file that is loaded, by way of being instantiated through __init__.py
 """
 
