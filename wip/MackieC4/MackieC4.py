@@ -168,11 +168,14 @@ class MackieC4(object):
         """
         Aka on_timer. Called every 100 ms and should be used to update display relevant parts of the controller.
         """
-        # pass
         if self.init_ready and self.__encoder_controller.assignment_mode() != C4M_USER:
             # self.log_message("MC.update_display: firing")  # every 100 ms verbose log message
             for c in self.__components:
                 c.on_update_display_timer()
+        # else:
+        #      the script is in USER mode (or not initialized yet)
+        #      and should NOT be sending display updates
+        #      self.log_message("MC.update_display: NOT firing")
 
     def send_midi(self, midi_event_bytes):
         """
@@ -181,6 +184,10 @@ class MackieC4(object):
         if self.init_ready and self.__encoder_controller.assignment_mode() != C4M_USER:
             # self.log_message("MC.send_midi: firing")  # very verbose log message
             self.__c_instance.send_midi(midi_event_bytes)
+        # else:
+        #      the script is in USER mode (or not initialized yet)
+        #      and should NOT be sending any midi events via this method
+        #      self.log_message("MC.send_midi: NOT firing")  # verbose log message?
 
     def build_midi_map(self, midi_map_handle):
         """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
@@ -282,13 +289,15 @@ class MackieC4(object):
                 channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
                 note = midi_bytes[1]  # data1
                 velocity = midi_bytes[2]  # data2
-                ignore_note_offs = velocity == BUTTON_STATE_ON  # ignore Note ON events without 127 velocity
                 # self.log_message("MC.receive_midi: note<{}> velo<{}>".format(note, velocity))
+                # ignore Note ON events without 127 velocity
+                handle_this_event = velocity == BUTTON_STATE_ON
                 """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
                 if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
                     if note in modifier_switch_ids:
                         self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
-                    elif ignore_note_offs:
+                    elif handle_this_event:
+                        # NOT in USER mode here
                         if note in self.__note_handling_dict:
                             self.__note_handling_dict[note](note)
                         else:
