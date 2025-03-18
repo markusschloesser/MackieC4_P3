@@ -251,9 +251,10 @@ class MackieC4(object):
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
                 # STOP signal for patch to process
-                self.log_message("MC.receive_midi: sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
+                # self.log_message("MC.receive_midi: sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF)) # for this signal: velocity 0 means STOP processing
-                self.log_message("MC.receive_midi: leaving C4M_USER mode (0) for {0} mode ({1})".format(new_name, new_mode))
+                # self.log_message("MC.receive_midi: leaving C4M_USER mode (0) for {0} mode ({1})".format(new_name, new_mode))
+                self.show_message("C4 controller mode change from C4M_USER to {}".format(new_name))
                 self.__encoder_controller.handle_assignment_switch_ids(previous_mode_switch_id)
                 self.__user_mode_exit = True # flag needs to stay set until first method re-entry after USER mode only
 
