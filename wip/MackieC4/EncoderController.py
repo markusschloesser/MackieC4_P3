@@ -283,10 +283,10 @@ class EncoderController(MackieC4Component):
                 # self.main_script().log_message(log_msg + "and calling track_changed() passing index {0}".format(tid))
                 self.selected_track = track
                 self.track_changed(tid)
+                # update the extended (flattened) device list for the changed selected Track
+                extended_device_list = self.get_device_list(self.selected_track.devices)
 
             if liveobj_valid(self.selected_track):
-                # update the extended (flattened) device list for the selected Track
-                extended_device_list = self.get_device_list(self.selected_track.devices)
                 selected_device = self.selected_track.view.selected_device
                 if liveobj_valid(selected_device):
                     # log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(log_id, selected_device.name)
