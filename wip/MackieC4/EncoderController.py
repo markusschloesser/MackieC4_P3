@@ -177,25 +177,25 @@ class EncoderController(MackieC4Component):
         selected_device_index = self.__eah.track_changed(track_index)
         extended_device_list = self.get_device_list(self.selected_track.devices)
         if len(extended_device_list) == 0:
-            # self.main_script().log_message("EC track changed, get device list = 0")
+            # self.main_script().log_message("EC.track_changed: get device list = 0")
             self.__chosen_plugin = None
             self.__eah.update_device_counter(track_index, 0)
             self.__reorder_parameters()
         else:
             if selected_device_index > -1:
                 if len(extended_device_list) > selected_device_index:
-                    # self.main_script().log_message("EC track changed, selected device index = -1")
+                    # self.main_script().log_message("EC.track_changed: selected device index = -1")
                     self.__chosen_plugin = extended_device_list[selected_device_index]
                     self.__eah.update_device_counter(track_index, len(extended_device_list))
                     self.__reorder_parameters()
                 else:
                     # something isn't getting updated correctly at startup and/or when devices are deleted
-                    self.main_script().log_message("len(extended_device_list) <= selected_device_index")
-                    self.main_script().log_message("{0} <= {1}".format(len(extended_device_list), selected_device_index))
+                    msg = "len(extended_device_list) <= selected_device_index {0} <= {1}".format(len(extended_device_list), selected_device_index)
+                    self.main_script().log_message("EC.track_changed: {}".format(msg))
             else:
                 # something isn't getting updated correctly at startup and/or when devices are deleted
-                self.main_script().log_message("len(self.t_d_current) <= self.t_current")
-                self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
+                msg = "len(self.t_d_current) <= self.t_current {0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current)
+                self.main_script().log_message("EC.track_changed: {}".format(msg))
 
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
@@ -234,16 +234,16 @@ class EncoderController(MackieC4Component):
         return
 
     def track_deleted(self, track_index):
-        # self.main_script().log_message("del tk idx before deleted track: {0}".format(track_index))
+        # self.main_script().log_message("EC.track_deleted: del tk idx before deleted track: {0}".format(track_index))
         self.__eah.track_deleted(track_index)
         self.selected_track = self.song().view.selected_track
-        # self.main_script().log_message("selected tk after: {0}".format(self.selected_track.name))
+        # self.main_script().log_message("EC.track_deleted: selected tk after: {0}".format(self.selected_track.name))
         self.refresh_state()
 
         extended_device_list = self.get_device_list(self.selected_track.devices)
         selected_device_index = self.__eah.get_selected_device_index()
-        # self.main_script().log_message("selected tk device index after: {0}".format(selected_device_index))
-        # self.main_script().log_message("nbr of devices on selected track after: {0}".format(len(extended_device_list)))
+        # self.main_script().log_message("EC.track_deleted: selected tk device index after: {0}".format(selected_device_index))
+        # self.main_script().log_message("EC.track_deleted: nbr of devices on selected track after: {0}".format(len(extended_device_list)))
         if selected_device_index > -1:
             if len(extended_device_list) > selected_device_index:
                 selected_device = extended_device_list[selected_device_index]
@@ -266,7 +266,7 @@ class EncoderController(MackieC4Component):
         return
 
     def device_added_deleted_or_changed(self, track, tid, type):
-        log_id = "EC/device_added_deleted_or_changed: "
+        log_id = "EC.device_added_deleted_or_changed: "
         updated_idx = -1
         # extended_device_list is the device list with enumerated/flattened rack devices
         # if a device is added to any unselected track, this extended device list is not populated here with the new device on the freshly selected track
@@ -370,7 +370,7 @@ class EncoderController(MackieC4Component):
     # no wrap around: stop moving left at track 0, stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
-        # self.main_script().log_message("self.__assignment_mode == C4M_CHANNEL_STRIP is <{0}>".format(self.__assignment_mode == C4M_CHANNEL_STRIP))
+        # self.main_script().log_message("EC.handle_bank_switch_ids: self.__assignment_mode == C4M_CHANNEL_STRIP is <{0}>".format(self.__assignment_mode == C4M_CHANNEL_STRIP))
         current_bank_nbr = self.__eah.get_current_track_device_parameter_bank_nbr()
         update_self = False
         if switch_id == C4SID_BANK_LEFT:
@@ -385,16 +385,16 @@ class EncoderController(MackieC4Component):
         elif self.__assignment_mode == C4M_CHANNEL_STRIP:
             selected_device_index = self.__eah.get_selected_device_index()
             if selected_device_index > -1:
-                #  self.main_script().log_message("selected device index before <{0}>".format(selected_device_index))
+                #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device index before <{0}>".format(selected_device_index))
 
                 if switch_id == C4SID_SINGLE_LEFT:  # to previous device
                     selected_device_index -= 1
-                    #  self.main_script().log_message("selected device left")
+                    #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device left")
                 elif switch_id == C4SID_SINGLE_RIGHT:  # to next device
-                    #  self.main_script().log_message("selected device right")
+                    #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device right")
                     selected_device_index += 1
 
-                # self.main_script().log_message("selected device index after <{0}>".format(selected_device_index))
+                # self.main_script().log_message("EC.handle_bank_switch_ids: selected device index after <{0}>".format(selected_device_index))
                 nbr_devices = len(self.get_device_list(self.selected_track.devices))
                 if nbr_devices > 0 and nbr_devices > selected_device_index:
 
@@ -405,15 +405,15 @@ class EncoderController(MackieC4Component):
                     self.__reorder_parameters()
                     self.__reassign_encoder_parameters()
                     self.request_rebuild_midi_map()
-                    # self.main_script().log_message("new selected device <{0}>".format(self.__chosen_plugin.name))
+                    # self.main_script().log_message("EC.handle_bank_switch_ids: new selected device <{0}>".format(self.__chosen_plugin.name))
                 else:
                     # something isn't getting updated correctly at startup and/or when devices are deleted
-                    self.main_script().log_message("nbr_devices <= self.t_d_current[self.t_current]")
-                    self.main_script().log_message("{0} <= {1}".format(nbr_devices, self.__eah.get_selected_device_index()))
+                    msg = "EC.handle_bank_switch_ids: nbr_devices <= self.t_d_current[self.t_current] {0} <= {1}"
+                    self.main_script().log_message(msg.format(nbr_devices, self.__eah.get_selected_device_index()))
             else:
                 # something isn't getting updated correctly at startup and/or when devices are deleted
-                self.main_script().log_message("len(self.t_d_current) <= self.t_current")
-                self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
+                msg = "EC.handle_bank_switch_ids: len(self.t_d_current) <= self.t_current {0} <= {1}"
+                self.main_script().log_message(msg.format(len(self.__eah.t_d_current), self.__eah.t_current))
 
         if update_self:
             self.__eah.set_current_track_device_parameter_bank_nbr(current_bank_nbr)
@@ -522,11 +522,11 @@ class EncoderController(MackieC4Component):
         """
         delay_assignment_led_update = False
         if not self.main_script().init_ready:
-            self.main_script().log_message("EC521: main script not ready yet")
+            self.main_script().log_message("EC.update_assignment_mode_leds: main script not ready yet")
             return
         if self.__assignment_mode == C4M_USER:
             # going INTO USER mode these feedback messages pass through the Max patch before it starts processing messages
-            self.main_script().log_message("EC525: entering USER mode")
+            self.main_script().log_message("EC.update_assignment_mode_leds: entering USER mode")
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
                 self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
 
@@ -536,7 +536,7 @@ class EncoderController(MackieC4Component):
             # blindly telling the Max patch to toggle the assignment LED states from here would rarely leave the LEDs
             # accurately depicting the script's new current "assignment mode"
             delay_assignment_led_update = True
-            self.main_script().log_message("EC535: leaving USER mode")
+            self.main_script().log_message("EC.update_assignment_mode_leds: leaving USER mode")
         else:
             new_mode = self.__assignment_mode
             old_mode = self.__last_assignment_mode
@@ -560,7 +560,8 @@ class EncoderController(MackieC4Component):
                     old_name = "C4M_CHANNEL_STRIP"
                 else:
                     old_name = "C4M_PLUGINS"
-            self.main_script().log_message("EC559: changing non USER mode {} ({}) to {} ({})".format(old_name, old_mode, new_name, new_mode))
+            # self.main_script().log_message("EC.update_assignment_mode_leds: changing non USER mode {} ({}) to {} ({})".format(old_name, old_mode, new_name, new_mode))
+            self.main_script().show_message("C4 controller mode change from {} to {}".format(old_name, new_name))
 
             # not in USER mode these feedback messages pass through the Max patch
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
@@ -570,7 +571,7 @@ class EncoderController(MackieC4Component):
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
 
         if delay_assignment_led_update:
-            self.main_script().log_message("EC569: updating assignment LEDs after leaving USER mode")
+            # self.main_script().log_message("EC.update_assignment_mode_leds: updating assignment LEDs after leaving USER mode")
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1):
                 if i == assignment_mode_to_button_id[self.__assignment_mode]:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
@@ -616,8 +617,8 @@ class EncoderController(MackieC4Component):
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
                 if s_index == encoder_12_index:
-                    self.main_script().log_message("cc_nbr<{}> cc_value<{}> received in handle_vpot_rotation".format(vpot_index, cc_value))
-                    # time display was moved to on_update_display_timer because song position needs to be updated in real-time
+                    self.main_script().log_message("EC.handle_vpot_rotation: error: cc_nbr<{}> cc_value<{}> received in handle_vpot_rotation".format(vpot_index, cc_value))
+                    # error because time display was moved to on_update_display_timer because song position needs to be updated in real-time
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
 
@@ -774,6 +775,7 @@ class EncoderController(MackieC4Component):
                 update_self = False
 
                 # group track fold toggle, also groups from within
+                # (problematic when selected_track is a "rack track" that returns track.is_foldable() FALSE)
                 if encoder_index == encoder_04_index:
                     track_util.toggle_fold(self.selected_track)
 
@@ -782,17 +784,17 @@ class EncoderController(MackieC4Component):
                         selected_device_bank_index -= 1
                         update_self = True
                     else:
-                        self.main_script().log_message("can't decrement selected_device_bank_index: already bank 0")
+                        self.main_script().log_message("EC.handle_pressed_v_pot: selected_device_bank_index already bank 0, wrapping to max index")
                 elif encoder_index == encoder_08_index:
                     if selected_device_bank_index < max_device_bank_index:
                         selected_device_bank_index += 1
                         update_self = True
                     else:
-                        self.main_script().log_message("can't increment selected_device_bank_index: already on last bank")
+                        self.main_script().log_message("EC.handle_pressed_v_pot: selected_device_bank_index already on last bank, wrapping to 0 index")
 
                 if update_self:
 
-                    # self.main_script().log_message("EC/ updating selected device bank index from <{0}> to <{1}>".format(old_selected_bank, selected_device_bank_index))
+                    # self.main_script().log_message("EC.handle_pressed_v_pot: updating selected device bank index from <{0}> to <{1}>".format(old_selected_bank, selected_device_bank_index))
                     self.__eah.set_selected_device_bank_index(selected_device_bank_index)
                     self.__reassign_encoder_parameters()
 
@@ -813,7 +815,7 @@ class EncoderController(MackieC4Component):
                     self.__reassign_encoder_parameters()
                     self.request_rebuild_midi_map()
                 else:
-                    msg = "EC handle_pressed_v_pot. can't update __chosen_plugin: the calculated device_offset {0} is NOT a valid device index".format(device_offset)
+                    msg = "EC.handle_pressed_v_pot: can't update __chosen_plugin: the calculated device_offset {0} is NOT a valid device index".format(device_offset)
                     self.main_script().log_message(msg)
                     self.__chosen_plugin = None
             elif encoder_index in row_02_encoders:
@@ -827,7 +829,7 @@ class EncoderController(MackieC4Component):
                     else:
                         param.value = param.default_value  # button press == jump to default value of Send
                 else:
-                    self.main_script().log_message("can't update param.value to default: None object")
+                    self.main_script().log_message("EC.handle_pressed_v_pot: can't update param.value to default: None object")
             elif encoder_index in row_03_encoders:
 
                 encoder_27_index = 26  # X-Fade
@@ -845,7 +847,7 @@ class EncoderController(MackieC4Component):
                         else:
                             param.value = param.default_value  # button press == jump to default value of Send
                     else:
-                        self.main_script().log_message("can't update param.value to default: param not liveobj_valid()")
+                        self.main_script().log_message("EC.handle_pressed_v_pot: can't update param.value to default: param not liveobj_valid()")
 
                 elif encoder_index == encoder_27_index:
                     self.xfade("handle_pressed_v_pot", encoder_index)
@@ -857,7 +859,7 @@ class EncoderController(MackieC4Component):
                         else:
                             self.selected_track.solo = False
                     else:
-                        self.main_script().log_message("track not soloable")
+                        self.main_script().log_message("EC.handle_pressed_v_pot: track cannot be soloed")
                         s.unlight_vpot_leds()
 
                 elif encoder_index == encoder_29_index:
@@ -868,7 +870,7 @@ class EncoderController(MackieC4Component):
                             else:
                                 self.selected_track.arm = False
                         else:
-                            self.main_script().log_message("track not armable")
+                            self.main_script().log_message("EC.handle_pressed_v_pot: track cannot be armed")
                             s.unlight_vpot_leds()
 
                 elif encoder_index == encoder_30_index:
@@ -878,7 +880,7 @@ class EncoderController(MackieC4Component):
                         else:
                             self.selected_track.mute = True
                     else:
-                        self.main_script().log_message("master track not mute-able")
+                        self.main_script().log_message("EC.handle_pressed_v_pot: master track cannot be muted")
                         # s.unlight_vpot_leds()  # moved to on_update_display_timer
 
                 elif encoder_index > encoder_30_index:
@@ -902,20 +904,20 @@ class EncoderController(MackieC4Component):
             if encoder_index == encoder_07_index:
                 if current_parameter_bank_track > 0:
                     current_parameter_bank_track -= 1
-                    # self.main_script().log_message("self.t_d_p_bank_current[self.t_current]: {0}".format(self.__eah.get_selected_device_index()))
                     update_self = True
+                    # self.main_script().log_message("EC.handle_pressed_v_pot: self.t_d_p_bank_current[self.t_current]: {0}".format(self.__eah.get_selected_device_index()))
                 else:
-                    self.main_script().log_message("can't decrement current_parameter_bank_track: already bank 0")
+                    self.main_script().log_message("EC.handle_pressed_v_pot: current_parameter_bank_track is already bank 0, wrapping to max parameter bank")
             elif encoder_index == encoder_08_index:
                 current_track_device_preset_bank = current_parameter_bank_track
-                # self.main_script().log_message("current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
                 track_device_preset_bank_count = self.__eah.get_max_current_track_device_parameter_bank_nbr(current_device_track)
-                # self.main_script().log_message("track_device_preset_bank_count: {0}".format(track_device_preset_bank_count))
+                # self.main_script().log_message("EC.handle_pressed_v_pot: current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
+                # self.main_script().log_message("EC.handle_pressed_v_pot: track_device_preset_bank_count: {0}".format(track_device_preset_bank_count))
                 if current_track_device_preset_bank < track_device_preset_bank_count - 1:
                     current_parameter_bank_track += 1
                     update_self = True
                 else:
-                    self.main_script().log_message("can't increment current_parameter_bank_track: already last bank")
+                    self.main_script().log_message("EC.handle_pressed_v_pot: current_parameter_bank_track is already last bank, wrapping to parameter bank 0")
             # should be encoders 9 - 32 (on each param page), but stopping short on last/only (short is < 24) parameter page
             elif encoder_index in display_params_range:
                 # if a device has less than 24 parameters exposed on this page, param will be (None, '    ')
@@ -944,7 +946,7 @@ class EncoderController(MackieC4Component):
                         pass
 
             if update_self:
-                # self.main_script().log_message("EC/ updating current_track_device_parameter_bank_nbr from <{0}> to {1}".format(self.__eah.get_current_track_device_parameter_bank_nbr(), current_parameter_bank_track))
+                # self.main_script().log_message("EC.handle_pressed_v_pot: updating current_track_device_parameter_bank_nbr from <{0}> to {1}".format(self.__eah.get_current_track_device_parameter_bank_nbr(), current_parameter_bank_track))
                 self.__eah.set_current_track_device_parameter_bank_nbr(current_parameter_bank_track)
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
@@ -1202,7 +1204,7 @@ class EncoderController(MackieC4Component):
                 nbr_of_full_device_pages = SETUP_DB_MAX_DEVICE_BANKS
             elif nbr_of_full_device_pages < 0:
                 nbr_of_full_device_pages = 0
-                self.main_script().log_message("Not possible, right? and yet I am logged")
+                self.main_script().log_message("EC.__reassign_encoder_parameters: Not possible, right? and yet I am logged")
 
             if nbr_of_full_device_pages == 0 and nbr_of_remainder_devices > 0:
                 nbr_of_full_device_pages = 1
@@ -1544,7 +1546,7 @@ class EncoderController(MackieC4Component):
         # dsply_sgmts = len(self.__display_parameters)
         # encdr_range = len(encoder_range)
         # if dsply_sgmts != encdr_range:
-        #     self.main_script().log_message("display segments loaded {0} encoder range {1}".format(dsply_sgmts, encdr_range))
+        #     self.main_script().log_message("EC.on_update_display_timer: display segments loaded {0} encoder range {1}".format(dsply_sgmts, encdr_range))
         encoder_27_index = 26
         encoder_28_index = 27
         encoder_29_index = 28
@@ -1701,6 +1703,7 @@ class EncoderController(MackieC4Component):
                 device_name = '  '
 
                 log_msg = "{}".format(t_d_idx)
+                log_msg = "EC.on_update_display_timer: {} idx " + log_msg
                 if t_d_idx > -1:
                     extended_device_list = self.get_device_list(self.selected_track.devices)
                     if liveobj_valid(self.selected_track) and len(extended_device_list) > t_d_idx:
@@ -1708,13 +1711,13 @@ class EncoderController(MackieC4Component):
                             device_name = extended_device_list[t_d_idx].name
 
                         else:
-                            self.main_script().log_message("selected track and device index were valid but the device is not liveobj_valid() " + log_msg)
+                            self.main_script().log_message(log_msg.format("selected track and device index were valid but the device is not liveobj_valid()"))
 
                     else:
-                        self.main_script().log_message("Not enough devices loaded for index and __chosen_device is liveobj_valid() but no name display over " + log_msg)
+                        self.main_script().log_message(log_msg.format("__chosen_device is liveobj_valid() but no name display over because not enough devices loaded for index"))
 
                 else:
-                    self.main_script().log_message("Current Track Device List length too short for List index so no name display over device index " + log_msg)
+                    self.main_script().log_message(log_msg.format("Current Track Device List length too short for List index so no name display over device index"))
 
                 lower_string1b = adjust_string(str(device_name), 20).center(20)
                 lower_string1 += lower_string1a + lower_string1b + ' '
