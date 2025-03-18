@@ -211,10 +211,14 @@ class MackieC4(object):
         is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
         if self.__encoder_controller.assignment_mode() == C4M_USER:
             # already in USER mode, check for exit status
-            marker_event = midi_bytes[1] == C4SID_MARKER
-            lock_event = midi_bytes[1] == C4SID_LOCK
+            marker_event = is_note_on_msg and midi_bytes[1] == C4SID_MARKER
+            lock_event = is_note_on_msg and midi_bytes[1] == C4SID_LOCK
             is_marker_press = is_note_on_msg and marker_event
-            is_marker_release = is_note_off_msg or is_marker_press and midi_bytes[2] == BUTTON_STATE_OFF
+            is_Live_auto_release = is_note_off_msg
+            is_marker_release = is_marker_press and midi_bytes[2] == BUTTON_STATE_OFF
+            # if is_Live_auto_release:
+            #     self.log_message("MC.receive_midi: ignoring a Note OFF message")
+            #     return
             previous_mode_switch_id = assignment_mode_switch_ids[self.__encoder_controller.last_assignment_mode()]
             self.__user_mode_exit = False
             if is_marker_press:
@@ -231,9 +235,14 @@ class MackieC4(object):
                     new_name = "C4M_CHANNEL_STRIP"
                 elif new_name == 3:
                     new_name = "C4M_FUNCTION"
-                #  before STOP signal events for patch to process
-                # self.__c_instance.send_midi(midi_bytes)  # no LOCK Press event to the patch
-                self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF)) # yes Marker Release event to patch
+                #  events for patch to process before sending STOP signal
+                # no LOCK Press event forwarded to the patch
+                # yes the USER mode patch's MARKER button status is "pressed", create and send a "release" event to the patch that completes one press/release cycle
+                self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
+                # yes MARKER Press+Release events created for the patch to "restore" the USER mode patch's MARKER button LED ON/OFF status
+                # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events means the LED ON/OFF state "doesn't change"
+                self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
+                self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
                 # STOP signal for patch to process
                 self.log_message("MC.receive_midi: sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF)) # for this signal: velocity 0 means STOP processing
@@ -248,14 +257,17 @@ class MackieC4(object):
         elif self.__user_mode_exit and self.__encoder_controller.last_assignment_mode() == C4M_USER:
             # logging.info("MC.receive_midi: note message: ({},{})".format(midi_bytes[1], midi_bytes[2]))
             if is_note_on_msg and midi_bytes[2] == BUTTON_STATE_ON and midi_bytes[1] == C4SID_LOCK:
-                # if first message after leaving USER mode is a LOCK button event
-                force_unlocking = True
-                self.lock_surface(force_unlocking)
+                # if first message after leaving USER mode is a LOCK button Pressed event, ignore it
                 logging.info("MC.receive_midi: (first user mode exit) event handled - ignoring first LOCK button pressed event")
+                pass
+                # force_unlocking = True
+                # self.lock_surface(force_unlocking)
             elif is_note_off_msg and midi_bytes[1] == C4SID_LOCK:
                 # logging.info("MC.receive_midi: (first user mode exit) event handled - ignoring LOCK Note OFF event")
                 pass
+            elif is_note_off_msg and midi_bytes[1] == C4SID_MARKER:
                 # logging.info("MC.receive_midi: (first user mode exit) event handled - ignoring MARKER Note OFF event")
+                pass
             else:
                 logging.info("MC.receive_midi: (first user mode exit) event unhandled - {} event message dropped".format(midi_bytes))
             self.__user_mode_exit = False
@@ -287,12 +299,21 @@ class MackieC4(object):
                                 self.log_message("MC.receive_midi: unhandled note value: {}".format(note))
 
                     if note == C4SID_MARKER:
-                        # This "note" entered receive_midi() with script NOT already in USER mode, now it is in USER mode, turn off the MARKER LED and pass control
-                        # (the patch might turn the LED right back ON after it takes over, but this feedback message will reach the patch before the 'button 22' message below)
-                        self.__c_instance.send_midi((NOTE_OFF_STATUS, note, BUTTON_STATE_OFF)) # this script just switched to USER mode, and MARKER LED is now OFF
-                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON)) # for this signal: velocity 127 means START processing
-
+                        # This "note event" entered receive_midi() with this script NOT already in USER mode, now it is in USER mode,
+                        # but the "user mode" patch is still NOT-processing yet, this midi event will be forwarded to the C4 display
+                        self.__c_instance.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
+                        # (just-before-going-into-user-mode) MARKER LED is now OFF (would normally be ON indicating USER mode)
+                        # START signal for patch to process
                         self.log_message("MC.receive_midi: sending 'button 22' signal toggling Max bypass mode, START processing STOP bypassing")
+                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON))
+
+                        # yes MARKER Press+Release events created for the patch to "restore" the USER mode patch's MARKER button LED ON/OFF status
+                        # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events mean the LED ON/OFF state "doesn't change"
+                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
+                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
+                        # (when the human physically releases the C4 MARKER button after switching to USER mode, the event is processed by the patch instead of this script)
+                        # yes MARKER Press event created for the patch to prepare for the (spurious) "first MARKER release" event the patch will see and process in USER mode
+                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
             elif is_cc_msg:
                 """here one can use vpot_rotation to forward CC data to a function"""
                 cc_no = midi_bytes[1]

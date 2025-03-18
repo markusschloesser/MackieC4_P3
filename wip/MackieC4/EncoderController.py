@@ -457,12 +457,12 @@ class EncoderController(MackieC4Component):
                 update_self = True
 
         if update_self:
-            if switch_id == C4SID_MARKER:
-                self.__reassign_encoder_parameters() # first send any display update feedback
-                self.update_assignment_mode_leds() # then send signal to Max patch to START processing messages
-            else:
-                self.update_assignment_mode_leds()
-                self.__reassign_encoder_parameters()
+            # if switch_id == C4SID_MARKER:
+            #     self.__reassign_encoder_parameters() # first send any display update feedback
+            #     self.update_assignment_mode_leds() # then send signal to Max patch to START processing messages
+            # else:
+            self.update_assignment_mode_leds()
+            self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
         # else don't update self because nothing changed here
 
