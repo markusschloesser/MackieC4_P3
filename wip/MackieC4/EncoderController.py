@@ -88,6 +88,7 @@ class EncoderController(MackieC4Component):
         # always still seems to "blank and welcome" in the first 30 seconds after Live starts cold, but change assignment mode to repaint the display
         self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
         self.__display_repeat_count = 0
+        self.__display_update_lag_counter = 0
 
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
@@ -1530,7 +1531,21 @@ class EncoderController(MackieC4Component):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
         if not self.main_script().init_ready:
             return
+        if self.song().is_playing:
+            self.__do_display_update()
+        elif self.__display_lag_timer_bang():
+            self.__do_display_update()
 
+    def __display_lag_timer_bang(self):
+        # count to 10 for each second of desired "display update" lag (when song is NOT playing)
+        if self.__display_update_lag_counter < 20:
+            self.__display_update_lag_counter += 1
+            return False
+        else:
+            self.__display_update_lag_counter = 0
+            return True
+
+    def __do_display_update(self):
         upper_string1 = ''
         lower_string1 = ''
         lower_string1a = ''
@@ -1884,7 +1899,6 @@ class EncoderController(MackieC4Component):
                 re_enable_automation_encoder.show_full_enlighted_poti()
             else:
                 re_enable_automation_encoder.unlight_vpot_leds()
-
 
         # ONLY update displays when Not in USER mode and this timer pops
         if self.__assignment_mode != C4M_USER:
