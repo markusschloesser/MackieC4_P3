@@ -1715,13 +1715,18 @@ class EncoderController(MackieC4Component):
                             device_name = extended_device_list[t_d_idx].name
 
                         else:
-                            self.main_script().log_message(log_msg.format("selected track and device index were valid but the device is not liveobj_valid()"))
+                            device_name = "trk{}: ".format(t_d_idx) + self.selected_track.name  # is "blanks" better?
+                            # spams log 10 times a second
+                            # self.main_script().log_message(log_msg.format("selected track and device index were valid but the device at the index is not liveobj_valid()"))
 
                     else:
-                        self.main_script().log_message(log_msg.format("__chosen_device is liveobj_valid() but no name display over because not enough devices loaded for index"))
+                        device_name = "trk: " + self.selected_track.name # is "blanks" better? ("new" group track with no devices just two grouped tracks landed here)
+                        # spams log 10 times a second
+                        # self.main_script().log_message(log_msg.format("__chosen_device is liveobj_valid(), just track name display because not enough devices loaded for index"))
 
-                else:
-                    self.main_script().log_message(log_msg.format("Current Track Device List length too short for List index so no name display over device index"))
+                #else:
+                    # spams log 10 times a second
+                    #self.main_script().log_message(log_msg.format("Current Track Selected Device List index return from EAH is < 0, blank display over device index -1"))
 
                 lower_string1b = adjust_string(str(device_name), 20).center(20)
                 lower_string1 += lower_string1a + lower_string1b + ' '
