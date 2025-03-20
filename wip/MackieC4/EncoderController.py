@@ -302,7 +302,7 @@ class EncoderController(MackieC4Component):
                 self.__chosen_plugin = None
                 # might happen if track with no devices deleted, and the next selected track also has no devices?
                 self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
-                self.main_script().log_message("{0}__chosen_plugin is now None because no EAH updated index".format(log_id))
+                # self.main_script().log_message("{0}__chosen_plugin is now None because no EAH updated index".format(log_id))
             elif len(extended_device_list) > updated_idx:
                 self.__chosen_plugin = extended_device_list[updated_idx]
                 self.__eah.set_selected_device_index(updated_idx)
@@ -333,8 +333,8 @@ class EncoderController(MackieC4Component):
                 else:
                     self.main_script().log_message("{0}<None>".format(log_msg))
                 log_msg = "{0}device at index <{1}> is".format(log_id, i + 1)
-        else:
-            self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
+        #else:
+            # self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
     def toggle_devices(self, cc_no, cc_value):
         device_list = self.song().view.selected_track.devices
