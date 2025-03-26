@@ -150,11 +150,11 @@ class EncoderController(MackieC4Component):
         return self.__encoders
 
     def build_setup_database(self):
-        # self.main_script().log_message("EC151: C4/building setup db")
+        # self.main_script().log_message("EC.build_setup_database: C4/building setup db")
         self.__eah.build_setup_database(self.song())        # self.track_count
 
-        # self.main_script().log_message("EC154: C4/t_count after setup <{0}>".format(self.__eah.t_count))
-        # self.main_script().log_message("EC155: C4/main_script().track_count after setup <{0}>".format(self.main_script().track_count))
+        # self.main_script().log_message("EC.build_setup_database: C4/t_count after setup <{0}>".format(self.__eah.t_count))
+        # self.main_script().log_message("EC.build_setup_database: C4/main_script().track_count after setup <{0}>".format(self.main_script().track_count))
 
         self.selected_track = self.song().view.selected_track
         devices_on_selected_trk = self.get_device_list(self.selected_track.devices)
@@ -333,10 +333,11 @@ class EncoderController(MackieC4Component):
             log_msg = "{0}device at index <{1}> is ".format(log_id, idx)
             for i, device in enumerate(extended_device_list):
                 if liveobj_valid(device):
-                    pass  # self.main_script().log_message("{0}<{1}>".format(log_msg, device.name))
+                    pass  # self.main_script().log_message("{0}<{1}>".format(log_msg, device.name)) #EC.device_added_deleted_or_changed: device at index <0> is <device.name>
                 else:
-                    self.main_script().log_message("{0}<None>".format(log_msg))
-                log_msg = "{0}device at index <{1}> is".format(log_id, i + 1)
+                    self.main_script().log_message("{0}".format(log_msg))  #EC.device_added_deleted_or_changed: device at index <1> is not liveobj_valid
+                log_msg = "{0}device at index <{1}> is not liveobj_valid".format(log_id, i + 1)  # + 1 because log msg about any problem will appear next iteration
+
         #else:
             # self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 

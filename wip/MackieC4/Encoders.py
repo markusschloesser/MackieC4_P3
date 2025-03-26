@@ -124,6 +124,7 @@ class Encoders(MackieC4Component):
                     Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
                     # self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> mapping encoder to FORWARD CC <{1}> MS: coming from build_midi_map in __encoders".format(encoder, cc_no))
             #     else:
+            #         # because USER mode has nothing mapped
             #         self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> nothing mapped param is lost weak ref".format(encoder))
             # else:
             #     self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
