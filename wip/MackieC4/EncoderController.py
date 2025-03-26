@@ -516,6 +516,45 @@ class EncoderController(MackieC4Component):
             self.__alt_state = value
             self.main_script().set_alt_is_pressed(value)
 
+    def _show_assignment_mode_change_message(self):
+        new_mode = self.__assignment_mode
+        old_mode = self.__last_assignment_mode
+        new_name = new_mode
+        old_name = old_mode
+        if new_name == 0:
+            new_name = "SEQUENCER"
+            if old_mode == 1:
+                old_name = "DEVICE CHAIN"
+            elif old_mode == 2:
+                old_name = "CHANNEL STRIP"
+            else:# 3:
+                old_name = "MAIN FUNCTIONS"
+        if new_name == 1:
+            new_name = "DEVICE CHAIN"
+            if old_mode == 2:
+                old_name = "CHANNEL STRIP"
+            elif old_mode == 3:
+                old_name = "MAIN FUNCTIONS"
+            else:# 0
+                old_name = "SEQUENCER"
+        elif new_name == 2:
+            new_name = "CHANNEL STRIP"
+            if old_mode == 3:
+                old_name = "MAIN FUNCTIONS"
+            elif old_mode == 0:
+                old_name = "SEQUENCER"
+            else:# 1
+                old_name = "DEVICE CHAIN"
+        elif new_name == 3:
+            new_name = "MAIN FUNCTIONS"
+            if old_mode == 0:
+                old_name = "SEQUENCER"
+            elif old_mode == 1:
+                old_name = "DEVICE CHAIN"
+            else:# 2
+                old_name = "CHANNEL STRIP"
+        self.main_script().show_message("mode change from {} to {}".format(old_name, new_name))
+
     def update_assignment_mode_leds(self):
         """
           turn off button LED of the button associated with the old assignment mode
@@ -525,9 +564,11 @@ class EncoderController(MackieC4Component):
         if not self.main_script().init_ready:
             self.main_script().log_message("EC.update_assignment_mode_leds: main script not ready yet")
             return
+
+
         if self.__assignment_mode == C4M_USER:
             # going INTO USER mode these feedback messages pass through the Max patch before it starts processing messages
-            self.main_script().log_message("EC.update_assignment_mode_leds: entering USER mode")
+            # self.main_script().log_message("EC.update_assignment_mode_leds: entering USER mode")
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
                 self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
 
@@ -537,33 +578,10 @@ class EncoderController(MackieC4Component):
             # blindly telling the Max patch to toggle the assignment LED states from here would rarely leave the LEDs
             # accurately depicting the script's new current "assignment mode"
             delay_assignment_led_update = True
-            self.main_script().log_message("EC.update_assignment_mode_leds: leaving USER mode")
+            # self.main_script().log_message("EC.update_assignment_mode_leds: leaving USER mode")
+            # self.main_script().show_message("mode change from {} to {}".format(old_name, new_name))
         else:
-            new_mode = self.__assignment_mode
-            old_mode = self.__last_assignment_mode
-            new_name = new_mode
-            old_name = old_mode
-            if new_name == 1:
-                new_name = "C4M_PLUGINS"
-                if old_mode == 2:
-                    old_name = "C4M_CHANNEL_STRIP"
-                else:
-                    old_name = "C4M_FUNCTION"
-            elif new_name == 2:
-                new_name = "C4M_CHANNEL_STRIP"
-                if old_mode == 1:
-                    old_name = "C4M_PLUGINS"
-                else:
-                    old_name = "C4M_FUNCTION"
-            elif new_name == 3:
-                new_name = "C4M_FUNCTION"
-                if old_mode == 2:
-                    old_name = "C4M_CHANNEL_STRIP"
-                else:
-                    old_name = "C4M_PLUGINS"
             # self.main_script().log_message("EC.update_assignment_mode_leds: changing non USER mode {} ({}) to {} ({})".format(old_name, old_mode, new_name, new_mode))
-            self.main_script().show_message("C4 controller mode change from {} to {}".format(old_name, new_name))
-
             # not in USER mode these feedback messages pass through the Max patch
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
                 if i == assignment_mode_to_button_id[self.__assignment_mode]:
@@ -583,6 +601,7 @@ class EncoderController(MackieC4Component):
             force_unlocking = True
             self.main_script().lock_surface(force_unlocking)
 
+        self._show_assignment_mode_change_message()
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
         """  currently all forwarding functions are handled directly in MackieC4.py """
