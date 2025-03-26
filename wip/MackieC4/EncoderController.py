@@ -200,6 +200,7 @@ class EncoderController(MackieC4Component):
 
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
+        self.one_display_update()
         return
 
     def track_added(self, track_index):
@@ -232,6 +233,7 @@ class EncoderController(MackieC4Component):
 
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
+        self.one_display_update()
         return
 
     def track_deleted(self, track_index):
@@ -264,6 +266,7 @@ class EncoderController(MackieC4Component):
 
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
+        self.one_display_update()
         return
 
     def device_added_deleted_or_changed(self, track, tid, type):
@@ -320,6 +323,7 @@ class EncoderController(MackieC4Component):
         self.__reorder_parameters()
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
+        self.one_display_update()
 
         new_device_count_track = len(extended_device_list)
         # self.main_script().log_message("{0}device count AFTER update <{1}>".format(log_id, new_device_count_track))
@@ -420,6 +424,7 @@ class EncoderController(MackieC4Component):
             self.__eah.set_current_track_device_parameter_bank_nbr(current_bank_nbr)
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
+            self.one_display_update()
 
     def handle_assignment_switch_ids(self, switch_id):
         """the 4 Assignment buttons on the C4, which handle the mode switching"""
@@ -465,6 +470,7 @@ class EncoderController(MackieC4Component):
             self.update_assignment_mode_leds()
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
+            self.one_display_update()
         # else don't update self because nothing changed here
 
     def handle_slot_nav_switch_ids(self, switch_id):
@@ -501,6 +507,7 @@ class EncoderController(MackieC4Component):
 
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
+                self.one_display_update()
 
     def handle_modifier_switch_ids(self, switch_id, value):
         if switch_id == C4SID_SHIFT:
@@ -602,6 +609,7 @@ class EncoderController(MackieC4Component):
             self.main_script().lock_surface(force_unlocking)
 
         self._show_assignment_mode_change_message()
+        self.one_display_update() # need to wipe USER mode LCD screen displays when we leave USER mode
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
         """  currently all forwarding functions are handled directly in MackieC4.py """
@@ -819,6 +827,7 @@ class EncoderController(MackieC4Component):
                     # self.main_script().log_message("EC.handle_pressed_v_pot: updating selected device bank index from <{0}> to <{1}>".format(old_selected_bank, selected_device_bank_index))
                     self.__eah.set_selected_device_bank_index(selected_device_bank_index)
                     self.__reassign_encoder_parameters()
+                    self.one_display_update()
 
             elif encoder_index in row_01_encoders:
                 # (row 2 "index" is 01) these encoders represent devices 1 - 8 on the selected track in C4M_CHANNEL_STRIP mode
@@ -836,6 +845,7 @@ class EncoderController(MackieC4Component):
                     self.song().view.select_device(extended_device_list[device_offset])
                     self.__reassign_encoder_parameters()
                     self.request_rebuild_midi_map()
+                    self.one_display_update()
                 else:
                     msg = "EC.handle_pressed_v_pot: can't update __chosen_plugin: the calculated device_offset {0} is NOT a valid device index".format(device_offset)
                     self.main_script().log_message(msg)
@@ -974,6 +984,7 @@ class EncoderController(MackieC4Component):
                 self.__eah.set_current_track_device_parameter_bank_nbr(current_parameter_bank_track)
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
+                self.one_display_update()
 
         elif self.__assignment_mode == C4M_FUNCTION:
             encoder_01_index = 0  # follow
@@ -1553,6 +1564,12 @@ class EncoderController(MackieC4Component):
         if self.song().is_playing:
             self.__do_display_update()
         elif self.__display_lag_timer_bang():
+            self.__do_display_update()
+
+    def one_display_update(self):
+        if not self.main_script().init_ready:
+            pass
+        else:
             self.__do_display_update()
 
     def __display_lag_timer_bang(self):

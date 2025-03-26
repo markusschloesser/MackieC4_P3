@@ -266,6 +266,7 @@ class MackieC4(object):
                 self.__c_instance.send_midi(midi_bytes)   # all midi (Note and CC event messages)
         elif self.__user_mode_exit and self.__encoder_controller.last_assignment_mode() == C4M_USER:
             # logging.info("MC.receive_midi: note message: ({},{})".format(midi_bytes[1], midi_bytes[2]))
+            self.__encoder_controller.one_display_update()
             if is_note_on_msg and midi_bytes[2] == BUTTON_STATE_ON and midi_bytes[1] == C4SID_LOCK:
                 # if first message after leaving USER mode is a LOCK button Pressed event, ignore it
                 logging.info("MC.receive_midi: (first user mode exit) event handled - ignoring first LOCK button pressed event")
