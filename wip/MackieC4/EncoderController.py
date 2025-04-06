@@ -1401,7 +1401,8 @@ class EncoderController(MackieC4Component):
 
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
-                        vpot_display_text.set_text('Device', 'EditMe')
+                        # This text never appears in Plugins mode, it only appears briefly when switching to Channel Strip or Function mode when it looks wrong
+                        # vpot_display_text.set_text('Device', 'EditMe')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
                         vpot_display_text.set_text('<<  - ', 'PrvBnk')
@@ -1411,7 +1412,7 @@ class EncoderController(MackieC4Component):
                         s.unlight_vpot_leds()
                 elif s_index == encoder_08_index:
                     if self.__chosen_plugin is None:
-                        vpot_display_text.set_text('Device', 'No')
+                        # vpot_display_text.set_text('Device', 'No') # see comment above, looks wrong
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track < max_device_bank_param_track - 1:
                         vpot_display_text.set_text('  + >>', 'NxtBnk')
@@ -1428,8 +1429,8 @@ class EncoderController(MackieC4Component):
                         # parameter name in top display row, param value in bottom row
                         if liveobj_valid(plugin_param[0]):  # then it is a DeviceParameter object
                             vpot_display_text.set_text(plugin_param[0], plugin_param[1])
-                    else:
-                        vpot_display_text.set_text('Param', ' No ')
+                    # else:
+                    #     vpot_display_text.set_text('Param', ' No ') # see comment above, looks wrong
 
                 if not self.selected_track.is_frozen:
                     # disconnects vpots from the params, so you cannot change parameters when track frozen (but still see them).
