@@ -1833,8 +1833,11 @@ class EncoderController(MackieC4Component):
             encoder_26_index = 25
             encoder_27_index = 26
             for e in self.__encoders:
+                try:
+                    dspl_sgmt = next(x for x in self.__display_parameters if x.vpot_index() == e.vpot_index())
+                except StopIteration:
+                    break # nothing to display (coming out of USER mode: no parameters are mapped to encoders in USER mode, so no display parameters either (yet))
 
-                dspl_sgmt = next(x for x in self.__display_parameters if x.vpot_index() == e.vpot_index())
                 if e.vpot_index() in row_00_encoders:
                     if e.vpot_index() == encoder_06_index:
                         self.unsolo_all_functionality("on_update_display_timer", e.vpot_index())
