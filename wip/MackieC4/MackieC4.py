@@ -112,6 +112,7 @@ class MackieC4(object):
         self.__alt_is_pressed = False
         self.__marker_is_pressed = False
         self.__user_mode_exit = False
+        self.__handling_assignment_switch = False
 
         self.__note_handling_dict = {C4SID_LOCK: lambda _: self.lock_surface() }
         for note in range(system_switch_ids[0], track_nav_switch_ids[-1] + 1): # range(0, 21) notes 0 - 20
@@ -181,11 +182,12 @@ class MackieC4(object):
         """
         Use this function to send MIDI events through Live to the _real_ MIDI devices that this script is assigned to.
         """
-        if self.init_ready and self.__encoder_controller.assignment_mode() != C4M_USER:
+        if self.init_ready and (self.__handling_assignment_switch or self.__encoder_controller.assignment_mode() != C4M_USER):
             # self.log_message("MC.send_midi: firing")  # very verbose log message
+            # self.__handling_assignment_switch means the script might be switching to USER mode so we still want to send this midi
             self.__c_instance.send_midi(midi_event_bytes)
         # else:
-        #      the script is in USER mode (or not initialized yet)
+        #      the script is completely into USER mode (or not initialized yet)
         #      and should NOT be sending any midi events via this method
         #      self.log_message("MC.send_midi: NOT firing")  # verbose log message?
 
@@ -235,14 +237,6 @@ class MackieC4(object):
                 self.set_marker_is_pressed(False)
             elif lock_event and self.__marker_is_pressed:
                 # conditions here do NOT need to guard against processing this button combo when NOT already in user mode
-                # new_mode = button_id_to_assignment_mode[previous_mode_switch_id]
-                # new_name = new_mode  # assignment_mode_to_button_id[new_mode]
-                # if new_name == 1:
-                #     new_name = "C4M_PLUGINS"
-                # elif new_name == 2:
-                #     new_name = "C4M_CHANNEL_STRIP"
-                # elif new_name == 3:
-                #     new_name = "C4M_FUNCTION"
                 #  events for patch to process before sending STOP signal
                 # no LOCK Press event forwarded to the patch
                 # the USER mode patch's MARKER button status is "pressed",
@@ -263,6 +257,11 @@ class MackieC4(object):
             if self.init_ready and not self.__user_mode_exit:
                 # C4M_USER mode normal forwarding to Max patch for processing
                 # (or spurious feedback to C4 if patch is not running or patch processing is manually bypassed?)
+                # when the sequencer patch is not connected AND we're in USER mode but not exiting, for example,
+                # a user can only turn ON every "control button" LED (7 total LEDs SPLIT 1/3 through FUNCTION)
+                # but every button PRESS and encoder TURN message received that reaches here becomes spurious feedback "forwarded" to the C4
+                # whenever the Max Sequencer patch is not in use.  If the script is running solo, it's probably "never" in USER mode anyway.
+                # no way to stop forwarding such spurious feedback messages programmatically without "knowing" whether the patch "exists" or not?
                 self.__c_instance.send_midi(midi_bytes)   # all midi (Note and CC event messages)
         elif self.__user_mode_exit and self.__encoder_controller.last_assignment_mode() == C4M_USER:
             # logging.info("MC.receive_midi: note message: ({},{})".format(midi_bytes[1], midi_bytes[2]))
@@ -278,9 +277,15 @@ class MackieC4(object):
                 pass
             elif is_note_off_msg and midi_bytes[1] == C4SID_MARKER:
                 # logging.info("MC.receive_midi: (first user mode exit) event handled - ignoring MARKER Note OFF event")
-                pass
+                self.set_marker_is_pressed(False)
             else:
                 logging.info("MC.receive_midi: (first user mode exit) event unhandled - {} event message dropped".format(midi_bytes))
+            # these button LEDs never turn ON outside of USER mode and the Max patch won't turn them OFF if it isn't connected
+            # if the LEDs are ON, it's because of spurious feedback, always turning them off here won't impact the script's
+            # toggling of the "Lock button" state.  Exiting USER mode forces an UNLOCK operation anyway
+            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_SPLIT, BUTTON_STATE_OFF))
+            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
+            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, BUTTON_STATE_OFF))
             self.__user_mode_exit = False
         elif self.init_ready:
             # self.log_message("MC.receive_midi: mode != C4M_USER")
@@ -303,10 +308,16 @@ class MackieC4(object):
                     elif handle_this_event:
                         # NOT in USER mode here
                         if note in self.__note_handling_dict:
+                            if note in assignment_mode_switch_ids:
+                                # True here: NOT in USER mode AND changing modes AND this script is still in control of USER mode display
+                                # need to display something when Max sequencer patch is NOT connected and going into USER mode
+                                # "this" display will get overwritten after the sequencer patch takes over (if connected)
+                                self.__handling_assignment_switch = True
                             self.__note_handling_dict[note](note)
+                            self.__handling_assignment_switch = False
                         else:
-                            if note == 4: # Spot/Erase button is not mapped to any remote script behavior
-                                # self.log_message("MC.receive_midi: Spot/Erase button is not mapped to any handling behavior")
+                            if note == 4 or note == 0: # Split and Spot/Erase buttons are not mapped to any remote script behavior
+                                # self.log_message("MC.receive_midi: Split and Spot/Erase buttons are not mapped to any handling behavior")
                                 pass
                             else:
                                 self.log_message("MC.receive_midi: unhandled note value: {}".format(note))
@@ -314,6 +325,7 @@ class MackieC4(object):
                     if note == C4SID_MARKER:
                         # This "note event" entered receive_midi() with this script NOT already in USER mode, now it is in USER mode,
                         # but the "user mode" patch is still NOT-processing yet, this midi event will be forwarded to the C4 display
+                        self.set_marker_is_pressed(False) # in case LOCK button is pressed by itself in USER mode, don't exit USER mode
                         self.__c_instance.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
                         # (just-before-going-into-user-mode) MARKER LED is now OFF (would normally be ON indicating USER mode)
                         # START signal for patch to process

@@ -1964,7 +1964,8 @@ class EncoderController(MackieC4Component):
         is_update = self.__last_send_messages[display_address][display_row_offset] != ascii_text_sysex_ints
         is_stale = False  # self.__display_repeat_count % self.__display_repeat_timer == (4 - display_address)
 
-        if self.assignment_mode() != C4M_USER and is_update or is_stale:
+        if is_update or is_stale:
+        # if self.assignment_mode() != C4M_USER and is_update or is_stale:
             self.__last_send_messages[display_address][display_row_offset] = ascii_text_sysex_ints
             sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)
