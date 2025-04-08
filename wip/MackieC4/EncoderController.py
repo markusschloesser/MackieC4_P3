@@ -781,6 +781,12 @@ class EncoderController(MackieC4Component):
                         else:
                             upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
                             lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                    else:
+                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                else:
+                    upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                    lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
 
         else:
             raise ValueError("Invalid mode name: {}".format(mode_name))
