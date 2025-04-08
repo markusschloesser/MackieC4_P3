@@ -9,6 +9,7 @@ from __future__ import division
 # import itertools
 
 import sys
+import time
 
 from ableton.v2.base import liveobj_valid, liveobj_changed, find_if  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
@@ -471,8 +472,9 @@ class EncoderController(MackieC4Component):
             self.update_assignment_mode_leds()
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
-            self.one_display_update()
-        # else don't update self because nothing changed here
+            # need to wipe USER mode LCD screen displays when we leave USER mode, but not too soon, wait 20 ms
+            self.one_delayed_display_update(.020)
+        # else don't update self because self is already in this mode
 
     def handle_slot_nav_switch_ids(self, switch_id):
         """ "slot navigation" switches between Devices in C4M_PLUGINS mode (up/down) """
@@ -605,12 +607,11 @@ class EncoderController(MackieC4Component):
                 else:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
             # since the LOCK button is the second press of the "leave USER mode" button combo
-            # and this script is back in control by now, ensure the C4 (this script) is not in LOCKED mode
+            # and this script is back in control by now, ensure the C4 (this script) is not in LOCKED mode ...why?
             force_unlocking = True
             self.main_script().lock_surface(force_unlocking)
 
         self._show_assignment_mode_change_message()
-        self.one_display_update() # need to wipe USER mode LCD screen displays when we leave USER mode
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
         """  currently all forwarding functions are handled directly in MackieC4.py """
@@ -1574,6 +1575,11 @@ class EncoderController(MackieC4Component):
         elif self.__display_lag_timer_bang():
             self.__do_display_update()
 
+
+    def one_delayed_display_update(self, delay_secs=.050): # 50 ms
+        time.sleep(delay_secs)
+        self.one_display_update()
+
     def one_display_update(self):
         if not self.main_script().init_ready:
             pass
@@ -1618,8 +1624,8 @@ class EncoderController(MackieC4Component):
         encoder_32_index = 31
         so_many_spaces = '                                                       '
         if self.__assignment_mode == C4M_USER:
-            # no "timer based" display updates in this mode
-            pass
+            # no display updates in this mode
+            return
         elif self.__assignment_mode == C4M_CHANNEL_STRIP:
 
             selected_track = self.selected_track

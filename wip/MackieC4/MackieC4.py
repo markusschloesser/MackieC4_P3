@@ -220,22 +220,27 @@ class MackieC4(object):
         is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
         if self.__encoder_controller.assignment_mode() == C4M_USER:
             # already in USER mode, check for exit status
-            marker_event = is_note_on_msg and midi_bytes[1] == C4SID_MARKER
-            lock_event = is_note_on_msg and midi_bytes[1] == C4SID_LOCK
-            is_marker_press = is_note_on_msg and marker_event
-            is_Live_auto_release = is_note_off_msg
-            is_marker_release = is_marker_press and midi_bytes[2] == BUTTON_STATE_OFF
-            # if is_Live_auto_release:
-            #     self.log_message("MC.receive_midi: ignoring a Note OFF message")
-            #     return
+            marker_on_event = is_note_on_msg and midi_bytes[1] == C4SID_MARKER
+            lock_on_event = is_note_on_msg and midi_bytes[1] == C4SID_LOCK
+            is_marker_on_press = marker_on_event and midi_bytes[2] == BUTTON_STATE_ON
+            is_lock_on_press = lock_on_event and midi_bytes[2] == BUTTON_STATE_ON
+            # a true c4 release never happens, Live always converts Note ON messages with velocity 0 to Note OFF messages
+            is_c4_marker_release =  marker_on_event and midi_bytes[2] == BUTTON_STATE_OFF
+            is_marker_off_release = is_note_off_msg and midi_bytes[1] == C4SID_MARKER and midi_bytes[2] == BUTTON_STATE_OFF
             previous_mode_switch_id = assignment_mode_switch_ids[self.__encoder_controller.last_assignment_mode()]
-            self.__user_mode_exit = False
+            self.__user_mode_exit = False # might be about to exit
 
-            if is_marker_press:
+            if is_marker_on_press:
                 self.set_marker_is_pressed(True)
-            elif is_marker_release:
+                # self.log_message("MC.receive_midi: USER mode MARKER is pressed")
+            elif is_c4_marker_release or is_marker_off_release:
                 self.set_marker_is_pressed(False)
-            elif lock_event and self.__marker_is_pressed:
+                # if is_c4_marker_release:
+                #    self.log_message("MC.receive_midi: USER mode MARKER is released, unexpected NOTE ON event")
+                # else:
+                #     self.log_message("MC.receive_midi: USER mode MARKER is released")
+            elif is_lock_on_press and self.__marker_is_pressed:
+                # self.log_message("MC.receive_midi: USER mode LOCK press event while MARKER is pressed")
                 # conditions here do NOT need to guard against processing this button combo when NOT already in user mode
                 #  events for patch to process before sending STOP signal
                 # no LOCK Press event forwarded to the patch
@@ -247,12 +252,12 @@ class MackieC4(object):
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
                 # STOP signal for patch to process
-                # self.log_message("MC.receive_midi: sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF)) # for this signal: velocity 0 means STOP processing
-                # self.log_message("MC.receive_midi: leaving C4M_USER mode (0) for {0} mode ({1})".format(new_name, new_mode))
-                # self.show_message("C4 controller mode change from C4M_USER to {}".format(new_name))
-                self.__encoder_controller.handle_assignment_switch_ids(previous_mode_switch_id)
+                # self.log_message("MC.receive_midi: sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
                 self.__user_mode_exit = True # flag needs to stay set until first method re-entry after USER mode only
+                self.__encoder_controller.handle_assignment_switch_ids(previous_mode_switch_id)
+                # self.log_message("MC.receive_midi: USER mode exit!  script is no longer in USER mode")
+                self.set_marker_is_pressed(False) # technically not released yet but don't need the signal any longer
 
             if self.init_ready and not self.__user_mode_exit:
                 # C4M_USER mode normal forwarding to Max patch for processing
@@ -262,24 +267,22 @@ class MackieC4(object):
                 # but every button PRESS and encoder TURN message received that reaches here becomes spurious feedback "forwarded" to the C4
                 # whenever the Max Sequencer patch is not in use.  If the script is running solo, it's probably "never" in USER mode anyway.
                 # no way to stop forwarding such spurious feedback messages programmatically without "knowing" whether the patch "exists" or not?
+                # self.log_message("MC.receive_midi: normal USER mode forwarding msg <{}>".format(midi_bytes))
                 self.__c_instance.send_midi(midi_bytes)   # all midi (Note and CC event messages)
         elif self.__user_mode_exit and self.__encoder_controller.last_assignment_mode() == C4M_USER:
-            # logging.info("MC.receive_midi: note message: ({},{})".format(midi_bytes[1], midi_bytes[2]))
-            self.__encoder_controller.one_display_update()
-            if is_note_on_msg and midi_bytes[2] == BUTTON_STATE_ON and midi_bytes[1] == C4SID_LOCK:
-                # if first message after leaving USER mode is a LOCK button Pressed event, ignore it
-                logging.info("MC.receive_midi: (first user mode exit) event handled - ignoring first LOCK button pressed event")
+            # logging.info("MC.receive_midi: (first user mode exit) note message: ({})".format(midi_bytes))
+
+            if is_note_on_msg and midi_bytes[1] == C4SID_LOCK and midi_bytes[2] == BUTTON_STATE_ON:
+                # logging.info("MC.receive_midi: (first user mode exit) event passed - investigating LOCK button pressed event")
                 pass
-                # force_unlocking = True
-                # self.lock_surface(force_unlocking)
             elif is_note_off_msg and midi_bytes[1] == C4SID_LOCK:
-                # logging.info("MC.receive_midi: (first user mode exit) event handled - ignoring LOCK Note OFF event")
+                # logging.info("MC.receive_midi: (first user mode exit) event passed - eating LOCK Note OFF event")
                 pass
             elif is_note_off_msg and midi_bytes[1] == C4SID_MARKER:
-                # logging.info("MC.receive_midi: (first user mode exit) event handled - ignoring MARKER Note OFF event")
+                # logging.info("MC.receive_midi: (first user mode exit) event handled - setting MARKER is released Note OFF event")
                 self.set_marker_is_pressed(False)
             else:
-                logging.info("MC.receive_midi: (first user mode exit) event unhandled - {} event message dropped".format(midi_bytes))
+                logging.info("MC.receive_midi: (first user mode exit) event unhandled - dropping event message {}".format(midi_bytes))
             # these button LEDs never turn ON outside of USER mode and the Max patch won't turn them OFF if it isn't connected
             # if the LEDs are ON, it's because of spurious feedback, always turning them off here won't impact the script's
             # toggling of the "Lock button" state.  Exiting USER mode forces an UNLOCK operation anyway
@@ -287,6 +290,7 @@ class MackieC4(object):
             self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
             self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, BUTTON_STATE_OFF))
             self.__user_mode_exit = False
+            # logging.info("MC.receive_midi: (first user mode exit) Split, Lock, SpotErase LEDs OFF")
         elif self.init_ready:
             # self.log_message("MC.receive_midi: mode != C4M_USER")
             # in cases when the first midi_msg event after leaving USER mode is NOT a LOCK button event, clear the USER mode exit flag so this script
@@ -298,15 +302,15 @@ class MackieC4(object):
                 channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
                 note = midi_bytes[1]  # data1
                 velocity = midi_bytes[2]  # data2
-                # self.log_message("MC.receive_midi: note<{}> velo<{}>".format(note, velocity))
+                # self.log_message("MC.receive_midi: NOTE ON for note<{}> velo<{}>".format(note, velocity))
                 # ignore Note ON events without 127 velocity
                 handle_this_event = velocity == BUTTON_STATE_ON
                 """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
                 if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
-                    if note in modifier_switch_ids:
+                    if note in modifier_switch_ids: # Shift, Option, Alt, Control
                         self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
                     elif handle_this_event:
-                        # NOT in USER mode here
+                        # NOT in USER mode here and velocity == 127
                         if note in self.__note_handling_dict:
                             if note in assignment_mode_switch_ids:
                                 # True here: NOT in USER mode AND changing modes AND this script is still in control of USER mode display
@@ -323,22 +327,24 @@ class MackieC4(object):
                                 self.log_message("MC.receive_midi: unhandled note value: {}".format(note))
 
                     if note == C4SID_MARKER:
-                        # This "note event" entered receive_midi() with this script NOT already in USER mode, now it is in USER mode,
-                        # but the "user mode" patch is still NOT-processing yet, this midi event will be forwarded to the C4 display
-                        self.set_marker_is_pressed(False) # in case LOCK button is pressed by itself in USER mode, don't exit USER mode
+                        # This "note ON event" entered receive_midi() while the script was NOT in USER mode, because here is under elif self.init_ready:
+                        # now the script IS in USER mode, because self.__note_handling_dict[note](note) and note == C4SID_MARKER:
+                        # but the Max patch is still NOT-processing yet, forward this midi event to the C4 display
+                        # self.log_message("MC.receive_midi: before leaving script control, turning MARKER led OFF <{}>".format((NOTE_ON_STATUS, note, BUTTON_STATE_OFF)))
                         self.__c_instance.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
                         # (just-before-going-into-user-mode) MARKER LED is now OFF (would normally be ON indicating USER mode)
-                        # START signal for patch to process
-                        self.log_message("MC.receive_midi: sending 'button 22' signal toggling Max bypass mode, START processing STOP bypassing")
-                        # self.show_message("C4 controller mode change from C4M_USER to {}".format(new_name))
+                        # send START signal for patch to process
+                        # self.log_message("MC.receive_midi: sending 'button 22' signal toggling Max bypass mode, START processing STOP bypassing")
                         self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON))
+                        self.set_marker_is_pressed(False) # in case LOCK button is pressed by itself in USER mode, don't exit USER mode
 
-                        # yes MARKER Press+Release events created for the patch to "restore" the USER mode patch's MARKER button LED ON/OFF status
+                        # self.log_message("MC.receive_midi: script now in USER mode, Max patch is in control")
+                        # MARKER Press+Release events created for the patch to "restore" the USER mode patch's MARKER button LED ON/OFF status
                         # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events mean the LED ON/OFF state "doesn't change"
                         self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
                         self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
                         # (when the human physically releases the C4 MARKER button after switching to USER mode, the event is processed by the patch instead of this script)
-                        # yes MARKER Press event created for the patch to prepare for the (spurious) "first MARKER release" event the patch will see and process in USER mode
+                        # MARKER Press event created for the patch to prepare for the (spurious) "first MARKER release" event the patch will see and process in USER mode
                         # The "human release" always happens going into user mode, always need to "pre press" here
                         self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
             elif is_cc_msg:
@@ -373,36 +379,40 @@ class MackieC4(object):
             elif is_note_off_msg: # an actual Note Off event: is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
                 # logging.info("MC.receive_midi: unhandled - passing (ignoring) note off event {}".format(midi_bytes))
                 # this pass is expected, the C4 sends Note ON with velocity 0 for Note OFF.
-                # Live generates Note Offs the script can ignore and the USER Mode patch doesn't need to process
+                # Live generates Note Offs the script can ignore here (not USER mode) because USER Mode has already processed above as needed
+                # self.log_message("MC.receive_midi: NOT in USER mode MARKER is released, passing (NOTE OFF event)")
+                self.set_marker_is_pressed(False)
                 pass
             elif midi_bytes[0] == 0xF0:
-                # this sysex is from the C4, it is the unit serial number in response to a sysex request (from Live?)
-                #                                        Z   T   1   0   4   7   3   A   3  ACK
-                #                240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51,   6, 0, 247
-                #                                        Z   T   1   0   4   7   3    y DLE ACK
-                c4InitWelcome = [240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16,  6, 0, 247]
+                # this sysex is from the C4, it is the unit serial number in response to a sysex request (reset from Live?)
+                #                                          Z   T   1   0   4   7   3   A   3  ACK
+                #                  240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51,   6, 0, 247
+                #                                          Z   T   1   0   4   7   3    y DLE ACK
+                c4InitWelcome =   [240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16,  6, 0, 247]
+                c4WelcomeHeader = [240, 0, 0, 102, 23, 1]
+                c4WelcomeTail = [6, 0, 247]
                 lgth = len(c4InitWelcome)
+                hdr_lgth = len(c4WelcomeHeader)
+                trl_lgth = len(c4WelcomeTail)
                 if lgth == len(midi_bytes):
                     match = True
-                    for i in range(5): # first chunk always the same, middle chunk varies with serial numbers
+                    for i in range(hdr_lgth): # first chunk always the same, middle chunk varies with serial numbers
                         if c4InitWelcome[i] != midi_bytes[i]:
                             match = False
-                    for j in range(lgth - 3, lgth):# last chunk always the same
+                    for j in range(lgth - trl_lgth, lgth):# last chunk always the same
                         if c4InitWelcome[j] != midi_bytes[j]:
                             match = False
                     if match:
                         # the C4 just blanked its displays (except the hello message on the top screen?)
-                        self.update_display()
-                        if self.__encoder_controller.assignment_mode() == C4M_USER:
-                            # forward to Max patch to also handle
-                            self.__c_instance.send_midi(midi_bytes)
+                        # assignment mode is never USER here, msg was passed above in USER mode
+                            logging.info("MC.receive_midi: attempting to update display after receiving C4 serial number sysex message {}".format(midi_bytes))
+                            self.__encoder_controller.one_delayed_display_update(.275) # will this show?
                     else:
-                        logging.info("MC.receive_midi: unhandled matching length - sysex event {} dropped".format(midi_bytes))
+                        logging.info("MC.receive_midi: unhandled matching length - sysex event dropped {}".format(midi_bytes))
                 else:
-                    logging.info("MC.receive_midi: unhandled non-matching length - sysex event {} dropped".format(midi_bytes))
-
+                    logging.info("MC.receive_midi: unhandled non-matching length - sysex event dropped {}".format(midi_bytes))
             else:
-                logging.info("MC.receive_midi: unhandled - event {} dropped".format(midi_bytes))
+                logging.info("MC.receive_midi: unhandled - sysex event dropped {}".format(midi_bytes))
 
     def handle_jog_wheel_rotation(self, cc_value):  # aka beat_pointer
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
