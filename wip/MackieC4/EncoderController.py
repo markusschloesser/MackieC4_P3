@@ -1489,20 +1489,20 @@ class EncoderController(MackieC4Component):
                 #  capture_midi
 
                 elif s.vpot_index() == encoder_25_index:
-                    if self.song().is_playing:
-                        vpot_display_text.set_text(' Play ', ' Song ')
-                    else:
+                    # if self.song().is_playing:
+                    #     vpot_display_text.set_text(' Play ', ' Song ')
+                    # else:
                         vpot_display_text.set_text(' Stop ', ' Song ')
                 elif s.vpot_index() == encoder_26_index:
-                    if not self.song().is_playing:
+                    # if not self.song().is_playing:
+                    #     vpot_display_text.set_text(' Play ', ' Song ')
+                    # else:
                         vpot_display_text.set_text(' Play ', ' Song ')
-                    else:
-                        vpot_display_text.set_text(' Stop ', ' Song ')
                 elif s.vpot_index() == encoder_27_index:
-                    if not self.song().is_playing:
-                        vpot_display_text.set_text('contin', ' Song ')
-                    else:
-                        vpot_display_text.set_text(' Stop ', ' Song ')
+                    # if not self.song().is_playing:
+                    #     vpot_display_text.set_text('contin', ' Song ')
+                    # else:
+                        vpot_display_text.set_text(' cntinu ', ' Song ')
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                 self.__display_parameters.append(vpot_display_text)
@@ -1928,6 +1928,16 @@ class EncoderController(MackieC4Component):
                 elif e.vpot_index() in row_03_encoders:
                     upper_string4 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string4 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+                    if e.vpot_index() == encoder_25_index: # Song STOP
+                        if self.song().is_playing:
+                            e.unlight_vpot_leds()
+                        else:
+                            e.show_full_enlighted_poti()
+                    elif e.vpot_index() == encoder_26_index: # Song PLAY
+                        if self.song().is_playing:
+                            e.show_full_enlighted_poti()
+                        else:
+                            e.unlight_vpot_leds()
 
             unmute_all_encoder = self.__encoders[encoder_07_index]
             if song_util.any_muted_track(self):
