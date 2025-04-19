@@ -608,8 +608,8 @@ class EncoderController(MackieC4Component):
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
             # since the LOCK button is the second press of the "leave USER mode" button combo
             # and this script is back in control by now, ensure the C4 (this script) is not in LOCKED mode ...why?
-            force_unlocking = True
-            self.main_script().lock_surface(force_unlocking)
+            # force_unlocking = True
+            # self.main_script().lock_surface(force_unlocking)
 
         self._show_assignment_mode_change_message()
 
@@ -1285,7 +1285,7 @@ class EncoderController(MackieC4Component):
 
                 elif s_index in row_01_encoders:
 
-                    row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE  # MS wtf?
+                    row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE  # row_index == "index of" s_index in row_01_encoders range
                     current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
 
                     # display part
@@ -1953,7 +1953,7 @@ class EncoderController(MackieC4Component):
             else:
                 re_enable_automation_encoder.unlight_vpot_leds()
 
-        # ONLY update displays when Not in USER mode and this timer pops
+        # ONLY update displays when Not in USER mode
         if self.__assignment_mode != C4M_USER:
             self.send_display_string(LCD_ANGLED_ADDRESS, upper_string1, LCD_TOP_ROW_OFFSET)
             self.send_display_string(LCD_TOP_FLAT_ADDRESS, upper_string2, LCD_TOP_ROW_OFFSET)
