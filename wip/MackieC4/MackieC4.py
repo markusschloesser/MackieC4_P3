@@ -272,6 +272,7 @@ class MackieC4(object):
         nav = Live.Application.Application.View.NavDirection
         app_view = self.application().view
         view_name = 'Detail/DeviceChain'
+        logging.info(f'scroll_clip called with cc_value: {cc_value}')
         clip = self.song().view.detail_clip
 
         scroll = cc_value == 1 and 3 or 2
@@ -280,6 +281,7 @@ class MackieC4(object):
         if cc_value > 64:
             if not self.application().view.is_view_visible(view_name):
                 self.application().view.focus_view(view_name)
+                logging.info(f'Focusing view in scroll_clip: {view_name}')
                 # clip.move_playing_pos(- cc_value)
                 app_view.scroll_view(nav.left, view_name, False)
         if cc_value <= 64:
@@ -296,13 +298,13 @@ class MackieC4(object):
         # scroll = cc_value == 65 and 3 or 1
         if cc_value > 64:
             if not app_view.is_view_visible(view_name):
-                logging.info(f'Focusing view: {view_name}')
+                logging.info(f'Focusing view in zoom_clip: {view_name}')
                 app_view.focus_view(view_name)
                 app_view.zoom_view(nav.left, view_name, False)
                 logging.info(f'Zooming view to the left')
         if cc_value < 64:
             if not app_view.is_view_visible(view_name):
-                logging.info(f'Focusing view: {view_name}')
+                logging.info(f'Focusing view in zoom_clip: {view_name}')
                 app_view.focus_view(view_name)
                 app_view.zoom_view(nav.right, view_name, False)
                 logging.info(f'Zooming view to the right')
@@ -332,11 +334,11 @@ class MackieC4(object):
 
     def suggest_input_port(self):
         """Live -> Script   Live can ask the script for an input port name to find a suitable one.    """
-        return ''
+        return 'Mackie C4'
 
     def suggest_output_port(self):
         """Live -> Script        Live can ask the script for an output port name to find a suitable one.        """
-        return ''
+        return 'Mackie C4'
 
     def shift_is_pressed(self):
         return self.__shift_is_pressed
@@ -496,7 +498,7 @@ class MackieC4(object):
         else:
             self.__encoder_controller.track_changed(selected_index)
 
-    def scene_change(self):   # do we need scenes? TESTED, without scene stuff, display on C4 doesn't get updated (WTF??)'
+    def scene_change(self):   # do we need scenes? TESTED, without scene stuff, display on C4 doesn't get updated (WTF??)
         selected_scene = self.song().view.selected_scene
         scenes = self.song().scenes
         index = 0

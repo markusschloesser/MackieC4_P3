@@ -9,6 +9,7 @@ from __future__ import division
 # import itertools
 
 import sys
+import time
 
 from ableton.v2.base import liveobj_valid, liveobj_changed, find_if  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
@@ -73,6 +74,11 @@ class EncoderController(MackieC4Component):
 
         # initialize to blank screen segments
         self.__display_parameters = [EncoderDisplaySegment(self, x) for x in range(NUM_ENCODERS)]
+
+        self.encoder_name_display_state = [
+            {"toggle": False, "last_switch_time": 0}
+            for _ in encoder_range  # or however many encoders your device supports
+        ]
 
         # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
         # received by the C4 from somewhere else, not-here.  Such a display change is not tracked here (obviously),
@@ -1456,6 +1462,26 @@ class EncoderController(MackieC4Component):
                         else:
                             self.__encoders[device_encoder_index].unlight_vpot_leds()
 
+    def get_alternating_display_text(self, text: str, index: int, width: int = 6) -> str:
+        # Use raw name as-is if it fits
+        if len(text.strip()) <= width:
+            return adjust_string(text.strip(), width)
+
+        # Remove all spaces only if the name is longer than 6
+        compressed = text.replace(" ", "") if len(text.strip()) > width else text
+        padded = compressed.ljust(width * 2)[:width * 2]
+
+        now = time.time()
+        state = self.encoder_name_display_state[index]
+
+        if now - state["last_switch_time"] >= 1.5:
+            state["toggle"] = not state["toggle"]
+            state["last_switch_time"] = now
+
+        part = padded[width:width * 2] if state["toggle"] else padded[:width]
+
+        return adjust_string(part.strip(), width)
+
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
         upper_string1 = ''
@@ -1650,22 +1676,21 @@ class EncoderController(MackieC4Component):
                 upper_string1 += '-Params Bank-'
                 for t in encoder_range:
                     try:
-                        text_for_display = self.__display_parameters[t]  # assumes there are always 32
+                        text_for_display = self.__display_parameters[t]  # assumes always 32
                     except IndexError:
                         text_for_display = EncoderDisplaySegment(self, t)
                         text_for_display.set_text('---', ' X ')
 
-                    u_alt_text = text_for_display.get_upper_text()
+                    u_raw_text = text_for_display.get_upper_text()
                     l_alt_text = text_for_display.get_lower_text()
+
+                    u_alt_text = self.get_alternating_display_text(u_raw_text, t)
 
                     if t in range(6, NUM_ENCODERS_ONE_ROW):
                         lower_string1 += adjust_string(str(l_alt_text), 6) + ' '
                     elif t in row_01_encoders:
-                        # parameter name plugin_param[1] == text_for_display[1] in top display row,
-                        # parameter value plugin_param[0] == text_for_display[0] in bottom row
                         upper_string2 += adjust_string(u_alt_text, 6) + ' '
                         lower_string2 += adjust_string(str(l_alt_text), 6) + ' '
-
                     elif t in row_02_encoders:
                         upper_string3 += adjust_string(u_alt_text, 6) + ' '
                         lower_string3 += adjust_string(str(l_alt_text), 6) + ' '

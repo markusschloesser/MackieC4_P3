@@ -338,7 +338,7 @@ class EncoderAssignmentHistory(MackieC4Component):
                 changed_device_index = index
                 rtn_device_index = index
                 found_input_device_index = True
-                # self.main_script().log_message("{0}matched input selected_device<{1}> with device<{2}> at index<{3}> of input device list".format(log_id, selected_device.name, device.name, index))
+                self.main_script().log_message("{0}matched input selected_device<{1}> with device<{2}> at index<{3}> of input device list".format(log_id, selected_device.name, device.name, index))
                 break
 
         cb = self.t_d_bank_current[self.t_current]
@@ -352,17 +352,17 @@ class EncoderAssignmentHistory(MackieC4Component):
 
                 self.t_d_bank_current[self.t_current] = new_track_device_bank_index
                 cb = self.t_d_bank_current[self.t_current]
-                # self.main_script().log_message("{0}updated to <{1}> because exact boundary".format(log_msg, cb))
+                self.main_script().log_message("{0}updated to <{1}> because exact boundary".format(log_msg, cb))
             else:
                 log_msg = "{0}new_track_device_bank_index <{1}> ".format(log_id, cb)
                 self.t_d_bank_current[self.t_current] = new_track_device_bank_index
                 cb = self.t_d_bank_current[self.t_current]
-                # self.main_script().log_message("{0}updated to <{1}> because not boundary".format(log_msg, cb))
+                self.main_script().log_message("{0}updated to <{1}> because not boundary".format(log_msg, cb))
         else:
             log_msg = "{0}new_track_device_bank_index <{1}> ".format(log_id, cb)
             self.t_d_bank_current[self.t_current] = 0  # reset to default?
             cb = self.t_d_bank_current[self.t_current]
-            # self.main_script().log_message("{0}updated to <{1}> because else".format(log_msg, cb))
+            self.main_script().log_message("{0}updated to <{1}> because else".format(log_msg, cb))
 
         # FROM HERE: "found event index <{0}> and device <{1}>".format(index, device.name) represent "source of truth"
         # device == self.selected_track.devices[index]  and we could return rtn_device_index right here, except for updating the "assignment history" database
