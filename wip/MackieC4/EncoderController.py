@@ -343,6 +343,7 @@ class EncoderController(MackieC4Component):
             # self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
     def toggle_devices(self, cc_no, cc_value):
+        """any clockwise turn cc_value activates device represented by cc_no, counterclockwise turns deactivate device"""
         device_list = self.song().view.selected_track.devices
         extended_device_list = self.get_device_list(device_list)
 
@@ -352,6 +353,7 @@ class EncoderController(MackieC4Component):
 
         # Ensure that bank_start_index is non-negative
         if bank_start_index < 0:
+            self.main_script().log_message("EC.toggle_devices: negative device bank index protection triggered")
             bank_start_index = 0
 
         for i, device in enumerate(extended_device_list):
