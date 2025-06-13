@@ -3,19 +3,20 @@
 
 """
 # Copyright (C) 2007 Nathan Ramella (nar@remix.net)
-# MS: not sure this applies anymore ;-)
+# Copyright generally applies for the life of the original Copyright owner (in the USA), even open source code remains copyright protected
+# The original source code is available as the first commit in this repository
+# All changes to the original source are Copyright (C) 201x - 2025 Markus Schloesser (and contributors)
 #
-# This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser GPL (General Public License)
+# as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 #
 # This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser GPL for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along with this library; if not, write to the Free Software
+# You should have received a copy of the GNU Lesser GPL along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 This script is based off the Ableton Live supplied MIDI Remote Scripts.
-
 This is the second file that is loaded, by way of being instantiated through __init__.py
 """
 
@@ -789,13 +790,14 @@ class MackieC4(object):
 
     def do_add_device_listeners(self, tracks, type):
         for i in range(len(tracks)):
-            self.add_devicelistener(tracks[i], i, type)
-            # self.log_message("C4/do_add_device_listeners/add_devicelistener tracks: type <{0}>".format(type))
+            self.add_device_listener(tracks[i], i, type)
+            # self.log_message("MC.do_add_device_listeners: for track type <{0}>".format(type))
             if len(tracks[i].devices) >= 1:
                 for j in range(len(tracks[i].devices)):
                     self.add_devpmlistener(tracks[i].devices[j])
-                    # self.log_message("C4/do_add_device_listeners/add_devpmlistener: type <{0}>".format(type))
-                    if len(tracks[i].devices[j].parameters) >= 1:
+                    param_count = len(tracks[i].devices[j].parameters)
+                    # self.log_message("MC.do_add_device_listeners: adding <{0}> device parameter listeners".format(param_count))
+                    if param_count >= 1:
                         for k in range(len(tracks[i].devices[j].parameters)):
                             par = tracks[i].devices[j].parameters[k]
                             self.add_paramlistener(par, i, j, k, type)
@@ -804,6 +806,7 @@ class MackieC4(object):
         for pr in self.prlisten:
             if liveobj_valid(pr):
                 ocb = self.prlisten[pr]
+                # self.log_message("MC.rem_device_listeners: removing track device parameter listeners")
                 if pr.value_has_listener(ocb) == 1:
                     pr.remove_value_listener(ocb)
 
@@ -821,15 +824,16 @@ class MackieC4(object):
         for de in self.plisten:
             if liveobj_valid(de):
                 ocb = self.plisten[de]
+                # self.log_message("MC.rem_device_listeners: removing track device listeners")
                 if de.parameters_has_listener(ocb) == 1:
                     de.remove_parameters_listener(ocb)
 
         self.plisten = {}
         return
 
-    def add_devicelistener(self, track, tid, type):
+    def add_device_listener(self, track, tid, type):
         cb = lambda: self.device_changestate(track, tid, type)
-        # self.log_message("C4/add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+        # self.log_message("MC.add_device_listener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
         if (track in self.dlisten) != 1:
             track.add_devices_listener(cb)  # this is a direct call/check with/ to a function from Live
             track.view.add_selected_device_listener(cb)   # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
