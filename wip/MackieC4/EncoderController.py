@@ -14,10 +14,11 @@ import time
 from ableton.v2.base import liveobj_valid, liveobj_changed, find_if  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
-from ableton.v3.live import util
-
+util_gate = False
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import range
+    from ableton.v3.live import util
+    util_gate = True
 
 
 from . import track_util
@@ -93,6 +94,8 @@ class EncoderController(MackieC4Component):
         # turn this off to let the C4 LEDs and LCDs "go to sleep" after nothing changes for 15 or 20 minutes
         # If you randomly see the standard C4 welcome message (because of the rogue SYSEX message)
         # a "real" display update from Live always removes a standard C4 welcome message
+        # repeater not used now? partially fixed by updating display after seeing sysex "serial number response" message from C4
+        # always still seems to "blank and welcome" in the first 30 seconds after Live starts cold, but change assignment mode to repaint the display
         self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
         self.__display_repeat_count = 0
 
@@ -340,6 +343,7 @@ class EncoderController(MackieC4Component):
             # self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
     def toggle_devices(self, cc_no, cc_value):
+        """any clockwise turn cc_value activates device represented by cc_no, counterclockwise turns deactivate device"""
         device_list = self.song().view.selected_track.devices
         extended_device_list = self.get_device_list(device_list)
 
@@ -349,6 +353,7 @@ class EncoderController(MackieC4Component):
 
         # Ensure that bank_start_index is non-negative
         if bank_start_index < 0:
+            self.main_script().log_message("EC.toggle_devices: negative device bank index protection triggered")
             bank_start_index = 0
 
         for i, device in enumerate(extended_device_list):
@@ -843,6 +848,7 @@ class EncoderController(MackieC4Component):
                     param.value = param.default_value  # button press == jump to default value of Pan or Vol
 
         elif self.__assignment_mode == C4M_PLUGINS:
+            encoder_04_index = 3
             encoder_07_index = 6
             encoder_08_index = 7
             current_device_track = self.__eah.get_selected_device_index()
@@ -854,6 +860,11 @@ class EncoderController(MackieC4Component):
             # when self.__display_parameters is always 32 EncoderDisplaySegments now
             # we might need to check the length of the actual parameter list of the selected device
             update_self = False
+
+            # group track fold toggle, also groups from within
+            if encoder_index == encoder_04_index:
+                track_util.toggle_fold(self.selected_track)
+
             if encoder_index == encoder_07_index:
                 if current_parameter_bank_track > 0:
                     current_parameter_bank_track -= 1
@@ -1306,7 +1317,8 @@ class EncoderController(MackieC4Component):
 
                 if s_index == encoder_07_index:
                     if self.__chosen_plugin is None:
-                        vpot_display_text.set_text('Device', 'EditMe')
+                        # This text never appears in Plugins mode, it only appears briefly when switching to Channel Strip or Function mode when it looks wrong
+                        # vpot_display_text.set_text('Device', 'EditMe')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
                         vpot_display_text.set_text('<<  - ', 'PrvBnk')
@@ -1316,7 +1328,7 @@ class EncoderController(MackieC4Component):
                         s.unlight_vpot_leds()
                 elif s_index == encoder_08_index:
                     if self.__chosen_plugin is None:
-                        vpot_display_text.set_text('Device', 'No')
+                        # vpot_display_text.set_text('Device', 'No') # see comment above, looks wrong
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track < max_device_bank_param_track - 1:
                         vpot_display_text.set_text('  + >>', 'NxtBnk')
@@ -1333,8 +1345,8 @@ class EncoderController(MackieC4Component):
                         # parameter name in top display row, param value in bottom row
                         if liveobj_valid(plugin_param[0]):  # then it is a DeviceParameter object
                             vpot_display_text.set_text(plugin_param[0], plugin_param[1])
-                    else:
-                        vpot_display_text.set_text('Param', ' No ')
+                    # else:
+                    #     vpot_display_text.set_text('Param', ' No ') # see comment above, looks wrong
 
                 if not self.selected_track.is_frozen:
                     # disconnects vpots from the params, so you cannot change parameters when track frozen (but still see them).
@@ -1475,6 +1487,7 @@ class EncoderController(MackieC4Component):
                             self.__encoders[device_encoder_index].unlight_vpot_leds()
 
     def get_alternating_display_text(self, text: str, index: int, width: int = 6) -> str:
+        """use this to switch between first 6 and second 6 characters for parameter names etc"""
         # Use raw name as-is if it fits
         if len(text.strip()) <= width:
             return adjust_string(text.strip(), width)
@@ -1495,6 +1508,7 @@ class EncoderController(MackieC4Component):
         return adjust_string(part.strip(), width)
 
     def get_scrolling_display_text(self, text: str, index: int, width: int = 6, max_length: int = 18) -> str:
+        """use this to scroll up to 18 characters in the 6 space spot for parameter names etc"""
         raw = text.strip()
 
         if len(raw) <= width:
@@ -1581,7 +1595,7 @@ class EncoderController(MackieC4Component):
 
             # This text 'covers' display segments over all 8 encoders in the second row
             upper_string2 += '----------------------- Devices -----------------------'
-            # MS maybe try to visualize Racks/Groups here by using |  |  ?
+            # todo MS maybe try to visualize Racks/Groups here by using |  |  ?
 
             for t in encoder_range:
                 try:
@@ -1669,8 +1683,9 @@ class EncoderController(MackieC4Component):
 
         if self.__assignment_mode == C4M_PLUGINS:
             t_d_idx = self.__eah.get_selected_device_index()
-            upper_string1 += f"------ Track ------- ---- Device {t_d_idx}"
-            upper_string1 += ' ----- ' if t_d_idx > 9 else ' ------ '
+            upper_string1 += f"------ Track ------- ----- Device {t_d_idx}" if liveobj_valid(self.__chosen_plugin) else f"------ Track ------- --------------"
+            # self.main_script().log_message(f"device index is {t_d_idx} ")
+            upper_string1 += ' ---- ' if t_d_idx > 9 else ' ----- '
 
             if liveobj_valid(self.selected_track):
                 track_name = self.selected_track.name
@@ -1722,6 +1737,7 @@ class EncoderController(MackieC4Component):
                     u_raw_text = text_for_display.get_upper_text()
                     l_raw_text = text_for_display.get_lower_text()
 
+                    # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scroll and just switch
                     u_alt_text = self.get_scrolling_display_text(u_raw_text, t)
                     l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
 
