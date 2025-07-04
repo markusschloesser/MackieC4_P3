@@ -339,7 +339,7 @@ class EncoderController(MackieC4Component):
                     self.main_script().log_message("{0}".format(log_msg))  #EC.device_added_deleted_or_changed: device at index <1> is not liveobj_valid
                 log_msg = "{0}device at index <{1}> is not liveobj_valid".format(log_id, i + 1)  # + 1 because log msg about any problem will appear next iteration
 
-        #else:
+        # else:
             # self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
     def toggle_devices(self, cc_no, cc_value):
@@ -1611,7 +1611,8 @@ class EncoderController(MackieC4Component):
                     upper_string1 += ''.join([adjust_string(u_alt_text, 6), ' '])
                     lower_string1 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
                 elif t in row_01_encoders:
-                    lower_string2 += adjust_string(l_alt_text, 6) + ' '
+                    l_alt2_text = self.get_scrolling_display_text(l_alt_text, t)
+                    lower_string2 += adjust_string(l_alt2_text, 6) + ' '
 
                 elif t in row_02_encoders:
                     upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])

@@ -114,6 +114,18 @@ class MackieC4(object):
         self.__ctrl_is_pressed = False
         self.__alt_is_pressed = False
 
+        self.c4_note_range = set(range(C4SID_FIRST, C4SID_LAST + 1))
+
+        self.note_handling_dict = {
+            **{note: self.track_inc_dec for note in track_nav_switch_ids},
+            **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
+            **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
+            **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
+            C4SID_LOCK: lambda _: self.lock_surface(),
+            **{note: self.__encoder_controller.handle_assignment_switch_ids for note in assignment_mode_switch_ids},
+            **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
+        }
+
     def connect_script_instances(self, instanciated_scripts):
         """
         Called by the Application as soon as all scripts are initialized. You can connect yourself to other running
@@ -186,19 +198,10 @@ class MackieC4(object):
             # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
-            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
-                note_handling_dict = {
-                    **{note: self.track_inc_dec for note in track_nav_switch_ids},
-                    **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
-                    **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
-                    **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
-                    C4SID_LOCK: lambda _: self.lock_surface(),
-                    **{note: self.__encoder_controller.handle_assignment_switch_ids for note in
-                       assignment_mode_switch_ids},
-                    **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
-                }
-                if note in note_handling_dict and ignore_note_offs:
-                    note_handling_dict[note](note)
+            if note in self.c4_note_range:
+                handler = self.note_handling_dict.get(note)
+                if handler and ignore_note_offs:
+                    handler(note)
                 elif note in modifier_switch_ids:
                     self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
 
