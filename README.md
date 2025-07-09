@@ -11,7 +11,7 @@ Copy 'wip/MackieC4' folder to your 'MIDI Remote Scripts'. Make sure Live is not 
 Ports: in Live midi settings select the script "MackieC4" and set both in and out ports to Midi in/out ports. and activate 'Track' and 'Remote' for both ports. Further info @https://github.com/markusschloesser/MackieC4_P3/wiki/How-To-download-and-use-this-Mackie-C4-Remote-Script-in-Ableton-Live
 
 How to use it?
-See the Manual/Wiki with lots of picture https://github.com/markusschloesser/MackieC4_P3/wiki
+See the Manual/Wiki with lots of picture https://github.com/markusschloesser/MackieC4_P3/wiki/Manual--Using-the-Mackie-C4-with-Ableton
 showing ChannelStrip, Devices and Function mode
 
 What can you do with it:
