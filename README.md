@@ -1,10 +1,10 @@
 Disclaimer:
-This is fully functional, but as all other Midi Remote Scripts done without proper documentation! We have been using it for over 2 years in daily studio projects. Nevertheless there might be errors and as new features are constantly being added, Live might be slower or even unstable. Please take this under consideration.
+This is fully functional, but as all other Midi Remote Scripts done without proper documentation! We have been using it for over 4 years in daily studio projects. Nevertheless there might be errors and as new features are constantly being added, Live might be slower or even unstable. Please take this under consideration.
 I suggest to open the Live logfile every once in a while to monitor what's going on. We do not take responsibility for lost tracks etc, make backups!
 
 
 What is it:
-A midi remote script for Ableton Live 10 and 11 for the Mackie C4 controller in Python 3 with backwards compatibility to Py2.7 for Live 10.
+A midi remote script for Ableton Live 10, 11 and 12 for the Mackie C4 controller in Python 3 with backwards compatibility to Py2.7 for Live 10 (up to a certain point).
 
 How to install it:
 Copy 'wip/MackieC4' folder to your 'MIDI Remote Scripts'. Make sure Live is not open or if it was, please restart Live.
@@ -16,8 +16,8 @@ showing ChannelStrip, Devices and Function mode
 
 What can you do with it:
 
-	1. Script works in Live 10 and 11, not tested under Live 9
-	2. C4 is fully usable and shows parameter names, encoders can be used and pushing them sets default value (where existant). Where there are quantized parameters, clicking the encoder steps between values, turning does the same.
+	1. Script works in Live 10, 11, 12 not tested with Live 9
+	2. C4 is fully usable and shows parameter names, encoders can be used and pushing them sets default value (where existing). Where there are quantized parameters, clicking the encoder steps between values, turning does the same.
 	3. Track switching, also parameter bank switching and device switching for device mode (works also for grouped/chained device). 
 	4. Parameter names get properly shortened.  
 	5. "Sends" etc also work in track mode
@@ -62,5 +62,5 @@ What we did in 2021:
   8. Integrated liveobj_valid and liveobj_changed
   9. introduced lots of new functionality 
 
-2022/2023:
+2022/2023-2025:
 a lot more functionality, less bugs, shorter code, etc
