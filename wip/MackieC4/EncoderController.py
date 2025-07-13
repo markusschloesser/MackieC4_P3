@@ -133,6 +133,13 @@ class EncoderController(MackieC4Component):
         self.__option_state = False
         self.__ctrl_state = False
         self.__alt_state = False
+
+        self._last_undo_label = ""
+        self._last_undo_label_time = 0
+
+        self._last_redo_label = ""
+        self._last_redo_label_time = 0
+
         return
 
     def destroy(self):
@@ -279,6 +286,8 @@ class EncoderController(MackieC4Component):
         log_id = "EC.device_added_deleted_or_changed: "
         updated_idx = -1
         # extended_device_list is the device list with enumerated/flattened rack devices
+        # if a device is added to any unselected track, this extended device list is not populated here with the new device on the freshly selected track
+        # devices cannot be updated or deleted from an unselected track, they can only be added to an unselected track. (by drag&drop, for example)
         extended_device_list = self.get_device_list(self.selected_track.devices)
 
         # Use a dictionary to map type to listener_type
@@ -291,6 +300,8 @@ class EncoderController(MackieC4Component):
                 # self.main_script().log_message(log_msg + "and calling track_changed() passing index {0}".format(tid))
                 self.selected_track = track
                 self.track_changed(tid)
+                # update the extended (flattened) device list for the changed selected Track
+                extended_device_list = self.get_device_list(self.selected_track.devices)
 
             if liveobj_valid(self.selected_track):
                 selected_device = self.selected_track.view.selected_device
@@ -472,7 +483,7 @@ class EncoderController(MackieC4Component):
         # else don't update because nothing changed here
 
     def handle_slot_nav_switch_ids(self, switch_id):
-        """ "slot navigation" switches between Devices in C4M_PLUGINS mode (up/down) """
+        """ "slot navigation" (arrow up 🔼/down 🔽) switches between Devices in C4M_PLUGINS mode (up/down) """
         if self.__assignment_mode == button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
             current_trk_device_index = self.__eah.get_selected_device_index()
             max_trk_device_index = self.__eah.get_max_device_count() - 1
@@ -592,7 +603,7 @@ class EncoderController(MackieC4Component):
             raise ValueError(f"Invalid mode name: {mode_name}")
 
     def beat_pointer(self, mode_name, vpot_index):
-        # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
+        """ show beat position pointer or song position pointer at encoder 12 AND encoder 13 position in second row """
         upper_string2 = ''
         lower_string2 = ''
         mode_function = self.mode_functions.get(mode_name)
@@ -630,7 +641,7 @@ class EncoderController(MackieC4Component):
         if mode_function:
             if mode_name == "on_update_display_timer":
                 get_loop_length = str(self.song().loop_length / 4)
-                upper_string2 += 'LoopLg '
+                upper_string2 += 'LoopLength'
                 lower_string2 += adjust_string(get_loop_length, 6) + ' '
 
                 # vpot ring light
@@ -972,14 +983,17 @@ class EncoderController(MackieC4Component):
             elif encoder_index == encoder_08_index:
                 song_util.toggle_back_to_arranger(self)
 
-            elif encoder_index == encoder_09_index:
+            elif encoder_index == encoder_09_index:  # Undo
                 if self.song().can_undo:
-                    song_util.undo(self)
-                else:
-                    s.unlight_vpot_leds()
-            elif encoder_index == encoder_10_index:
+                    result = self.song().undo()
+                    self._last_redo_label = result or ""
+                    self._last_redo_label_time = time.time()
+
+            elif encoder_index == encoder_10_index:  # Redo
                 if self.song().can_redo:
-                    song_util.redo(self)
+                    result = self.song().redo()
+                    self._last_undo_label = result or ""
+                    self._last_undo_label_time = time.time()
 
             elif encoder_index == encoder_11_index:
                 song_util.unarm_all_button(self)
@@ -1522,7 +1536,7 @@ class EncoderController(MackieC4Component):
 
         at_start = state["scroll_pos"] == 0
         at_end = state["scroll_pos"] == max_scroll_pos
-        delay = 1.0 if at_start or at_end else 0.5  # 1s pause at ends
+        delay = 1.5 if at_start or at_end else 0.5  # 1.5s pause at ends
 
         if now - state["last_scroll_time"] >= delay:
             state["scroll_pos"] += 1
@@ -1738,7 +1752,7 @@ class EncoderController(MackieC4Component):
                     u_raw_text = text_for_display.get_upper_text()
                     l_raw_text = text_for_display.get_lower_text()
 
-                    # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scroll and just switch
+                    # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scrolling and just switch between 123456 and 789101112
                     u_alt_text = self.get_scrolling_display_text(u_raw_text, t)
                     l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
 
@@ -1788,15 +1802,24 @@ class EncoderController(MackieC4Component):
                 elif e.vpot_index() in row_01_encoders:
                     if e.vpot_index() == encoder_09_index:
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
-                        lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                        if self.song().can_undo:  # if you can (still) undo something, LEDs stay lit
+                        # NEW: lower row = last undo label (from redo), scroll if available
+                        if time.time() - self._last_undo_label_time < 15.0 and self._last_undo_label:
+                            lower_string2 += self.get_scrolling_display_text(self._last_undo_label, encoder_09_index) + ' '
+                        else:
+                            lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+                        if self.song().can_undo:
                             e.show_full_enlighted_poti()
                         else:
                             e.unlight_vpot_leds()
+
                     elif e.vpot_index() == encoder_10_index:
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
-                        lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                        if self.song().can_redo:  # if you can (still) redo something, LEDs stay lit
+                        # NEW: lower row = last redo label (from undo), scroll if available
+                        if time.time() - self._last_redo_label_time < 15.0 and self._last_redo_label:
+                            lower_string2 += self.get_scrolling_display_text(self._last_redo_label, encoder_10_index) + ' '
+                        else:
+                            lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
+                        if self.song().can_redo:
                             e.show_full_enlighted_poti()
                         else:
                             e.unlight_vpot_leds()
@@ -1818,13 +1841,13 @@ class EncoderController(MackieC4Component):
                     # show loop length
                     elif e.vpot_index() == encoder_14_index:
                         upper, lower = self.loop_length("on_update_display_timer", e.vpot_index())
-                        upper_string2 += upper
+                        upper_string2 += self.get_scrolling_display_text(upper, e.vpot_index()) + ' '
                         lower_string2 += lower
 
                     # show loop start
                     elif e.vpot_index() == encoder_15_index:
                         get_loop_start = str(self.song().loop_start / 4)
-                        upper_string2 += 'LoopSt '
+                        upper_string2 += self.get_scrolling_display_text('LoopStart', e.vpot_index()) + ' '
                         lower_string2 += adjust_string(get_loop_start, 6) + ' '
 
                         # vpot ring light
@@ -1857,12 +1880,12 @@ class EncoderController(MackieC4Component):
                 elif e.vpot_index() in row_03_encoders:
                     upper_string4 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
                     lower_string4 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                    if e.vpot_index() == encoder_25_index: # Song STOP
+                    if e.vpot_index() == encoder_25_index:  # Song STOP
                         if self.song().is_playing:
                             e.unlight_vpot_leds()
                         else:
                             e.show_full_enlighted_poti()
-                    elif e.vpot_index() == encoder_26_index: # Song PLAY
+                    elif e.vpot_index() == encoder_26_index:  # Song PLAY
                         if self.song().is_playing:
                             e.show_full_enlighted_poti()
                         else:
@@ -1933,7 +1956,7 @@ class EncoderController(MackieC4Component):
         else:
             assert 0
 
-        # convert unicode string (list of character values) to list of integer values
+        # convert Unicode string (list of character values) to list of integer values
         ascii_text_sysex_ints = [ord(c) for c in text_for_display]
         for i in range(len(ascii_text_sysex_ints)):
             if ascii_text_sysex_ints[i] > MIDI_DATA_LAST_VALID:
