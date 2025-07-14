@@ -986,13 +986,15 @@ class EncoderController(MackieC4Component):
             elif encoder_index == encoder_09_index:  # Undo
                 if self.song().can_undo:
                     result = self.song().undo()
-                    self._last_redo_label = result or ""
+                    clean = result.removeprefix("Undo ").strip() if result else ""
+                    self._last_redo_label = clean
                     self._last_redo_label_time = time.time()
 
             elif encoder_index == encoder_10_index:  # Redo
                 if self.song().can_redo:
                     result = self.song().redo()
-                    self._last_undo_label = result or ""
+                    clean = result.removeprefix("Redo ").strip() if result else ""
+                    self._last_undo_label = clean
                     self._last_undo_label_time = time.time()
 
             elif encoder_index == encoder_11_index:
@@ -1804,7 +1806,7 @@ class EncoderController(MackieC4Component):
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
                         # NEW: lower row = last undo label (from redo), scroll if available
                         if time.time() - self._last_undo_label_time < 15.0 and self._last_undo_label:
-                            lower_string2 += self.get_scrolling_display_text(self._last_undo_label, encoder_09_index) + ' '
+                            lower_string2 += self.get_scrolling_display_text(self._last_undo_label, e.vpot_index()) + ' '
                         else:
                             lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                         if self.song().can_undo:
@@ -1816,7 +1818,7 @@ class EncoderController(MackieC4Component):
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
                         # NEW: lower row = last redo label (from undo), scroll if available
                         if time.time() - self._last_redo_label_time < 15.0 and self._last_redo_label:
-                            lower_string2 += self.get_scrolling_display_text(self._last_redo_label, encoder_10_index) + ' '
+                            lower_string2 += self.get_scrolling_display_text(self._last_redo_label, e.vpot_index()) + ' '
                         else:
                             lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                         if self.song().can_redo:
@@ -1864,7 +1866,7 @@ class EncoderController(MackieC4Component):
                     elif e.vpot_index() == encoder_16_index:
                         # show if we are in Session or Arrange view in upper row and selected track name in lower row
                         upper_string2 += ('Scroll' if self.application().view.is_view_visible('Session') else 'Zoom  ')
-                        lower_string2 += adjust_string(self.selected_track.name, 6)
+                        lower_string2 += self.get_scrolling_display_text(self.selected_track.name, e.vpot_index())
 
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
