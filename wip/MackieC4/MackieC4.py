@@ -3,19 +3,20 @@
 
 """
 # Copyright (C) 2007 Nathan Ramella (nar@remix.net)
-# MS: not sure this applies anymore ;-)
+# Copyright generally applies for the life of the original Copyright owner (in the USA), even open source code remains copyright protected
+# The original source code is available as the first commit in this repository
+# All changes to the original source are Copyright (C) 201x - 2025 Markus Schloesser (and contributors)
 #
-# This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public
-# License as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
+# This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser GPL (General Public License)
+# as published by the Free Software Foundation; either version 2.1 of the License, or (at your option) any later version.
 #
 # This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more details.
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser GPL for more details.
 #
-# You should have received a copy of the GNU Lesser General Public License along with this library; if not, write to the Free Software
+# You should have received a copy of the GNU Lesser GPL along with this library; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 This script is based off the Ableton Live supplied MIDI Remote Scripts.
-
 This is the second file that is loaded, by way of being instantiated through __init__.py
 """
 
@@ -113,6 +114,18 @@ class MackieC4(object):
         self.__ctrl_is_pressed = False
         self.__alt_is_pressed = False
 
+        self.c4_note_range = set(range(C4SID_FIRST, C4SID_LAST + 1))
+
+        self.note_handling_dict = {
+            **{note: self.track_inc_dec for note in track_nav_switch_ids},
+            **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
+            **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
+            **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
+            C4SID_LOCK: lambda _: self.lock_surface(),
+            **{note: self.__encoder_controller.handle_assignment_switch_ids for note in assignment_mode_switch_ids},
+            **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
+        }
+
     def connect_script_instances(self, instanciated_scripts):
         """
         Called by the Application as soon as all scripts are initialized. You can connect yourself to other running
@@ -185,19 +198,10 @@ class MackieC4(object):
             # self.log_message("note<{}> velo<{}> logged because is_note_on_msg in receive_midi in MackieC4".format(note, velocity))
             ignore_note_offs = velocity == BUTTON_STATE_ON
             """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
-            if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
-                note_handling_dict = {
-                    **{note: self.track_inc_dec for note in track_nav_switch_ids},
-                    **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
-                    **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
-                    **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
-                    C4SID_LOCK: lambda _: self.lock_surface(),
-                    **{note: self.__encoder_controller.handle_assignment_switch_ids for note in
-                       assignment_mode_switch_ids},
-                    **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
-                }
-                if note in note_handling_dict and ignore_note_offs:
-                    note_handling_dict[note](note)
+            if note in self.c4_note_range:
+                handler = self.note_handling_dict.get(note)
+                if handler and ignore_note_offs:
+                    handler(note)
                 elif note in modifier_switch_ids:
                     self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
 
@@ -272,6 +276,7 @@ class MackieC4(object):
         nav = Live.Application.Application.View.NavDirection
         app_view = self.application().view
         view_name = 'Detail/DeviceChain'
+        logging.info(f'scroll_clip called with cc_value: {cc_value}')
         clip = self.song().view.detail_clip
 
         scroll = cc_value == 1 and 3 or 2
@@ -280,6 +285,7 @@ class MackieC4(object):
         if cc_value > 64:
             if not self.application().view.is_view_visible(view_name):
                 self.application().view.focus_view(view_name)
+                logging.info(f'Focusing view in scroll_clip: {view_name}')
                 # clip.move_playing_pos(- cc_value)
                 app_view.scroll_view(nav.left, view_name, False)
         if cc_value <= 64:
@@ -296,13 +302,13 @@ class MackieC4(object):
         # scroll = cc_value == 65 and 3 or 1
         if cc_value > 64:
             if not app_view.is_view_visible(view_name):
-                logging.info(f'Focusing view: {view_name}')
+                logging.info(f'Focusing view in zoom_clip: {view_name}')
                 app_view.focus_view(view_name)
                 app_view.zoom_view(nav.left, view_name, False)
                 logging.info(f'Zooming view to the left')
         if cc_value < 64:
             if not app_view.is_view_visible(view_name):
-                logging.info(f'Focusing view: {view_name}')
+                logging.info(f'Focusing view in zoom_clip: {view_name}')
                 app_view.focus_view(view_name)
                 app_view.zoom_view(nav.right, view_name, False)
                 logging.info(f'Zooming view to the right')
@@ -332,11 +338,11 @@ class MackieC4(object):
 
     def suggest_input_port(self):
         """Live -> Script   Live can ask the script for an input port name to find a suitable one.    """
-        return ''
+        return 'Mackie C4'
 
     def suggest_output_port(self):
         """Live -> Script        Live can ask the script for an output port name to find a suitable one.        """
-        return ''
+        return 'Mackie C4'
 
     def shift_is_pressed(self):
         return self.__shift_is_pressed
@@ -496,7 +502,7 @@ class MackieC4(object):
         else:
             self.__encoder_controller.track_changed(selected_index)
 
-    def scene_change(self):   # do we need scenes? TESTED, without scene stuff, display on C4 doesn't get updated (WTF??)'
+    def scene_change(self):   # do we need scenes? TESTED, without scene stuff, display on C4 doesn't get updated (WTF??)
         selected_scene = self.song().view.selected_scene
         scenes = self.song().scenes
         index = 0
@@ -787,13 +793,14 @@ class MackieC4(object):
 
     def do_add_device_listeners(self, tracks, type):
         for i in range(len(tracks)):
-            self.add_devicelistener(tracks[i], i, type)
-            # self.log_message("C4/do_add_device_listeners/add_devicelistener tracks: type <{0}>".format(type))
+            self.add_device_listener(tracks[i], i, type)
+            # self.log_message("MC.do_add_device_listeners: for track type <{0}>".format(type))
             if len(tracks[i].devices) >= 1:
                 for j in range(len(tracks[i].devices)):
                     self.add_devpmlistener(tracks[i].devices[j])
-                    # self.log_message("C4/do_add_device_listeners/add_devpmlistener: type <{0}>".format(type))
-                    if len(tracks[i].devices[j].parameters) >= 1:
+                    param_count = len(tracks[i].devices[j].parameters)
+                    # self.log_message("MC.do_add_device_listeners: adding <{0}> device parameter listeners".format(param_count))
+                    if param_count >= 1:
                         for k in range(len(tracks[i].devices[j].parameters)):
                             par = tracks[i].devices[j].parameters[k]
                             self.add_paramlistener(par, i, j, k, type)
@@ -802,6 +809,7 @@ class MackieC4(object):
         for pr in self.prlisten:
             if liveobj_valid(pr):
                 ocb = self.prlisten[pr]
+                # self.log_message("MC.rem_device_listeners: removing track device parameter listeners")
                 if pr.value_has_listener(ocb) == 1:
                     pr.remove_value_listener(ocb)
 
@@ -819,15 +827,16 @@ class MackieC4(object):
         for de in self.plisten:
             if liveobj_valid(de):
                 ocb = self.plisten[de]
+                # self.log_message("MC.rem_device_listeners: removing track device listeners")
                 if de.parameters_has_listener(ocb) == 1:
                     de.remove_parameters_listener(ocb)
 
         self.plisten = {}
         return
 
-    def add_devicelistener(self, track, tid, type):
+    def add_device_listener(self, track, tid, type):
         cb = lambda: self.device_changestate(track, tid, type)
-        # self.log_message("C4/add_devicelistener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+        # self.log_message("MC.add_device_listener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
         if (track in self.dlisten) != 1:
             track.add_devices_listener(cb)  # this is a direct call/check with/ to a function from Live
             track.view.add_selected_device_listener(cb)   # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )

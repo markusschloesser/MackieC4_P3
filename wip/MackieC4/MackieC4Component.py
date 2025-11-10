@@ -77,12 +77,20 @@ class MackieC4Component(object):
         # device_list = track_util.get_racks_recursive(track)  # this refers to the method used by Ableton in track_selection (which didn't work, but I'll leave it in here for now)
         device_list = []
         for device in container:
-            device_list.append(device)
-            if device.can_have_chains:  # is a rack and it's open
-                # if device.view.is_showing_chain_devices:  # this makes device list foldable, which wouldn't work with current script.
-                # So for now, everything is a flattened list
-                for ch in device.chains:
-                    device_list += [d for ch in device.chains for d in self.get_device_list(ch.devices)]
+            if len(device_list) < 127:  # now limited to 127 devices, because some drum racks have over 136 and that kind of breaks it
+                device_list.append(device)
+                if device.can_have_chains:  # is a rack and it's open
+                    # if device.view.is_showing_chain_devices:  # this makes device list foldable, which wouldn't work with current script.
+                    # So for now, everything is a flattened list
+                    for ch in device.chains:
+                        chain_devices = [d for ch in device.chains for d in self.get_device_list(ch.devices)]
+                        for d in chain_devices:
+                            if len(device_list) < 127:
+                                device_list.append(d)
+                            else:
+                                break
+            else:
+                break
         return device_list
 
 

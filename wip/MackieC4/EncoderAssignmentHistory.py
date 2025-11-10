@@ -70,11 +70,11 @@ class EncoderAssignmentHistory(MackieC4Component):
             song_ref = self.song()
 
         self.t_count = 0
-        self.main_script().log_message("t_current idx <{0}> t_count <{1}> BEFORE setup_db".format(self.t_current, self.t_count))
+        # self.main_script().log_message("EAH73:t_current idx <{0}> t_count <{1}> BEFORE setup_db".format(self.t_current, self.t_count))
 
         tracks_in_song = self.song().tracks
 
-        self.main_script().log_message("nbr tracks in song {0}".format(len(tracks_in_song)))
+        # self.main_script().log_message("EAH77: nbr tracks in song {0}".format(len(tracks_in_song)))
         loop_index_tracker = 0
         for t_idx in range(len(tracks_in_song)):
             devices_on_track = tracks_in_song[t_idx].devices
