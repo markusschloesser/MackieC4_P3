@@ -78,7 +78,8 @@ class Encoders(MackieC4Component):
         self.v_pot_display_memory_len = len(self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE])
 
     def update_led_ring(self, update_value):
-        self.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
+        if self.__encoder_controller.assignment_mode != C4M_USER:
+            self.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
 
     def unlight_vpot_leds(self):
         data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][0]
@@ -120,11 +121,12 @@ class Encoders(MackieC4Component):
                     channel = 0
                     cc_no = self.__vpot_cc_nbr
                     Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
-                    # self.main_script().log_message("potIndex<{0}> mapping encoder to FORWARD CC <{1}> MS: coming from build_midi_map in __encoders".format(encoder, cc_no))
-                else:
-                    self.main_script().log_message("potIndex<{0}> nothing mapped param is lost weak ref".format(encoder))
-            else:
-                self.main_script().log_message("potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
+                    # self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> mapping encoder to FORWARD CC <{1}> MS: coming from build_midi_map in __encoders".format(encoder, cc_no))
+            #     else:
+            #         # because USER mode has nothing mapped
+            #         self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> nothing mapped param is lost weak ref".format(encoder))
+            # else:
+            #     self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
         if vpot_index is self.__vpot_index and self.__encoder_controller is not None:
