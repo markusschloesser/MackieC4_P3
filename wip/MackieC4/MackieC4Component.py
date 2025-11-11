@@ -8,7 +8,7 @@ if sys.version_info[0] >= 3:  # Live 11
 
 from .consts import *
 import Live
-import MidiRemoteScript
+# import MidiRemoteScript
 
 
 class MackieC4Component(object):
