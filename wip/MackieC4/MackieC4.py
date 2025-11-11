@@ -77,6 +77,8 @@ class MackieC4(object):
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
+        # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
+        self.__init_ready = False
 
         # initialize the 32 encoders, their EncoderController and add them as __components here
         self.__encoders = [Encoders(self, i) for i in encoder_range]
@@ -129,6 +131,8 @@ class MackieC4(object):
             **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
         }
 
+        self.__init_ready = True
+
     def connect_script_instances(self, instanciated_scripts):
         """
         Called by the Application as soon as all scripts are initialized. You can connect yourself to other running
@@ -168,7 +172,7 @@ class MackieC4(object):
         """
         Use this function to send MIDI events through Live to the _real_ MIDI devices that this script is assigned to.
         """
-        if self.__handling_assignment_switch or self.__encoder_controller.assignment_mode() != C4M_USER:
+        if self.__init_ready and (self.__handling_assignment_switch or self.__encoder_controller.assignment_mode() != C4M_USER):
             # self.__handling_assignment_switch means the script might be switching to USER mode so we still want to send this midi
             # self.log_message("MC.send_midi: firing")  # very verbose log message
             self.__c_instance.send_midi(midi_event_bytes)

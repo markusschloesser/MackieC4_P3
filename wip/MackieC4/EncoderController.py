@@ -103,6 +103,12 @@ class EncoderController(MackieC4Component):
 
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
+        self.__last_send_messages = {
+            LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
+            LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
+            LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
+            LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}
+        }
 
         song = self.song()
         tracks = song.visible_tracks + song.return_tracks
@@ -122,14 +128,7 @@ class EncoderController(MackieC4Component):
             index = len(tracks)
             self.track_changed(index)
 
-        # self.selected_track = self.song().view.selected_track
         # self.update_assignment_mode_leds()
-        self.__last_send_messages = {
-            LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
-            LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
-            LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
-            LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}
-        }
 
         self.__shift_state = False
         self.__option_state = False
@@ -586,9 +585,9 @@ class EncoderController(MackieC4Component):
           turn  on button LED of the button associated with the current/new assignment mode
         """
         delay_assignment_led_update = False
-        if not self.main_script().init_ready:
-            self.main_script().log_message("EC.update_assignment_mode_leds: main script not ready yet")
-            return
+        # if not self.main_script().init_ready:
+        #     self.main_script().log_message("EC.update_assignment_mode_leds: main script not ready yet")
+        #     return
 
 
         if self.__assignment_mode == C4M_USER:
@@ -616,7 +615,11 @@ class EncoderController(MackieC4Component):
 
         if delay_assignment_led_update:
             # self.main_script().log_message("EC.update_assignment_mode_leds: updating assignment LEDs after leaving USER mode")
-            for i in range(C4SID_MARKER, C4SID_FUNCTION + 1):
+            for i in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
+                if i < C4SID_MARKER:
+                    # turn off any Function area LEDs after USER mode
+                    # may need special handling for Lock button state here if previous script mode was "locked", led should be ON going back to it
+                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
                 if i == assignment_mode_to_button_id[self.__assignment_mode]:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
                 else:
@@ -1633,8 +1636,8 @@ class EncoderController(MackieC4Component):
 
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
-        if not self.main_script().init_ready:
-            return
+        # if not self.main_script().init_ready:
+        #     return
         if self.song().is_playing:
             self.__do_display_update()
         elif self.__display_lag_timer_bang():
@@ -1646,10 +1649,7 @@ class EncoderController(MackieC4Component):
         self.one_display_update()
 
     def one_display_update(self):
-        if not self.main_script().init_ready:
-            pass
-        else:
-            self.__do_display_update()
+        self.__do_display_update()
 
     def __display_lag_timer_bang(self):
         # count to 10 for each second of desired "display update" lag (when song is NOT playing)
