@@ -145,12 +145,26 @@ class EncoderController(MackieC4Component):
 
     def destroy(self):
         # self.destroy()
+        self.sendGoodbyeScreen()
+        MackieC4Component.destroy(self)
+
+    def sendGoodbyeScreen(self):
+        self.display_message_top_lcd('                     Ableton Live                      ', '                   Device is offline                   ')
+
+    def clear_all_lcds(self):
+        self.display_message_top_lcd()
+
+    def display_message_top_lcd(self, top_line="", bottom_line=""):
         so_many_spaces = '                                                       '
-        self.send_display_string(LCD_ANGLED_ADDRESS, '                     Ableton Live                      ', LCD_TOP_ROW_OFFSET)
+        if len(top_line) < 1:
+            top_line = so_many_spaces
+        if len(bottom_line) < 1:
+            bottom_line = so_many_spaces
+        self.send_display_string(LCD_ANGLED_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
         self.send_display_string(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
         self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
         self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_ANGLED_ADDRESS, '                   Device is offline                   ', LCD_BOTTOM_ROW_OFFSET)
+        self.send_display_string(LCD_ANGLED_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
         self.send_display_string(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
         self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
         self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
@@ -158,7 +172,6 @@ class EncoderController(MackieC4Component):
             self.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
         for note in assignment_mode_switch_ids:
             self.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
-        MackieC4Component.destroy(self)
 
     def request_rebuild_midi_map(self):
         MackieC4Component.request_rebuild_midi_map(self)

@@ -85,6 +85,9 @@ class MackieC4(object):
         self.__encoder_controller = EncoderController(self, self.__encoders)
         self.__components = [*self.__encoders, self.__encoder_controller]
 
+        # if the goodbye message is displaying on the C4 after Live shutdown, and Live restarts, clear the display asap
+        self.__encoder_controller.clear_all_lcds()
+
         # turn off FUNCTION and ASSIGNMENT button LEDs except the default
         for cc in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
             if cc == C4SID_CHANNEL_STRIP:
