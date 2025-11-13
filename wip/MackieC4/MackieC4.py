@@ -23,7 +23,7 @@ This is the second file that is loaded, by way of being instantiated through __i
 from __future__ import absolute_import, print_function, unicode_literals
 import sys
 import Live
-from ableton.v2.base import liveobj_valid, clamp
+from ableton.v2.base import liveobj_valid, clamp, listens, listenable_property
 from .TimeDisplay import TimeDisplay
 from . import song_util
 import logging
@@ -31,6 +31,7 @@ import time
 from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
+from .c4_device_provider import C4DeviceProvider
 
 if sys.version_info[0] >= 3:  # Live 11
     from builtins import str
@@ -71,7 +72,6 @@ class MackieC4(object):
     scene = 0
     track_index = 0
     track_count = 0
-    surface_is_locked = 0
     rebuild_my_database = 0
     return_resetter = 0
 
@@ -80,10 +80,13 @@ class MackieC4(object):
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
 
+        self.__surface_is_locked = False
         # initialize the 32 encoders, their EncoderController and add them as __components here
         self.__encoders = [Encoders(self, i) for i in encoder_range]
         self.__encoder_controller = EncoderController(self, self.__encoders)
-        self.__components = [*self.__encoders, self.__encoder_controller]
+        self.__device_provider = C4DeviceProvider(self.song())
+        self.__appointed_device = None
+        self.__components = [*self.__encoders, self.__encoder_controller, self.__device_provider]
 
         # if the goodbye message is displaying on the C4 after Live shutdown, and Live restarts, clear the display asap
         self.__encoder_controller.clear_all_lcds()
@@ -1077,15 +1080,55 @@ class MackieC4(object):
             if 0 <= selected_index < len(tracks):
                 self.song().view.selected_track = tracks[selected_index]
 
-    def lock_surface(self):
-        if not self.surface_is_locked:
-            self.log_message("locking surface, led state ON")
-            self.surface_is_locked = 1
-            self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
+
+    @listenable_property
+    def surface_is_locked(self):
+        return self.__surface_is_locked
+
+    @surface_is_locked.setter
+    def surface_is_locked(self, locked):
+        self.__surface_is_locked = locked
+
+    @listens("is_locked_to_device") # self.__device_provider.is_locked_to_device is a "listenable_property" of C4DeviceProvider
+    def __on_is_locked_to_device_changed(self, is_locked):
+        self.surface_is_locked = is_locked
+        # self.notify_is_locked_to_device() ???
+
+    @listenable_property
+    def device(self):
+        return self.__appointed_device
+
+    @device.setter
+    def device(self, d):
+        self.__appointed_device = d
+
+    @listens("device") # self.__device_provider.device is also a "listenable_property" of C4DeviceProvider
+    def __on_device_changed(self, device):
+        self.device = device
+
+    def lock_device_to_surface(self, device):
+        log_id = "MC.lock_surface: "
+        if not self.__surface_is_locked:
+            self.log_message(f"{log_id}locking surface to device {device.name}, led state to ON")
+            self.__device_provider.lock_to_device(device)
         else:
-            self.log_message("unlocking surface, led state OFF")
-            self.surface_is_locked = 0
-            self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
+            dev = "None"
+            if self.__appointed_device is not None:
+                dev = self.__appointed_device.name
+            self.log_message(f"{log_id}surface already locked to {dev}, led state stays ON")
+
+        self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
+
+
+    def unlock_surface(self):
+        log_id = "MC.unlock_surface: "
+        if self.__surface_is_locked:
+            self.log_message(f"{log_id}unlocking surface from device {self.__appointed_device.name}, led state to OFF")
+            self.__device_provider.unlock_from_device()
+        else:
+            self.log_message(f"{log_id}surface already unlocked, led state stays OFF")
+
+        self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
 
     def log_message(self, *message):
         """ Overrides standard to use logger instead of c_instance. """
