@@ -80,13 +80,16 @@ class MackieC4(object):
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
 
+        self.__components = []
         self.__surface_is_locked = False
         # initialize the 32 encoders, their EncoderController and add them as __components here
-        self.__encoders = [Encoders(self, i) for i in encoder_range]
-        self.__encoder_controller = EncoderController(self, self.__encoders)
         self.__device_provider = C4DeviceProvider(self.song())
+        self.__encoders = [Encoders(self, i) for i in encoder_range]
+        self.__encoder_controller = EncoderController(self, self.__encoders, self.__device_provider)
         self.__appointed_device = None
-        self.__components = [*self.__encoders, self.__encoder_controller, self.__device_provider]
+        # self.__components = [*self.__encoders, self.__encoder_controller, self.__device_provider]
+        for comp in [*self.__encoders, self.__encoder_controller, self.__device_provider]:
+            self.register_component(comp)
 
         # if the goodbye message is displaying on the C4 after Live shutdown, and Live restarts, clear the display asap
         self.__encoder_controller.clear_all_lcds()
@@ -115,7 +118,8 @@ class MackieC4(object):
 
         # To display song position pointer or beats on display
         self.__time_display = TimeDisplay(self)
-        self.__components.append(self.__time_display)
+        # self.__components.append(self.__time_display)
+        self.register_component(self.__time_display)
 
         self.__shift_is_pressed = False
         self.__option_is_pressed = False
@@ -587,6 +591,10 @@ class MackieC4(object):
             self.song().remove_visible_tracks_listener(self.tracks_change)
         for c in self.__components:
             c.destroy()
+
+    def register_component(self, component):
+        self.__components.append(component)
+        component.canonical_parent = self
 
     def suggest_map_mode(self, cc_no, channel=0):
         """  Live -> Script   Live can ask the script for a suitable mapping mode for a given CC.    """
@@ -1080,33 +1088,7 @@ class MackieC4(object):
             if 0 <= selected_index < len(tracks):
                 self.song().view.selected_track = tracks[selected_index]
 
-
-    @listenable_property
-    def surface_is_locked(self):
-        return self.__surface_is_locked
-
-    @surface_is_locked.setter
-    def surface_is_locked(self, locked):
-        self.__surface_is_locked = locked
-
-    @listens("is_locked_to_device") # self.__device_provider.is_locked_to_device is a "listenable_property" of C4DeviceProvider
-    def __on_is_locked_to_device_changed(self, is_locked):
-        self.surface_is_locked = is_locked
-        # self.notify_is_locked_to_device() ???
-
-    @listenable_property
-    def device(self):
-        return self.__appointed_device
-
-    @device.setter
-    def device(self, d):
-        self.__appointed_device = d
-
-    @listens("device") # self.__device_provider.device is also a "listenable_property" of C4DeviceProvider
-    def __on_device_changed(self, device):
-        self.device = device
-
-    def lock_device_to_surface(self, device):
+    def lock_surface_to_device(self, device):
         log_id = "MC.lock_surface: "
         if not self.__surface_is_locked:
             self.log_message(f"{log_id}locking surface to device {device.name}, led state to ON")
@@ -1119,8 +1101,7 @@ class MackieC4(object):
 
         self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
 
-
-    def unlock_surface(self):
+    def unlock_surface_from_device(self):
         log_id = "MC.unlock_surface: "
         if self.__surface_is_locked:
             self.log_message(f"{log_id}unlocking surface from device {self.__appointed_device.name}, led state to OFF")

@@ -11,8 +11,9 @@ from __future__ import division
 import sys
 import time
 
-from ableton.v2.base import liveobj_valid, liveobj_changed, find_if  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
+from ableton.v2.base import liveobj_valid, liveobj_changed, find_if, listens  # ,  move_current_song_time # only works for Live 11.1, was introduced into live_api_utils
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
+from ableton.v2.control_surface.component import Component
 
 util_gate = False
 if sys.version_info[0] >= 3:  # Live 11
@@ -30,18 +31,21 @@ from _Generic.Devices import *
 from .TimeDisplay import TimeDisplay
 
 
-class EncoderController(MackieC4Component):
+class EncoderController(MackieC4Component, Component):
     """
      Controls all (the sum) encoders of the Mackie C4 Pro controller extension
   """
     __module__ = __name__
 
-    def __init__(self, main_script, encoders):
+    def __init__(self, main_script, encoders, device_provider):
         # suspect MackieC4Component exists because MackieC4 and EncoderController share some method_names.
         # MackieC4Component means EncoderController doesn't need to use super-class-shared-method-name
         # method calling semantics. Functions in MackieC4Component all delegate to functions in MackieC4,
         # known as main_script here
+        if main_script is None:
+            raise ValueError("main_script is None?")
         MackieC4Component.__init__(self, main_script)
+        Component.__init__(self, register_component=self.register_component, song=self.song())
 
         # definition of modes, for refactoring various code to separate functions
         # this HAS TO BE up here. If further down in init, it will produce an error during initialization
@@ -70,7 +74,11 @@ class EncoderController(MackieC4Component):
         self.selected_track = None  # Live's selected-Track Object
 
         self.__ordered_plugin_parameters = []  # Live's DeviceParameters of __chosen_plugin (if exists)
+        self.__device_provider = device_provider
         self.__chosen_plugin = None
+        self.__locked_to_device = False
+        self.__on_device_changed.subject = self.__device_provider
+        self.__on_is_locked_to_device_changed.subject = self.__device_provider
 
         self.__display_parameters = []
 
@@ -145,7 +153,8 @@ class EncoderController(MackieC4Component):
 
     def destroy(self):
         # self.destroy()
-        self.sendGoodbyeScreen()
+        if self.main_script() is not None:
+            self.sendGoodbyeScreen()
         MackieC4Component.destroy(self)
 
     def sendGoodbyeScreen(self):
@@ -179,6 +188,29 @@ class EncoderController(MackieC4Component):
     def get_encoders(self):
         return self.__encoders
 
+    @listens("device")
+    def __on_device_changed(self):
+        d = self.__device_provider.provided_device
+        self.main_script().log_message(f"EC.__on_device_changed: listener popped, device changed to {d.name}")
+        self.__update_chosen_plugin_device(d)
+
+    def __update_chosen_plugin_device(self, device):
+        # self.__device_provider.update_device_selection()
+        # update_device_selection() is called internally when leaving "locked to device" status to pick up current "selected device"
+        # this class just listens for the "device changed" event (changed from the locked device to the currently selected)
+        self.__chosen_plugin = device
+        self.__reorder_parameters()
+        self.__reassign_encoder_parameters()
+        self.request_rebuild_midi_map()
+        nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
+        self.main_script().log_message(f"EC.__update_chosen_plugin_device: chosen_plugin changed to {nm}")
+
+    @listens("is_locked_to_device")
+    def __on_is_locked_to_device_changed(self, is_locked):
+        self.main_script().log_message(f"EC.__on_is_locked_to_device_changed: listener popped, is_locked changed to  {is_locked}")
+        self.__locked_to_device = is_locked
+
+
     def build_setup_database(self):
         # self.main_script().log_message("EC.build_setup_database: C4/building setup db")
         self.__eah.build_setup_database(self.song())        # self.track_count
@@ -188,16 +220,16 @@ class EncoderController(MackieC4Component):
 
         self.selected_track = self.song().view.selected_track
         devices_on_selected_trk = self.get_device_list(self.selected_track.devices)
+        if not self.__locked_to_device:
+            if len(devices_on_selected_trk) == 0:
+                self.__update_chosen_plugin_device(None)
+            else:
+                self.song().view.select_device(devices_on_selected_trk[0])
 
-        if len(devices_on_selected_trk) == 0:
-            self.__chosen_plugin = None
-        else:
-            self.__chosen_plugin = devices_on_selected_trk[0]
-            self.song().view.select_device(devices_on_selected_trk[0])
+        # self.__reorder_parameters()
+        # self.__reassign_encoder_parameters()
+        # self.request_rebuild_midi_map()
 
-        self.__reorder_parameters()
-        self.__reassign_encoder_parameters()
-        self.request_rebuild_midi_map()
         return
 
     def master_track_index(self):
@@ -207,18 +239,19 @@ class EncoderController(MackieC4Component):
         self.selected_track = self.song().view.selected_track
         selected_device_index = self.__eah.track_changed(track_index)
         extended_device_list = self.get_device_list(self.selected_track.devices)
+        device = None
         if len(extended_device_list) == 0:
             # self.main_script().log_message("EC.track_changed: get device list = 0")
-            self.__chosen_plugin = None
+            # self.__chosen_plugin = None
             self.__eah.update_device_counter(track_index, 0)
-            self.__reorder_parameters()
+            # self.__reorder_parameters()
         else:
             if selected_device_index > -1:
                 if len(extended_device_list) > selected_device_index:
                     # self.main_script().log_message("EC.track_changed: selected device index = -1")
-                    self.__chosen_plugin = extended_device_list[selected_device_index]
+                    device = extended_device_list[selected_device_index]
                     self.__eah.update_device_counter(track_index, len(extended_device_list))
-                    self.__reorder_parameters()
+                    # self.__reorder_parameters()
                 else:
                     # something isn't getting updated correctly at startup and/or when devices are deleted
                     self.main_script().log_message("len(extended_device_list) <= selected_device_index")
@@ -228,8 +261,13 @@ class EncoderController(MackieC4Component):
                 self.main_script().log_message("len(self.t_d_current) <= self.t_current")
                 self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
 
-        self.__reassign_encoder_parameters()
-        self.request_rebuild_midi_map()
+        if not self.__locked_to_device:
+            if liveobj_valid(device):
+                self.song().view.select_device(device)
+            else:
+                self.__update_chosen_plugin_device(device)  # device == None
+        # self.__reassign_encoder_parameters()
+        # self.request_rebuild_midi_map()
         self.one_display_update()
         return
 
@@ -240,29 +278,34 @@ class EncoderController(MackieC4Component):
 
         # This is a way to call a super-class method from a subclass with a method of the same name see def refresh_state() below (way, way below)
         MackieC4Component.refresh_state(self)
-        
-        selected_device_index = self.__eah.get_selected_device_index()
-        if selected_device_index > -1:
-            if len(extended_device_list) > selected_device_index:
-                selected_device = extended_device_list[selected_device_index]
-                self.__chosen_plugin = selected_device
-                self.song().view.select_device(selected_device)
-                self.__reorder_parameters()
-            elif len(extended_device_list) > 0:
-                selected_device = extended_device_list[0]
-                self.__eah.set_selected_device_index(0)
-                self.__chosen_plugin = selected_device
-                self.song().view.select_device(selected_device)
-                self.__reorder_parameters()
+        device = None
+        if not self.__locked_to_device:
+            selected_device_index = self.__eah.get_selected_device_index()
+            if selected_device_index > -1:
+                if len(extended_device_list) > selected_device_index:
+                    selected_device = extended_device_list[selected_device_index]
+                    device = selected_device
+                    # self.song().view.select_device(selected_device)
+                    # self.__reorder_parameters()
+                elif len(extended_device_list) > 0:
+                    selected_device = extended_device_list[0]
+                    self.__eah.set_selected_device_index(0)
+                    device = selected_device
+                    # self.song().view.select_device(selected_device)
+                    # self.__reorder_parameters()
+            #     else:
+            #         device = None
+            #         # self.__reorder_parameters()
+            # else:
+            #     device = None
+            #     # self.__reorder_parameters()
+            if  liveobj_valid(device):
+                self.song().view.select_device(device)
             else:
-                self.__chosen_plugin = None
-                self.__reorder_parameters()
-        else:
-            self.__chosen_plugin = None
-            self.__reorder_parameters()
-
-        self.__reassign_encoder_parameters()
-        self.request_rebuild_midi_map()
+                self.__update_chosen_plugin_device(device)  # device == None
+            # self.__reorder_parameters()
+            # self.__reassign_encoder_parameters()
+            # self.request_rebuild_midi_map()
         self.one_display_update()
         return
 
@@ -277,25 +320,31 @@ class EncoderController(MackieC4Component):
         selected_device_index = self.__eah.get_selected_device_index()
         # self.main_script().log_message("EC.track_deleted: selected tk device index after: {0}".format(selected_device_index))
         # self.main_script().log_message("EC.track_deleted: nbr of devices on selected track after: {0}".format(len(extended_device_list)))
-        if selected_device_index > -1:
-            if len(extended_device_list) > selected_device_index:
-                selected_device = extended_device_list[selected_device_index]
-                self.__chosen_plugin = selected_device
-                self.__reorder_parameters()
-            elif len(extended_device_list) > 0:
-                selected_device = extended_device_list[0]
-                self.__eah.set_selected_device_index(0)
-                self.__chosen_plugin = selected_device
-                self.__reorder_parameters()
+        device = None
+        if not self.__locked_to_device:
+            if selected_device_index > -1:
+                if len(extended_device_list) > selected_device_index:
+                    selected_device = extended_device_list[selected_device_index]
+                    device = selected_device
+                    # self.__reorder_parameters()
+                elif len(extended_device_list) > 0:
+                    selected_device = extended_device_list[0]
+                    self.__eah.set_selected_device_index(0)
+                    device = selected_device
+                    # self.__reorder_parameters()
+            #     else:
+            #         device = None
+            #         self.__reorder_parameters()
+            # else:
+            #     device = None
+            #     self.__reorder_parameters()
+            if liveobj_valid(device):
+                self.song().view.select_device(device)
             else:
-                self.__chosen_plugin = None
-                self.__reorder_parameters()
-        else:
-            self.__chosen_plugin = None
-            self.__reorder_parameters()
+                self.__update_chosen_plugin_device(device)  # device == None
 
-        self.__reassign_encoder_parameters()
-        self.request_rebuild_midi_map()
+        # self.__reassign_encoder_parameters()
+        # self.request_rebuild_midi_map()
         self.one_display_update()
         return
 
@@ -331,28 +380,34 @@ class EncoderController(MackieC4Component):
                     extended_device_list = self.get_device_list(self.selected_track.devices)
                     updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list,selected_device, selected_device_idx)
 
-            if updated_idx == -1:
-                self.__chosen_plugin = None
-                # might happen if track with no devices deleted, and the next selected track also has no devices?
-                self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
-                # self.main_script().log_message("{0}__chosen_plugin is now None because no EAH updated index".format(log_id))
-            elif len(extended_device_list) > updated_idx:
-                self.__chosen_plugin = extended_device_list[updated_idx]
-                self.__eah.set_selected_device_index(updated_idx)
-                # self.main_script().log_message("{0}__chosen_plugin is now {1} because updated index is <{2}>".format(log_id, self.__chosen_plugin.name, updated_idx))
-            elif len(extended_device_list) > 0:  # evaluation never reaches here if updated_idx == 0
-                self.__chosen_plugin = extended_device_list[0]
-                self.__eah.set_selected_device_index(0)
-                # self.main_script().log_message("{0}ONLY device __chosen_plugin is now {1} because don't know".format(log_id, self.__chosen_plugin.name))
-            else:
-                self.__chosen_plugin = None
-                # might happen if track with no devices deleted, and the next selected track also has no devices?
-                self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
-                # self.main_script().log_message("{0}}__chosen_plugin is now None because else-fell-through".format(log_id))
+            device = None
+            if not self.__locked_to_device:
+                if updated_idx == -1:
+                    device = None
+                    # might happen if track with no devices deleted, and the next selected track also has no devices?
+                    self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
+                    # self.main_script().log_message("{0}__chosen_plugin is now None because no EAH updated index".format(log_id))
+                elif len(extended_device_list) > updated_idx:
+                    device = extended_device_list[updated_idx]
+                    self.__eah.set_selected_device_index(updated_idx)
+                    # self.main_script().log_message("{0}__chosen_plugin is now {1} because updated index is <{2}>".format(log_id, self.__chosen_plugin.name, updated_idx))
+                elif len(extended_device_list) > 0:  # evaluation never reaches here if updated_idx == 0
+                    device = extended_device_list[0]
+                    self.__eah.set_selected_device_index(0)
+                    # self.main_script().log_message("{0}ONLY device __chosen_plugin is now {1} because don't know".format(log_id, self.__chosen_plugin.name))
+                else:
+                    # device = None
+                    # might happen if track with no devices deleted, and the next selected track also has no devices?
+                    self.__eah.set_selected_device_index(-1)  # danger -1 is OOB for an index
+                    # self.main_script().log_message("{0}}__chosen_plugin is now None because else-fell-through".format(log_id))
 
-        self.__reorder_parameters()
-        self.__reassign_encoder_parameters()
-        self.request_rebuild_midi_map()
+                if liveobj_valid(device):
+                    self.song().view.select_device(device)
+                else:
+                    self.__update_chosen_plugin_device(device) # device == None
+        # self.__reorder_parameters()
+        # self.__reassign_encoder_parameters()
+        # self.request_rebuild_midi_map()
         self.one_display_update()
 
         new_device_count_track = len(extended_device_list)
@@ -421,37 +476,38 @@ class EncoderController(MackieC4Component):
                 current_bank_nbr += 1
                 update_self = True
         elif self.__assignment_mode == C4M_CHANNEL_STRIP:
-            selected_device_index = self.__eah.get_selected_device_index()
-            if selected_device_index > -1:
-                #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device index before <{0}>".format(selected_device_index))
+            if not self.__locked_to_device:
+                selected_device_index = self.__eah.get_selected_device_index()
+                if selected_device_index > -1:
+                    #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device index before <{0}>".format(selected_device_index))
 
-                if switch_id == C4SID_SINGLE_LEFT:  # to previous device
-                    selected_device_index -= 1
-                    #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device left")
-                elif switch_id == C4SID_SINGLE_RIGHT:  # to next device
-                    #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device right")
-                    selected_device_index += 1
+                    if switch_id == C4SID_SINGLE_LEFT:  # to previous device
+                        selected_device_index -= 1
+                        #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device left")
+                    elif switch_id == C4SID_SINGLE_RIGHT:  # to next device
+                        #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device right")
+                        selected_device_index += 1
 
-                # self.main_script().log_message("EC.handle_bank_switch_ids: selected device index after <{0}>".format(selected_device_index))
-                nbr_devices = len(self.get_device_list(self.selected_track.devices))
-                if nbr_devices > 0 and nbr_devices > selected_device_index:
+                    # self.main_script().log_message("EC.handle_bank_switch_ids: selected device index after <{0}>".format(selected_device_index))
+                    nbr_devices = len(self.get_device_list(self.selected_track.devices))
+                    if nbr_devices > 0 and nbr_devices > selected_device_index:
 
-                    self.__eah.set_selected_device_index(selected_device_index)
-                    current_selected_device = self.get_device_list(self.selected_track.devices)[selected_device_index]
-                    self.song().view.select_device(current_selected_device)
-                    self.__chosen_plugin = current_selected_device
-                    self.__reorder_parameters()
-                    self.__reassign_encoder_parameters()
-                    self.request_rebuild_midi_map()
-                    # self.main_script().log_message("EC.handle_bank_switch_ids: new selected device <{0}>".format(self.__chosen_plugin.name))
+                        self.__eah.set_selected_device_index(selected_device_index)
+                        current_selected_device = self.get_device_list(self.selected_track.devices)[selected_device_index]
+                        self.song().view.select_device(current_selected_device)
+                        # self.__chosen_plugin = current_selected_device
+                        # self.__reorder_parameters()
+                        # self.__reassign_encoder_parameters()
+                        # self.request_rebuild_midi_map()
+                        # self.main_script().log_message("EC.handle_bank_switch_ids: new selected device <{0}>".format(self.__chosen_plugin.name))
+                    else:
+                        # something isn't getting updated correctly at startup and/or when devices are deleted
+                        self.main_script().log_message("nbr_devices <= self.t_d_current[self.t_current]")
+                        self.main_script().log_message("{0} <= {1}".format(nbr_devices, self.__eah.get_selected_device_index()))
                 else:
                     # something isn't getting updated correctly at startup and/or when devices are deleted
-                    self.main_script().log_message("nbr_devices <= self.t_d_current[self.t_current]")
-                    self.main_script().log_message("{0} <= {1}".format(nbr_devices, self.__eah.get_selected_device_index()))
-            else:
-                # something isn't getting updated correctly at startup and/or when devices are deleted
-                self.main_script().log_message("len(self.t_d_current) <= self.t_current")
-                self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
+                    self.main_script().log_message("len(self.t_d_current) <= self.t_current")
+                    self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
 
         if update_self:
             self.__eah.set_current_track_device_parameter_bank_nbr(current_bank_nbr)
@@ -518,7 +574,7 @@ class EncoderController(MackieC4Component):
                     current_trk_device_index += 1
                     update_self = True
 
-            if update_self:
+            if not self.__locked_to_device and update_self:
                 self.__eah.set_selected_device_index(current_trk_device_index)
                 extended_device_list = self.get_device_list(self.selected_track.devices)
                 if len(extended_device_list) > current_trk_device_index:
@@ -532,12 +588,14 @@ class EncoderController(MackieC4Component):
 
                 if liveobj_valid(current_selected_device):
                     self.song().view.select_device(current_selected_device)
-                    self.__chosen_plugin = current_selected_device
-                    self.__reorder_parameters()
+                    # self.__chosen_plugin = current_selected_device
+                    # self.__reorder_parameters()
+                else:
+                    self.__update_chosen_plugin_device(current_selected_device) # current_selected_device == None
 
-                self.__reassign_encoder_parameters()
-                self.request_rebuild_midi_map()
-                self.one_display_update()
+                # self.__reassign_encoder_parameters()
+                # self.request_rebuild_midi_map()
+            self.one_display_update()
 
     def handle_modifier_switch_ids(self, switch_id, value):
         if switch_id == C4SID_SHIFT:
@@ -879,19 +937,23 @@ class EncoderController(MackieC4Component):
                 device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
                 device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
                 extended_device_list = self.get_device_list(self.selected_track.devices)
-
-                if len(extended_device_list) > device_offset:  # if the calculated offset is valid device index
-                    self.__chosen_plugin = extended_device_list[device_offset]
-                    self.__reorder_parameters()
-                    self.__eah.set_selected_device_index(encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset)
-                    self.song().view.select_device(extended_device_list[device_offset])
-                    self.__reassign_encoder_parameters()
-                    self.request_rebuild_midi_map()
-                    self.one_display_update()
-                else:
-                    msg = "EC.handle_pressed_v_pot: can't update __chosen_plugin: the calculated device_offset {0} is NOT a valid device index".format(device_offset)
-                    self.main_script().log_message(msg)
-                    self.__chosen_plugin = None
+                if not self.__locked_to_device:
+                    if len(extended_device_list) > device_offset:  # if the calculated offset is valid device index
+                        # self.__chosen_plugin = extended_device_list[device_offset]
+                        # self.__reorder_parameters()
+                        self.__eah.set_selected_device_index(encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset)
+                        device = extended_device_list[device_offset]
+                        if liveobj_valid(device):
+                            self.song().view.select_device(device)
+                        else:
+                            self.__update_chosen_plugin_device(device)
+                        # self.__reassign_encoder_parameters()
+                        # self.request_rebuild_midi_map()
+                        self.one_display_update()
+                    else:
+                        msg = f"EC.handle_pressed_v_pot: can't update __chosen_plugin: the calculated device_offset {device_offset} is NOT a valid device index"
+                        self.main_script().log_message(msg)
+                        self.__update_chosen_plugin_device(None) # ???
             elif encoder_index in row_02_encoders:
                 # these encoders represent Sends 1 - 8 (row 3 "index" is 02) in C4M_CHANNEL_STRIP mode
                 param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()

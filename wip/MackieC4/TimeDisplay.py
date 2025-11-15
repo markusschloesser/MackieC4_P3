@@ -14,6 +14,7 @@ class TimeDisplay(MackieC4Component):
         self._TimeDisplay__smpt_format = Live.Song.TimeFormat.smpte_25
         self._TimeDisplay__last_send_time = []
         self.show_beats()
+        self.__canonical_parent = None
 
     def destroy(self):
         MackieC4Component.destroy(self)
@@ -64,3 +65,10 @@ class TimeDisplay(MackieC4Component):
     @property
     def TimeDisplay__smpt_format(self):
         return self._TimeDisplay__smpt_format
+
+    @property
+    def canonical_parent(self):
+        return self.__canonical_parent
+    @canonical_parent.setter
+    def canonical_parent(self, parent):
+        self.__canonical_parent = parent

@@ -55,13 +55,16 @@ class MackieC4Component(object):
         self.__main_script.set_pressed = pressed
 
     def lock_to_device(self, device):
-        self.__main_script.lock_to_device(device)
+        self.__main_script.lock_surface_to_device(device)
 
     def unlock_from_device(self):
-        self.__main_script.unlock_from_device()
+        self.__main_script.unlock_surface_from_device()
 
     def song(self):
         return self.__main_script.song()
+
+    def register_component(self, c):
+        return self.__main_script.register_component(c)
 
     def script_handle(self):
         return self.__main_script.handle()
