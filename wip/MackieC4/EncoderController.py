@@ -1708,19 +1708,19 @@ class EncoderController(MackieC4Component, Component):
 
                 elif s.vpot_index() == encoder_25_index:
                     if self.song().is_playing:
-                        vpot_display_text.set_text(' Play ', ' Song ')
+                        vpot_display_text.set_text(' Stop ', ' Song ')
                     else:
                         vpot_display_text.set_text(' Stop ', ' Song ')
                 elif s.vpot_index() == encoder_26_index:
                     if not self.song().is_playing:
                         vpot_display_text.set_text(' Play ', ' Song ')
                     else:
-                        vpot_display_text.set_text(' Stop ', ' Song ')
+                        vpot_display_text.set_text(' Play ', ' Song ')
                 elif s.vpot_index() == encoder_27_index:
                     if not self.song().is_playing:
                         vpot_display_text.set_text('contin', ' Song ')
                     else:
-                        vpot_display_text.set_text(' Stop ', ' Song ')
+                        vpot_display_text.set_text('contin', ' Song ')
 
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                 self.__display_parameters.append(vpot_display_text)
