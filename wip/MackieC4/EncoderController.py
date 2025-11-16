@@ -182,34 +182,39 @@ class EncoderController(MackieC4Component, Component):
         return
 
     def destroy(self):
+
         if self.main_script() is not None:
             self.sendGoodbyeScreen()
+            self.clear_all_leds()
         MackieC4Component.destroy(self)
 
     def sendGoodbyeScreen(self):
         self.display_message_top_lcd('                     Ableton Live                      ', '                   Device is offline                   ')
 
     def clear_all_lcds(self):
-        self.display_message_top_lcd()
+        self.display_message_top_lcd(force=True)
 
-    def display_message_top_lcd(self, top_line="", bottom_line=""):
-        so_many_spaces = '                                                       '
+    def clear_all_leds(self):
+        for i in range(C4SID_SHIFT):
+            self.send_midi((NOTE_ON_STATUS, i, LED_OFF_DATA))
+
+        for j in encoder_range:
+            self.send_midi((CC_STATUS, j + NUM_ENCODERS, LED_OFF_DATA))
+
+    def display_message_top_lcd(self, top_line="", bottom_line="", force=False):
+        so_many_spaces = str([" " for i in range(NUM_TEXT_BYTES_PER_SYSEX_MSG)])
         if len(top_line) < 1:
             top_line = so_many_spaces
         if len(bottom_line) < 1:
             bottom_line = so_many_spaces
-        self.send_display_string(LCD_ANGLED_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET)
-        self.send_display_string(LCD_ANGLED_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
-        self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET)
-        for note in system_switch_ids:
-            self.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
-        for note in assignment_mode_switch_ids:
-            self.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
+        self.send_display_string(LCD_ANGLED_ADDRESS, top_line, LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_ANGLED_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET, force=force)
 
     def request_rebuild_midi_map(self):
         MackieC4Component.request_rebuild_midi_map(self)
@@ -1837,12 +1842,12 @@ class EncoderController(MackieC4Component, Component):
             self.__do_display_update()
 
 
-    def one_delayed_display_update(self, delay_secs=.050): # 50 ms
+    def one_delayed_display_update(self, delay_secs=.050, force=False): # 50 ms
         time.sleep(delay_secs)
-        self.one_display_update()
+        self.one_display_update(force=force)
 
-    def one_display_update(self):
-        self.__do_display_update()
+    def one_display_update(self, force=False):
+        self.__do_display_update(force=force)
 
     def __display_lag_timer_bang(self):
         # (when song is NOT playing) count to _upper_bounds[bounds_index] before returning True and resetting the count
@@ -1854,7 +1859,8 @@ class EncoderController(MackieC4Component, Component):
             self.__display_update_lag_counter = 0
             return True
 
-    def __do_display_update(self):
+    def __do_display_update(self, force=False):
+        """force means send the generated LCD screen display update messages even if they match the previous update messages sent"""
         upper_string1 = ''
         lower_string1 = ''
         lower_string1a = ''
@@ -2231,28 +2237,49 @@ class EncoderController(MackieC4Component, Component):
 
         # ONLY update displays when Not in USER mode
         if self.__assignment_mode != C4M_USER:
-            self.send_display_string(LCD_ANGLED_ADDRESS, upper_string1, LCD_TOP_ROW_OFFSET)
-            self.send_display_string(LCD_TOP_FLAT_ADDRESS, upper_string2, LCD_TOP_ROW_OFFSET)
-            self.send_display_string(LCD_MDL_FLAT_ADDRESS, upper_string3, LCD_TOP_ROW_OFFSET)
-            self.send_display_string(LCD_BTM_FLAT_ADDRESS, upper_string4, LCD_TOP_ROW_OFFSET)
-            self.send_display_string(LCD_ANGLED_ADDRESS, lower_string1, LCD_BOTTOM_ROW_OFFSET)
-            self.send_display_string(LCD_TOP_FLAT_ADDRESS, lower_string2, LCD_BOTTOM_ROW_OFFSET)
-            self.send_display_string(LCD_MDL_FLAT_ADDRESS, lower_string3, LCD_BOTTOM_ROW_OFFSET)
-            self.send_display_string(LCD_BTM_FLAT_ADDRESS, lower_string4, LCD_BOTTOM_ROW_OFFSET)
+            self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(upper_string1), LCD_TOP_ROW_OFFSET, force=force)
+            self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(upper_string2), LCD_TOP_ROW_OFFSET, force=force)
+            self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(upper_string3), LCD_TOP_ROW_OFFSET, force=force)
+            self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(upper_string4), LCD_TOP_ROW_OFFSET, force=force)
+            self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(lower_string1), LCD_BOTTOM_ROW_OFFSET, force=force)
+            self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(lower_string2), LCD_BOTTOM_ROW_OFFSET, force=force)
+            self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(lower_string3), LCD_BOTTOM_ROW_OFFSET, force=force)
+            self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(lower_string4), LCD_BOTTOM_ROW_OFFSET, force=force)
 
         return
 
-    def send_display_string(self, display_address, text_for_display, display_row_offset, cursor_offset=0):
+    def pad_right_if_less(self, text, pad_char=" ", max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG):
+        if len(text) > max_length:
+            temp = text[:max_length]
+            # string length seems to "always" be 56 instead of 55  (56 is the "bottom line offset", 56th byte of "top line" text is actually the first byte
+            # of the "bottom line".  The C4 would accept 110 bytes in one message and write both top and bottom lines, but this script writes single lines
+            # self.main_script().log_message(f"EC.pad_right_if_less: input text was too long {len(text)}, truncated to {len(temp)}: {temp}")
+            text = temp
+        elif len(text) < max_length:
+            old_len = len(text)
+            text = text.join(str([pad_char for i in range(old_len, max_length)]))
+            if not len(text) == max_length:
+                self.main_script().log_message(f"EC.pad_right_if_less: oopsie? padded length {len(text)} not equal to max length {max_length}")
+            else:
+                # sometimes the C4 "firmware version" info text (bottom line left side top LCD) doesn't get properly blanked out when this script first
+                # initializes possibly because that specific bottom line text isn't padded with blanks to full length,
+                # not seeing this log message or that behavior since adding this code though...
+                self.main_script().log_message(f"EC.pad_right_if_less: successfully padded text to max length {max_length} from length {old_len}")
+
+        return text
+
+    def send_display_string(self, display_address, text_for_display, display_row_offset, cursor_offset=0, force=False):
         """
             Sends a sysex message to C4
             display_address: LCD_ANGLED_ADDRESS, LCD_TOP_FLAT_ADDRESS, LCD_MDL_FLAT_ADDRESS, LCD_BTM_FLAT_ADDRESS
             display_row_offset: top row or bottom row
         """
         ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
+        # sometimes what is stored as the last message got blanked off the LCD by other factors and needs to be resent here
         is_update = self.__last_send_messages[display_address][display_row_offset] != ascii_text_sysex_ints
         is_stale = False  # self.__display_repeat_count % self.__display_repeat_timer == (4 - display_address)
 
-        if is_update or is_stale:
+        if force or is_update or is_stale:
         # if self.assignment_mode() != C4M_USER and is_update or is_stale:
             self.__last_send_messages[display_address][display_row_offset] = ascii_text_sysex_ints
             sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)

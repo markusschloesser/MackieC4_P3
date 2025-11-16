@@ -406,7 +406,9 @@ class MackieC4(object):
                         # the C4 just blanked its displays (except the hello message on the top screen?)
                         # assignment mode is never USER here, msg was passed above in USER mode
                         logging.info("MC.receive_midi: attempting to update display after receiving C4 serial number sysex message {}".format(midi_bytes))
-                        self.__encoder_controller.one_delayed_display_update(0.999)  # will this show?
+                        self.__encoder_controller.one_delayed_display_update(2.999, force=True)  # how about now?
+                        self.__encoder_controller.update_assignment_mode_leds()
+                        self.__encoder_controller.update_system_switch_leds()
                     else:
                         logging.info("MC.receive_midi: unhandled matching length - sysex event dropped {}".format(midi_bytes))
                 else:
