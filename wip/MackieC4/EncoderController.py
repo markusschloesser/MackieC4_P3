@@ -55,6 +55,15 @@ class EncoderController(MackieC4Component, Component):
             "on_update_display_timer": self.on_update_display_timer
         }
 
+        # C4SID_SPLIT_ERASE is the only system switch (button) with no associated behavior mapped
+        # C4SID_SPLIT behavior only affects "display updates" (feedback to leds and led rings)...
+        #    when the song is NOT playing:
+        #    C4SID_SPLIT controls the amount of intentional lag applied between "on display update timer" calls and actual C4 display updates
+        #    all split button leds OFF means full lag amount (send display update midi messages once every 20 times "on display update timer" is called)
+        #    all split button leds ON means no lag applied (send display update midi messages every time "on display update timer" is called, 1 for 1)
+        #    Note: comments below about self.__display_repeat_timer impacting C4 "screen saver" sleep also apply here, the LCD backlights
+        #    will not turn off because the song is NOT playing for example.  "Full lag" means about 2 seconds of lag, not minutes of inactivity.
+        # C4SID_LOCK is mapped to Live's (Python) LOM API "Lock control surface to device" behavior.
         self.system_switch_functions = {
             C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
                                      C4SID_SPLIT + 1: {"virtual_press_count": 0, "led_value": [0, 127]},
@@ -109,6 +118,9 @@ class EncoderController(MackieC4Component, Component):
             for _ in range(32)  # or however many encoders
         ]
 
+        # repeater not used now because it interferes with the C4's built-in LCD "screen saver" protection that, for example, turns off
+        # the physical LCD backlight hardware after a sysex configurable number of minutes of midi inactivity
+        # and because repeating the same flawed display message doesn't fix the flaw, repeated messages can only overwrite "blanks", if any
         # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
         # received by the C4 from somewhere else, not-here.  Such a display change is not tracked here (obviously),
         # and the C4 itself can't be asked "what are you displaying right now?". So we just blast the display sysex
@@ -118,7 +130,11 @@ class EncoderController(MackieC4Component, Component):
         # If you randomly see the standard C4 welcome message (because of the rogue SYSEX message)
         # a "real" display update from Live always removes a standard C4 welcome message
         # repeater not used now? partially fixed by updating display after seeing sysex "serial number response" message from C4
-        # always still seems to "blank and welcome" in the first 30 seconds after Live starts cold, but change assignment mode to repaint the display
+        # always still seems to "blank and welcome" in the first 30 seconds after Live starts cold, but just change assignment mode to repaint the display
+        # mystery solved: Live always sends a standard SYSEX "ID request" and the C4 always responds with a standard SYSEX "ID response". This
+        # SYSEX message exchange happens very early in the remote script initialization process.  It is how Live determines whether any
+        # connected midi device is "identifiable" or not.  ...and it seems like every time the C4 receives and replies to one of these "ID requests", it
+        # also blanks out the bottom 3 LCDs and display the "power-on ID-message" in the top LCD.
         self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
         self.__display_repeat_count = 0
 
@@ -166,7 +182,6 @@ class EncoderController(MackieC4Component, Component):
         return
 
     def destroy(self):
-        # self.destroy()
         if self.main_script() is not None:
             self.sendGoodbyeScreen()
         MackieC4Component.destroy(self)
@@ -486,7 +501,14 @@ class EncoderController(MackieC4Component, Component):
     #     C4SID_SPLIT_ERASE: {"led_id": {C4SID_SPLIT_ERASE: {"led_value": [0, 127]}},
     #                         "press_count": 0}
     # }
-    # Currently, C4SID_SPLIT_ERASE is the only system switch (button) with no associated behavior mapped
+    # Currently,
+    # C4SID_SPLIT_ERASE is the only system switch (button) with no associated behavior mapped
+    # C4SID_SPLIT behavior only affects "display updates" (feedback to leds and led rings)...
+    #    when the song is NOT playing:
+    #    C4SID_SPLIT controls the amount of intentional lag applied between "on display update timer" calls and actual C4 display updates
+    #    all split button leds OFF means full lag amount (send display update midi messages once every 20 times "on display update timer" is called)
+    #    all split button leds ON means no lag applied (send display update midi messages every time "on display update timer" is called, 1 for 1)
+    # C4SID_LOCK is mapped to Live's (Python) LOM API "Lock control surface to device" behavior.
     def handle_system_switch_ids(self, switch_id):
         switch_dict = self.system_switch_functions[switch_id]
         switch_dict["press_count"] += 1
@@ -1823,7 +1845,7 @@ class EncoderController(MackieC4Component, Component):
         self.__do_display_update()
 
     def __display_lag_timer_bang(self):
-        # count to 10 for each second of desired "display update" lag (when song is NOT playing)
+        # (when song is NOT playing) count to _upper_bounds[bounds_index] before returning True and resetting the count
         max_lag = self.__display_update_lag_upper_bounds[self.__display_update_lag_upper_bounds_index]
         if self.__display_update_lag_counter < max_lag:
             self.__display_update_lag_counter += 1
