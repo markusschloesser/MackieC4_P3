@@ -11,6 +11,10 @@ class C4DeviceProvider(DeviceProvider):
     def provided_device(self):
         return self._device
 
+    @property
+    def surface_is_locked(self):
+        return self._locked_to_device
+
     def on_update_display_timer(self):
         pass
 

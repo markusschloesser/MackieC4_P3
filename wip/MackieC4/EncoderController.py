@@ -55,6 +55,17 @@ class EncoderController(MackieC4Component, Component):
             "on_update_display_timer": self.on_update_display_timer
         }
 
+        self.system_switch_functions = {
+            C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
+                                     C4SID_SPLIT + 1: {"virtual_press_count": 0, "led_value": [0, 127]},
+                                     C4SID_SPLIT + 2: {"virtual_press_count": 0, "led_value": [0, 127]}},
+                          "press_count": 0},
+            C4SID_LOCK: {"led_id": {C4SID_LOCK: {"led_value": [0, 127]}},
+                         "press_count": 0},
+            C4SID_SPLIT_ERASE: {"led_id": {C4SID_SPLIT_ERASE: {"led_value": [0, 127]}},
+                                "press_count": 0}
+        }
+
         self.__own_encoders = encoders  # why separate references? This reference is only used here in __init__
         self.__encoders = encoders  # why these __encoders too? This reference is used everywhere else
         # suspect the reason is because, at runtime, while this __init__ is running; the main_script here,
@@ -67,6 +78,9 @@ class EncoderController(MackieC4Component, Component):
 
         self.__eah = EncoderAssignmentHistory(main_script, self)
         self.__time_display = TimeDisplay(self)
+        self.__display_update_lag_upper_bounds = [20, 10, 5, 0]
+        self.__display_update_lag_upper_bounds_index = 0
+        self.__display_update_lag_counter = 0
         self.__assignment_mode = C4M_CHANNEL_STRIP
 
         self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
@@ -76,7 +90,7 @@ class EncoderController(MackieC4Component, Component):
         self.__ordered_plugin_parameters = []  # Live's DeviceParameters of __chosen_plugin (if exists)
         self.__device_provider = device_provider
         self.__chosen_plugin = None
-        self.__locked_to_device = False
+        self.is_locked_to_device = False
         self.__on_device_changed.subject = self.__device_provider
         self.__on_is_locked_to_device_changed.subject = self.__device_provider
 
@@ -107,7 +121,6 @@ class EncoderController(MackieC4Component, Component):
         # always still seems to "blank and welcome" in the first 30 seconds after Live starts cold, but change assignment mode to repaint the display
         self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
         self.__display_repeat_count = 0
-        self.__display_update_lag_counter = 0
 
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
@@ -136,7 +149,7 @@ class EncoderController(MackieC4Component, Component):
             index = len(tracks)
             self.track_changed(index)
 
-        # self.update_assignment_mode_leds()
+        self.update_assignment_mode_leds()
 
         self.__shift_state = False
         self.__option_state = False
@@ -149,6 +162,7 @@ class EncoderController(MackieC4Component, Component):
         self._last_redo_label = ""
         self._last_redo_label_time = 0
 
+        self.clear_all_lcds()
         return
 
     def destroy(self):
@@ -195,20 +209,22 @@ class EncoderController(MackieC4Component, Component):
         self.__update_chosen_plugin_device(d)
 
     def __update_chosen_plugin_device(self, device):
-        # self.__device_provider.update_device_selection()
-        # update_device_selection() is called internally when leaving "locked to device" status to pick up current "selected device"
-        # this class just listens for the "device changed" event (changed from the locked device to the currently selected)
         self.__chosen_plugin = device
         self.__reorder_parameters()
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
-        nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
-        self.main_script().log_message(f"EC.__update_chosen_plugin_device: chosen_plugin changed to {nm}")
+        # nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
+        # self.main_script().log_message(f"EC.__update_chosen_plugin_device: chosen_plugin changed to {nm}")
 
     @listens("is_locked_to_device")
-    def __on_is_locked_to_device_changed(self, is_locked):
-        self.main_script().log_message(f"EC.__on_is_locked_to_device_changed: listener popped, is_locked changed to  {is_locked}")
-        self.__locked_to_device = is_locked
+    def __on_is_locked_to_device_changed(self):
+        is_locked = self.__device_provider.surface_is_locked
+        dv = self.__chosen_plugin.name if self.__chosen_plugin is not None else "None"
+        if is_locked:
+            self.main_script().log_message(f"EC.__on_is_locked_to_device_changed: listener popped, now locked to device {dv}")
+        else:
+            self.main_script().log_message(f"EC.__on_is_locked_to_device_changed: listener popped, now unlocking from device {dv}")
+        self.is_locked_to_device = is_locked
 
 
     def build_setup_database(self):
@@ -220,7 +236,7 @@ class EncoderController(MackieC4Component, Component):
 
         self.selected_track = self.song().view.selected_track
         devices_on_selected_trk = self.get_device_list(self.selected_track.devices)
-        if not self.__locked_to_device:
+        if not self.is_locked_to_device:
             if len(devices_on_selected_trk) == 0:
                 self.__update_chosen_plugin_device(None)
             else:
@@ -261,7 +277,7 @@ class EncoderController(MackieC4Component, Component):
                 self.main_script().log_message("len(self.t_d_current) <= self.t_current")
                 self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
 
-        if not self.__locked_to_device:
+        if not self.is_locked_to_device:
             if liveobj_valid(device):
                 self.song().view.select_device(device)
             else:
@@ -279,7 +295,7 @@ class EncoderController(MackieC4Component, Component):
         # This is a way to call a super-class method from a subclass with a method of the same name see def refresh_state() below (way, way below)
         MackieC4Component.refresh_state(self)
         device = None
-        if not self.__locked_to_device:
+        if not self.is_locked_to_device:
             selected_device_index = self.__eah.get_selected_device_index()
             if selected_device_index > -1:
                 if len(extended_device_list) > selected_device_index:
@@ -321,7 +337,7 @@ class EncoderController(MackieC4Component, Component):
         # self.main_script().log_message("EC.track_deleted: selected tk device index after: {0}".format(selected_device_index))
         # self.main_script().log_message("EC.track_deleted: nbr of devices on selected track after: {0}".format(len(extended_device_list)))
         device = None
-        if not self.__locked_to_device:
+        if not self.is_locked_to_device:
             if selected_device_index > -1:
                 if len(extended_device_list) > selected_device_index:
                     selected_device = extended_device_list[selected_device_index]
@@ -381,7 +397,7 @@ class EncoderController(MackieC4Component, Component):
                     updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list,selected_device, selected_device_idx)
 
             device = None
-            if not self.__locked_to_device:
+            if not self.is_locked_to_device:
                 if updated_idx == -1:
                     device = None
                     # might happen if track with no devices deleted, and the next selected track also has no devices?
@@ -460,7 +476,85 @@ class EncoderController(MackieC4Component, Component):
     def last_assignment_mode(self):
         return self.__last_assignment_mode
 
-    # no wrap around: stop moving left at track 0, stop moving right at master track
+    # self.system_switch_functions = {
+    #     C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
+    #                              1: {"virtual_press_count": 0, "led_value": [0, 127]},
+    #                              2: {"virtual_press_count": 0, "led_value": [0, 127]}},
+    #                   "press_count": 0},
+    #     C4SID_LOCK: {"led_id": {C4SID_LOCK: {"led_value": [0, 127]}},
+    #                  "press_count": 0},
+    #     C4SID_SPLIT_ERASE: {"led_id": {C4SID_SPLIT_ERASE: {"led_value": [0, 127]}},
+    #                         "press_count": 0}
+    # }
+    # Currently, C4SID_SPLIT_ERASE is the only system switch (button) with no associated behavior mapped
+    def handle_system_switch_ids(self, switch_id):
+        switch_dict = self.system_switch_functions[switch_id]
+        switch_dict["press_count"] += 1
+        led_dict = switch_dict["led_id"]
+        out_value = 0
+        send_feedback = True
+        if switch_id == C4SID_SPLIT:
+            offset = switch_dict["press_count"] % len(self.__display_update_lag_upper_bounds)  #  4 states repeat == 1, 2, 3 leds ON, and "all leds OFF"
+            if offset > 0: # self.__display_update_lag_upper_bounds_index
+                inner_offset = offset - 1
+                led_dict[inner_offset]["virtual_press_count"] += 1
+            else:
+                if led_dict[C4SID_SPLIT]["virtual_press_count"] % 2 > 0:
+                    led_dict[C4SID_SPLIT]["virtual_press_count"] += 1
+                if led_dict[C4SID_SPLIT + 1]["virtual_press_count"] % 2 > 0:
+                    led_dict[C4SID_SPLIT + 1]["virtual_press_count"] += 1
+                if led_dict[C4SID_SPLIT + 2]["virtual_press_count"] % 2 > 0:
+                    led_dict[C4SID_SPLIT + 2]["virtual_press_count"] += 1
+            self.update_system_switch_leds() # also sends Lock and Erase led "updates"
+            send_feedback = False
+            # else out_value = 0
+            # as the press count cycles up here, the amount of lag cycles down
+            # all Split leds OFF is max lag, and all 3 Split leds ON is zero lag (full speed of "on display update timer" (every 100 ms))
+            self.__display_update_lag_upper_bounds_index = offset
+
+        elif switch_id == C4SID_LOCK:
+            out_value = led_dict[C4SID_LOCK]["led_value"][switch_dict["press_count"] % 2]
+            if out_value > 0:
+                self.lock_to_device(self.__device_provider.provided_device)
+            else:
+                self.unlock_from_device()
+        elif switch_id == C4SID_SPLIT_ERASE:
+            out_value = led_dict[C4SID_SPLIT_ERASE]["led_value"][switch_dict["press_count"] % 2]
+        else:
+            self.main_script().log_message(f"EC.handle_system_switch_ids: unknown system switch id {switch_id}, no feedback generated")
+            send_feedback = False
+
+        if send_feedback:
+            self.send_midi((NOTE_ON_STATUS, switch_id, out_value))
+
+    def update_system_switch_leds(self):
+        if self.__assignment_mode != C4M_USER:
+            switch_dict = self.system_switch_functions[C4SID_SPLIT]
+            led_dict = switch_dict["led_id"]
+
+            toggle = led_dict[C4SID_SPLIT]["virtual_press_count"] % 2
+            out_value_00 = led_dict[C4SID_SPLIT]["led_value"][toggle]
+            toggle = led_dict[C4SID_SPLIT + 1]["virtual_press_count"] % 2
+            out_value_01 = led_dict[C4SID_SPLIT + 1]["led_value"][toggle]
+            toggle = led_dict[C4SID_SPLIT + 2]["virtual_press_count"] % 2
+            out_value_02 = led_dict[C4SID_SPLIT + 2]["led_value"][toggle]
+            self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT, out_value_00))
+            self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT + 1, out_value_01))
+            self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT + 2, out_value_02))
+
+            switch_dict = self.system_switch_functions[C4SID_LOCK]
+            led_dict = switch_dict["led_id"]
+            toggle = switch_dict["press_count"] % 2
+            lock_value = led_dict[C4SID_LOCK]["led_value"][toggle]
+            self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, lock_value))
+
+            switch_dict = self.system_switch_functions[C4SID_SPLIT_ERASE]
+            led_dict = switch_dict["led_id"]
+            toggle = switch_dict["press_count"] % 2
+            erase_value = led_dict[C4SID_SPLIT_ERASE]["led_value"][toggle]
+            self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, erase_value))
+
+   # no wrap around: stop moving left at track 0, stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
         # self.main_script().log_message("EC.handle_bank_switch_ids: self.__assignment_mode == C4M_CHANNEL_STRIP is <{0}>".format(self.__assignment_mode == C4M_CHANNEL_STRIP))
@@ -476,7 +570,7 @@ class EncoderController(MackieC4Component, Component):
                 current_bank_nbr += 1
                 update_self = True
         elif self.__assignment_mode == C4M_CHANNEL_STRIP:
-            if not self.__locked_to_device:
+            if not self.is_locked_to_device:
                 selected_device_index = self.__eah.get_selected_device_index()
                 if selected_device_index > -1:
                     #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device index before <{0}>".format(selected_device_index))
@@ -552,6 +646,8 @@ class EncoderController(MackieC4Component, Component):
                 update_self = True
 
         if update_self:
+            if not self.__assignment_mode == C4M_USER:
+                self.update_system_switch_leds()
             self.update_assignment_mode_leds()
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
@@ -574,7 +670,7 @@ class EncoderController(MackieC4Component, Component):
                     current_trk_device_index += 1
                     update_self = True
 
-            if not self.__locked_to_device and update_self:
+            if not self.is_locked_to_device and update_self:
                 self.__eah.set_selected_device_index(current_trk_device_index)
                 extended_device_list = self.get_device_list(self.selected_track.devices)
                 if len(extended_device_list) > current_trk_device_index:
@@ -690,7 +786,7 @@ class EncoderController(MackieC4Component, Component):
                 if i < C4SID_MARKER:
                     # turn off any Function area LEDs after USER mode
                     # may need special handling for Lock button state here if previous script mode was "locked", led should be ON going back to it
-                    self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
+                    self.update_system_switch_leds()
                 if i == assignment_mode_to_button_id[self.__assignment_mode]:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
                 else:
@@ -937,7 +1033,7 @@ class EncoderController(MackieC4Component, Component):
                 device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
                 device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
                 extended_device_list = self.get_device_list(self.selected_track.devices)
-                if not self.__locked_to_device:
+                if not self.is_locked_to_device:
                     if len(extended_device_list) > device_offset:  # if the calculated offset is valid device index
                         # self.__chosen_plugin = extended_device_list[device_offset]
                         # self.__reorder_parameters()
@@ -946,7 +1042,7 @@ class EncoderController(MackieC4Component, Component):
                         if liveobj_valid(device):
                             self.song().view.select_device(device)
                         else:
-                            self.__update_chosen_plugin_device(device)
+                            self.__update_chosen_plugin_device(device) # device == None
                         # self.__reassign_encoder_parameters()
                         # self.request_rebuild_midi_map()
                         self.one_display_update()
@@ -1728,7 +1824,8 @@ class EncoderController(MackieC4Component, Component):
 
     def __display_lag_timer_bang(self):
         # count to 10 for each second of desired "display update" lag (when song is NOT playing)
-        if self.__display_update_lag_counter < 20:
+        max_lag = self.__display_update_lag_upper_bounds[self.__display_update_lag_upper_bounds_index]
+        if self.__display_update_lag_counter < max_lag:
             self.__display_update_lag_counter += 1
             return False
         else:

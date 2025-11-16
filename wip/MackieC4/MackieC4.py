@@ -86,7 +86,6 @@ class MackieC4(object):
         self.__device_provider = C4DeviceProvider(self.song())
         self.__encoders = [Encoders(self, i) for i in encoder_range]
         self.__encoder_controller = EncoderController(self, self.__encoders, self.__device_provider)
-        self.__appointed_device = None
         # self.__components = [*self.__encoders, self.__encoder_controller, self.__device_provider]
         for comp in [*self.__encoders, self.__encoder_controller, self.__device_provider]:
             self.register_component(comp)
@@ -136,7 +135,7 @@ class MackieC4(object):
             **{note: self.__encoder_controller.handle_bank_switch_ids for note in bank_switch_ids},
             **{note: self.__encoder_controller.handle_bank_switch_ids for note in single_switch_ids},
             **{note: self.__encoder_controller.handle_slot_nav_switch_ids for note in slot_nav_switch_ids},
-            C4SID_LOCK: lambda _: self.lock_surface(),
+            **{note: self.__encoder_controller.handle_system_switch_ids for note in system_switch_ids},
             **{note: self.__encoder_controller.handle_assignment_switch_ids for note in assignment_mode_switch_ids},
             **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
         }
@@ -407,7 +406,7 @@ class MackieC4(object):
                         # the C4 just blanked its displays (except the hello message on the top screen?)
                         # assignment mode is never USER here, msg was passed above in USER mode
                         logging.info("MC.receive_midi: attempting to update display after receiving C4 serial number sysex message {}".format(midi_bytes))
-                        self.__encoder_controller.one_delayed_display_update(.275)  # will this show?
+                        self.__encoder_controller.one_delayed_display_update(0.999)  # will this show?
                     else:
                         logging.info("MC.receive_midi: unhandled matching length - sysex event dropped {}".format(midi_bytes))
                 else:
@@ -1088,6 +1087,15 @@ class MackieC4(object):
             if 0 <= selected_index < len(tracks):
                 self.song().view.selected_track = tracks[selected_index]
 
+    # @property
+    def get_is_locked_to_device(self):
+        return self.__surface_is_locked
+
+    # @is_locked_to_device.setter
+    def set_is_locked_to_device(self, is_locked):
+        self.__surface_is_locked = is_locked
+
+
     def lock_surface_to_device(self, device):
         log_id = "MC.lock_surface: "
         if not self.__surface_is_locked:
@@ -1095,8 +1103,8 @@ class MackieC4(object):
             self.__device_provider.lock_to_device(device)
         else:
             dev = "None"
-            if self.__appointed_device is not None:
-                dev = self.__appointed_device.name
+            if self.__device_provider.provided_device is not None:
+                dev = self.__device_provider.provided_device.name
             self.log_message(f"{log_id}surface already locked to {dev}, led state stays ON")
 
         self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
@@ -1104,7 +1112,7 @@ class MackieC4(object):
     def unlock_surface_from_device(self):
         log_id = "MC.unlock_surface: "
         if self.__surface_is_locked:
-            self.log_message(f"{log_id}unlocking surface from device {self.__appointed_device.name}, led state to OFF")
+            self.log_message(f"{log_id}unlocking surface from device {self.__device_provider.provided_device.name}, led state to OFF")
             self.__device_provider.unlock_from_device()
         else:
             self.log_message(f"{log_id}surface already unlocked, led state stays OFF")

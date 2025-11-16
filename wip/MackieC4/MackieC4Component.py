@@ -54,6 +54,14 @@ class MackieC4Component(object):
     def set_alt_is_pressed(self, pressed):
         self.__main_script.set_pressed = pressed
 
+    @property
+    def is_locked_to_device(self):
+        return self.__main_script.get_is_locked_to_device()
+
+    @is_locked_to_device.setter
+    def is_locked_to_device(self, is_locked):
+        self.__main_script.set_is_locked_to_device(is_locked)
+
     def lock_to_device(self, device):
         self.__main_script.lock_surface_to_device(device)
 
