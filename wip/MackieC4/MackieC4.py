@@ -283,12 +283,8 @@ class MackieC4(object):
                 self.set_marker_is_pressed(False)
             else:
                 logging.info("MC.receive_midi: (first user mode exit) event unhandled - dropping event message {}".format(midi_bytes))
-            # these button LEDs never turn ON outside of USER mode and the Max patch won't turn them OFF if it isn't connected
-            # if the LEDs are ON, it's because of spurious feedback, always turning them off here won't impact the script's
-            # toggling of the "Lock button" state.  Exiting USER mode forces an UNLOCK operation anyway
-            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_SPLIT, BUTTON_STATE_OFF))
-            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
-            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, BUTTON_STATE_OFF))
+            # these button LEDs should be restored to "remote script" status display
+            self.__encoder_controller.update_system_switch_leds()
             self.__user_mode_exit = False
             # logging.info("MC.receive_midi: (first user mode exit) Split, Lock, SpotErase LEDs OFF")
         else:
@@ -327,7 +323,7 @@ class MackieC4(object):
                                 self.log_message("MC.receive_midi: unhandled note value: {}".format(note))
 
                     if note == C4SID_MARKER:
-                        # This "note ON event" entered receive_midi() while the script was NOT in USER mode, because here is under else:
+                        # This "note ON event" entered receive_midi() while the script was NOT in USER mode, because this line is under else:
                         # now the script IS in USER mode, because self.__note_handling_dict[note](note) and note == C4SID_MARKER:
                         # but the Max patch is still NOT-processing yet, forward this midi event to the C4 display
                         # self.log_message("MC.receive_midi: before leaving script control, turning MARKER led OFF <{}>".format((NOTE_ON_STATUS, note, BUTTON_STATE_OFF)))

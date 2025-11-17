@@ -202,7 +202,7 @@ class EncoderController(MackieC4Component, Component):
             self.send_midi((CC_STATUS, j + NUM_ENCODERS, LED_OFF_DATA))
 
     def display_message_top_lcd(self, top_line="", bottom_line="", force=False):
-        so_many_spaces = str([" " for i in range(NUM_TEXT_BYTES_PER_SYSEX_MSG)])
+        so_many_spaces = "".join([" " for i in range(NUM_TEXT_BYTES_PER_SYSEX_MSG)])
         if len(top_line) < 1:
             top_line = so_many_spaces
         if len(bottom_line) < 1:
@@ -225,7 +225,7 @@ class EncoderController(MackieC4Component, Component):
     @listens("device")
     def __on_device_changed(self):
         d = self.__device_provider.provided_device
-        self.main_script().log_message(f"EC.__on_device_changed: listener popped, device changed to {d.name}")
+        self.main_script().log_message(f"EC.__on_device_changed: listener popped, device changed to {d.name if liveobj_valid(d) else 'None'}")
         self.__update_chosen_plugin_device(d)
 
     def __update_chosen_plugin_device(self, device):
@@ -2257,7 +2257,7 @@ class EncoderController(MackieC4Component, Component):
             text = temp
         elif len(text) < max_length:
             old_len = len(text)
-            text = text.join(str([pad_char for i in range(old_len, max_length)]))
+            text = text.join("".join([pad_char for i in range(old_len, max_length)]))
             if not len(text) == max_length:
                 self.main_script().log_message(f"EC.pad_right_if_less: oopsie? padded length {len(text)} not equal to max length {max_length}")
             else:
