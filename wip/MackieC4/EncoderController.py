@@ -90,8 +90,12 @@ class EncoderController(MackieC4Component, Component):
         self.__display_update_lag_upper_bounds = [20, 10, 5, 0]
         self.__display_update_lag_upper_bounds_index = 0
         self.__display_update_lag_counter = 0
-        self.__assignment_mode = C4M_CHANNEL_STRIP
+        self.__elapsed_display_update_nanos = 0.0
+        self.__total_display_update_time = 0.0
+        self.__average_display_update_micros = 1.0
+        self.__display_update_counter = 0
 
+        self.__assignment_mode = C4M_CHANNEL_STRIP
         self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
         self.__current_track_name = ''  # Live's Track Name of selected track
         self.selected_track = None  # Live's selected-Track Object
@@ -1832,14 +1836,26 @@ class EncoderController(MackieC4Component, Component):
         window = compressed[state["scroll_pos"]:state["scroll_pos"] + width]
         return adjust_string(window, width)
 
+    def _start_display_update_timer(self):
+        self.__elapsed_display_update_nanos = time.process_time_ns()
+        self.__display_update_counter += 1
+    def _finish_display_update_timer(self):
+        self.__elapsed_display_update_nanos = time.process_time_ns() - self.__elapsed_display_update_nanos
+        self.__total_display_update_time += self.__elapsed_display_update_nanos
+        self.__average_display_update_micros = self.__total_display_update_time / self.__display_update_counter / 1e5  # 1 million nanos == 1 milli
+        micros = self.__elapsed_display_update_nanos / 1e5 # 1 thousand micro seconds === 1 milli
+        # super verbose log message
+        self.main_script().log_message(f"EC._finish_display_update_timer: elapsed {micros} avg {self.__average_display_update_micros}")
+
+
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
         # if not self.main_script().init_ready:
         #     return
         if self.song().is_playing:
-            self.__do_display_update()
-        elif self.__display_lag_timer_bang():
-            self.__do_display_update()
+            self.one_display_update()
+        elif self.__display_lag_counter_bang():
+            self.one_display_update()
 
 
     def one_delayed_display_update(self, delay_secs=.050, force=False): # 50 ms
@@ -1847,9 +1863,11 @@ class EncoderController(MackieC4Component, Component):
         self.one_display_update(force=force)
 
     def one_display_update(self, force=False):
+        self._start_display_update_timer()
         self.__do_display_update(force=force)
+        self._finish_display_update_timer()
 
-    def __display_lag_timer_bang(self):
+    def __display_lag_counter_bang(self):
         # (when song is NOT playing) count to _upper_bounds[bounds_index] before returning True and resetting the count
         max_lag = self.__display_update_lag_upper_bounds[self.__display_update_lag_upper_bounds_index]
         if self.__display_update_lag_counter < max_lag:
