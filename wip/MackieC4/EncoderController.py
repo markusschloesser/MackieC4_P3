@@ -115,9 +115,9 @@ class EncoderController(MackieC4Component, Component):
         self.encoder_name_display_state = [
             {
                 "toggle": False,
-                "last_toggle_time": 0,
+                "last_toggle_time": 0.0,
                 "scroll_pos": 0,
-                "last_scroll_time": 0
+                "last_scroll_time": 0.0
             }
             for _ in range(32)  # or however many encoders
         ]
