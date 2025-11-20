@@ -689,8 +689,8 @@ class EncoderController(MackieC4Component, Component):
         # else don't update self because self is already in this mode
 
     def handle_slot_nav_switch_ids(self, switch_id):
-        """ "slot navigation" (arrow up 🔼/down 🔽) switches between Devices in C4M_PLUGINS mode (up/down) """
-        if self.__assignment_mode == button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
+        """ "slot navigation" (arrow up 🔼/down 🔽) switches between Devices in all modes except User """
+        if self.__assignment_mode != button_id_to_assignment_mode[C4SID_MARKER]:
             current_trk_device_index = self.__eah.get_selected_device_index()
             max_trk_device_index = self.__eah.get_max_device_count() - 1
             update_self = False
