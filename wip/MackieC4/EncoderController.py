@@ -600,39 +600,41 @@ class EncoderController(MackieC4Component, Component):
             if current_bank_nbr < max_bank_nbr:
                 current_bank_nbr += 1
                 update_self = True
-        elif self.__assignment_mode == C4M_CHANNEL_STRIP:
-            if not self.is_locked_to_device:
-                selected_device_index = self.__eah.get_selected_device_index()
-                if selected_device_index > -1:
-                    #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device index before <{0}>".format(selected_device_index))
-
-                    if switch_id == C4SID_SINGLE_LEFT:  # to previous device
-                        selected_device_index -= 1
-                        #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device left")
-                    elif switch_id == C4SID_SINGLE_RIGHT:  # to next device
-                        #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device right")
-                        selected_device_index += 1
-
-                    # self.main_script().log_message("EC.handle_bank_switch_ids: selected device index after <{0}>".format(selected_device_index))
-                    nbr_devices = len(self.get_device_list(self.selected_track.devices))
-                    if nbr_devices > 0 and nbr_devices > selected_device_index:
-
-                        self.__eah.set_selected_device_index(selected_device_index)
-                        current_selected_device = self.get_device_list(self.selected_track.devices)[selected_device_index]
-                        self.song().view.select_device(current_selected_device)
-                        # self.__chosen_plugin = current_selected_device
-                        # self.__reorder_parameters()
-                        # self.__reassign_encoder_parameters()
-                        # self.request_rebuild_midi_map()
-                        # self.main_script().log_message("EC.handle_bank_switch_ids: new selected device <{0}>".format(self.__chosen_plugin.name))
-                    else:
-                        # something isn't getting updated correctly at startup and/or when devices are deleted
-                        self.main_script().log_message("nbr_devices <= self.t_d_current[self.t_current]")
-                        self.main_script().log_message("{0} <= {1}".format(nbr_devices, self.__eah.get_selected_device_index()))
-                else:
-                    # something isn't getting updated correctly at startup and/or when devices are deleted
-                    self.main_script().log_message("len(self.t_d_current) <= self.t_current")
-                    self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
+        # elif self.__assignment_mode == C4M_CHANNEL_STRIP or self.__assignment_mode == C4M_PLUGINS:
+            # if liveobj_valid(self.__chosen_plugin):
+                # last_param = self.__chosen_plugin.
+            # if not self.is_locked_to_device:
+            #     selected_device_index = self.__eah.get_selected_device_index()
+            #     if selected_device_index > -1:
+            #         #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device index before <{0}>".format(selected_device_index))
+            #
+            #         if switch_id == C4SID_SINGLE_LEFT:  # to previous device
+            #             selected_device_index -= 1
+            #             #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device left")
+            #         elif switch_id == C4SID_SINGLE_RIGHT:  # to next device
+            #             #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device right")
+            #             selected_device_index += 1
+            #
+            #         # self.main_script().log_message("EC.handle_bank_switch_ids: selected device index after <{0}>".format(selected_device_index))
+            #         nbr_devices = len(self.get_device_list(self.selected_track.devices))
+            #         if nbr_devices > 0 and nbr_devices > selected_device_index:
+            #
+            #             self.__eah.set_selected_device_index(selected_device_index)
+            #             current_selected_device = self.get_device_list(self.selected_track.devices)[selected_device_index]
+            #             self.song().view.select_device(current_selected_device)
+            #             # self.__chosen_plugin = current_selected_device
+            #             # self.__reorder_parameters()
+            #             # self.__reassign_encoder_parameters()
+            #             # self.request_rebuild_midi_map()
+            #             # self.main_script().log_message("EC.handle_bank_switch_ids: new selected device <{0}>".format(self.__chosen_plugin.name))
+            #         else:
+            #             # something isn't getting updated correctly at startup and/or when devices are deleted
+            #             self.main_script().log_message("nbr_devices <= self.t_d_current[self.t_current]")
+            #             self.main_script().log_message("{0} <= {1}".format(nbr_devices, self.__eah.get_selected_device_index()))
+            #     else:
+            #         # something isn't getting updated correctly at startup and/or when devices are deleted
+            #         self.main_script().log_message("len(self.t_d_current) <= self.t_current")
+            #         self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
 
         if update_self:
             self.__eah.set_current_track_device_parameter_bank_nbr(current_bank_nbr)
