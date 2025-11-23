@@ -304,7 +304,7 @@ class EncoderController(MackieC4Component, Component):
                 self.__update_chosen_plugin_device(device)  # device == None
         # self.__reassign_encoder_parameters()
         # self.request_rebuild_midi_map()
-        self.one_display_update()
+        # self.one_display_update()
         return
 
     def track_added(self, track_index):
@@ -342,7 +342,7 @@ class EncoderController(MackieC4Component, Component):
             # self.__reorder_parameters()
             # self.__reassign_encoder_parameters()
             # self.request_rebuild_midi_map()
-        self.one_display_update()
+        # self.one_display_update()
         return
 
     def track_deleted(self, track_index):
@@ -381,7 +381,7 @@ class EncoderController(MackieC4Component, Component):
 
         # self.__reassign_encoder_parameters()
         # self.request_rebuild_midi_map()
-        self.one_display_update()
+        # self.one_display_update()
         return
 
     def device_added_deleted_or_changed(self, track, tid, type):
@@ -444,7 +444,7 @@ class EncoderController(MackieC4Component, Component):
         # self.__reorder_parameters()
         # self.__reassign_encoder_parameters()
         # self.request_rebuild_midi_map()
-        self.one_display_update()
+        # self.one_display_update()
 
         new_device_count_track = len(extended_device_list)
         # self.main_script().log_message("{0}device count AFTER update <{1}>".format(log_id, new_device_count_track))
@@ -720,7 +720,7 @@ class EncoderController(MackieC4Component, Component):
 
                 # self.__reassign_encoder_parameters()
                 # self.request_rebuild_midi_map()
-            self.one_display_update()
+            # self.one_display_update()
 
     def handle_modifier_switch_ids(self, switch_id, value):
         if switch_id == C4SID_SHIFT:
@@ -1097,7 +1097,7 @@ class EncoderController(MackieC4Component, Component):
                             self.__update_chosen_plugin_device(device) # device == None
                         # self.__reassign_encoder_parameters()
                         # self.request_rebuild_midi_map()
-                        self.one_display_update()
+                        # self.one_display_update()
                     else:
                         msg = f"EC.handle_pressed_v_pot: can't update __chosen_plugin: the calculated device_offset {device_offset} is NOT a valid device index"
                         self.main_script().log_message(msg)
