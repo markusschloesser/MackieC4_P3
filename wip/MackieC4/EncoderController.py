@@ -94,6 +94,7 @@ class EncoderController(MackieC4Component, Component):
         self.__total_display_update_time = 0.0
         self.__average_display_update_millis = 1.0
         self.__display_update_counter = 0
+        self.__updating_display = False
 
         self.__assignment_mode = C4M_CHANNEL_STRIP
         self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
@@ -237,6 +238,7 @@ class EncoderController(MackieC4Component, Component):
         self.__reorder_parameters()
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
+        self.one_display_update(caller="device updated")
         # nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
         # self.main_script().log_message(f"EC.__update_chosen_plugin_device: chosen_plugin changed to {nm}")
 
@@ -640,7 +642,7 @@ class EncoderController(MackieC4Component, Component):
             self.__eah.set_current_track_device_parameter_bank_nbr(current_bank_nbr)
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
-            self.one_display_update()
+            self.one_display_update(caller="handle bank switch")
 
     def handle_assignment_switch_ids(self, switch_id):
         """the 4 Assignment buttons on the C4, which handle the mode switching"""
@@ -898,6 +900,7 @@ class EncoderController(MackieC4Component, Component):
             if vpot_index in row_01_encoders:
                 self.toggle_devices(vpot_index, cc_value)
 
+        self.one_display_update(caller="handle vpot rotation")
 
     def unsolo_all_functionality(self, mode_name, vpot_index):
         mode_function = self.mode_functions.get(mode_name)
@@ -1079,7 +1082,7 @@ class EncoderController(MackieC4Component, Component):
                     # self.main_script().log_message("EC.handle_pressed_v_pot: updating selected device bank index from <{0}> to <{1}>".format(old_selected_bank, selected_device_bank_index))
                     self.__eah.set_selected_device_bank_index(selected_device_bank_index)
                     self.__reassign_encoder_parameters()
-                    self.one_display_update()
+                    self.one_display_update(caller="handle pressed vpot chan strip mode")
 
             elif encoder_index in row_01_encoders:
                 # (row 2 "index" is 01) these encoders represent devices 1 - 8 on the selected track in C4M_CHANNEL_STRIP mode
@@ -1235,7 +1238,7 @@ class EncoderController(MackieC4Component, Component):
                 self.__eah.set_current_track_device_parameter_bank_nbr(current_parameter_bank_track)
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
-                self.one_display_update()
+                self.one_display_update(caller="handle pressed vpot device mode")
 
         elif self.__assignment_mode == C4M_FUNCTION:
             encoder_01_index = 0  # follow
@@ -1369,6 +1372,7 @@ class EncoderController(MackieC4Component, Component):
                 else:
                     s.show_full_enlighted_poti()
                 self.song().overdub = not self.song().overdub
+            self.one_display_update(caller="handle pressed vpot function mode")
 
     def __send_parameter(self, vpot_index):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
@@ -1864,31 +1868,38 @@ class EncoderController(MackieC4Component, Component):
     def _start_display_update_timer(self):
         self.__elapsed_display_update_nanos = time.process_time_ns()
         self.__display_update_counter += 1
-    def _finish_display_update_timer(self):
+    def _finish_display_update_timer(self, with_logging=False, caller="mystery"):
         self.__elapsed_display_update_nanos = time.process_time_ns() - self.__elapsed_display_update_nanos
         self.__total_display_update_time += self.__elapsed_display_update_nanos
         self.__average_display_update_millis = self.__total_display_update_time / self.__display_update_counter / 1e6  # 1 million nanos == 1 milli
         millis = self.__elapsed_display_update_nanos / 1e6 # 1 thousand micro seconds === 1 milli, 1 million micros === 1 second
+        # super verbose log messaging
+        if with_logging:
+            self.main_script().log_message(f"EC._finish_display_update_timer: ({caller}): elapsed {millis} avg {self.__average_display_update_millis}")
 
 
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
-        # if not self.main_script().init_ready:
-        #     return
         if self.song().is_playing:
-            self.one_display_update()
+            self.one_display_update(caller="timer-song")
         elif self.__display_lag_counter_bang():
-            self.one_display_update()
+            self.one_display_update(caller="timer-bang")
 
 
     def one_delayed_display_update(self, delay_secs=.050, force=False): # 50 ms
         time.sleep(delay_secs)
-        self.one_display_update(force=force)
+        self.one_display_update(force=force, caller="delayed")
 
-    def one_display_update(self, force=False):
-        self._start_display_update_timer()
-        self.__do_display_update(force=force)
-        self._finish_display_update_timer()
+    def one_display_update(self, force=False, caller="unknown"):
+        if not self.__updating_display:
+            self._start_display_update_timer()
+            self.__updating_display = True
+            # force means send SYSEX even if it matches the previous SYSEX sent.
+            self.__do_display_update(force=force)
+            self.__updating_display = False
+            self._finish_display_update_timer(with_logging=True, caller=caller)
+        else:
+            self.main_script().log_message(f"EC.one_display_update: ({caller}): display already updating")
 
     def __display_lag_counter_bang(self):
         # (when song is NOT playing) count to _upper_bounds[bounds_index] before returning True and resetting the count
@@ -1902,6 +1913,7 @@ class EncoderController(MackieC4Component, Component):
 
     def __do_display_update(self, force=False):
         """force means send the generated LCD screen display update messages even if they match the previous update messages sent"""
+
         upper_string1 = ''
         lower_string1 = ''
         lower_string1a = ''
@@ -2279,7 +2291,7 @@ class EncoderController(MackieC4Component, Component):
         # ONLY update displays when Not in USER mode
         if self.__assignment_mode != C4M_USER:
             self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(upper_string1), LCD_TOP_ROW_OFFSET, force=force)
-            self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(upper_string2), LCD_TOP_ROW_OFFSET, force=force)
+            self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(upper_string2, log_success=True), LCD_TOP_ROW_OFFSET, force=force)
             self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(upper_string3), LCD_TOP_ROW_OFFSET, force=force)
             self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(upper_string4), LCD_TOP_ROW_OFFSET, force=force)
             self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(lower_string1), LCD_BOTTOM_ROW_OFFSET, force=force)
@@ -2289,23 +2301,29 @@ class EncoderController(MackieC4Component, Component):
 
         return
 
-    def pad_right_if_less(self, text, pad_char=" ", max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG):
+    def pad_right_if_less(self, text, pad_char=" ", max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG, log_success=False):
+        """Operates like, string.ljust(pad_char, max_length), but can log details"""
         if len(text) > max_length:
             temp = text[:max_length]
-            # string length seems to "always" be 56 instead of 55  (56 is the "bottom line offset", 56th byte of "top line" text is actually the first byte
-            # of the "bottom line".  The C4 would accept 110 bytes in one message and write both top and bottom lines, but this script writes single lines
+            # input display line string length seems to "always" be 56 instead of 55 (56 is the "bottom line offset", 56th byte of "top line" text is actually
+            # the first byte of the "bottom line".  The C4 would accept 110 bytes (or more) in one message and write both top and bottom lines, but this script
+            # always writes full single lines, 55 bytes
             # self.main_script().log_message(f"EC.pad_right_if_less: input text was too long {len(text)}, truncated to {len(temp)}: {temp}")
             text = temp
         elif len(text) < max_length:
-            old_len = len(text)
-            text = text.join("".join([pad_char for i in range(old_len, max_length)]))
+            pad_len = max_length - len(text)
+            temp = text
+            text = text + "".join([pad_char for i in range(pad_len)])
             if not len(text) == max_length:
                 self.main_script().log_message(f"EC.pad_right_if_less: oopsie? padded length {len(text)} not equal to max length {max_length}")
-            else:
-                # sometimes the C4 "firmware version" info text (bottom line left side top LCD) doesn't get properly blanked out when this script first
-                # initializes possibly because that specific bottom line text isn't padded with blanks to full length,
-                # not seeing this log message or that behavior since adding this code though...
-                self.main_script().log_message(f"EC.pad_right_if_less: successfully padded text to max length {max_length} from length {old_len}")
+                self.main_script().log_message(f"EC.pad_right_if_less: oopsie? before [{temp}] after [{text}]")
+
+            # sometimes the C4 "firmware version" info text (bottom line right side top LCD) doesn't get properly blanked out when
+            # this script first initializes possibly because that specific bottom line text isn't padded with blanks to full length,
+            # not seeing this log message or that behavior since adding this "notification" code though...
+            elif log_success:
+                self.main_script().log_message(f"EC.pad_right_if_less: successfully padded text to max length {max_length} from length {pad_len}")
+                self.main_script().log_message(f"EC.pad_right_if_less: before [{temp}] after [{text}]")
 
         return text
 
