@@ -92,7 +92,7 @@ class EncoderController(MackieC4Component, Component):
         self.__display_update_lag_counter = 0
         self.__elapsed_display_update_nanos = 0.0
         self.__total_display_update_time = 0.0
-        self.__average_display_update_micros = 1.0
+        self.__average_display_update_millis = 1.0
         self.__display_update_counter = 0
 
         self.__assignment_mode = C4M_CHANNEL_STRIP
@@ -1844,10 +1844,8 @@ class EncoderController(MackieC4Component, Component):
     def _finish_display_update_timer(self):
         self.__elapsed_display_update_nanos = time.process_time_ns() - self.__elapsed_display_update_nanos
         self.__total_display_update_time += self.__elapsed_display_update_nanos
-        self.__average_display_update_micros = self.__total_display_update_time / self.__display_update_counter / 1e6  # 1 million nanos == 1 milli
-        micros = self.__elapsed_display_update_nanos / 1e6 # 1 thousand micro seconds === 1 milli
-        # super verbose log message
-        self.main_script().log_message(f"EC._finish_display_update_timer: elapsed {micros} avg {self.__average_display_update_micros}")
+        self.__average_display_update_millis = self.__total_display_update_time / self.__display_update_counter / 1e6  # 1 million nanos == 1 milli
+        millis = self.__elapsed_display_update_nanos / 1e6 # 1 thousand micro seconds === 1 milli, 1 million micros === 1 second
 
 
     def on_update_display_timer(self):
