@@ -894,6 +894,7 @@ class EncoderController(MackieC4Component, Component):
             if vpot_index in row_01_encoders:
                 self.toggle_devices(vpot_index, cc_value)
 
+        self.one_display_update()
 
     def unsolo_all_functionality(self, mode_name, vpot_index):
         mode_function = self.mode_functions.get(mode_name)
