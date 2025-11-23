@@ -399,6 +399,6 @@ C4SID_VPOT_CC_ADDRESS_30 = 0x3D  # 61
 C4SID_VPOT_CC_ADDRESS_31 = 0x3E  # 62
 C4SID_VPOT_CC_ADDRESS_32 = 0x3F  # 63
 
-encoder_cc_ids = range(C4SID_VPOT_CC_ADDRESS_1, C4SID_VPOT_CC_ADDRESS_32 + 1)
+encoder_feedback_cc_ids = range(C4SID_VPOT_CC_ADDRESS_1, C4SID_VPOT_CC_ADDRESS_32 + 1)
 encoder_cw_values = range(0x01, 0x10)  # larger values means knob is turning faster / bigger CW increments
 encoder_ccw_values = range(0x41, 0x50)  # larger values means knob is turning faster / bigger CCW increments
