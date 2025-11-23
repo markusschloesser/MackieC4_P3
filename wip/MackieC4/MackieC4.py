@@ -344,34 +344,20 @@ class MackieC4(object):
                         # The "human release" always happens going into user mode, always need to "pre press" here
                         self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
             elif is_cc_msg:
-                """here one can use vpot_rotation to forward CC data to a function"""
+                """The only CC messages that arrive here are from "unmapped" encoders, which is why this code doesn't check for "C4M_PLUGIN" mode.
+                   All "C4M_PLUGIN" (Track-Device) mode encoders are mapped, so their midi messages do not end up here, (because they are not getting
+                   "forwarded" like these CC messages), Live handles that "mapped control feedback" automatically."""
                 cc_no = midi_bytes[1]
                 cc_value = midi_bytes[2]
-                # vpot_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
-                # so vpot_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
+                # vpot_feedback_address_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
+                # so vpot_feedback_address_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
                 vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
 
                 if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
-                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_12:
-                        self.handle_jog_wheel_rotation(cc_value)
-                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_14:  # skip encoder 13 (display space occupied)
-                        self.set_loop_length(cc_value)
-                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_15:
-                        self.set_loop_start(cc_value)
-                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_16:
-                        self.zoom_or_scroll(cc_value)
-                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_19:
-                        self.scrub_clip(cc_value)
-                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_20:
-                        self.scroll_clip(cc_value)
-                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_21:
-                        self.zoom_clip(cc_value)
-                    if vpot_range[cc_no] == C4SID_VPOT_CC_ADDRESS_22:
-                        self.tempo_change(cc_value)
-
+                    self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
                 elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
-                    if 8 <= cc_no <= 15:
-                        self.__encoder_controller.toggle_devices(cc_no, cc_value)
+                    self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
+
             elif is_note_off_msg:  # an actual Note Off event: is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
                 # logging.info("MC.receive_midi: unhandled - passing (ignoring) note off event {}".format(midi_bytes))
                 # this pass is expected, the C4 sends Note ON with velocity 0 for Note OFF.

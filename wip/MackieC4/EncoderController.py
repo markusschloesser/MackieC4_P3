@@ -864,17 +864,40 @@ class EncoderController(MackieC4Component, Component):
         encoder_32_index = 31
 
         if self.__assignment_mode == C4M_FUNCTION:
-            for s in self.__encoders:
-                s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(self, s_index)  # MS moved to on_update_display_timer
-                vpot_display_text.set_encoder_controller(self)
-                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+            # for s in self.__encoders:
+            #     s_index = s.vpot_index()
+            #     vpot_display_text = EncoderDisplaySegment(self, s_index)  # MS moved to on_update_display_timer
+            #     vpot_display_text.set_encoder_controller(self)
+            #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+            # 
+            #     if s_index == encoder_12_index:
+            #         self.main_script().log_message("cc_nbr<{}> cc_value<{}> received in handle_vpot_rotation".format(vpot_index, cc_value))
+            #         # time display was moved to on_update_display_timer because song position needs to be updated in real-time
+            # 
+            #     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+            feedback_address = encoder_feedback_cc_ids[vpot_index]
+            if feedback_address == C4SID_VPOT_CC_ADDRESS_12:
+                self.main_script().handle_jog_wheel_rotation(cc_value)
+            elif feedback_address == C4SID_VPOT_CC_ADDRESS_14:  # (display segment over encoder 13 is occupied)
+                self.main_script().set_loop_length(cc_value)
+            elif feedback_address == C4SID_VPOT_CC_ADDRESS_15:
+                self.main_script().set_loop_start(cc_value)
+            elif feedback_address == C4SID_VPOT_CC_ADDRESS_16:
+                self.main_script().zoom_or_scroll(cc_value)
+            elif feedback_address == C4SID_VPOT_CC_ADDRESS_19:
+                self.main_script().scrub_clip(cc_value)
+            elif feedback_address == C4SID_VPOT_CC_ADDRESS_20:
+                self.main_script().scroll_clip(cc_value)
+            elif feedback_address == C4SID_VPOT_CC_ADDRESS_21:
+                self.main_script().zoom_clip(cc_value)
+            elif feedback_address == C4SID_VPOT_CC_ADDRESS_22:
+                self.main_script().tempo_change(cc_value)
+            # else:
+            #     # unmapped encoder in this mode
+        elif self.__assignment_mode == C4M_CHANNEL_STRIP:
+            if vpot_index in row_01_encoders:
+                self.toggle_devices(vpot_index, cc_value)
 
-                if s_index == encoder_12_index:
-                    self.main_script().log_message("cc_nbr<{}> cc_value<{}> received in handle_vpot_rotation".format(vpot_index, cc_value))
-                    # time display was moved to on_update_display_timer because song position needs to be updated in real-time
-
-                s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
 
     def unsolo_all_functionality(self, mode_name, vpot_index):
         mode_function = self.mode_functions.get(mode_name)
