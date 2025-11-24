@@ -2267,30 +2267,35 @@ class EncoderController(MackieC4Component, Component):
             self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(upper_string2), LCD_TOP_ROW_OFFSET, force=force)
             self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(upper_string3), LCD_TOP_ROW_OFFSET, force=force)
             self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(upper_string4), LCD_TOP_ROW_OFFSET, force=force)
-            self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(lower_string1), LCD_BOTTOM_ROW_OFFSET, force=force)
+            # sometimes the firmware version info doesn't get cleared from the end of this LCD "display line". If this lower_string1 is ever too short to
+            # cover that firmware version info, log the padding was added here
+            self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(lower_string1, log_success=True), LCD_BOTTOM_ROW_OFFSET, force=force)
             self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(lower_string2), LCD_BOTTOM_ROW_OFFSET, force=force)
             self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(lower_string3), LCD_BOTTOM_ROW_OFFSET, force=force)
             self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(lower_string4), LCD_BOTTOM_ROW_OFFSET, force=force)
 
         return
 
-    def pad_right_if_less(self, text, pad_char=" ", max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG):
+    def pad_right_if_less(self, text, pad_char=" ", max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG, log_success=False):
+        """operates like string.ljust(pad_char, max_length), but logs details"""
         if len(text) > max_length:
             temp = text[:max_length]
-            # string length seems to "always" be 56 instead of 55  (56 is the "bottom line offset", 56th byte of "top line" text is actually the first byte
-            # of the "bottom line".  The C4 would accept 110 bytes in one message and write both top and bottom lines, but this script writes single lines
+            # input display line string length seems to "always" be 56 instead of 55  (56 is the "bottom line offset", 56th byte of "top line" text is actually
+            # the first byte of the "bottom line".  The C4 would accept 110 bytes (or more) in one message and write both top and bottom lines, but this script
+            # always writes full single lines, 55 bytes
             # self.main_script().log_message(f"EC.pad_right_if_less: input text was too long {len(text)}, truncated to {len(temp)}: {temp}")
             text = temp
         elif len(text) < max_length:
+            pad_len = max_length - len(text)
+            temp = text
             old_len = len(text)
-            text = text.join("".join([pad_char for i in range(old_len, max_length)]))
+            text = text + "".join([pad_char for i in range(pad_len)])
             if not len(text) == max_length:
                 self.main_script().log_message(f"EC.pad_right_if_less: oopsie? padded length {len(text)} not equal to max length {max_length}")
-            else:
-                # sometimes the C4 "firmware version" info text (bottom line left side top LCD) doesn't get properly blanked out when this script first
-                # initializes possibly because that specific bottom line text isn't padded with blanks to full length,
-                # not seeing this log message or that behavior since adding this code though...
+                self.main_script().log_message(f"EC.pad_right_if_less: before ({temp}) from length ({text})")
+            elif log_success:
                 self.main_script().log_message(f"EC.pad_right_if_less: successfully padded text to max length {max_length} from length {old_len}")
+                self.main_script().log_message(f"EC.pad_right_if_less: before ({temp}) from length ({text})")
 
         return text
 
