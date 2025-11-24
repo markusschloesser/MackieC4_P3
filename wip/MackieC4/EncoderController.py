@@ -115,28 +115,11 @@ class EncoderController(MackieC4Component, Component):
                 "scroll_pos": 0,
                 "last_scroll_time": 0.0
             }
-            for _ in range(32)  # or however many encoders
+            for _ in range(NUM_ENCODERS)
         ]
 
-        # repeater not used now because it interferes with the C4's built-in LCD "screen saver" protection that, for example, turns off
-        # the physical LCD backlight hardware after a sysex configurable number of minutes of midi inactivity
-        # and because repeating the same flawed display message doesn't fix the flaw, repeated messages can only overwrite "blanks", if any
-        # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
-        # received by the C4 from somewhere else, not-here.  Such a display change is not tracked here (obviously),
-        # and the C4 itself can't be asked "what are you displaying right now?". So we just blast the display sysex
-        # from here about every 5 seconds to overwrite any possible "other change".  (each LCD is "refreshed" in turn
-        # each time this timer "pops" (every 4th pop per LCD))
-        # turn this off to let the C4 LEDs and LCDs "go to sleep" after nothing changes for 15 or 20 minutes
-        # If you randomly see the standard C4 welcome message (because of the rogue SYSEX message)
-        # a "real" display update from Live always removes a standard C4 welcome message
-        # repeater not used now? partially fixed by updating display after seeing sysex "serial number response" message from C4
-        # always still seems to "blank and welcome" in the first 30 seconds after Live starts cold, but just change assignment mode to repaint the display
-        # mystery solved: Live always sends a standard SYSEX "ID request" and the C4 always responds with a standard SYSEX "ID response". This
-        # SYSEX message exchange happens very early in the remote script initialization process.  It is how Live determines whether any
-        # connected midi device is "identifiable" or not.  ...and it seems like every time the C4 receives and replies to one of these "ID requests", it
-        # also blanks out the bottom 3 LCDs and display the "power-on ID-message" in the top LCD.
-        self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
-        self.__display_repeat_count = 0
+        # self.__display_repeat_timer = LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER * 5
+        # self.__display_repeat_count = 0
 
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
@@ -828,49 +811,9 @@ class EncoderController(MackieC4Component, Component):
         self._show_assignment_mode_change_message()
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
-        """ currently does nothing. If we want something done here, it needs to be forwarded by MackieC4/receive_midi. BUT currently all forwarding functions are handled directly in MackieC4.py """
-        # coming from the C4 these midi messages look like: B0  20  01  1 or B0  21  01  1, where vpot_index here would be 00 or 01 (after subtracting 0x20 from 0x20 or 0x21),
-        # and cc_value would be 01 in both examples but could be any value 01 - 0x7F, however in here (because coming from the C4) if cc_value is in the range 01 - 0F (0-64),
-        # the encoder is being turned clockwise, and if cc_value is in the range 41 - 4F (65-128), the encoder is being turned counter-clockwise the higher the value,
-        # the faster the knob is turning, so theoretically 16 steps of "knob twisting speed" in either direction. Suspect this is because other encoder rotation messages
-        # are "midi mapped" through Live with feedback i.e. when you rotate encoder 32 in C4M_CHANNEL_STRIP mode, the "level number" updates itself via the
-        # midi mapping through Live (see Encoders.build_midi_map()), not via code here. MS: correct! :-)
-        #  self.main_script().log_message("potIndex<{0}> cc_value<{1}> received".format(vpot_index, cc_value))
-        # self.__display_parameters = []
-        #  the non functionality is most probably wrong vpot hex numbers!!
-        encoder_01_index = 0
-        encoder_02_index = 1
-        encoder_03_index = 2
-        encoder_04_index = 3
-        encoder_05_index = 4
-        encoder_06_index = 5
-        encoder_07_index = 6
-        encoder_08_index = 7
-        encoder_09_index = 8
-        encoder_10_index = 9
-        encoder_11_index = 10
-        encoder_12_index = 11
-        encoder_25_index = 24
-        encoder_26_index = 25
-        encoder_27_index = 26
-        encoder_28_index = 27
-        encoder_29_index = 28
-        encoder_30_index = 29
-        encoder_31_index = 30
-        encoder_32_index = 31
+        """For any encoder that is not midi mapped to some control in Live where we want to control some other function of Live"""
 
         if self.__assignment_mode == C4M_FUNCTION:
-            # for s in self.__encoders:
-            #     s_index = s.vpot_index()
-            #     vpot_display_text = EncoderDisplaySegment(self, s_index)  # MS moved to on_update_display_timer
-            #     vpot_display_text.set_encoder_controller(self)
-            #     vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-            # 
-            #     if s_index == encoder_12_index:
-            #         self.main_script().log_message("cc_nbr<{}> cc_value<{}> received in handle_vpot_rotation".format(vpot_index, cc_value))
-            #         # time display was moved to on_update_display_timer because song position needs to be updated in real-time
-            # 
-            #     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
             feedback_address = encoder_feedback_cc_ids[vpot_index]
             if feedback_address == C4SID_VPOT_CC_ADDRESS_12:
                 self.main_script().handle_jog_wheel_rotation(cc_value)
@@ -1860,8 +1803,7 @@ class EncoderController(MackieC4Component, Component):
 
     def on_update_display_timer(self):
         """Called by a timer which gets called every 100 ms. This is where the real time updating of the displays is happening"""
-        # if not self.main_script().init_ready:
-        #     return
+
         if self.song().is_playing:
             self.__do_display_update()
         elif self.__display_lag_timer_bang():
@@ -1897,16 +1839,8 @@ class EncoderController(MackieC4Component, Component):
         lower_string3 = ''
         upper_string4 = ''
         lower_string4 = ''
-        self.__display_repeat_count += 1  # unused now? see comments near lines 97 - 102 in __init__
+        # self.__display_repeat_count += 1  # unused now
 
-        # uncommenting this condition check when the two lengths are not equal will result in spamming the log file with the indented log message
-        # If you comment out initializing self.__display_parameters with EncoderDisplaySegment objects inside __init__ above, and just leave the empty list assignment self.__display_parameters = []
-        # you can force the two lengths to not be equal here after the script loads, but for example before the first "track change" message is processed when everything "reloads"
-
-        # dsply_sgmts = len(self.__display_parameters)
-        # encdr_range = len(encoder_range)
-        # if dsply_sgmts != encdr_range:
-        #     self.main_script().log_message("EC.on_update_display_timer: display segments loaded {0} encoder range {1}".format(dsply_sgmts, encdr_range))
         encoder_27_index = 26
         encoder_28_index = 27
         encoder_29_index = 28

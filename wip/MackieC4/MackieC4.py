@@ -197,9 +197,13 @@ class MackieC4(object):
 
         # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
         for s in self.__encoders:
+            # this build_midi_map() will ask to forward midi CC messages from any encoder that is currently "mapped to" None (instead of a liveobj_valid(param))
             s.build_midi_map(midi_map_handle)
 
         # ask Live to forward all midi note messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
+        # forward every incoming midi Note or CC message with an id value between 0 and 63 to the script for processing, some of these CC forwarding requests
+        # will be second requests for encoder ids above that don't get mapped to a valid "live object" at any given time, but you can ask as many times as
+        # you want Live doesn't forward the same message twice. Even for encoders mapped above (handled by Live directly), forward the midi messages they emit
         for i in range(C4SID_FIRST, C4SID_LAST + 1):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
             Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
@@ -316,7 +320,7 @@ class MackieC4(object):
                             self.note_handling_dict[note](note)
                             self.__handling_assignment_switch = False
                         else:
-                            if note == 4 or note == 0:  # Split and Spot/Erase buttons are not mapped to any remote script behavior
+                            if note == 4:  # Spot/Erase buttons is not mapped to any remote script behavior
                                 # self.log_message("MC.receive_midi: Split and Spot/Erase buttons are not mapped to any handling behavior")
                                 pass
                             else:
@@ -344,14 +348,11 @@ class MackieC4(object):
                         # The "human release" always happens going into user mode, always need to "pre press" here
                         self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
             elif is_cc_msg:
-                """The only CC messages that arrive here are from "unmapped" encoders, which is why this code doesn't check for "C4M_PLUGIN" mode.
-                   All "C4M_PLUGIN" (Track-Device) mode encoders are mapped, so their midi messages do not end up here, (because they are not getting
-                   "forwarded" like these CC messages), Live handles that "mapped control feedback" automatically."""
+                """The only CC messages arriving here we care about are from some "unmapped" encoders, which is why this code doesn't check for "C4M_PLUGIN" mode.
+                   All "C4M_PLUGIN" (Track-Device) mode encoders could be mapped, so their midi messages are not handled by the remote script, (those messages 
+                   are either already handled automatically by Live or from (temporarily) unmapped encoders"""
                 cc_no = midi_bytes[1]
                 cc_value = midi_bytes[2]
-                # vpot_feedback_address_range = [32, 33, 34, 35, ..., 63] == [0x20, 0x21, 0x22, ..., 0x3F]
-                # so vpot_feedback_address_range[11] == 43 == C4SID_VPOT_CC_ADDRESS_12 == 0x2B
-                vpot_range = range(C4SID_VPOT_CC_ADDRESS_BASE, C4SID_VPOT_CC_ADDRESS_32 + 1)
 
                 if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
                     self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
