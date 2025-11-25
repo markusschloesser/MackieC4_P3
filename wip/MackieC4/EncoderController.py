@@ -446,32 +446,37 @@ class EncoderController(MackieC4Component, Component):
             # self.main_script().log_message("{0}new_device_count_track was NOT > 0, NOT enumerating devices for log".format(log_id))
 
     def toggle_devices(self, cc_no, cc_value):
-        """any clockwise turn cc_value activates device represented by cc_no, counterclockwise turns deactivate device"""
-        device_list = self.song().view.selected_track.devices
-        extended_device_list = self.get_device_list(device_list)
+        """any clockwise turn cc_value activates device represented by cc_no, counterclockwise turns deactivate device."""
+        # Track - Channel Strip mode is the only mode that shows banks of devices to toggle on and off like this
+        # Track - Devices mode shows the "chosen device" parameters, one of which toggles the "chosen device" on and off like this
+        if self.__assignment_mode == C4M_CHANNEL_STRIP:
 
-        # Calculate the index of the first device in the current device bank
-        current_device_bank_track = self.__eah.get_selected_device_bank_index()
-        bank_start_index = (current_device_bank_track) * 8
+            device_list = self.song().view.selected_track.devices
+            extended_device_list = self.get_device_list(device_list)
 
-        # Ensure that bank_start_index is non-negative
-        if bank_start_index < 0:
-            self.main_script().log_message("EC.toggle_devices: negative device bank index protection triggered")
-            bank_start_index = 0
+            # Calculate the index of the first device in the current device bank
+            current_device_bank_track = self.__eah.get_selected_device_bank_index()
+            bank_start_index = (current_device_bank_track) * 8
 
-        for i, device in enumerate(extended_device_list):
-            # Get the index of the encoder corresponding to this device
-            encoder_index = i % 8
+            # Ensure that bank_start_index is non-negative
+            if bank_start_index < 0:
+                self.main_script().log_message("EC.toggle_devices: negative device bank index protection triggered")
+                bank_start_index = 0
+            allow_toggle = True if not self.is_locked_to_device or (self.is_locked_to_device and self.__locked_device_track == self.song().view.selected_track) else False
+            if allow_toggle: # if locked to device, only allow if locked device's track is currently selected
+                for i, device in enumerate(extended_device_list):
+                    # Get the index of the encoder corresponding to this device
+                    encoder_index = i % 8
 
-            # Check if the parameter is enabled and toggle it accordingly
-            parameter = device.parameters[0]
-            if cc_value > 64 and cc_no == 8 + encoder_index:
-                if liveobj_valid(parameter) and parameter.is_enabled and i >= bank_start_index and i < bank_start_index + 8:
-                    parameter.value = False
+                    # Check if the parameter is enabled and toggle it accordingly
+                    parameter = device.parameters[0]
+                    if cc_value > 64 and cc_no == 8 + encoder_index:
+                        if liveobj_valid(parameter) and parameter.is_enabled and i >= bank_start_index and i < bank_start_index + 8:
+                            parameter.value = False
 
-            elif cc_value < 64 and cc_no == 8 + encoder_index:
-                if liveobj_valid(parameter) and parameter.is_enabled and i >= bank_start_index and i < bank_start_index + 8:
-                    parameter.value = True
+                    elif cc_value < 64 and cc_no == 8 + encoder_index:
+                        if liveobj_valid(parameter) and parameter.is_enabled and i >= bank_start_index and i < bank_start_index + 8:
+                            parameter.value = True
 
     def assignment_mode(self):
         return self.__assignment_mode
