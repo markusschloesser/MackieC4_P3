@@ -528,6 +528,7 @@ class EncoderController(MackieC4Component, Component):
                 self.lock_to_device(self.__device_provider.provided_device)
             else:
                 self.unlock_from_device()
+            self.one_display_update()
         elif switch_id == C4SID_SPLIT_ERASE:
             out_value = led_dict[C4SID_SPLIT_ERASE]["led_value"][switch_dict["press_count"] % 2]
         else:
