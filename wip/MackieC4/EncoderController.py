@@ -95,6 +95,7 @@ class EncoderController(MackieC4Component, Component):
         self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
         self.__current_track_name = ''  # Live's Track Name of selected track
         self.selected_track = None  # Live's selected-Track Object
+        self.__locked_device_track = None  # if script is not locked to a device, this property holds self.selected_track
 
         self.__ordered_plugin_parameters = []  # Live's DeviceParameters of __chosen_plugin (if exists)
         self.__device_provider = device_provider
@@ -223,6 +224,7 @@ class EncoderController(MackieC4Component, Component):
     def __on_is_locked_to_device_changed(self):
         is_locked = self.__device_provider.surface_is_locked
         dv = self.__chosen_plugin.name if self.__chosen_plugin is not None else "None"
+        self.__locked_device_track = self.selected_track  # can't be locking (or unlocking) a device on an invalid "selected" track
         if is_locked:
             self.main_script().log_message(f"EC.__on_is_locked_to_device_changed: listener popped, now locked to device {dv}")
         else:
@@ -240,6 +242,7 @@ class EncoderController(MackieC4Component, Component):
         self.selected_track = self.song().view.selected_track
         devices_on_selected_trk = self.get_device_list(self.selected_track.devices)
         if not self.is_locked_to_device:
+            self.__locked_device_track = self.selected_track
             if len(devices_on_selected_trk) == 0:
                 self.__update_chosen_plugin_device(None)
             else:
@@ -256,6 +259,8 @@ class EncoderController(MackieC4Component, Component):
 
     def track_changed(self, track_index):
         self.selected_track = self.song().view.selected_track
+        if not self.is_locked_to_device:
+            self.__locked_device_track = self.selected_track
         selected_device_index = self.__eah.track_changed(track_index)
         extended_device_list = self.get_device_list(self.selected_track.devices)
         device = None
@@ -282,6 +287,7 @@ class EncoderController(MackieC4Component, Component):
 
         if not self.is_locked_to_device:
             if liveobj_valid(device):
+                self.__locked_device_track = self.selected_track
                 self.song().view.select_device(device)
             else:
                 self.__update_chosen_plugin_device(device)  # device == None
@@ -292,6 +298,8 @@ class EncoderController(MackieC4Component, Component):
 
     def track_added(self, track_index):
         self.selected_track = self.song().view.selected_track
+        if not self.is_locked_to_device:
+            self.__locked_device_track = self.selected_track
         extended_device_list = self.get_device_list(self.selected_track.devices)
         self.__eah.track_added(track_index, extended_device_list)
 
@@ -299,6 +307,7 @@ class EncoderController(MackieC4Component, Component):
         MackieC4Component.refresh_state(self)
         device = None
         if not self.is_locked_to_device:
+            self.__locked_device_track = self.selected_track
             selected_device_index = self.__eah.get_selected_device_index()
             if selected_device_index > -1:
                 if len(extended_device_list) > selected_device_index:
@@ -332,6 +341,8 @@ class EncoderController(MackieC4Component, Component):
         # self.main_script().log_message("EC.track_deleted: del tk idx before deleted track: {0}".format(track_index))
         self.__eah.track_deleted(track_index)
         self.selected_track = self.song().view.selected_track
+        if not self.is_locked_to_device:
+            self.__locked_device_track = self.selected_track
         # self.main_script().log_message("EC.track_deleted: selected tk after: {0}".format(self.selected_track.name))
         self.refresh_state()
 
@@ -341,6 +352,7 @@ class EncoderController(MackieC4Component, Component):
         # self.main_script().log_message("EC.track_deleted: nbr of devices on selected track after: {0}".format(len(extended_device_list)))
         device = None
         if not self.is_locked_to_device:
+
             if selected_device_index > -1:
                 if len(extended_device_list) > selected_device_index:
                     selected_device = extended_device_list[selected_device_index]
@@ -358,6 +370,7 @@ class EncoderController(MackieC4Component, Component):
             #     device = None
             #     self.__reorder_parameters()
             if liveobj_valid(device):
+                self.__locked_device_track = self.selected_track
                 self.song().view.select_device(device)
             else:
                 self.__update_chosen_plugin_device(device)  # device == None
@@ -421,6 +434,7 @@ class EncoderController(MackieC4Component, Component):
                     # self.main_script().log_message("{0}}__chosen_plugin is now None because else-fell-through".format(log_id))
 
                 if liveobj_valid(device):
+                    self.__locked_device_track = self.selected_track
                     self.song().view.select_device(device)
                 else:
                     self.__update_chosen_plugin_device(device) # device == None
@@ -1854,18 +1868,23 @@ class EncoderController(MackieC4Component, Component):
         encoder_31_index = 30
         encoder_32_index = 31
         so_many_spaces = '                                                       '
+        selected_track = self.__locked_device_track  # == self.selected_track when not locked
         if self.__assignment_mode == C4M_USER:
             # no display updates in this mode
             return
         elif self.__assignment_mode == C4M_CHANNEL_STRIP:
 
-            selected_track = self.selected_track
             is_group_track = track_util.is_group_track(selected_track)
             is_grouped = track_util.is_grouped(selected_track)
             is_folded = track_util.is_folded(selected_track) if liveobj_valid(selected_track) else False
             is_view_visible_session = self.application().view.is_view_visible('Session')
             is_view_visible_arranger = self.application().view.is_view_visible('Arranger')
-            selected_device_name = selected_track.view.selected_device.name if liveobj_valid(selected_track) and liveobj_valid(selected_track.view.selected_device) else '                      '
+            if self.is_locked_to_device and liveobj_valid(self.__chosen_plugin):
+                selected_device_name = adjust_string(self.__chosen_plugin.name, 22)
+            elif liveobj_valid(self.__chosen_plugin):
+                selected_device_name = adjust_string(self.__chosen_plugin.name, 22)
+            else:  # not locked or valid
+                selected_device_name = '                      '  # length: 22
 
             # shows "fold" or "unfold" or nothing depending on if group track or grouped track
             if is_group_track or is_grouped:
@@ -1875,10 +1894,19 @@ class EncoderController(MackieC4Component, Component):
                 upper_string1 += '------ Track -------       ---------------'
 
             # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
-            if liveobj_valid(self.selected_track):
-                lower_string1 += (adjust_string(self.selected_track.name, 12) + '(Frozen)') if self.selected_track.is_frozen else adjust_string(self.selected_track.name, 20)
+            if liveobj_valid(selected_track):
+                lower_string1 += adjust_string(selected_track.name, 12)
+                if self.is_locked_to_device:
+                    if selected_track.is_frozen:
+                        lower_string1 += 'Frzn+Lck'# can you lock to a device on a frozen track? (where you can't change any (frozen) device parameter values)
+                    else:
+                        lower_string1 += '-Locked-'
+                elif selected_track.is_frozen:
+                    lower_string1 += '-Frozen-'
+                else: # not locked or frozen
+                    lower_string1 = adjust_string(selected_track.name, 20)
             else:
-                lower_string1 += "---------0--------1"
+                lower_string1 += adjust_string('invalid Track object', 20)
 
             if is_view_visible_session:
                 group_text = ' Group ' if (is_group_track or is_grouped) else '       '
@@ -1889,7 +1917,7 @@ class EncoderController(MackieC4Component, Component):
             lower_string1 += adjust_string(selected_device_name, 15)
 
             # This text 'covers' display segments over all 8 encoders in the second row
-            upper_string2 += '----------------------- Devices -----------------------'
+            upper_string2 += '----------------------- Devices -----------------------'  # length 55
             # todo MS maybe try to visualize Racks/Groups here by using |  |  ?
 
             for t in encoder_range:
@@ -1923,9 +1951,9 @@ class EncoderController(MackieC4Component, Component):
                         lower_string4 += lower
 
                     if t == encoder_28_index:
-                        if liveobj_valid(self.selected_track):
+                        if liveobj_valid(selected_track):
                             if self.__filter_mst_trk:
-                                if self.selected_track.solo:
+                                if selected_track.solo:
                                     l_alt_text = "ON"
                                     self.__encoders[encoder_28_index].show_full_enlighted_poti()
                                 else:
@@ -1938,9 +1966,9 @@ class EncoderController(MackieC4Component, Component):
                         upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     elif t == encoder_29_index:
-                        if liveobj_valid(self.selected_track):
-                            if self.selected_track.can_be_armed:
-                                if self.selected_track.arm:
+                        if liveobj_valid(selected_track):
+                            if selected_track.can_be_armed:
+                                if selected_track.arm:
                                     l_alt_text = "ON"
                                     self.__encoders[encoder_29_index].show_full_enlighted_poti()
                                 else:
@@ -1953,8 +1981,8 @@ class EncoderController(MackieC4Component, Component):
                         upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     elif t == encoder_30_index:
-                        if self.selected_track != self.song().master_track and liveobj_valid(self.selected_track):
-                            if self.selected_track.mute:
+                        if selected_track != self.song().master_track and liveobj_valid(selected_track):
+                            if selected_track.mute:
                                 l_alt_text = "ON"
                                 self.__encoders[encoder_30_index].show_full_enlighted_poti()
                             else:
@@ -1978,24 +2006,44 @@ class EncoderController(MackieC4Component, Component):
         so_many_spaces = '                                                       '
 
         if self.__assignment_mode == C4M_PLUGINS:
-            t_d_idx = self.__eah.get_selected_device_index()
-            upper_string1 += f"------ Track ------- ----- Device {t_d_idx}" if liveobj_valid(self.__chosen_plugin) else f"------ Track ------- --------------"
-            # self.main_script().log_message(f"device index is {t_d_idx} ")
-            upper_string1 += ' ---- ' if t_d_idx > 9 else ' ----- '
 
-            if liveobj_valid(self.selected_track):
-                track_name = self.selected_track.name
-                lower_string1a += f"{adjust_string(track_name, 12)}(Frozen)" if self.selected_track.is_frozen else adjust_string(track_name, 20)
+            t_d_idx = self.__eah.get_selected_device_index()
+            add_tail = False
+            if self.is_locked_to_device and liveobj_valid(self.__chosen_plugin):
+                upper_string1 += f"------ Track --- LOCKED to Device {t_d_idx}"
+                add_tail = True
+            elif liveobj_valid(self.__chosen_plugin):
+                upper_string1 += f"------ Track ------- ----- Device {t_d_idx}"
+                add_tail = True
+            else:  # not locked or valid
+                upper_string1 +=  "------ Track ------- --No--Device----------"
+            if add_tail:
+                if t_d_idx > 99:
+                    upper_string1 += ' --- '
+                else:
+                    upper_string1 += ' ---- ' if t_d_idx > 9 else ' ----- '
+            # self.main_script().log_message(f"device index is {t_d_idx} ")
+
+
+            if liveobj_valid(selected_track):
+                track_name = selected_track.name
+                # lower_string1a += f"{adjust_string(track_name, 12)}(Frozen)" if self.selected_track.is_frozen else adjust_string(track_name, 20)
+                lower_string1a += adjust_string(track_name, 12)
+                if not self.is_locked_to_device and not selected_track.is_frozen:
+                    lower_string1a = adjust_string(selected_track.name, 20)
+                elif selected_track.is_frozen:
+                    lower_string1a += "-Frozen-"
             else:
-                lower_string1a += "---------0---------1"
-            lower_string1a = lower_string1a.center(20) + ' '
+                lower_string1a += adjust_string('invalid Track object', 20)
+
+            lower_string1a = self.pad_right_if_less(lower_string1a, max_length=27)
 
             if not liveobj_valid(self.__chosen_plugin):
                 # blank everything out
                 upper_string1 += '             '
                 lower_string1b += '                                   '
                 lower_string1 += lower_string1a + lower_string1b
-                upper_string2 += '           NO DEVICES SELECTED ON THIS TRACK           '
+                upper_string2 += '               NO DEVICES ON THIS TRACK                '
                 lower_string2 += so_many_spaces
                 upper_string3 += so_many_spaces
                 lower_string3 += so_many_spaces
@@ -2003,27 +2051,37 @@ class EncoderController(MackieC4Component, Component):
                 lower_string4 += so_many_spaces
             else:
                 device_name = '  '
-
-                if t_d_idx > -1:
-                    extended_device_list = self.get_device_list(self.selected_track.devices)
-                    if liveobj_valid(self.selected_track) and len(extended_device_list) > t_d_idx:
+                if self.is_locked_to_device:
+                    device_name = self.__chosen_plugin.name
+                elif t_d_idx > -1:
+                    extended_device_list = self.get_device_list(selected_track.devices)
+                    if liveobj_valid(selected_track) and len(extended_device_list) > t_d_idx:
                         if liveobj_valid(extended_device_list[t_d_idx]):
                             device_name = extended_device_list[t_d_idx].name
-
                         else:
-                            device_name = f"trk{t_d_idx}: " + self.selected_track.name  # is "blanks" better?
-                            # spams log 10 times a second
-                            # self.main_script().log_message(f"selected track and device index were valid but the device at index {t_d_idx} is not liveobj_valid() Danger! Will Robinson! Danger!")
+                            device_name = f"trk{t_d_idx}: " + selected_track.name  # is "blanks" better?
                     else:
-                        device_name = "trk: " + self.selected_track.name  # is "blanks" better? ("new" group track with no devices just two grouped tracks landed here)
-                        # spams log 10 times a second
-                        # self.main_script().log_message(f"Not enough devices loaded for index and __chosen_device is liveobj_valid() name display blank over device index {t_d_idx} Danger! Will Robinson! Danger!")
+                        # is "blanks" better? ("new" group track with no devices just two grouped tracks landed here)
+                        device_name = "trk: " + selected_track.name
                 # else:
                 #     self.main_script().log_message(f"Current Track Device List length too short for index: name display blank over device index {t_d_idx}")
 
-                lower_string1b = adjust_string(str(device_name), 20).center(20)
-                lower_string1 += lower_string1a + lower_string1b + ' '
-
+                lower_string1b = str(device_name) # adjust_string(str(device_name), 20).center(20)
+                if self.is_locked_to_device:
+                    if selected_track.is_frozen:
+                        lower_string1b += ' FL'
+                    else:
+                        lower_string1b += ' Lk'
+                elif selected_track.is_frozen:
+                    lower_string1b += ' Fz'
+                #else: # not locked or frozen
+                lower_string1 += lower_string1a + adjust_string(str(lower_string1b), 20).center(20)
+                # make sure there is room for control text <<Bank and Bank>>
+                lower_string1 = self.pad_right_if_less(lower_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - len('<<BankBank>>'))
+                if self.is_locked_to_device:
+                    upper_string1 = self.pad_right_if_less(upper_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - len('-Params Bank-'))
+                # else:
+                #     self.pad_right_if_less(upper_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - 7)
                 upper_string1 += '-Params Bank-'
                 for t in encoder_range:
                     try:
@@ -2150,7 +2208,10 @@ class EncoderController(MackieC4Component, Component):
                     elif e.vpot_index() == encoder_16_index:
                         # show if we are in Session or Arrange view in upper row and selected track name in lower row
                         upper_string2 += ('Scroll' if self.application().view.is_view_visible('Session') else 'Zoom  ')
-                        lower_string2 += self.get_scrolling_display_text(self.selected_track.name, e.vpot_index())
+                        if liveobj_valid(selected_track):
+                            lower_string2 += self.get_scrolling_display_text(selected_track.name, e.vpot_index())
+                        else:
+                            lower_string2 += '      '
 
                     else:
                         upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
