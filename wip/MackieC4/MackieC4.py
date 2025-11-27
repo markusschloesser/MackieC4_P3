@@ -92,13 +92,15 @@ class MackieC4(object):
 
         # if the goodbye message is displaying on the C4 after Live shutdown, and Live restarts, clear the display asap
         self.__encoder_controller.clear_all_lcds()
+        self.__encoder_controller.clear_all_leds()
+        self.send_midi((NOTE_ON_STATUS, C4SID_CHANNEL_STRIP, BUTTON_STATE_ON)) # turn ON default mode LED
 
         # turn off FUNCTION and ASSIGNMENT button LEDs except the default
-        for cc in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
-            if cc == C4SID_CHANNEL_STRIP:
-                self.send_midi((NOTE_ON_STATUS, cc, BUTTON_STATE_ON))
-            else:
-                self.send_midi((NOTE_ON_STATUS, cc, BUTTON_STATE_OFF))
+        # for cc in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
+        #     if cc == C4SID_CHANNEL_STRIP:
+        #         self.send_midi((NOTE_ON_STATUS, C4SID_CHANNEL_STRIP, BUTTON_STATE_ON))
+        #     else:
+        #         self.send_midi((NOTE_ON_STATUS, cc, BUTTON_STATE_OFF))
 
         tracks = self.song().visible_tracks + self.song().return_tracks
         index = 0
