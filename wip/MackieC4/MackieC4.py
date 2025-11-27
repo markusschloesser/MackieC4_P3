@@ -72,8 +72,8 @@ class MackieC4(object):
     scene = 0
     track_index = 0
     track_count = 0
-    rebuild_my_database = 0
-    return_resetter = 0
+    # refresh_my_database = 0  # was only being used once, the first time self.refresh_state() ran
+    # return_resetter = 0  # was never being used, condition not met in self.build_midi_map()
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
@@ -114,6 +114,8 @@ class MackieC4(object):
         # if refresh_state is not already listening for visible tracks view changes
         if self.song().visible_tracks_has_listener(self.tracks_change) != 1:
             self.song().add_visible_tracks_listener(self.tracks_change)
+
+        self.__encoder_controller.build_setup_database() # self.song() reference needed
 
         # To display song position pointer or beats on display
         self.__time_display = TimeDisplay(self)
@@ -208,11 +210,10 @@ class MackieC4(object):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
             Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
 
-        # self.rebuild_my_database = 1
-        if self.return_resetter == 1:
-            time.sleep(0.5)
-            self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
-            self.return_resetter = 0
+        # if self.return_resetter == 1:
+        #     time.sleep(0.5)
+        #     self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)  # default mode
+        #     self.return_resetter = 0
 
     def receive_midi(self, midi_bytes):
         """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
@@ -600,9 +601,9 @@ class MackieC4(object):
         self.add_device_listeners()
         self.add_transport_listener()
         self.add_scene_listeners()
-        if self.rebuild_my_database == 0:
-            self.__encoder_controller.build_setup_database()
-            self.rebuild_my_database = 1
+        # if self.refresh_my_database == 0:
+        #     self.__encoder_controller.build_setup_database()
+        #     self.refresh_my_database = 1
         self.trBlock(0, len(self.song().visible_tracks))
 
     def add_scene_listeners(self):
