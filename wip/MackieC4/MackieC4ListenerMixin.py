@@ -17,8 +17,7 @@ class MackieC4ListenerMixin(object):
     __module__ = __name__
 
     def __init__(self):
-        super().__init__()
-        
+                
         self._lm = {}   # lm == listener mappings
 
         self._mixer_master_keys = ('volume', 'panning', 'crossfader')
