@@ -33,6 +33,7 @@ from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
 from .c4_device_provider import C4DeviceProvider
+from .MackieC4ListenerMixin import MackieC4ListenerMixin
 
 if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
     from builtins import str
@@ -43,7 +44,7 @@ if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
 logger = logging.getLogger(__name__)
 
 
-class MackieC4(object):
+class MackieC4(MackieC4ListenerMixin, object):
     """  Main class that establishes the MackieC4 Component
          --- although technically, the Mackie Control C4Pro is an "extension" of the Mackie Control itself (like the MackieControlXT), this script stands alone.
              It doesn't work 'with' those Midi Remote Scripts which is why is_extension() returns False from here
@@ -53,23 +54,23 @@ class MackieC4(object):
        and lets us forward some requests that are needed beside the general Live API (see 'send_midi' or 'request_rebuild_midi_map').
     """
     __module__ = __name__
-    prlisten = {}
-    '''prlisten is "Parameter Value" Listener'''  # parameter.value_has_listener(), for example
-
-    plisten = {}
-    '''plisten is "Device Parameters" Listener'''  # device.parameters_has_listener()
-
-    dlisten = {}
-    '''dlisten is "Track Device" Listener'''  # track.view.selected_device_has_listener()
-
-    mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
-    '''mlisten is (type 0) regular Track "Mixer" Listeners'''  # keys (solo, mute, arm, ...) are mixer listener names, some are "track" (track_name_listener), some are "mixer" (track_volume_listener)
-
-    rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
-    '''rlisten is (type 1) Return Track "Mixer" Listeners'''
-
-    masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
-    '''masterlisten is (type 2) Master Track "Mixer" Listeners'''
+    # prlisten = {}
+    # '''prlisten is "Parameter Value" Listener'''  # parameter.value_has_listener(), for example
+    #
+    # plisten = {}
+    # '''plisten is "Device Parameters" Listener'''  # device.parameters_has_listener()
+    #
+    # dlisten = {}
+    # '''dlisten is "Track Device" Listener'''  # track.view.selected_device_has_listener()
+    #
+    # mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
+    # '''mlisten is (type 0) regular Track "Mixer" Listeners'''  # keys (solo, mute, arm, ...) are mixer listener names, some are "track" (track_name_listener), some are "mixer" (track_volume_listener)
+    #
+    # rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {}, 'available_output_routing_channels': {}, 'available_output_routing_types': {}, 'output_routing_channel': {}, 'output_routing_type': {}}
+    # '''rlisten is (type 1) Return Track "Mixer" Listeners'''
+    #
+    # masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
+    # '''masterlisten is (type 2) Master Track "Mixer" Listeners'''
 
     scene = 0
     track_index = 0
@@ -79,6 +80,7 @@ class MackieC4(object):
         self.__c_instance = c_instance
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
+        MackieC4ListenerMixin.__init__(self)
 
         self.__components = []
         self.__surface_is_locked = False
@@ -555,11 +557,11 @@ class MackieC4(object):
         Is called by Live when the script is unloaded. This happens when the script gets unselected from the preferences,
         automatically when the corresponding MIDI ports are gone or Live is shut down. All listeners to the Live API need
         to be removed. Cyclic dependencies should be broken, so the control surface can be garbage collected."""
-        self.rem_mixer_listeners()
+        self.destroy_mixer_listeners()  # rem_mixer_listeners()
         self.rem_scene_listeners()
         self.rem_overdub_listener()
         self.rem_tracks_listener()
-        self.rem_device_listeners()
+        self.remove_device_listeners()  # rem_device_listeners()
         self.rem_transport_listener()
         if self.song().visible_tracks_has_listener(self.tracks_change):
             self.song().remove_visible_tracks_listener(self.tracks_change)
@@ -584,7 +586,7 @@ class MackieC4(object):
         Send out MIDI to completely update the attached MIDI controller. Will be called when requested by the user,
         after for example having reconnecting the MIDI cables or when exiting MIDI map mode
         """
-        self.add_mixer_listeners()
+        self.set_mixer_listeners()  # add_mixer_listeners()
         self.add_overdub_listener()
         self.add_tracks_listener()
         self.add_device_listeners()
@@ -727,206 +729,25 @@ class MackieC4(object):
     def tracks_change(self):
         self.request_rebuild_midi_map()
 
-    def rem_mixer_listeners(self):
-        # Master Track
-        for type in ('volume', 'panning', 'crossfader'):
-            for tr in self.masterlisten[type]:
-                if liveobj_valid(tr):
-                    cb = self.masterlisten[type][tr]
-                    test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
-                    if test == 1:
-                        eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
+    def device_changestate(self, track, tid, type):
+        # dtls = f"input track <{track.name}> tidx <{tid}> type <{type}>"
+        # self.log_message(f"C4.device_changestate: " + dtls)
+        # did = self.tuple_idx(track.devices, track.view.selected_device)
+        self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
+        # if type == 2:
+        #     pass
+        # elif type == 1:
+        #     pass
 
-        # Normal Tracks
-        for type in ('arm', 'solo', 'mute', 'current_monitoring_state', 'available_input_routing_channels',
-                     'available_input_routing_types', 'available_output_routing_channels',
-                     'available_output_routing_types', 'input_routing_channel', 'input_routing_type',
-                     'output_routing_channel', 'output_routing_type', ):
-            for tr in self.mlisten[type]:
-                
-                if liveobj_valid(tr):                      
-                    cb = self.mlisten[type][tr]
-                    if type == 'arm':
-                        if tr.can_be_armed == 1:
-                            if tr.arm_has_listener(cb) == 1:
-                                tr.remove_arm_listener(cb)
-
-                    elif type == 'current_monitoring_state':
-                        if tr.can_be_armed == 1:
-                            if tr.current_monitoring_state_has_listener(cb) == 1:
-                                tr.remove_current_monitoring_state_listener(cb)
-                    else:
-                        test = eval('tr.' + type + '_has_listener(cb)')
-                        if test == 1:
-                            eval('tr.remove_' + type + '_listener(cb)')
-
-        for type in ('volume', 'panning'):
-            for tr in self.mlisten[type]:
-                if liveobj_valid(tr):
-                    cb = self.mlisten[type][tr]
-                    test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
-                    if test == 1:
-                        eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
-
-        for tr in self.mlisten['sends']:
-            if liveobj_valid(tr):
-                for send in self.mlisten['sends'][tr]:
-                    if liveobj_valid(send):
-                        cb = self.mlisten['sends'][tr][send]
-                        if send.value_has_listener(cb) == 1:
-                            send.remove_value_listener(cb)
-
-        for tr in self.mlisten['name']:
-            if liveobj_valid(tr):
-                cb = self.mlisten['name'][tr]
-                if tr.name_has_listener(cb) == 1:
-                    tr.remove_name_listener(cb)
-
-        # Return Tracks
-        for type in ('solo', 'mute', 'available_output_routing_channels', 'available_output_routing_types', 'output_routing_channel', 'output_routing_type'):
-            for tr in self.rlisten[type]:
-                if liveobj_valid(tr):
-                    cb = self.rlisten[type][tr]
-                    test = eval('tr.' + type + '_has_listener(cb)')
-                    if test == 1:
-                        eval('tr.remove_' + type + '_listener(cb)')
-
-        for type in ('volume', 'panning'):
-            for tr in self.rlisten[type]:
-                if liveobj_valid(tr):
-                    cb = self.rlisten[type][tr]
-                    test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
-                    if test == 1:
-                        eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
-
-        for tr in self.rlisten['sends']:
-            if liveobj_valid(tr):
-                for send in self.rlisten['sends'][tr]:
-                    if liveobj_valid(send):
-                        cb = self.rlisten['sends'][tr][send]
-                        if send.value_has_listener(cb) == 1:
-                            send.remove_value_listener(cb)
-
-        for tr in self.rlisten['name']:
-            if liveobj_valid(tr):
-                cb = self.rlisten['name'][tr]
-                if tr.name_has_listener(cb) == 1:
-                    tr.remove_name_listener(cb)
-
-        self.mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {},
-                        'sends': {}, 'name': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {},
-                        'available_output_routing_channels': {}, 'available_output_routing_types': {},
-                        'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {},
-                        'output_routing_type': {}, }
-        self.rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {},
-                        'available_output_routing_channels': {}, 'available_output_routing_types': {},
-                        'output_routing_channel': {}, 'output_routing_type': {}}
-        self.masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
-        return
-
-    def add_mixer_listeners(self):
-        self.rem_mixer_listeners()
-        tr = self.song().master_track
-        for type in ('volume', 'panning', 'crossfader'):
-            self.add_master_listener(0, type, tr)
-
-        tracks = self.song().visible_tracks
-        for track in range(len(tracks)):
-            tr = tracks[track]
-            self.add_trname_listener(track, tr, 0)
-            for type in ('arm', 'solo', 'mute'):
-                if type == 'arm':
-                    if tr.can_be_armed == 1:
-                        self.add_mixert_listener(track, type, tr)
-                else:
-                    self.add_mixert_listener(track, type, tr)
-
-            for type in ('volume', 'panning'):
-                self.add_mixerv_listener(track, type, tr)
-
-            for type in ('is_frozen'):
-                if tr.can_be_frozen == 1:
-                    if tr.is_frozen_has_listener(self.on_is_frozen_changed):
-                        tr.remove_is_frozen_listener(self.on_is_frozen_changed)
-                    tr.add_is_frozen_listener(self.on_is_frozen_changed)
-
-            for sid in range(len(tr.mixer_device.sends)):
-                self.add_send_listener(track, tr, sid, tr.mixer_device.sends[sid])
-
-        tracks = self.song().return_tracks
-        for track in range(len(tracks)):
-            tr = tracks[track]
-            self.add_trname_listener(track, tr, 1)
-            for type in ('solo', 'mute'):
-                self.add_retmixert_listener(track, type, tr)
-
-            for type in ('volume', 'panning'):
-                self.add_retmixerv_listener(track, type, tr)
-
-            for sid in range(len(tr.mixer_device.sends)):
-                self.add_retsend_listener(track, tr, sid, tr.mixer_device.sends[sid])
-
-    def on_is_frozen_changed(self):
-        self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
-
-    def add_send_listener(self, tid, track, sid, send):
-        if (track in self.mlisten['sends']) != 1:
-            self.mlisten['sends'][track] = {}
-        if (send in self.mlisten['sends'][track]) != 1:
-            cb = lambda: self.send_changestate(tid, track, sid, send)
-            self.mlisten['sends'][track][send] = cb
-            send.add_value_listener(cb)
-
-    def add_mixert_listener(self, tid, type, track):
-        if (track in self.mlisten[type]) != 1:
-            cb = lambda: self.mixert_changestate(type, tid, track)
-            self.mlisten[type][track] = cb
-            eval('track.add_' + type + '_listener(cb)')
-
-    def add_mixerv_listener(self, tid, type, track):
-        if (track in self.mlisten[type]) != 1:
-            cb = lambda: self.mixerv_changestate(type, tid, track)
-            self.mlisten[type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
-
-    def add_master_listener(self, tid, type, track):
-        if (track in self.masterlisten[type]) != 1:
-            cb = lambda: self.mixerv_changestate(type, tid, track, 2)
-            self.masterlisten[type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
-
-    def add_retsend_listener(self, tid, track, sid, send):
-        if (track in self.rlisten['sends']) != 1:
-            self.rlisten['sends'][track] = {}
-        if (send in self.rlisten['sends'][track]) != 1:
-            cb = lambda: self.send_changestate(tid, track, sid, send, 1)
-            self.rlisten['sends'][track][send] = cb
-            send.add_value_listener(cb)
-
-    def add_retmixert_listener(self, tid, type, track):
-        if (track in self.rlisten[type]) != 1:
-            cb = lambda: self.mixert_changestate(type, tid, track, 1)
-            self.rlisten[type][track] = cb
-            eval('track.add_' + type + '_listener(cb)')
-
-    def add_retmixerv_listener(self, tid, type, track):
-        if (track in self.rlisten[type]) != 1:
-            cb = lambda: self.mixerv_changestate(type, tid, track, 1)
-            self.rlisten[type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
-
-    # Track name listener
-    def add_trname_listener(self, tid, track, ret=0):
-        cb = lambda: self.trname_changestate(tid, track, ret)
-        if ret == 1:
-            if (track in self.rlisten['name']) != 1:
-                self.rlisten['name'][track] = cb
-        elif (track in self.mlisten['name']) != 1:
-            self.mlisten['name'][track] = cb
-        track.add_name_listener(cb)
+    def param_changestate(self, param, tid, did, pid, type):
+        if type == 2:
+            pass
+        elif type == 1:
+            pass
 
     def mixerv_changestate(self, type, tid, track, r=0):
-        val = eval('track.mixer_device.' + type + '.value')
+        cmd = f"track.mixer_device.{type}.value"
+        val = eval(cmd)
         types = {'panning': 'pan', 'volume': 'volume', 'crossfader': 'crossfader'}
         if r == 2:
             pass
@@ -934,7 +755,8 @@ class MackieC4(object):
             pass
 
     def mixert_changestate(self, type, tid, track, r=0):
-        val = eval('track.' + type)
+        cmd = f"track.{type}"
+        val = eval(cmd)
         if r == 1:
             pass
 
@@ -949,96 +771,318 @@ class MackieC4(object):
         else:
             self.trBlock(0, len(self.song().visible_tracks))
 
-    def add_device_listeners(self):
-        self.rem_device_listeners()
-        # self.log_message("C4.add_device_listeners: removed any existing device_listeners")
-        self.do_add_device_listeners(self.song().tracks, 0)
-        self.do_add_device_listeners(self.song().return_tracks, 1)
-        self.do_add_device_listeners([self.song().master_track], 2)
-        # self.log_message("C4.add_device_listeners: added all track device_listeners types 0, 1, 2")
+    # def rem_mixer_listeners(self):
+    #     # Master Track
+    #     for type in ('volume', 'panning', 'crossfader'):
+    #         for tr in self.masterlisten[type]:
+    #             if liveobj_valid(tr):
+    #                 cb = self.masterlisten[type][tr]
+    #                 test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
+    #                 if test == 1:
+    #                     eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
+    #
+    #     # Normal Tracks
+    #     for type in ('arm', 'solo', 'mute', 'current_monitoring_state', 'available_input_routing_channels',
+    #                  'available_input_routing_types', 'available_output_routing_channels',
+    #                  'available_output_routing_types', 'input_routing_channel', 'input_routing_type',
+    #                  'output_routing_channel', 'output_routing_type', ):
+    #         for tr in self.mlisten[type]:
+    #
+    #             if liveobj_valid(tr):
+    #                 cb = self.mlisten[type][tr]
+    #                 if type == 'arm':
+    #                     if tr.can_be_armed == 1:
+    #                         if tr.arm_has_listener(cb) == 1:
+    #                             tr.remove_arm_listener(cb)
+    #
+    #                 elif type == 'current_monitoring_state':
+    #                     if tr.can_be_armed == 1:
+    #                         if tr.current_monitoring_state_has_listener(cb) == 1:
+    #                             tr.remove_current_monitoring_state_listener(cb)
+    #                 else:
+    #                     test = eval('tr.' + type + '_has_listener(cb)')
+    #                     if test == 1:
+    #                         eval('tr.remove_' + type + '_listener(cb)')
+    #
+    #     for type in ('volume', 'panning'):
+    #         for tr in self.mlisten[type]:
+    #             if liveobj_valid(tr):
+    #                 cb = self.mlisten[type][tr]
+    #                 test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
+    #                 if test == 1:
+    #                     eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
+    #
+    #     for tr in self.mlisten['sends']:
+    #         if liveobj_valid(tr):
+    #             for send in self.mlisten['sends'][tr]:
+    #                 if liveobj_valid(send):
+    #                     cb = self.mlisten['sends'][tr][send]
+    #                     if send.value_has_listener(cb) == 1:
+    #                         send.remove_value_listener(cb)
+    #
+    #     for tr in self.mlisten['name']:
+    #         if liveobj_valid(tr):
+    #             cb = self.mlisten['name'][tr]
+    #             if tr.name_has_listener(cb) == 1:
+    #                 tr.remove_name_listener(cb)
+    #
+    #     # Return Tracks
+    #     for type in ('solo', 'mute', 'available_output_routing_channels', 'available_output_routing_types', 'output_routing_channel', 'output_routing_type'):
+    #         for tr in self.rlisten[type]:
+    #             if liveobj_valid(tr):
+    #                 cb = self.rlisten[type][tr]
+    #                 test = eval('tr.' + type + '_has_listener(cb)')
+    #                 if test == 1:
+    #                     eval('tr.remove_' + type + '_listener(cb)')
+    #
+    #     for type in ('volume', 'panning'):
+    #         for tr in self.rlisten[type]:
+    #             if liveobj_valid(tr):
+    #                 cb = self.rlisten[type][tr]
+    #                 test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
+    #                 if test == 1:
+    #                     eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
+    #
+    #     for tr in self.rlisten['sends']:
+    #         if liveobj_valid(tr):
+    #             for send in self.rlisten['sends'][tr]:
+    #                 if liveobj_valid(send):
+    #                     cb = self.rlisten['sends'][tr][send]
+    #                     if send.value_has_listener(cb) == 1:
+    #                         send.remove_value_listener(cb)
+    #
+    #     for tr in self.rlisten['name']:
+    #         if liveobj_valid(tr):
+    #             cb = self.rlisten['name'][tr]
+    #             if tr.name_has_listener(cb) == 1:
+    #                 tr.remove_name_listener(cb)
+    #
+    #     self.mlisten = {'solo': {}, 'mute': {}, 'arm': {}, 'current_monitoring_state': {}, 'panning': {}, 'volume': {},
+    #                     'sends': {}, 'name': {}, 'available_input_routing_channels': {}, 'available_input_routing_types': {},
+    #                     'available_output_routing_channels': {}, 'available_output_routing_types': {},
+    #                     'input_routing_type': {}, 'input_routing_channel': {}, 'output_routing_channel': {},
+    #                     'output_routing_type': {}, }
+    #     self.rlisten = {'solo': {}, 'mute': {}, 'panning': {}, 'volume': {}, 'sends': {}, 'name': {},
+    #                     'available_output_routing_channels': {}, 'available_output_routing_types': {},
+    #                     'output_routing_channel': {}, 'output_routing_type': {}}
+    #     self.masterlisten = {'panning': {}, 'volume': {}, 'crossfader': {}}
+    #     return
 
-    def do_add_device_listeners(self, tracks, type):
-        for i in range(len(tracks)):
-            self.add_device_listener(tracks[i], i, type)
-            # self.log_message("C4.do_add_device_listeners: for track type <{0}>".format(type))
-            if len(tracks[i].devices) >= 1:
-                for j in range(len(tracks[i].devices)):
-                    self.add_devpmlistener(tracks[i].devices[j])
-                    param_count = len(tracks[i].devices[j].parameters)
-                    # self.log_message("C4.do_add_device_listeners: adding <{0}> device parameter listeners".format(param_count))
-                    if param_count >= 1:
-                        for k in range(len(tracks[i].devices[j].parameters)):
-                            par = tracks[i].devices[j].parameters[k]
-                            self.add_paramlistener(par, i, j, k, type)
+    # def add_mixer_listeners(self):
+    #     self.rem_mixer_listeners()
+    #     tr = self.song().master_track
+    #     for type in ('volume', 'panning', 'crossfader'):
+    #         self.add_master_listener(0, type, tr)
+    #
+    #     tracks = self.song().visible_tracks
+    #     for track in range(len(tracks)):
+    #         tr = tracks[track]
+    #         self.add_trname_listener(track, tr, 0)
+    #         for type in ('arm', 'solo', 'mute'):
+    #             if type == 'arm':
+    #                 if tr.can_be_armed == 1:
+    #                     self.add_mixert_listener(track, type, tr)
+    #             else:
+    #                 self.add_mixert_listener(track, type, tr)
+    #
+    #         for type in ('volume', 'panning'):
+    #             self.add_mixerv_listener(track, type, tr)
+    #
+    #         for type in ('is_frozen'):
+    #             if tr.can_be_frozen == 1:
+    #                 if tr.is_frozen_has_listener(self.on_is_frozen_changed):
+    #                     tr.remove_is_frozen_listener(self.on_is_frozen_changed)
+    #                 tr.add_is_frozen_listener(self.on_is_frozen_changed)
+    #
+    #         for sid in range(len(tr.mixer_device.sends)):
+    #             self.add_send_listener(track, tr, sid, tr.mixer_device.sends[sid])
+    #
+    #     tracks = self.song().return_tracks
+    #     for track in range(len(tracks)):
+    #         tr = tracks[track]
+    #         self.add_trname_listener(track, tr, 1)
+    #         for type in ('solo', 'mute'):
+    #             self.add_retmixert_listener(track, type, tr)
+    #
+    #         for type in ('volume', 'panning'):
+    #             self.add_retmixerv_listener(track, type, tr)
+    #
+    #         for sid in range(len(tr.mixer_device.sends)):
+    #             self.add_retsend_listener(track, tr, sid, tr.mixer_device.sends[sid])
 
-    def rem_device_listeners(self):
-        for pr in self.prlisten:
-            if liveobj_valid(pr):
-                ocb = self.prlisten[pr]
-                # self.log_message("C4.rem_device_listeners: removing track device parameter listeners")
-                if pr.value_has_listener(ocb) == 1:
-                    pr.remove_value_listener(ocb)
+    def on_is_frozen_changed(self):
+        self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
 
-        self.prlisten = {}
+    # def add_send_listener(self, tid, track, sid, send):
+    #     if (track in self.mlisten['sends']) != 1:
+    #         self.mlisten['sends'][track] = {}
+    #     if (send in self.mlisten['sends'][track]) != 1:
+    #         cb = lambda: self.send_changestate(tid, track, sid, send)
+    #         self.mlisten['sends'][track][send] = cb
+    #         send.add_value_listener(cb)
+    #
+    # def add_mixert_listener(self, tid, type, track):
+    #     if (track in self.mlisten[type]) != 1:
+    #         cb = lambda: self.mixert_changestate(type, tid, track)
+    #         self.mlisten[type][track] = cb
+    #         eval('track.add_' + type + '_listener(cb)')
+    #
+    # def add_mixerv_listener(self, tid, type, track):
+    #     if (track in self.mlisten[type]) != 1:
+    #         cb = lambda: self.mixerv_changestate(type, tid, track)
+    #         self.mlisten[type][track] = cb
+    #         eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+    #
+    # def add_master_listener(self, tid, type, track):
+    #     if (track in self.masterlisten[type]) != 1:
+    #         cb = lambda: self.mixerv_changestate(type, tid, track, 2)
+    #         self.masterlisten[type][track] = cb
+    #         eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+    #
+    # def add_retsend_listener(self, tid, track, sid, send):
+    #     if (track in self.rlisten['sends']) != 1:
+    #         self.rlisten['sends'][track] = {}
+    #     if (send in self.rlisten['sends'][track]) != 1:
+    #         cb = lambda: self.send_changestate(tid, track, sid, send, 1)
+    #         self.rlisten['sends'][track][send] = cb
+    #         send.add_value_listener(cb)
+    #
+    # def add_retmixert_listener(self, tid, type, track):
+    #     if (track in self.rlisten[type]) != 1:
+    #         cb = lambda: self.mixert_changestate(type, tid, track, 1)
+    #         self.rlisten[type][track] = cb
+    #         eval('track.add_' + type + '_listener(cb)')
+    #
+    # def add_retmixerv_listener(self, tid, type, track):
+    #     if (track in self.rlisten[type]) != 1:
+    #         cb = lambda: self.mixerv_changestate(type, tid, track, 1)
+    #         self.rlisten[type][track] = cb
+    #         eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+    #
+    # # Track name listener
+    # def add_trname_listener(self, tid, track, ret=0):
+    #     cb = lambda: self.trname_changestate(tid, track, ret)
+    #     if ret == 1:
+    #         if (track in self.rlisten['name']) != 1:
+    #             self.rlisten['name'][track] = cb
+    #     elif (track in self.mlisten['name']) != 1:
+    #         self.mlisten['name'][track] = cb
+    #     track.add_name_listener(cb)
+    #
+    # def mixerv_changestate(self, type, tid, track, r=0):
+    #     val = eval('track.mixer_device.' + type + '.value')
+    #     types = {'panning': 'pan', 'volume': 'volume', 'crossfader': 'crossfader'}
+    #     if r == 2:
+    #         pass
+    #     elif r == 1:
+    #         pass
+    #
+    # def mixert_changestate(self, type, tid, track, r=0):
+    #     val = eval('track.' + type)
+    #     if r == 1:
+    #         pass
+    #
+    # def send_changestate(self, tid, track, sid, send, r=0):
+    #     val = send.value
+    #     if r == 1:
+    #         pass
+    #
+    # def trname_changestate(self, tid, track, r=0):
+    #     if r == 1:
+    #         pass
+    #     else:
+    #         self.trBlock(0, len(self.song().visible_tracks))
+    #
+    # def add_device_listeners(self):
+    #     self.remove_device_listeners()
+    #     # self.log_message("C4.add_device_listeners: removed any existing device_listeners")
+    #     self.do_add_device_listeners(self.song().tracks, 0)
+    #     self.do_add_device_listeners(self.song().return_tracks, 1)
+    #     self.do_add_device_listeners([self.song().master_track], 2)
+    #     # self.log_message("C4.add_device_listeners: added all track device_listeners types 0, 1, 2")
+    #
+    # def do_add_device_listeners(self, tracks, type):
+    #     for i in range(len(tracks)):
+    #         self.add_device_listener(tracks[i], i, type)
+    #         # self.log_message("C4.do_add_device_listeners: for track type <{0}>".format(type))
+    #         if len(tracks[i].devices) >= 1:
+    #             for j in range(len(tracks[i].devices)):
+    #                 self.add_devpmlistener(tracks[i].devices[j])
+    #                 param_count = len(tracks[i].devices[j].parameters)
+    #                 # self.log_message("C4.do_add_device_listeners: adding <{0}> device parameter listeners".format(param_count))
+    #                 if param_count >= 1:
+    #                     for k in range(len(tracks[i].devices[j].parameters)):
+    #                         par = tracks[i].devices[j].parameters[k]
+    #                         self.add_paramlistener(par, i, j, k, type)
 
-        for tr in self.dlisten:
-            if liveobj_valid(tr):
-                ocb = self.dlisten[tr]
-                # self.log_message("C4.rem_device_listeners: type <{0}>".format(type))
-                if tr.view.selected_device_has_listener(ocb) == 1:  # this is a direct call/check with to a function from Live (def selected_device_has_listener)
-                    tr.view.remove_selected_device_listener(ocb)
+    # def rem_device_listeners(self):
+    #     for pr in self.prlisten:
+    #         if liveobj_valid(pr):
+    #             ocb = self.prlisten[pr]
+    #             # self.log_message("C4.rem_device_listeners: removing track device parameter listeners")
+    #             if pr.value_has_listener(ocb) == 1:
+    #                 pr.remove_value_listener(ocb)
+    #
+    #     self.prlisten = {}
+    #
+    #     for tr in self.dlisten:
+    #         if liveobj_valid(tr):
+    #             ocb = self.dlisten[tr]
+    #             # self.log_message("C4.rem_device_listeners: type <{0}>".format(type))
+    #             if tr.view.selected_device_has_listener(ocb) == 1:  # this is a direct call/check with to a function from Live (def selected_device_has_listener)
+    #                 tr.view.remove_selected_device_listener(ocb)
+    #
+    #     self.dlisten = {}
+    #
+    #     for de in self.plisten:
+    #         if liveobj_valid(de):
+    #             ocb = self.plisten[de]
+    #             # self.log_message("C4.rem_device_listeners: removing track device listeners")
+    #             if de.parameters_has_listener(ocb) == 1:
+    #                 de.remove_parameters_listener(ocb)
+    #
+    #     self.plisten = {}
+    #     return
 
-        self.dlisten = {}
-
-        for de in self.plisten:
-            if liveobj_valid(de):
-                ocb = self.plisten[de]
-                # self.log_message("C4.rem_device_listeners: removing track device listeners")
-                if de.parameters_has_listener(ocb) == 1:
-                    de.remove_parameters_listener(ocb)
-
-        self.plisten = {}
-        return
-
-    def add_device_listener(self, track, tid, type):
-        cb = lambda: self.device_changestate(track, tid, type)
-        # self.log_message("C4.add_device_listener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
-        if (track in self.dlisten) != 1:
-            track.add_devices_listener(cb)  # this is a direct call/check with/ to a function from Live
-            track.view.add_selected_device_listener(cb)   # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
-
-            # self.log_message("C4.track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
-            self.dlisten[track] = cb
-
-    def device_changestate(self, track, tid, type):  # equivalent to __on_selected_device_chain_changed in MCU
-        # self.log_message("C4.device_changestate: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
-        # did = self.tuple_idx(track.devices, track.view.selected_device)
-        self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
-        # if type == 2:
-        #     pass
-        # elif type == 1:
-        #     pass
-
-    def add_devpmlistener(self, device):  # devpmlistener is device parameter listener
-        cb = lambda: self.devpm_change()
-        if (device in self.plisten) != 1:
-            device.add_parameters_listener(cb)
-            self.plisten[device] = cb
-
-    def devpm_change(self):
-        self.refresh_state()
-
-    def add_paramlistener(self, param, tid, did, pid, type):
-        cb = lambda: self.param_changestate(param, tid, did, pid, type)
-        if (param in self.prlisten) != 1:
-            param.add_value_listener(cb)
-            self.prlisten[param] = cb
-
-    def param_changestate(self, param, tid, did, pid, type):
-        if type == 2:
-            pass
-        elif type == 1:
-            pass
+    # def add_device_listener(self, track, tid, type):
+    #     cb = lambda: self.device_changestate(track, tid, type)
+    #     # self.log_message("C4.add_device_listener: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+    #     if (track in self.dlisten) != 1:
+    #         track.add_devices_listener(cb)  # this is a direct call/check with/ to a function from Live
+    #         track.view.add_selected_device_listener(cb)   # this is a direct call/check with/ to a function from Live ( def add_selected_device_listener(self, arg1, arg2) )
+    #
+    #         # self.log_message("C4.track.view.add_selected_device_listener(cb): track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+    #         self.dlisten[track] = cb
+    #
+    # def device_changestate(self, track, tid, type):  # equivalent to __on_selected_device_chain_changed in MCU
+    #     # self.log_message("C4.device_changestate: track <{0}> tidx <{1}> type <{2}>".format(track.name, tid, type))
+    #     # did = self.tuple_idx(track.devices, track.view.selected_device)
+    #     self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
+    #     # if type == 2:
+    #     #     pass
+    #     # elif type == 1:
+    #     #     pass
+    #
+    # def add_devpmlistener(self, device):  # devpmlistener is device parameter listener
+    #     cb = lambda: self.devpm_change()
+    #     if (device in self.plisten) != 1:
+    #         device.add_parameters_listener(cb)
+    #         self.plisten[device] = cb
+    #
+    # def devpm_change(self):
+    #     self.refresh_state()
+    #
+    # def add_paramlistener(self, param, tid, did, pid, type):
+    #     cb = lambda: self.param_changestate(param, tid, did, pid, type)
+    #     if (param in self.prlisten) != 1:
+    #         param.add_value_listener(cb)
+    #         self.prlisten[param] = cb
+    #
+    # def param_changestate(self, param, tid, did, pid, type):
+    #     if type == 2:
+    #         pass
+    #     elif type == 1:
+    #         pass
 
     def track_inc_dec(self, note):
         selected_track = self.song().view.selected_track
