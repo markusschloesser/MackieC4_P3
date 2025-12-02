@@ -1,12 +1,11 @@
 
 import logging
 
-from ableton.v2.base import liveobj_valid
+from ableton.v2.base import liveobj_valid, depends
 from .consts import *  # importing sys from the import in .consts via the * (everything)
 
 
 if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
-    from builtins import str
     from builtins import range
 
 logger = logging.getLogger(__name__)
@@ -16,9 +15,12 @@ class MackieC4ListenerMixin(object):
     
     __module__ = __name__
 
-    def __init__(self):
+    @depends(encoder_controller=None)
+    def __init__(self, encoder_controller=None):
                 
         self._lm = {}   # lm == listener mappings
+        # needed because self.__encoder_controller resolves here, MackieC4ListenerMixin, not MackieC4 where "public" methods like self.song() resolve
+        self.__my_ec_ref = encoder_controller
 
         self._mixer_master_keys = ('volume', 'panning', 'crossfader')
         self._mixer_normal_track_keys_all = ('arm', 'solo', 'mute', 'is_frozen', 'current_monitoring_state', 'available_input_routing_channels',
@@ -312,68 +314,132 @@ class MackieC4ListenerMixin(object):
         self.do_add_device_listeners([self.song().master_track], 2)
         # self.log_message("LM.add_device_listeners: added all track device_listeners types 0, 1, 2")
 
-    def do_add_device_listeners(self, tracks, type):
-        for i in range(len(tracks)):
-            self.add_device_listener(tracks[i], i, type)
-            # self.log_message("LM.do_add_device_listeners: for track type <{0}>".format(type))
-            if len(tracks[i].devices) >= 1:
-                for j in range(len(tracks[i].devices)):
-                    self.add_devpmlistener(tracks[i].devices[j])
-                    param_count = len(tracks[i].devices[j].parameters)
-                    # self.log_message("LM.do_add_device_listeners: adding <{0}> device parameter listeners".format(param_count))
-                    if param_count >= 1:
-                        for k in range(len(tracks[i].devices[j].parameters)):
-                            par = tracks[i].devices[j].parameters[k]
-                            self.add_paramlistener(par, i, j, k, type)
-
-    def add_device_listener(self, track, tid, type):
-        dtls = f"track <{track.name}> tidx <{tid}> type <{type}>"
-        cb = lambda: self.device_changestate(track, tid, type)
-        # self.log_message("LM.add_device_listener: input" + dtls)
-        if not (track in self._lm["dlisten"]):
-            track.add_devices_listener(cb)
-            track.view.add_selected_device_listener(cb)
-            # self.log_message("LM.add_device_listener: callback added for selected_device_listener with details: " + dtls)
-            self._lm["dlisten"][track] = cb
-
-
     def remove_device_listeners(self):
         for pr in self._lm["prlisten"]:
-            if liveobj_valid(pr):
-                ocb = self._lm["prlisten"][pr]
-                # self.log_message("LM.remove_device_listeners: removing parameter value listeners")
-                if pr.value_has_listener(ocb):
-                    pr.remove_value_listener(ocb)
+            self.remove_param_value_listener(pr)
 
         for tr in self._lm["dlisten"]:
-            if liveobj_valid(tr):
-                ocb = self._lm["dlisten"][tr]
-                # self.log_message("LM.remove_device_listeners: removing track device listeners)
-                if tr.view.selected_device_has_listener(ocb):
-                    tr.view.remove_selected_device_listener(ocb)
+            self.remove_track_device_listener(tr)
 
         for de in self._lm["plisten"]:
-            if liveobj_valid(de):
-                ocb = self._lm["plisten"][de]
-                # self.log_message("LM.remove_device_listeners: removing device parameters listener")
-                if de.parameters_has_listener(ocb):
-                    de.remove_parameters_listener(ocb)
+            self.remove_device_params_listener(de)
 
         self.clear_device_listener_keys()
         return
+    
+    def remove_param_value_listener(self, pr):
+        if liveobj_valid(pr) and self.has_param_value_listener(pr):
+            ocb = self._lm["prlisten"][pr] # ocb == old callback (function reference)
+            # self.log_message(f"LM.remove_param_value_listener: removing parameter {pr.name} value listener")
+            if pr.value_has_listener(ocb):
+                pr.remove_value_listener(ocb)
 
+    def remove_device_params_listener(self, de):
+        if liveobj_valid(de) and self.has_device_parameters_listener(de):
+            ocb = self._lm["plisten"][de]
+            # self.log_message(f"LM.remove_device_params_listener: removing device {de.name} parameters listener")
+            if de.parameters_has_listener(ocb):
+                de.remove_parameters_listener(ocb)
 
-    def add_devpmlistener(self, device):  # devpmlistener is device parameters listener
-        cb = lambda: self.devpm_change()
-        if not (device in self._lm["plisten"]):
-            device.add_parameters_listener(cb)
-            self._lm["plisten"][device] = cb
+    def remove_track_device_listener(self, tr):
+        if liveobj_valid(tr) and self.has_track_device_listener(tr):
+            ocb = self._lm["dlisten"][tr]
+            # self.log_message(f"LM.remove_track_device_listener: removing track {tr.name} device listener)
+            if tr.view.selected_device_has_listener(ocb):
+                tr.view.remove_selected_device_listener(ocb)
+            if tr.devices_has_listener(ocb):
+                tr.remove_devices_listener(ocb)
 
-    def devpm_change(self):
-        self.refresh_state()
+    def do_add_device_listeners(self, tracks, type=0):
+        # log_id = "LM.do_add_device_listeners: "
+        for i in range(len(tracks)):
+            track = tracks[i]
+            self.add_track_device_listener(track, i, type)
+            tt = "regular" if type == 0 else f"unknown type {type} "
+            tt = "return" if type == 1 else tt
+            tt = "master" if type == 2 else tt
+            # self.log_message(f"{log_id}added device listener (device_changestate) for <{tt}> track type {track.name}")
+            if len(track.devices) >= 1:
+                self.do_add_parameters_listeners(track, i, type)
 
-    def add_paramlistener(self, param, tid, did, pid, type):
+    def do_add_parameters_listeners(self, track, tid=0, type=0):
+        # log_id = "LM.do_add_parameters_listeners: "
+        track_devices = track.devices
+        extended_device_list = self.__my_ec_ref.get_device_list(track_devices)
+        # self.log_message(f"{log_id}standard device count {len(track_devices)} extended device count <{len(extended_device_list)}>")
+        self.do_add_track_devices_listeners(extended_device_list, tid, type, track.name)
+
+    def do_add_track_devices_listeners(self, device_list, tid=0, type=0, track_name=""):
+        for j in range(len(device_list)):
+            device = device_list[j]
+            self.do_add_one_devices_listeners(device, j, tid, type, track_name)
+
+    def do_add_one_devices_listeners(self, device, did=0, tid=0, type=0, track_name=""):
+        # log_id = "LM.do_add_one_devices_listeners: "
+        self.add_device_parameters_listener(device)
+        dtls = f"listener for track {track_name} device {device.name}"
+        # self.log_message(f"{log_id}added device parameters {dtls} devpm_change")
+        self.do_add_parameter_value_listeners(device, tid, did, type, dtls)
+
+    def do_add_parameter_value_listeners(self, device, tid=0, did=0, type=0, log_dtls=""):
+        # log_id = "LM.do_add_parameter_value_listeners: "
+        param_count = len(device.parameters)
+        if param_count >= 1:
+            for k in range(param_count):
+                par = device.parameters[k]
+                self.add_param_value_listener(par, tid, did, k, type)
+                # self.log_message(f"{log_id}added device parameter {log_dtls} parameter {par.name} param_changestate")
+
+    def add_track_device_listener(self, track, tid=0, type=0):
+        """for each track input, tid value is relative to the type value. 
+           for type 0: tid == self.song().tracks.index
+           for type 1: tid == self.song().return_tracks.index
+           for type 2: tid == self.song().master_track.index (always 0)"""
+        # dtls = f"track <{track.name}> tidx <{tid}> type <{type}>"
+        if self.has_track_device_listener(track):
+            self.remove_track_device_listener(track)
+        cb = lambda: self.device_changestate(track, tid, type)
+        # self.log_message("LM.add_track_device_listener: input" + dtls)
+        if track.devices_has_listener(cb):
+            track.remove_devices_listener(cb)
+        if track.view.selected_device_has_listener(cb):
+            track.view.remove_selected_device_listener(cb)
+
+        track.add_devices_listener(cb)
+        track.view.add_selected_device_listener(cb)
+        self._lm["dlisten"][track] = cb
+        # self.log_message("LM.add_track_device_listener: callback added for selected_device_listener with details: " + dtls)
+
+    def has_track_device_listener(self, track):
+        return True if track in self._lm["dlisten"] else False
+
+    def add_device_parameters_listener(self, device):
+        if self.has_device_parameters_listener(device):
+            self.remove_device_params_listener(device)
+        cb = lambda: self.devpm_change(device)
+        if device.parameters_has_listener(cb):
+            device.remove_parameters_listener(cb)
+
+        device.add_parameters_listener(cb)
+        self._lm["plisten"][device] = cb
+
+    def has_device_parameters_listener(self, device):
+        return True if device in self._lm["plisten"] else False
+
+    def add_param_value_listener(self, param, tid=0, did=0, pid=0, type=0):
+        """for each parameter input, tid value is relative to the type value (as above) 
+           for type 0: tid == self.song().tracks.index
+           for type 1: tid == self.song().return_tracks.index
+           for type 2: tid == self.song().master_track.index (always 0)
+           the did value is relative to the tid, and pid is relative to did"""
+        if self.has_param_value_listener(param):
+            self.remove_param_value_listener(param)
         cb = lambda: self.param_changestate(param, tid, did, pid, type)
-        if not (param in self._lm["prlisten"]):
-            param.add_value_listener(cb)
-            self._lm["prlisten"][param] = cb
+        if param.value_has_listener(cb):
+            param.remove_value_listener(cb)
+
+        param.add_value_listener(cb)
+        self._lm["prlisten"][param] = cb
+
+    def has_param_value_listener(self, param):
+        return True if param in self._lm["prlisten"] else False

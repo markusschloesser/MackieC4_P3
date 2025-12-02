@@ -63,7 +63,6 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__c_instance = c_instance
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
-        MackieC4ListenerMixin.__init__(self)
 
         self.__components = []
         self.__surface_is_locked = False
@@ -74,6 +73,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         for comp in [*self.__encoders, self.__encoder_controller, self.__device_provider]:
             self.register_component(comp)
 
+        MackieC4ListenerMixin.__init__(self, encoder_controller=self.__encoder_controller)
         # if the goodbye message is displaying on the C4 after Live shutdown, and Live restarts, clear the display asap
         self.__encoder_controller.clear_all_lcds()
         self.__encoder_controller.clear_all_leds()
@@ -177,7 +177,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
         # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
         for s in self.__encoders:
-            # this build_midi_map() will ask to forward midi CC messages from any encoder that is currently "mapped to" None (instead of a liveobj_valid(param))
+            # this s.build_midi_map() will ask to forward midi CC messages from any encoder that is currently "mapped to" None (instead of a liveobj_valid(param))
             s.build_midi_map(midi_map_handle)
 
         # ask Live to forward all midi note messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
@@ -710,12 +710,13 @@ class MackieC4(MackieC4ListenerMixin, object):
             pass
 
     def tracks_change(self):
+        # log_id = "C4.tracks_change: "
+        # self.log_message(f"{log_id}listener popped, rebuilding surface midi map")
         self.request_rebuild_midi_map()
 
     def device_changestate(self, track, tid, type):
-        # dtls = f"input track <{track.name}> tidx <{tid}> type <{type}>"
-        # self.log_message(f"C4.device_changestate: " + dtls)
-        # did = self.tuple_idx(track.devices, track.view.selected_device)
+        # log_id = "C4.device_changestate: "
+        # self.log_message(f"{log_id}device listener for {track.name}{tid} type {type} popped")
         self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
         # if type == 2:
         #     pass
@@ -723,10 +724,18 @@ class MackieC4(MackieC4ListenerMixin, object):
         #     pass
 
     def param_changestate(self, param, tid, did, pid, type):
-        if type == 2:
-            pass
-        elif type == 1:
-            pass
+        # log_id = "C4.param_changestate: "
+        # self.log_message(f"{log_id}parameter {param.name} changed state to value {param.value}")
+        self.__device_provider.set_last_param_value_change_details(param, tid, did, pid)
+        # if type == 2:
+        #     pass
+        # elif type == 1:
+        #     pass
+
+    def devpm_change(self, device):
+        # log_id = "C4.devpm_change: "
+        # self.log_message(f"{log_id}parameters listener for {device.name} popped, refreshing surface state")
+        self.refresh_state()
 
     def mixerv_changestate(self, type, tid, track, r=0):
         cmd = f"track.mixer_device.{type}.value"

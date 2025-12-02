@@ -13,6 +13,7 @@ from ableton.v2.base import liveobj_valid, liveobj_changed, find_if, listens
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 from ableton.v2.control_surface.component import Component
 from ableton.v3.live.action import toggle_or_cycle_parameter_value
+import ableton.v3.live.util as v3_util
 
 if sys.version_info[0] >= 3:  # Python 3.x (Live 11+)
     from builtins import range
@@ -203,8 +204,15 @@ class EncoderController(MackieC4Component, Component):
     @listens("device")
     def __on_device_changed(self):
         d = self.__device_provider.provided_device
-        # self.main_script().log_message(f"EC.__on_device_changed: listener popped, device changed to {d.name if liveobj_valid(d) else 'None'}")
-        self.__update_chosen_plugin_device(d)
+        self.__device_provider.clear_last_param_details()
+        if liveobj_valid(d):
+            # self.main_script().log_message(f"EC.__on_device_changed: listener popped, device changed to {d.name}")
+            self.__update_chosen_plugin_device(d)
+            track = self.__locked_device_track
+            # note: these listeners are in addition to the script's normal midi mapping listeners
+            self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
+        else:
+            self.main_script().log_message(f"EC.__on_device_changed: listener popped, but device not liveobj valid?")
 
     def __update_chosen_plugin_device(self, device):
         self.__chosen_plugin = device
@@ -224,16 +232,6 @@ class EncoderController(MackieC4Component, Component):
         #     self.main_script().log_message(f"EC.__on_is_locked_to_device_changed: listener popped, now unlocking from device {dv}")
         self.__locked_device_track = self.selected_track  # can't be locking (or unlocking) a device on an invalid "selected" track
         self.is_locked_to_device = is_locked
-
-    # function will(?) be used for tracking the "last changed parameter" (index?), if any, of the "self.__chosen_device"
-    # when we implement mapped behavior for the C4's Parameter Single buttons
-    # @listens("parameters")
-    # def __on_parameter_list_of_chosen_plugin_changed(self):
-    #     if liveobj_valid(self.__chosen_plugin)
-    #         self.__reorder_parameters()
-    #         self.__reassign_encoder_parameters()
-    #         self.request_rebuild_midi_map()
-    #     return
 
     def build_setup_database(self):
         # self.main_script().log_message("EC.build_setup_database: C4/building setup db")
@@ -407,7 +405,7 @@ class EncoderController(MackieC4Component, Component):
 
                 if liveobj_valid(device):
                     self.__locked_device_track = self.selected_track
-                    self.song().view.select_device(device)
+                    self.song().view.select_device(device) # this should notify device listeners via "device provider"
                 else:
                     self.__update_chosen_plugin_device(device) # device == None
 
@@ -564,7 +562,7 @@ class EncoderController(MackieC4Component, Component):
    # no wrap around: stop moving left at track 0, stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
-        # log_id = "EC.handle_bank_switch_ids: "
+        log_id = "EC.handle_bank_switch_ids: "
         # is_assignment_mode = "True" if self.__assignment_mode == C4M_CHANNEL_STRIP else "False"
         # self.main_script().log_message(f"{log_id}the current assignment mode is C4M_CHANNEL_STRIP: <{is_assignment_mode}>")
         current_bank_nbr = self.__eah.get_current_track_device_parameter_bank_nbr()
@@ -578,37 +576,49 @@ class EncoderController(MackieC4Component, Component):
             if current_bank_nbr < max_bank_nbr:
                 current_bank_nbr += 1
                 update_self = True
-        # elif self.__assignment_mode == C4M_CHANNEL_STRIP or self.__assignment_mode == C4M_PLUGINS:
-            # if liveobj_valid(self.__chosen_plugin):
-                # last_param = self.__chosen_plugin.
-            # if not self.is_locked_to_device:
-            #     selected_device_index = self.__eah.get_selected_device_index()
-            #     if selected_device_index > -1:
-            #         #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device index before <{0}>".format(selected_device_index))
-            #
-            #         if switch_id == C4SID_SINGLE_LEFT:  # to previous device
-            #             selected_device_index -= 1
-            #             #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device left")
-            #         elif switch_id == C4SID_SINGLE_RIGHT:  # to next device
-            #             #  self.main_script().log_message("EC.handle_bank_switch_ids: selected device right")
-            #             selected_device_index += 1
-            #
-            #         # self.main_script().log_message("EC.handle_bank_switch_ids: selected device index after <{0}>".format(selected_device_index))
-            #         nbr_devices = len(self.get_device_list(self.selected_track.devices))
-            #         if nbr_devices > 0 and nbr_devices > selected_device_index:
-            #
-            #             self.__eah.set_selected_device_index(selected_device_index)
-            #             current_selected_device = self.get_device_list(self.selected_track.devices)[selected_device_index]
-            #             self.song().view.select_device(current_selected_device)
-            #             # self.main_script().log_message("EC.handle_bank_switch_ids: new selected device <{0}>".format(self.__chosen_plugin.name))
-            #         else:
-            #             # something isn't getting updated correctly at startup and/or when devices are deleted
-            #             self.main_script().log_message("nbr_devices <= self.t_d_current[self.t_current]")
-            #             self.main_script().log_message("{0} <= {1}".format(nbr_devices, self.__eah.get_selected_device_index()))
-            #     else:
-            #         # something isn't getting updated correctly at startup and/or when devices are deleted
-            #         self.main_script().log_message("len(self.t_d_current) <= self.t_current")
-            #         self.main_script().log_message("{0} <= {1}".format(len(self.__eah.t_d_current), self.__eah.t_current))
+        elif self.__assignment_mode == C4M_CHANNEL_STRIP or self.__assignment_mode == C4M_PLUGINS:
+            if liveobj_valid(self.__chosen_plugin):
+                last_param_name = self.__device_provider.get_last_param_value_change_name()
+                if liveobj_valid(self.__chosen_plugin.parameters):
+                    # self.main_script().log_message(f"{log_id}looking for original param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
+                    cp = v3_util.get_parameter_by_name(last_param_name, self.__chosen_plugin)  # checks for match with p.original_name
+                    if not liveobj_valid(cp):
+                        # self.main_script().log_message(f"{log_id}looking for param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
+                        chosen_param = song_util.get_parameter_by_name(last_param_name, self.__chosen_plugin) # checks for match with p.name
+                    else:
+                        chosen_param = cp
+
+                    if liveobj_valid(chosen_param):
+                        if isinstance(chosen_param, tuple):
+                            self.main_script().log_message(f"{log_id}v3_util.get_parameter_by_name() returned a valid tuple")
+                            param = chosen_param[0]
+                            if not liveobj_valid(param):
+                                self.main_script().log_message(f"{log_id}but obj at index 0 was not liveobj_valid?")
+                        else:
+                            param = chosen_param
+
+                        if liveobj_valid(param):
+                            modifier = 1.0
+                            if param.value < 1.0 and param.max == 1.0:
+                                modifier = 0.01
+
+                            if switch_id == C4SID_SINGLE_LEFT:
+                                inc_amt = -1 * modifier
+                            elif switch_id == C4SID_SINGLE_RIGHT:
+                                inc_amt = 1 * modifier
+                            else:
+                                inc_amt = None
+                            # self.main_script().log_message(f"{log_id}updating value {param.value} by {inc_amt}")
+                            song_util.update_or_cycle_parameter_value(param, inc_amt)
+                            update_self = True
+                            # self.main_script().log_message(f"{log_id}updated value {param.value}")
+                        else:
+                            self.main_script().log_message(f"{log_id}param returned from get_parameter_by_name() was not liveobj_valid?")
+                    # else:
+                    #     # after a device change, but before a device parameter value change, execution passes through here
+                    #     self.main_script().log_message(f"{log_id}unable to get_parameter_by_name() neither returned parameter was liveobj_valid?")
+                else:
+                    self.main_script().log_message(f"{log_id}can't get parameters from valid device <{self.__chosen_plugin.name}>?")
 
         if update_self:
             self.__eah.set_current_track_device_parameter_bank_nbr(current_bank_nbr)

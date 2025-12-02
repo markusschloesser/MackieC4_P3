@@ -1,5 +1,6 @@
 from __future__ import absolute_import, print_function, unicode_literals
-from ableton.v2.base import liveobj_valid
+from ableton.v2.base import liveobj_valid, find_if
+import ableton.v3.live.util as v3_util
 
 
 def toggle_follow(self):
@@ -104,6 +105,11 @@ def unarm_all_button(self):
         if track.can_be_armed and (track.arm or track.implicit_arm):
             track.arm = False
 
+# method from ableton.v3.live.util.get_parameter_by_name()
+# except matching on "current" names
+def get_parameter_by_name(name, device):
+    if liveobj_valid(device):
+        return find_if((lambda p: p.name == name and liveobj_valid(p) and p.is_enabled), device.parameters)
 
 def toggle_or_cycle_parameter_value(parameter):
     if liveobj_valid(parameter):
@@ -114,3 +120,13 @@ def toggle_or_cycle_parameter_value(parameter):
                 parameter.value = parameter.value + 1
         else:
             parameter.value = parameter.max if parameter.value == parameter.min else parameter.min
+
+def update_or_cycle_parameter_value(parameter, increment_amount):
+    if liveobj_valid(parameter):
+        new_value = parameter.value + increment_amount
+        if new_value > parameter.max:
+            parameter.value = parameter.min
+        elif new_value < parameter.min:
+            parameter.value = parameter.max
+        else:
+            parameter.value = new_value
