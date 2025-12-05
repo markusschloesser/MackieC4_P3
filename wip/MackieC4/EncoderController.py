@@ -6,6 +6,7 @@
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 
+import re
 import sys
 import time
 
@@ -1762,6 +1763,7 @@ class EncoderController(MackieC4Component, Component):
 
     def get_scrolling_display_text(self, text: str, index: int, width: int = 6, max_length: int = 18) -> str:
         """use this to scroll up to 18 characters in the 6 space spot for parameter names etc"""
+        log_id = "EC.get_scrolling_display_text: "
         raw = text.strip()
 
         if len(raw) <= width:
@@ -1771,6 +1773,19 @@ class EncoderController(MackieC4Component, Component):
         now = time.time()
 
         compressed = raw.replace(" ", "")[:max_length]  # limit to 18 characters
+        # self.main_script().log_message(f"{log_id}testing display text {compressed}")
+        if 6 < len(compressed) < 11: # if the string has length between 7 and 10, does it end with dB or kHz?
+            # if the stripped and compressed string ends with 'dB' or 'kHz' for example
+            # (matching on 0 or 1 str.isspace() characters before any unit label is not strictly necessary, replace() above already handles all real world cases)
+            matcher = re.compile(".+\s?([dDbB]{2}|[kKhHzZ]{3})")
+            match = matcher.match(compressed)
+            if match is not None:
+                ungrouped_match_part = compressed[:match.start(1)] # remove 'dB' or kHz'
+                # self.main_script().log_message(f"{log_id}matched {compressed}, removed {match.group(1)} using {ungrouped_match_part}")
+                return adjust_string(ungrouped_match_part, width)
+            # else:
+            #     self.main_script().log_message(f"{log_id}no match on {compressed}")
+
         max_scroll_pos = max(0, len(compressed) - width)
 
         at_start = state["scroll_pos"] == 0
