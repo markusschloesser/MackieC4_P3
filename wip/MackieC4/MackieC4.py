@@ -55,7 +55,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     """
     __module__ = __name__
 
-    scene = 0
+    scene_index = 0
     track_index = 0
     track_count = 0
 
@@ -662,8 +662,8 @@ class MackieC4(MackieC4ListenerMixin, object):
             if scene == selected_scene:
                 selected_index = index
 
-        if selected_index != self.scene:
-            self.scene = selected_index
+        if selected_index != self.scene_index:
+            self.scene_index = selected_index
 
     def add_transport_listener(self):
         # try-except blocks handle the cases when the song.is_playing_listener callback method self.transport_change is already present.
