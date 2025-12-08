@@ -1,5 +1,8 @@
+
+import Live
+
 from ableton.v2.base import liveobj_valid, listens
-from ableton.v2.control_surface.device_provider import DeviceProvider
+from ableton.v2.control_surface.device_provider import DeviceProvider, device_to_appoint
 
 
 class C4DeviceProvider(DeviceProvider):
@@ -8,6 +11,7 @@ class C4DeviceProvider(DeviceProvider):
         super(C4DeviceProvider, self).__init__(song, *a, **k)
         self._last_change_details = {}
         self.clear_last_param_details()
+        self._selected_track = None
 
     def set_last_param_value_change_details(self, param, tid=0, did=0, pid=0):
         if liveobj_valid(param):
@@ -40,6 +44,10 @@ class C4DeviceProvider(DeviceProvider):
     def surface_is_locked(self):
         return self._locked_to_device
 
+    @property
+    def device_track(self):
+        return self._selected_track
+
     def on_update_display_timer(self):
         pass
 
@@ -48,12 +56,18 @@ class C4DeviceProvider(DeviceProvider):
         self._locked_to_device = False
         self._last_change_details = None
 
-    def update_device_selection(self):
-        super().update_device_selection()
-        # self.canonical_parent.log_message("C4DeviceProvider.update_device_selection: invoked super, clearing param details")
-        self.clear_last_param_details()
-
     def _update_appointed_device(self):
         super()._update_appointed_device()
         self.clear_last_param_details()
         # self.canonical_parent.log_message("C4DeviceProvider._update_appointed_device: invoked super")
+
+    def update_device_selection(self):
+        super().update_device_selection()
+        self.canonical_parent.log_message("C4DeviceProvider.update_device_selection: clearing last param details")
+        self.clear_last_param_details()
+
+        view = self.song.view
+        track_or_chain = view.selected_chain if view.selected_chain else view.selected_track
+        if isinstance(track_or_chain, Live.Track.Track):
+            self._selected_track = track_or_chain
+            self.canonical_parent.log_message(f"C4DeviceProvider.update_device_selection: updating self._selected_track to {track_or_chain.name}")

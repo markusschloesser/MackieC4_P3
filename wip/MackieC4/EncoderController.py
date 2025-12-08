@@ -66,12 +66,15 @@ class EncoderController(MackieC4Component, Component):
         self.system_switch_functions = {
             C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
                                      C4SID_SPLIT + 1: {"virtual_press_count": 0, "led_value": [0, 127]},
-                                     C4SID_SPLIT + 2: {"virtual_press_count": 0, "led_value": [0, 127]}},
-                          "press_count": 0},
-            C4SID_LOCK: {"led_id": {C4SID_LOCK: {"led_value": [0, 127]}},
-                         "press_count": 0},
-            C4SID_SPLIT_ERASE: {"led_id": {C4SID_SPLIT_ERASE: {"led_value": [0, 127]}},
-                                "press_count": 0}
+                                     C4SID_SPLIT + 2: {"virtual_press_count": 0, "led_value": [0, 127]}},  "press_count": 0},
+            C4SID_LOCK: {"led_id": {C4SID_LOCK: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_SPLIT_ERASE: {"led_id": {C4SID_SPLIT_ERASE: {"led_value": [0, 127]}}, "press_count": 0}
+        }
+        self.system_switch_assignments = {
+            C4SID_MARKER: {"led_id": {C4SID_MARKER: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_TRACK: {"led_id": {C4SID_TRACK: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_CHANNEL_STRIP: {"led_id": {C4SID_CHANNEL_STRIP: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_FUNCTION: {"led_id": {C4SID_FUNCTION: {"led_value": [0, 127]}}, "press_count": 0}
         }
 
         self.__own_encoders = encoders  # why separate references? This reference is only used here in __init__
@@ -100,6 +103,7 @@ class EncoderController(MackieC4Component, Component):
         self.__device_provider = device_provider
         self.__chosen_plugin = None
         self.is_locked_to_device = False
+        # self.__on_selected_track_changed.subject = self.song().view
         self.__on_device_changed.subject = self.__device_provider
         self.__on_is_locked_to_device_changed.subject = self.__device_provider
 
@@ -141,7 +145,7 @@ class EncoderController(MackieC4Component, Component):
                 found = True
                 index = i
                 break
-        if not found:
+        if not found:# this means master track is selected when the song session is initializing
             index = len(tracks)
             self.track_changed(index)
 
@@ -202,21 +206,95 @@ class EncoderController(MackieC4Component, Component):
     def get_encoders(self):
         return self.__encoders
 
+
+    # @listens("selected_track")
+    # def __on_selected_track_changed(self):
+    #     self.main_script().log_message("EC.__on_selected_track_changed: listener popped")
+    #     # self.main_script().log_message("EC.__on_selected_track_changed: listener popped, calling self.main_script().track_change()")
+    #     # self.main_script().track_change()
+
     @listens("device")
     def __on_device_changed(self):
+        log_id = "EC.__on_device_changed: "
         d = self.__device_provider.provided_device
         self.__device_provider.clear_last_param_details()
         if liveobj_valid(d):
-            # self.main_script().log_message(f"EC.__on_device_changed: listener popped, device changed to {d.name}")
-            self.__update_chosen_plugin_device(d)
             track = self.__locked_device_track
-            # note: these listeners are in addition to the script's normal midi mapping listeners
-            self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
+            if liveobj_valid(track):
+                # note: these listeners are in addition to the script's normal midi mapping listeners
+                self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
+            else:
+                track = self.__device_provider.device_track
+                if liveobj_valid(track):
+                    self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
+                else:
+                    self.main_script().log_message(f"{log_id}listener popped, {d.name} is valid, but not selected_track, finding track")
+                    track, index = self.find_devices_track(d)
+                    if liveobj_valid(track):
+                        self.selected_track = track
+                        self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
+                    else:
+                        msg = f"{log_id}listener popped, device is {d.name} but can't locate valid track reference. "
+                        self.main_script().log_message(msg + "no device parameter listeners added, but something else will soon derail anyway")
+            # self.main_script().log_message(f"{log_id}: listener popped, device changed to {d.name}")
+            self.__update_chosen_plugin_device(d)
         else:
-            self.main_script().log_message(f"EC.__on_device_changed: listener popped, but device not liveobj valid?")
+            self.main_script().log_message(f"{log_id}listener popped, but device not liveobj valid?")
+
+    def find_devices_track(self, device):
+        log_id = "EC.find_devices_track: "
+        selected_track = self.song().view.selected_track
+        if liveobj_valid(selected_track):
+            tracks = self.song().visible_tracks + self.song().return_tracks
+            selected_index = 0 # this track index should be the "local EAH database" index associated with the selected_track
+
+            if selected_track == self.song().master_track:
+                selected_index = len(tracks) # "one index past" the last valid regular + return tracks index
+                devices = self.get_device_list(selected_track.devices)
+                found = device in devices
+                msg = f"{log_id}self.song().view.selected_track is master (i=={selected_index}) and {device.name} device was "
+                if found:
+                    self.main_script().log_message(f"{msg}found")
+                    return selected_track, selected_index
+                else:
+                    self.main_script().log_message(f"{msg}NOT found, None returned")
+                    return None
+            else:
+                if selected_track in tracks:
+                    for i, track in enumerate(tracks):
+                        if track == selected_track:
+                            selected_index = i
+                            break
+                    devices  = self.get_device_list(selected_track.devices)
+                    found = device in devices
+                    msg = f"{log_id}self.song().view.selected_track is {selected_track.name} (i=={selected_index}) and {device.name} device was "
+                    if found:
+                        self.main_script().log_message(f"{msg}found")
+                        return selected_track, selected_index
+                    else:
+                        self.main_script().log_message(f"{msg}NOT found, None returned")
+                        return None
+                else:
+                    self.main_script().log_message(f"{log_id}self.song().view.selected_track is not master and not in visible or return tracks?")
+                    return None
+        else:
+            self.main_script().log_message(f"{log_id}self.song().view.selected_track is not a valid Live object?")
+            return selected_track
+
 
     def __update_chosen_plugin_device(self, device):
-        self.__chosen_plugin = device
+        log_id = "EC.__update_chosen_plugin_device: "
+        self.__chosen_plugin = device  # in cases like a new midi track selected; device will == None here
+        if not liveobj_valid(self.selected_track):
+            self.main_script().log_message(f"{log_id}current selected_track is not valid, finding track")
+            # if self.__chosen_plugin is not valid going in here, the found track coming out will never be valid either, something will soon bug out
+            track, index = self.find_devices_track(self.__chosen_plugin)
+            if liveobj_valid(track):
+                self.selected_track = track
+            else:
+                self.main_script().log_message(f"{log_id}selected_track is still not valid, __reassign_encoder_parameters() will soon bug out")
+        # else:
+        #     self.main_script().log_message(f"{log_id}selected track is valid, rebuilding midi map normally")
         self.__reorder_parameters()
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
@@ -320,7 +398,10 @@ class EncoderController(MackieC4Component, Component):
     def track_deleted(self, track_index):
         # self.main_script().log_message("EC.track_deleted: del tk idx before deleted track: {0}".format(track_index))
         self.__eah.track_deleted(track_index)
-        self.selected_track = self.song().view.selected_track
+        track = self.song().view.selected_track
+        if not liveobj_valid(track):
+            self.main_script().log_message(f"EC.track_deleted: song().view.selected_track is not valid, neither is index {track_index}")
+        self.selected_track = track
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
         # self.main_script().log_message("EC.track_deleted: selected tk after: {0}".format(self.selected_track.name))
@@ -560,6 +641,13 @@ class EncoderController(MackieC4Component, Component):
             erase_value = led_dict[C4SID_SPLIT_ERASE]["led_value"][toggle]
             self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, erase_value))
 
+            # for btn_id in self.system_switch_assignments:
+            #     switch_dict = self.system_switch_assignments[btn_id]
+            #     led_dict = switch_dict["led_id"]
+            #     toggle = switch_dict["press_count"] % 2
+            #     assignment_value = led_dict[btn_id]["led_value"][toggle]
+            #     self.send_midi((NOTE_ON_STATUS, btn_id, assignment_value))
+
    # no wrap around: stop moving left at track 0, stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
@@ -631,8 +719,8 @@ class EncoderController(MackieC4Component, Component):
         """the 4 Assignment buttons on the C4, which handle the mode switching"""
         # C4 assignment.marker button == C4M_USER mode
         update_self = False
+        led_dict = self.system_switch_assignments[switch_id]
         if switch_id == C4SID_MARKER:
-
             if self.__assignment_mode != button_id_to_assignment_mode[C4SID_MARKER]:  # C4M_USER:
                 self.__last_assignment_mode = self.__assignment_mode
                 self.__assignment_mode = button_id_to_assignment_mode[C4SID_MARKER]  # C4M_USER
@@ -664,6 +752,15 @@ class EncoderController(MackieC4Component, Component):
                 update_self = True
 
         if update_self:
+            for button_id in self.system_switch_assignments.keys():
+                button_dict = self.system_switch_assignments[button_id]
+                if switch_id == button_id:
+                    if button_dict["press_count"] % 2 == 0:
+                        button_dict["press_count"] += 1
+                else:
+                    if button_dict["press_count"] % 2 > 0:
+                        button_dict["press_count"] += 1
+
             if not self.__assignment_mode == C4M_USER:
                 self.update_system_switch_leds()
             self.update_assignment_mode_leds()
@@ -757,7 +854,7 @@ class EncoderController(MackieC4Component, Component):
                 old_name = "DEVICE CHAIN"
             else:# 2
                 old_name = "CHANNEL STRIP"
-        self.main_script().show_message("mode change from {} to {}".format(old_name, new_name))
+        self.main_script().show_message(f"mode change from {old_name} to {new_name}")
 
     def update_assignment_mode_leds(self):
         """
@@ -784,20 +881,24 @@ class EncoderController(MackieC4Component, Component):
             # log_msg = f"EC.update_assignment_mode_leds: changing non USER mode {old_name} ({old_mode}) to {new_name} ({new_mode})"
             # self.main_script().log_message(log_msg)
             # not in USER mode these feedback messages pass through the Max patch
-            for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
-                if i == assignment_mode_to_button_id[self.__assignment_mode]:
+            current_mode_id = assignment_mode_to_button_id[self.__assignment_mode]
+            for i in assignment_mode_switch_ids:
+                if i == current_mode_id:
+                    self.main_script().log_message(f"EC.update_assignment_mode_leds: led id {i} ON")
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
                 else:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
 
         if delay_assignment_led_update:
             # self.main_script().log_message("EC.update_assignment_mode_leds: updating assignment LEDs after leaving USER mode")
+            current_mode_id = assignment_mode_to_button_id[self.__assignment_mode]
+            done = False
             for i in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
-                if i < C4SID_MARKER:
-                    # turn off any Function area LEDs after USER mode
-                    # may need special handling for Lock button state here if previous script mode was "locked", led should be ON going back to it
+                if i < C4SID_MARKER and not done:
                     self.update_system_switch_leds()
-                if i == assignment_mode_to_button_id[self.__assignment_mode]:
+                    done = True
+                if i == current_mode_id:
+                    self.main_script().log_message(f"EC.update_assignment_mode_leds: led id {i} ON")
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
                 else:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
@@ -1377,7 +1478,11 @@ class EncoderController(MackieC4Component, Component):
         """ Reevaluate all v-pot -> parameter assignments """
         self.__filter_mst_trk = 0
         self.__filter_mst_trk_allow_audio = 0
-        self.__current_track_name = self.selected_track.name
+        if not liveobj_valid(self.selected_track):
+            self.main_script().log_message(f"EC.__reassign_encoder_parameters: self.selected track is not valid, blowing up soon")
+    #     # execution ends up here after deleting some tracks, bug hunting we are
+    # else:
+        self.__current_track_name = self.selected_track.name if liveobj_valid(self.selected_track) else "None"
         extended_device_list = self.get_device_list(self.selected_track.devices)
         if self.selected_track != self.song().master_track:
             self.__filter_mst_trk = 1  # a regular track is selected (not master track)
@@ -1777,7 +1882,7 @@ class EncoderController(MackieC4Component, Component):
         if 6 < len(compressed) < 11: # if the string has length between 7 and 10, does it end with dB or kHz?
             # if the stripped and compressed string ends with 'dB' or 'kHz' for example
             # (matching on 0 or 1 str.isspace() characters before any unit label is not strictly necessary, replace() above already handles all real world cases)
-            matcher = re.compile(".+\s?([dDbB]{2}|[kKhHzZ]{3})")
+            matcher = re.compile(".+([dDbB]{2}|[kKhHzZ]{3})")
             match = matcher.match(compressed)
             if match is not None:
                 ungrouped_match_part = compressed[:match.start(1)] # remove 'dB' or kHz'
