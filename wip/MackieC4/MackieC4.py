@@ -622,34 +622,39 @@ class MackieC4(MackieC4ListenerMixin, object):
         selected_index = 0
         found = selected_track in tracks
 
-        for track in tracks:
+        for i, track in enumerate(tracks):
             if track == selected_track:
-                selected_index = index
+                selected_index = i
                 found = True
-            index += 1
+            index = i
 
         if not found:
             if selected_track == self.song().master_track:
                 # index is now "one past" the last index in tracks
                 # tracks = self.song().visible_tracks + self.song().return_tracks
                 # this script stores master track info "one past" the tracks above in the same "encoder assignment history" array
-                selected_index = index
+                selected_index = len(tracks)
             else:
                 # signal that something bad happened - selected track
+                self.log_message(f"{log_id}setting selected index to a bad value {selected_index}")
                 selected_index = 555
 
         if selected_index != self.track_index:
-            # self.log_message(f"{log_id}setting self.track_index {self.track_index} to selected index {selected_index}"
+            # self.log_message(f"{log_id}setting self.track_index {self.track_index} to selected index {selected_index}")
             self.track_index = selected_index
 
         if self.track_count > len(tracks):
+            # self.log_message(f"{log_id}calling track_deleted passing index {selected_index}")
             self.__encoder_controller.track_deleted(selected_index)
             self.track_count -= 1
+            self.tracks_change()
         elif self.track_count < len(tracks):
+            # self.log_message(f"{log_id}calling track_added passing index {selected_index}")
             self.__encoder_controller.track_added(selected_index)
             self.track_count += 1
             self.tracks_change()
         else:
+            # self.log_message(f"{log_id}calling track_changed passing index {selected_index}")
             self.__encoder_controller.track_changed(selected_index)
 
     def scene_change(self): 
