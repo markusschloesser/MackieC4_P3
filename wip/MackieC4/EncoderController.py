@@ -1934,36 +1934,40 @@ class EncoderController(MackieC4Component, Component):
 
         return adjust_string(part.strip(), width)
 
-    def get_scrolling_display_text(self, text: str, index: int, width: int = 6, max_length: int = 18) -> str:
-        """use this to scroll up to 18 characters in the 6 space spot for parameter names etc"""
-        log_id = "EC.get_scrolling_display_text: "
-        raw = text.strip()
 
+    def get_scrolling_display_text(self, text: str, index: int, width: int = 6, max_scroll_len: int = 18) -> str:
+        """Scroll 6-char window across cleaned string up to 18 chars.
+        - ≤6: static
+        - 7–8: adjust_string to 6
+        - 9–18: scroll (spaces removed)
+        - >18: adjust_string to 18, then scroll
+        """
+
+        raw = str(text).strip()
         if len(raw) <= width:
             return adjust_string(raw, width)
+
+        raw_length_ns = len(raw.replace(" ", ""))  # count without spaces
+
+        # Case 1: 7–8 → smart shorten to 6
+        if width < raw_length_ns <= width + 2:
+            return adjust_string(raw, width)
+
+        # Case 2: >18 → shorten to 18 first, then scroll
+        if raw_length_ns > max_scroll_len:
+            scroll_text = adjust_string(raw, max_scroll_len)
+        else:
+            # Case 3: 9–18 → scroll, but with spaces removed
+            scroll_text = raw.replace(" ", "")[:max_scroll_len]
 
         state = self.encoder_name_display_state[index]
         now = time.time()
 
-        compressed = raw.replace(" ", "")[:max_length]  # limit to 18 characters
-        # self.main_script().log_message(f"{log_id}testing display text {compressed}")
-        if 6 < len(compressed) < 11: # if the string has length between 7 and 10, does it end with dB or kHz?
-            # if the stripped and compressed string ends with 'dB' or 'kHz' for example
-            # (matching on 0 or 1 str.isspace() characters before any unit label is not strictly necessary, replace() above already handles all real world cases)
-            matcher = re.compile(".+([dDbB]{2}|[kKhHzZ]{3})")
-            match = matcher.match(compressed)
-            if match is not None:
-                ungrouped_match_part = compressed[:match.start(1)] # remove 'dB' or kHz'
-                # self.main_script().log_message(f"{log_id}matched {compressed}, removed {match.group(1)} using {ungrouped_match_part}")
-                return adjust_string(ungrouped_match_part, width)
-            # else:
-            #     self.main_script().log_message(f"{log_id}no match on {compressed}")
-
-        max_scroll_pos = max(0, len(compressed) - width)
+        max_scroll_pos = max(0, len(scroll_text) - width)
 
         at_start = state["scroll_pos"] == 0
         at_end = state["scroll_pos"] == max_scroll_pos
-        delay = 1.5 if at_start or at_end else 0.5  # 1.5s pause at ends
+        delay = 1.5 if at_start or at_end else 0.5
 
         if now - state["last_scroll_time"] >= delay:
             state["scroll_pos"] += 1
@@ -1972,7 +1976,7 @@ class EncoderController(MackieC4Component, Component):
             if state["scroll_pos"] > max_scroll_pos:
                 state["scroll_pos"] = 0
 
-        window = compressed[state["scroll_pos"]:state["scroll_pos"] + width]
+        window = scroll_text[state["scroll_pos"]:state["scroll_pos"] + width]
         return adjust_string(window, width)
 
     def on_update_display_timer(self):
