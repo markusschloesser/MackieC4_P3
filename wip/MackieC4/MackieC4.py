@@ -61,19 +61,22 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
-        # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
-        self.__init_ready = False
 
         self.__components = []
         self.__surface_is_locked = False
-
         self.__device_provider = C4DeviceProvider(self.song())
+        self.__handling_assignment_switch = False
+
+        # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
+        self.__init_ready = False
         self.__encoders = [Encoders(self, i) for i in encoder_range]
         self.__encoder_controller = EncoderController(self, self.__encoders, self.__device_provider)        
         for comp in [*self.__encoders, self.__encoder_controller, self.__device_provider]:
             self.register_component(comp)
+        self.__init_ready = True
 
         MackieC4ListenerMixin.__init__(self, encoder_controller=self.__encoder_controller)
+
         # if the goodbye message is displaying on the C4 after Live shutdown, and Live restarts, clear the display asap
         self.__encoder_controller.clear_all_lcds()
         self.__encoder_controller.clear_all_leds()
@@ -106,7 +109,6 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__alt_is_pressed = False
         self.__marker_is_pressed = False
         self.__user_mode_exit = False
-        self.__handling_assignment_switch = False
 
         self.c4_note_range = set(range(C4SID_FIRST, C4SID_LAST + 1))
 
@@ -120,7 +122,6 @@ class MackieC4(MackieC4ListenerMixin, object):
             **{note: self.__encoder_controller.handle_pressed_v_pot for note in encoder_switch_ids}
         }
 
-        self.__init_ready = True
 
     def connect_script_instances(self, instanciated_scripts):
         """
@@ -613,12 +614,13 @@ class MackieC4(MackieC4ListenerMixin, object):
         tracks = self.song().visible_tracks + self.song().return_tracks
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range (because master track?)
+            # can land here when a Group track closes because the C4 encoder button was pressed, doesn't happen when Group closes because of mouse click
+            #         C4.track_change: nbr visible tracks (includes rtn tracks) 6 BUT SAVED VALUE <8> OUT OF EXPECTED RANGE
             self.log_message(f"{log_id}nbr visible tracks (includes rtn tracks) {len(tracks)} BUT SAVED VALUE <{self.track_count}> OUT OF EXPECTED RANGE")
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range (because master track?)
             # self.log_message(f"{log_id}nbr visible tracks (includes rtn tracks) {len(tracks)} and saved value <{self.track_count}> in expected range"
 
-        index = 0
         selected_index = 0
         found = selected_track in tracks
 
@@ -626,7 +628,6 @@ class MackieC4(MackieC4ListenerMixin, object):
             if track == selected_track:
                 selected_index = i
                 found = True
-            index = i
 
         if not found:
             if selected_track == self.song().master_track:
@@ -640,21 +641,21 @@ class MackieC4(MackieC4ListenerMixin, object):
                 selected_index = 555
 
         if selected_index != self.track_index:
-            # self.log_message(f"{log_id}setting self.track_index {self.track_index} to selected index {selected_index}")
+            self.log_message(f"{log_id}setting self.track_index {self.track_index} to selected index {selected_index}")
             self.track_index = selected_index
 
         if self.track_count > len(tracks):
             # self.log_message(f"{log_id}calling track_deleted passing index {selected_index}")
             self.__encoder_controller.track_deleted(selected_index)
-            self.track_count -= 1
+            self.track_count = len(tracks)
             self.tracks_change()
         elif self.track_count < len(tracks):
             # self.log_message(f"{log_id}calling track_added passing index {selected_index}")
             self.__encoder_controller.track_added(selected_index)
-            self.track_count += 1
+            self.track_count = len(tracks)
             self.tracks_change()
         else:
-            # self.log_message(f"{log_id}calling track_changed passing index {selected_index}")
+            self.log_message(f"{log_id}calling track_changed passing index {selected_index}")
             self.__encoder_controller.track_changed(selected_index)
 
     def scene_change(self): 
@@ -715,8 +716,8 @@ class MackieC4(MackieC4ListenerMixin, object):
             pass
 
     def tracks_change(self):
-        # log_id = "C4.tracks_change: "
-        # self.log_message(f"{log_id}listener popped, rebuilding surface midi map")
+        log_id = "C4.tracks_change: "
+        self.log_message(f"{log_id}listener popped, rebuilding surface midi map")
         self.request_rebuild_midi_map()
 
     def device_changestate(self, track, tid, type):
@@ -773,28 +774,34 @@ class MackieC4(MackieC4ListenerMixin, object):
 
 
     def track_inc_dec(self, note):
-        selected_track = self.song().view.selected_track
+        log_id = "C4.track_inc_dec: "
+        old_selected_track = self.song().view.selected_track
         tracks = self.song().visible_tracks + self.song().return_tracks
 
-        if selected_track == self.song().master_track:
+        if old_selected_track == self.song().master_track:
             if note == C4SID_TRACK_LEFT:
-                selected_index = len(tracks) - 1
-                self.song().view.selected_track = tracks[selected_index]
-            # can't move right of master track
+                new_selected_index = len(tracks) - 1
+                self.song().view.selected_track = tracks[new_selected_index]
+            else: # can't move right of master track
+                new_selected_index = len(tracks) # still master
         else:
-            selected_index = tracks.index(selected_track)
+            old_selected_index = tracks.index(old_selected_track)
+            self.log_message(f"{log_id} found track {old_selected_track.name} at index {old_selected_index}")
+            new_selected_index = old_selected_index
             for index, track in enumerate(tracks):
-                if track == selected_track:
+                if track == old_selected_track:
                     if note == C4SID_TRACK_LEFT and index > 0:
-                        selected_index = index - 1
+                        new_selected_index = index - 1
                     elif note == C4SID_TRACK_RIGHT and index < len(tracks) - 1:
-                        selected_index = index + 1
+                        new_selected_index = index + 1
                     elif note == C4SID_TRACK_RIGHT and index == len(tracks) - 1:
                         self.song().view.selected_track = self.song().master_track
                         return  # Return early since the master track has been selected
 
-            if 0 <= selected_index < len(tracks):
-                self.song().view.selected_track = tracks[selected_index]
+            if 0 <= new_selected_index < len(tracks):
+                self.song().view.selected_track = tracks[new_selected_index]
+
+        self.log_message(f"{log_id} after processing, song track {self.song().view.selected_track.name} at index {new_selected_index} is selected")
 
     def get_is_locked_to_device(self):
         return self.__surface_is_locked

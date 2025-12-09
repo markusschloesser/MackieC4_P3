@@ -72,7 +72,8 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.t_count = 0
         # self.main_script().log_message("EAH73:t_current idx <{0}> t_count <{1}> BEFORE setup_db".format(self.t_current, self.t_count))
 
-        tracks_in_song = self.song().tracks
+        # tracks_in_song = self.song().tracks
+        tracks_in_song = self.song().visible_tracks + self.song().return_tracks  # same way as everywhere else, right?
 
         # self.main_script().log_message("EAH77: nbr tracks in song {0}".format(len(tracks_in_song)))
         loop_index_tracker = 0
@@ -138,6 +139,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         # self.main_script().log_message("t_current idx <{0}> t_count <{1}> AFTER setup_db".format(self.t_current, self.t_count))
 
     def track_changed(self, track_index):
+        """expecting track_index to be the new track index, return value is -1 or the index of the selected device at that new track index """
         rtn = -1
         # self.main_script().log_message("t_current idx <{0}> t_count <{1}> BEFORE track change".format(self.t_current, self.t_count))
         self.t_current = track_index
