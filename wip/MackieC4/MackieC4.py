@@ -770,7 +770,9 @@ class MackieC4(MackieC4ListenerMixin, object):
             self.trBlock(0, len(self.song().visible_tracks))
 
     def on_is_frozen_changed(self):
-        self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
+        if not self.__encoder_controller.assignment_mode() == C4M_USER: # only one way to exit user mode (Marker + Lock buttons)
+            # switch script to Track Channel Strip mode if not already
+            self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
 
 
     def track_inc_dec(self, note):
