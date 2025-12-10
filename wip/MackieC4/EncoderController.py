@@ -276,10 +276,10 @@ class EncoderController(MackieC4Component, Component):
                         return selected_track, selected_index
                     else:
                         self.main_script().log_message(f"{msg}NOT found, None returned")
-                        return None
+                        return None, None
                 else:
                     self.main_script().log_message(f"{log_id}self.song().view.selected_track is not master and not in visible or return tracks?")
-                    return None
+                    return None, None
         else:
             self.main_script().log_message(f"{log_id}self.song().view.selected_track is not a valid Live object?")
             return selected_track
