@@ -223,6 +223,7 @@ class EncoderController(MackieC4Component, Component):
             track = self.__locked_device_track
             if liveobj_valid(track):
                 # note: these listeners are in addition to the script's normal midi mapping listeners
+                # they support the Parameter Single left and right button behavior (increment/decrement value of last changed device parameter)
                 self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
             else:
                 track = self.__device_provider.device_track
@@ -391,6 +392,8 @@ class EncoderController(MackieC4Component, Component):
         return
 
     def tracks_added(self, track_index, tracks):
+        # does it matter that this code always adds these tracks here without accounting for each track's extended_device_list in the EAH arrays,
+        # then only updates the local selected track? (using same update code as from self.track_deleted())
         self.__eah.tracks_added(track_index, tracks)
         self.__update_selected_track(track_index)
 
