@@ -367,10 +367,15 @@ class EncoderController(MackieC4Component, Component):
                         self.main_script().log_message(f"{log_id}{device.name} found at index {selected_device_index}")
                     self.__eah.update_device_counter(track_index, len(extended_device_list))
                     self.main_script().log_message(f"{log_id}called __eah.update_device_counter({track_index}, {len(extended_device_list)})")
+                # else something didn't get updated correctly at startup and/or when devices deleted?
+                elif len(extended_device_list) > 0: # punt if we can
+                    device = extended_device_list[0]
+                    if liveobj_valid(device):
+                        self.main_script().log_message(f"{log_id}{device.name} found at index 0 because {selected_device_index} is too big")
+                    self.__eah.update_device_counter(track_index, len(extended_device_list))
+                    self.main_script().log_message(f"{log_id}called __eah.update_device_counter({track_index}, {len(extended_device_list)})")
                 else:
-                    # something isn't getting updated correctly at startup and/or when devices are deleted
-                    self.main_script().log_message("len(extended_device_list) <= selected_device_index")
-                    self.main_script().log_message("{0} <= {1}".format(len(extended_device_list), selected_device_index))
+                    self.main_script().log_message(f"{log_id}len(extended_device_list) {len(extended_device_list)} < {selected_device_index} selected_device_index")
             else:
                 # something isn't getting updated correctly at startup and/or when devices are deleted
                 self.main_script().log_message("len(self.t_d_current) <= self.t_current")
