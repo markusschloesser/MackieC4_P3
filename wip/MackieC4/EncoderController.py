@@ -390,6 +390,10 @@ class EncoderController(MackieC4Component, Component):
 
         return
 
+    def tracks_added(self, track_index, tracks):
+        self.__eah.tracks_added(track_index, tracks)
+        self.__update_selected_track(track_index)
+
     def track_added(self, track_index):
         log_id = "EC.track_added: "
         self.selected_track = self.song().view.selected_track
@@ -423,10 +427,18 @@ class EncoderController(MackieC4Component, Component):
                 self.__update_chosen_plugin_device(device)  # device == None
         return
 
+    def tracks_deleted(self, track_index, tracks):
+        self.__eah.tracks_deleted(track_index, tracks)
+        self.__update_selected_track(track_index)
+
     def track_deleted(self, track_index):
-        log_id = "EC.track_deleted: "
+        # log_id = "EC.track_deleted: "
         # self.main_script().log_message(f"{log_id}del tk idx before deleted track: {0}".format(track_index))
         self.__eah.track_deleted(track_index)
+        self.__update_selected_track(track_index)
+
+    def __update_selected_track(self, track_index):
+        log_id = "EC.__update_selected_track: "
         track = self.song().view.selected_track
         if not liveobj_valid(track):
             self.main_script().log_message(f"{log_id}song().view.selected_track is not valid, neither is index {track_index}")

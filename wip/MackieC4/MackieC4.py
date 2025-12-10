@@ -612,10 +612,12 @@ class MackieC4(MackieC4ListenerMixin, object):
         # figure out if a track was added, deleted, or just changed, then delegate to appropriate encoder controller methods
         selected_track = self.song().view.selected_track
         tracks = self.song().visible_tracks + self.song().return_tracks
+
         # track might have been deleted, added, or just changed (always one at a time?)
         if not len(tracks) in range(self.track_count - 1, self.track_count + 2):  # include + 1 in range (because master track?)
-            # can land here when a Group track closes because the C4 encoder button was pressed, doesn't happen when Group closes because of mouse click
+            # can land here when a Group track closes because the C4 encoder button was pressed, doesn't happen when Group closes because of mouse click?
             #         C4.track_change: nbr visible tracks (includes rtn tracks) 6 BUT SAVED VALUE <8> OUT OF EXPECTED RANGE
+            # case handled below, for example: self.__encoder_controller.tracks_deleted(selected_index, tracks)
             self.log_message(f"{log_id}nbr visible tracks (includes rtn tracks) {len(tracks)} BUT SAVED VALUE <{self.track_count}> OUT OF EXPECTED RANGE")
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range (because master track?)
@@ -634,7 +636,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                 # index is now "one past" the last index in tracks
                 # tracks = self.song().visible_tracks + self.song().return_tracks
                 # this script stores master track info "one past" the tracks above in the same "encoder assignment history" array
-                selected_index = len(tracks)
+                selected_index = len(tracks) 
             else:
                 # signal that something bad happened - selected track
                 self.log_message(f"{log_id}setting selected index to a bad value {selected_index}")
@@ -644,15 +646,22 @@ class MackieC4(MackieC4ListenerMixin, object):
             self.log_message(f"{log_id}setting self.track_index {self.track_index} to selected index {selected_index}")
             self.track_index = selected_index
 
-        if self.track_count > len(tracks):
-            # self.log_message(f"{log_id}calling track_deleted passing index {selected_index}")
-            self.__encoder_controller.track_deleted(selected_index)
-            self.track_count = len(tracks)
+        new_track_count = len(tracks)
+        if self.track_count > new_track_count:
+            if self.track_count - new_track_count > 1:
+                self.__encoder_controller.tracks_deleted(selected_index, tracks)
+            else:
+                # self.log_message(f"{log_id}calling track_deleted passing index {selected_index}")
+                self.__encoder_controller.track_deleted(selected_index)
+            self.track_count = new_track_count
             self.tracks_change()
-        elif self.track_count < len(tracks):
-            # self.log_message(f"{log_id}calling track_added passing index {selected_index}")
-            self.__encoder_controller.track_added(selected_index)
-            self.track_count = len(tracks)
+        elif self.track_count < new_track_count:
+            if new_track_count - self.track_count > 1:
+                self.__encoder_controller.tracks_added(selected_index, tracks)
+            else:
+                # self.log_message(f"{log_id}calling track_added passing index {selected_index}")
+                self.__encoder_controller.track_added(selected_index)
+            self.track_count = new_track_count
             self.tracks_change()
         else:
             self.log_message(f"{log_id}calling track_changed passing index {selected_index}")
@@ -717,7 +726,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def tracks_change(self):
         log_id = "C4.tracks_change: "
-        self.log_message(f"{log_id}listener popped, rebuilding surface midi map")
+        self.log_message(f"{log_id}listener popped, rebuilding surface midi map only")
         self.request_rebuild_midi_map()
 
     def device_changestate(self, track, tid, type):

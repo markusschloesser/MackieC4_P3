@@ -158,6 +158,13 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         return rtn
 
+    def tracks_added(self, track_index, tracks):
+        new_t_count = len(tracks)
+        at_index = track_index
+        while new_t_count > self.t_count:
+            self.track_added(at_index)
+            at_index = self.t_current # if self.t_current > 0 else 0
+
     def track_added(self, track_index, devices_on_selected_track=None):
         if devices_on_selected_track is None:
             devices_on_selected_track = []
@@ -201,6 +208,13 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.t_d_p_count[track_index][d] = len(parms_of_devs_on_trk)
             self.t_d_p_bank_count[track_index][d] = int(math.ceil(len(parms_of_devs_on_trk) // SETUP_DB_PARAM_BANK_SIZE))
             self.t_d_p_bank_current[track_index][d] = 0
+
+    def tracks_deleted(self, track_index, tracks):
+        new_t_count = len(tracks)
+        at_index = track_index
+        while new_t_count < self.t_count:
+            self.track_deleted(at_index)
+            at_index = self.t_current # if self.t_current > 0 else 0
 
     def track_deleted(self, track_index):
 
