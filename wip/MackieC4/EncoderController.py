@@ -506,13 +506,15 @@ class EncoderController(MackieC4Component, Component):
             if liveobj_valid(self.selected_track):
                 selected_device = self.selected_track.view.selected_device
                 if liveobj_valid(selected_device):
-                    # log_msg = "{0}if liveobj_valid(self.selected_track.view.selected_device): {1}".format(log_id, selected_device.name)
-                    # self.main_script().log_message(log_msg)
+                    log_msg = f"{log_id}track {self.selected_track.name} and device {selected_device.name} are valid"
+                    self.main_script().log_message(log_msg)
                     current_selected_indexes = (x for x in range(len(extended_device_list))
                                                 if extended_device_list[x] == selected_device)
                     selected_device_idx = next(current_selected_indexes, -1)
                     extended_device_list = self.get_device_list(self.selected_track.devices)
-                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list,selected_device, selected_device_idx)
+                    if selected_device_idx < 0 < len(extended_device_list):
+                        selected_device_idx = len(extended_device_list) - 1
+                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list, selected_device, selected_device_idx)
 
             device = None
             if not self.is_locked_to_device:
