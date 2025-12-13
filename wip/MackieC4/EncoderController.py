@@ -169,11 +169,11 @@ class EncoderController(MackieC4Component, Component):
     def destroy(self):
 
         if self.main_script() is not None:
-            self.sendGoodbyeScreen()
+            self.send_goodbye_screen()
             self.clear_all_leds()
         MackieC4Component.destroy(self)
 
-    def sendGoodbyeScreen(self):
+    def send_goodbye_screen(self):
         self.display_message_top_lcd('                     Ableton Live                      ', '                   Device is offline                   ')
 
     def clear_all_lcds(self):
