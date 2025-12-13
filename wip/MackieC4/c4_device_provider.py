@@ -1,3 +1,4 @@
+import logging
 
 import Live
 
@@ -17,7 +18,7 @@ class C4DeviceProvider(DeviceProvider):
         if liveobj_valid(param):
             self.clear_last_param_details()
             self._last_change_details["parameter"] = param
-            # self.canonical_parent.log_message(f"C4DeviceProvider.set_last_param_value_change_details: name <{param.name}> orig <{param.original_name}> val <{param.value}")
+            # self.canonical_parent.log_message(logging.DEBUG, f"DP.set_last_param_value_change_details: name <{param.name}> orig <{param.original_name}> val <{param.value}")
             self._last_change_details["parameterName"] = param.original_name # param.name if param.original_name.starts_with("Macro") else
             self._last_change_details["trackId"] = tid
             self._last_change_details["deviceId"] = did
@@ -59,15 +60,15 @@ class C4DeviceProvider(DeviceProvider):
     def _update_appointed_device(self):
         super()._update_appointed_device()
         self.clear_last_param_details()
-        # self.canonical_parent.log_message("C4DeviceProvider._update_appointed_device: invoked super")
+        # self.canonical_parent.log_message(logging.DEBUG, "DP._update_appointed_device: invoked super")
 
     def update_device_selection(self):
         super().update_device_selection()
-        self.canonical_parent.log_message("C4DeviceProvider.update_device_selection: clearing last param details")
+        self.canonical_parent.log_message(logging.DEBUG, "DP.update_device_selection: clearing last param details")
         self.clear_last_param_details()
 
         view = self.song.view
         track_or_chain = view.selected_chain if view.selected_chain else view.selected_track
         if isinstance(track_or_chain, Live.Track.Track):
             self._selected_track = track_or_chain
-            self.canonical_parent.log_message(f"C4DeviceProvider.update_device_selection: updating self._selected_track to {track_or_chain.name}")
+            self.canonical_parent.log_message(logging.DEBUG,  f"DP.update_device_selection: updating self._selected_track to {track_or_chain.name}")

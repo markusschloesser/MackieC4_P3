@@ -44,6 +44,7 @@ if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
 logger = logging.getLogger(__name__)
 
 
+
 class MackieC4(MackieC4ListenerMixin, object):
     """  Main class that establishes the MackieC4 Component
          --- although technically, the Mackie Control C4Pro is an "extension" of the Mackie Control itself (like the MackieControlXT), this script stands alone.
@@ -58,6 +59,9 @@ class MackieC4(MackieC4ListenerMixin, object):
     scene_index = 0
     track_index = 0
     track_count = 0
+    
+    script_log_levels = {"ALWAYS": 0, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NEVER": 99}
+    current_script_log_level = script_log_levels["ERROR"]
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
@@ -150,13 +154,13 @@ class MackieC4(MackieC4ListenerMixin, object):
         Aka on_timer. Called every 100 ms and should be used to update display relevant parts of the controller.
         """
         if self.__encoder_controller.assignment_mode() != C4M_USER:
-            # self.log_message("C4.update_display: firing")  # verbose log message
+            # self.log_message(logging.DEBUG, "C4.update_display: firing")  # verbose log message
             for c in self.__components:
                 c.on_update_display_timer()
         # else:
         #      the script is in USER mode (or not initialized yet)
         #      and should NOT be sending display updates
-        #      self.log_message("C4.update_display: NOT firing")  # also verbose
+        #      self.log_message(logging.DEBUG, "C4.update_display: NOT firing")  # also verbose
 
     def send_midi(self, midi_event_bytes):
         """
@@ -164,12 +168,12 @@ class MackieC4(MackieC4ListenerMixin, object):
         """
         if self.__init_ready and (self.__handling_assignment_switch or self.__encoder_controller.assignment_mode() != C4M_USER):
             # self.__handling_assignment_switch means the script might be switching to USER mode so we still want to send this midi
-            # self.log_message("C4.send_midi: firing")  # very verbose log message
+            # self.log_message(logging.DEBUG, "C4.send_midi: firing")  # very verbose log message
             self.__c_instance.send_midi(midi_event_bytes)
         # else:
         #      the script is completely into USER mode (or not initialized yet)
         #      and should NOT be sending any midi events via this method
-        #      self.log_message("C4.send_midi: NOT firing")  # verbose log message?
+        #      self.log_message(logging.DEBUG, "C4.send_midi: NOT firing")  # verbose log message?
 
     def build_midi_map(self, midi_map_handle):
         """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
@@ -191,6 +195,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
 
     def receive_midi(self, midi_bytes):
+        log_id = "C4.receive_midi: "
         """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
         # coming from C4 midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
@@ -212,15 +217,15 @@ class MackieC4(MackieC4ListenerMixin, object):
 
             if is_marker_on_press:
                 self.set_marker_is_pressed(True)
-                # self.log_message("C4.receive_midi: USER mode MARKER is pressed")
+                # self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is pressed")
             elif is_c4_marker_release or is_marker_off_release:
                 self.set_marker_is_pressed(False)
                 # if is_c4_marker_release:
-                #    self.log_message("C4.receive_midi: USER mode MARKER is released, unexpected NOTE ON event")
+                #    self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is released, unexpected NOTE ON event")
                 # else:
-                #     self.log_message("C4.receive_midi: USER mode MARKER is released")
+                #     self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is released")
             elif is_lock_on_press and self.__marker_is_pressed:
-                # self.log_message("C4.receive_midi: USER mode LOCK press event while MARKER is pressed")
+                # self.log_message(logging.DEBUG, f"{log_id}USER mode LOCK press event while MARKER is pressed")
                 # conditions here do NOT need to guard against processing this button combo when NOT already in user mode
                 #  events for patch to process before sending STOP signal
                 # no LOCK Press event forwarded to the patch
@@ -233,10 +238,10 @@ class MackieC4(MackieC4ListenerMixin, object):
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
                 # STOP signal for patch to process
                 self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF))  # for this signal: velocity 0 means STOP processing
-                # self.log_message("C4.receive_midi: sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
+                # self.log_message(logging.DEBUG, f"{log_id}sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
                 self.__user_mode_exit = True  # flag needs to stay set until first method re-entry after USER mode only
                 self.__encoder_controller.handle_assignment_switch_ids(previous_mode_switch_id)
-                # self.log_message("C4.receive_midi: USER mode exit!  script is no longer in USER mode")
+                # self.log_message(logging.DEBUG, f"{log_id}USER mode exit!  script is no longer in USER mode")
                 self.set_marker_is_pressed(False)  # technically not released yet but don't need the signal any longer
 
             if not self.__user_mode_exit:
@@ -247,38 +252,38 @@ class MackieC4(MackieC4ListenerMixin, object):
                 # but every button PRESS and encoder TURN message received that reaches here becomes spurious feedback "forwarded" to the C4
                 # whenever the Max Sequencer patch is not in use.  If the script is running solo, it's probably "never" in USER mode anyway.
                 # no way to stop forwarding such spurious feedback messages programmatically without "knowing" whether the patch "exists" or not?
-                # self.log_message("C4.receive_midi: normal USER mode forwarding msg <{}>".format(midi_bytes))
+                # self.log_message(logging.DEBUG, f"{log_id}normal USER mode forwarding msg <{midi_bytes}>")
                 self.__c_instance.send_midi(midi_bytes)  # all midi (Note and CC event messages)
         elif self.__user_mode_exit and self.__encoder_controller.last_assignment_mode() == C4M_USER:
-            # logging.info("C4.receive_midi: (first user mode exit) note message: ({})".format(midi_bytes))
+            # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) note message: ({midi_bytes})")
 
             if is_note_on_msg and midi_bytes[1] == C4SID_LOCK and midi_bytes[2] == BUTTON_STATE_ON:
-                # logging.info("C4.receive_midi: (first user mode exit) event passed - investigating LOCK button pressed event")
+                # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event passed - investigating LOCK button pressed event")
                 pass
             elif is_note_off_msg and midi_bytes[1] == C4SID_LOCK:
-                # logging.info("C4.receive_midi: (first user mode exit) event passed - eating LOCK Note OFF event")
+                # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event passed - eating LOCK Note OFF event")
                 pass
             elif is_note_off_msg and midi_bytes[1] == C4SID_MARKER:
-                # logging.info("C4.receive_midi: (first user mode exit) event handled - setting MARKER is released Note OFF event")
+                # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event handled - setting MARKER is released Note OFF event")
                 self.set_marker_is_pressed(False)
             else:
-                logging.info("C4.receive_midi: (first user mode exit) event unhandled - dropping event message {}".format(midi_bytes))
+                self.log_message(logging.WARNING, f"{log_id}(first user mode exit) event unhandled - dropping event message {midi_bytes}")
             # these button LEDs should be restored to "remote script" status display
             self.__encoder_controller.update_system_switch_leds()
             self.__user_mode_exit = False
-            # logging.info("C4.receive_midi: (first user mode exit) Split, Lock, SpotErase LEDs OFF")
+            # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) Split, Lock, SpotErase LEDs OFF")
         else:
-            # self.log_message("C4.receive_midi: mode != C4M_USER")
+            # self.log_message(logging.DEBUG, f"{log_id}mode != C4M_USER")
             # in cases when the first midi_msg event after leaving USER mode is NOT a LOCK button event, clear the USER mode exit flag so this script
             # will handle LOCK button events normally.
-            self.__user_mode_exit = False
+            self.__user_mode_exit = False #
             is_cc_msg = midi_bytes[0] & 0xF0 == CC_STATUS
-            # self.log_message("C4.receive_midi: noteON<{}> noteOFF<{}> cc<{}>".format(is_note_on_msg, is_note_off_msg, is_cc_msg))
+            # self.log_message(logging.DEBUG, f"{log_id}noteON<{is_note_on_msg}> noteOFF<{is_note_off_msg}> cc<{is_cc_msg}>")
             if is_note_on_msg:
                 channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
                 note = midi_bytes[1]  # data1
                 velocity = midi_bytes[2]  # data2
-                # self.log_message("C4.receive_midi: NOTE ON for note<{}> velo<{}>".format(note, velocity))
+                # self.log_message(logging.DEBUG, f"{log_id}NOTE ON for note<{note}> velo<{velocity}>")
                 # ignore Note ON events without 127 velocity
                 handle_this_event = velocity == BUTTON_STATE_ON
                 """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
@@ -297,24 +302,24 @@ class MackieC4(MackieC4ListenerMixin, object):
                             self.__handling_assignment_switch = False
                         else:
                             if note == 4:  # Spot/Erase buttons is not mapped to any remote script behavior
-                                # self.log_message("C4.receive_midi: Split and Spot/Erase buttons are not mapped to any handling behavior")
+                                # self.log_message(logging.INFO, f"{log_id}Spot/Erase button is not mapped to any handling behavior")
                                 pass
                             else:
-                                self.log_message("C4.receive_midi: unhandled note value: {}".format(note))
+                                self.log_message(logging.ERROR, f"{log_id}unhandled note value: {note}")
 
                     if note == C4SID_MARKER:
                         # This "note ON event" entered receive_midi() while the script was NOT in USER mode, because this line is under else:
                         # now the script IS in USER mode, because self.__note_handling_dict[note](note) and note == C4SID_MARKER:
                         # but the Max patch is still NOT-processing yet, forward this midi event to the C4 display
-                        # self.log_message("C4.receive_midi: before leaving script control, turning MARKER led OFF <{}>".format((NOTE_ON_STATUS, note, BUTTON_STATE_OFF)))
+                        # self.log_message(logging.DEBUG, f"{log_id}before leaving script control, turning MARKER led OFF <{(NOTE_ON_STATUS, note, BUTTON_STATE_OFF)}>")
                         self.__c_instance.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
                         # (just-before-going-into-user-mode) MARKER LED is now OFF (would normally be ON indicating USER mode)
                         # send START signal for patch to process
-                        # self.log_message("C4.receive_midi: sending 'button 22' signal toggling Max bypass mode, START processing STOP bypassing")
+                        # self.log_message(logging.DEBUG, f"{log_id}sending 'button 22' signal toggling Max bypass mode, START processing STOP bypassing")
                         self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON))
                         self.set_marker_is_pressed(False)  # in case LOCK button is pressed by itself in USER mode, don't exit USER mode
 
-                        # self.log_message("C4.receive_midi: script now in USER mode, Max patch is in control")
+                        # self.log_message(logging.DEBUG, f"{log_id}script now in USER mode, Max patch is in control")
                         # MARKER Press+Release events created for the patch to "restore" the USER mode patch's MARKER button LED ON/OFF status
                         # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events mean the LED ON/OFF state "doesn't change"
                         self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
@@ -336,10 +341,10 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
 
             elif is_note_off_msg:  # an actual Note Off event: is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
-                # logging.info("C4.receive_midi: unhandled - passing (ignoring) note off event {}".format(midi_bytes))
+                # self.log_message(logging.DEBUG, f"{log_id}unhandled - passing (ignoring) note off event {midi_bytes}")
                 # this pass is expected, the C4 sends Note ON with velocity 0 for Note OFF.
                 # Live generates Note Offs the script can ignore here (not USER mode) because USER Mode has already processed above as needed
-                # self.log_message("C4.receive_midi: NOT in USER mode MARKER is released, passing (NOTE OFF event)")
+                # self.log_message(logging.DEBUG, f"{log_id}NOT in USER mode MARKER is released, passing (NOTE OFF event)")
                 self.set_marker_is_pressed(False)
                 pass
             elif midi_bytes[0] == 0xF0:
@@ -364,16 +369,16 @@ class MackieC4(MackieC4ListenerMixin, object):
                     if match:
                         # the C4 just blanked its displays (except the hello message on the top screen?)
                         # assignment mode is never USER here, msg was passed above in USER mode
-                        logging.info("C4.receive_midi: attempting to update display after receiving C4 serial number sysex message {}".format(midi_bytes))
+                        self.log_message(logging.INFO,f"{log_id}attempting to update display after receiving C4 serial number sysex message {midi_bytes}")
                         self.__encoder_controller.one_delayed_display_update(0.49, force=True)  # how about now?
                         self.__encoder_controller.update_assignment_mode_leds()
                         self.__encoder_controller.update_system_switch_leds()
                     else:
-                        logging.info("C4.receive_midi: unhandled matching length - sysex event dropped {}".format(midi_bytes))
+                        self.log_message(logging.WARNING,f"{log_id}unhandled matching length - sysex event dropped {midi_bytes}")
                 else:
-                    logging.info("C4.receive_midi: unhandled non-matching length - sysex event dropped {}".format(midi_bytes))
+                    self.log_message(logging.WARNING,f"{log_id}unhandled non-matching length - sysex event dropped {midi_bytes}")
             else:
-                logging.info("C4.receive_midi: unhandled - sysex event dropped {}".format(midi_bytes))
+                self.log_message(logging.WARNING,f"{log_id}unhandled - sysex event dropped {midi_bytes}")
 
     def handle_jog_wheel_rotation(self, cc_value):  # aka beat_pointer
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -413,19 +418,20 @@ class MackieC4(MackieC4ListenerMixin, object):
                 clip.scrub(8*(cc_value))
 
     def scroll_clip(self, cc_value):  # todo WIP
+        log_id = "C4.scroll_clip: "
         nav = Live.Application.Application.View.NavDirection
         app_view = self.application().view
         view_name = 'Detail/DeviceChain'
-        logging.info(f'scroll_clip called with cc_value: {cc_value}')
+        self.log_message(logging.DEBUG,f'{log_id}called with cc_value: {cc_value}')
         clip = self.song().view.detail_clip
 
         scroll = cc_value == 1 and 3 or 2
-        logging.info(f'scroll_clip called with cc_value: {cc_value}')
+        self.log_message(logging.DEBUG,f'{log_id}called with cc_value: {cc_value}')
 
         if cc_value > 64:
             if not self.application().view.is_view_visible(view_name):
                 self.application().view.focus_view(view_name)
-                logging.info(f'Focusing view in scroll_clip: {view_name}')
+                self.log_message(logging.DEBUG,f'{log_id}Focusing view to {view_name}')
                 # clip.move_playing_pos(- cc_value)
                 app_view.scroll_view(nav.left, view_name, False)
         if cc_value <= 64:
@@ -434,24 +440,25 @@ class MackieC4(MackieC4ListenerMixin, object):
                 app_view.scroll_view(nav.right, view_name, False)
 
     def zoom_clip(self, cc_value):
+        log_id = "C4.zoom_clip: "
         nav = Live.Application.Application.View.NavDirection
         app_view = self.application().view
         view_name = 'Detail/Clip'
-        logging.info(f'zoom_clip called with cc_value: {cc_value}')
+        self.log_message(logging.DEBUG,f'{log_id}called with cc_value: {cc_value}')
 
         # scroll = cc_value == 65 and 3 or 1
         if cc_value > 64:
             if not app_view.is_view_visible(view_name):
-                logging.info(f'Focusing view in zoom_clip: {view_name}')
+                self.log_message(logging.DEBUG,f'{log_id}Focusing view {view_name}')
                 app_view.focus_view(view_name)
                 app_view.zoom_view(nav.left, view_name, False)
-                logging.info(f'Zooming view to the left')
+                self.log_message(logging.DEBUG,f'{log_id}Zooming view to the left')
         if cc_value < 64:
             if not app_view.is_view_visible(view_name):
-                logging.info(f'Focusing view in zoom_clip: {view_name}')
+                self.log_message(logging.DEBUG,f'{log_id}Focusing view {view_name}')
                 app_view.focus_view(view_name)
                 app_view.zoom_view(nav.right, view_name, False)
-                logging.info(f'Zooming view to the right')
+                self.log_message(logging.DEBUG,f'{log_id}Zooming view to the right')
 
     def tempo_change(self, cc_value):  # BPM
         """Sets the current song tempo"""
@@ -618,10 +625,10 @@ class MackieC4(MackieC4ListenerMixin, object):
             # can land here when a Group track closes because the C4 encoder button was pressed, doesn't happen when Group closes because of mouse click?
             #         C4.track_change: nbr visible tracks (includes rtn tracks) 6 BUT SAVED VALUE <8> OUT OF EXPECTED RANGE
             # case handled below, for example: self.__encoder_controller.tracks_deleted(selected_index, tracks)
-            self.log_message(f"{log_id}nbr visible tracks (includes rtn tracks) {len(tracks)} BUT SAVED VALUE <{self.track_count}> OUT OF EXPECTED RANGE")
+            self.log_message(logging.WARNING,f"{log_id}nbr visible tracks (includes rtn tracks) {len(tracks)} BUT SAVED VALUE <{self.track_count}> OUT OF EXPECTED RANGE")
         else:
             assert len(tracks) in range(self.track_count - 1, self.track_count + 2)  # include + 1 in range (because master track?)
-            # self.log_message(f"{log_id}nbr visible tracks (includes rtn tracks) {len(tracks)} and saved value <{self.track_count}> in expected range"
+            # self.log_message(logging.DEBUG,f"{log_id}nbr visible tracks (includes rtn tracks) {len(tracks)} and saved value <{self.track_count}> in expected range"
 
         selected_index = 0
         found = selected_track in tracks
@@ -639,11 +646,11 @@ class MackieC4(MackieC4ListenerMixin, object):
                 selected_index = len(tracks) 
             else:
                 # signal that something bad happened - selected track
-                self.log_message(f"{log_id}setting selected index to a bad value {selected_index}")
+                self.log_message(logging.ERROR,f"{log_id}setting selected index to a bad value {selected_index}")
                 selected_index = 555
 
         if selected_index != self.track_index:
-            self.log_message(f"{log_id}setting self.track_index {self.track_index} to selected index {selected_index}")
+            self.log_message(logging.DEBUG,f"{log_id}setting self.track_index {self.track_index} to selected index {selected_index}")
             self.track_index = selected_index
 
         new_track_count = len(tracks)
@@ -651,7 +658,7 @@ class MackieC4(MackieC4ListenerMixin, object):
             if self.track_count - new_track_count > 1:
                 self.__encoder_controller.tracks_deleted(selected_index, tracks)
             else:
-                # self.log_message(f"{log_id}calling track_deleted passing index {selected_index}")
+                # self.log_message(logging.DEBUG,f"{log_id}calling track_deleted passing index {selected_index}")
                 self.__encoder_controller.track_deleted(selected_index)
             self.track_count = new_track_count
             self.tracks_change()
@@ -659,12 +666,12 @@ class MackieC4(MackieC4ListenerMixin, object):
             if new_track_count - self.track_count > 1:
                 self.__encoder_controller.tracks_added(selected_index, tracks)
             else:
-                # self.log_message(f"{log_id}calling track_added passing index {selected_index}")
+                # self.log_message(logging.DEBUG,f"{log_id}calling track_added passing index {selected_index}")
                 self.__encoder_controller.track_added(selected_index)
             self.track_count = new_track_count
             self.tracks_change()
         else:
-            self.log_message(f"{log_id}calling track_changed passing index {selected_index}")
+            self.log_message(logging.DEBUG,f"{log_id}calling track_changed passing index {selected_index}")
             self.__encoder_controller.track_changed(selected_index)
 
     def scene_change(self): 
@@ -726,7 +733,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def tracks_change(self):
         log_id = "C4.tracks_change: "
-        self.log_message(f"{log_id}listener popped, rebuilding surface midi map only")
+        self.log_message(logging.DEBUG,f"{log_id}listener popped, rebuilding surface midi map only")
         self.request_rebuild_midi_map()
 
     def device_changestate(self, track, tid, type):
@@ -797,7 +804,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                 new_selected_index = len(tracks) # still master
         else:
             old_selected_index = tracks.index(old_selected_track)
-            self.log_message(f"{log_id} found track {old_selected_track.name} at index {old_selected_index}")
+            self.log_message(logging.DEBUG,f"{log_id}before processing, song track {old_selected_track.name} at index {old_selected_index} is selected")
             new_selected_index = old_selected_index
             for index, track in enumerate(tracks):
                 if track == old_selected_track:
@@ -812,7 +819,7 @@ class MackieC4(MackieC4ListenerMixin, object):
             if 0 <= new_selected_index < len(tracks):
                 self.song().view.selected_track = tracks[new_selected_index]
 
-        self.log_message(f"{log_id} after processing, song track {self.song().view.selected_track.name} at index {new_selected_index} is selected")
+        self.log_message(logging.DEBUG,f"{log_id}after processing, song track {self.song().view.selected_track.name} at index {new_selected_index} is selected")
 
     def get_is_locked_to_device(self):
         return self.__surface_is_locked
@@ -824,33 +831,34 @@ class MackieC4(MackieC4ListenerMixin, object):
     def lock_surface_to_device(self, device):
         log_id = "C4.lock_surface: "
         if not self.__surface_is_locked:
-            self.log_message(f"{log_id}locking surface to device {device.name}, led state to ON")
+            self.log_message(logging.INFO,f"{log_id}locking surface to device {device.name}, led state to ON")
             self.__device_provider.lock_to_device(device)
         else:
             dev = "None"
             if self.__device_provider.provided_device is not None:
                 dev = self.__device_provider.provided_device.name
-            self.log_message(f"{log_id}surface already locked to {dev}, led state stays ON")
+            self.log_message(logging.INFO,f"{log_id}surface already locked to {dev}, led state stays ON")
 
         self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_ON))
 
     def unlock_surface_from_device(self):
         log_id = "C4.unlock_surface: "
         if self.__surface_is_locked:
-            self.log_message(f"{log_id}unlocking surface from device {self.__device_provider.provided_device.name}, led state to OFF")
+            self.log_message(logging.INFO,f"{log_id}unlocking surface from device {self.__device_provider.provided_device.name}, led state to OFF")
             self.__device_provider.unlock_from_device()
         else:
-            self.log_message(f"{log_id}surface already unlocked, led state stays OFF")
+            self.log_message(logging.INFO,f"{log_id}surface already unlocked, led state stays OFF")
 
         self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, BUTTON_STATE_OFF))
 
-    def log_message(self, *message):
+    def log_message(self, level=script_log_levels["ERROR"], *message):
         """ Overrides standard to use logger instead of c_instance. """
-        try:
-            message = f'({self.__class__.__name__}) {" ".join(map(str, message))}'
-            logger.info(message)
-        except:
-            logger.info('Logging encountered illegal character(s)!')
+        if self.current_script_log_level <= level:
+            try:
+                message = f'({self.__class__.__name__}) {" ".join(map(str, message))}'
+                logger.info(message)
+            except:
+                logger.info('Logging encountered illegal character(s)!')
 
     @staticmethod
     def get_logger():

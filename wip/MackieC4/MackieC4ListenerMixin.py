@@ -308,11 +308,11 @@ class MackieC4ListenerMixin(object):
 
     def add_device_listeners(self):
         self.remove_device_listeners()
-        # self.log_message("C4.add_device_listeners: removed any existing device_listeners")
+        # self.log_message(logging.DEBUG, "C4.add_device_listeners: removed any existing device_listeners")
         self.do_add_device_listeners(self.song().tracks, 0)
         self.do_add_device_listeners(self.song().return_tracks, 1)
         self.do_add_device_listeners([self.song().master_track], 2)
-        # self.log_message("LM.add_device_listeners: added all track device_listeners types 0, 1, 2")
+        # self.log_message(logging.DEBUG, "LM.add_device_listeners: added all track device_listeners types 0, 1, 2")
 
     def remove_device_listeners(self):
         for pr in self._lm["prlisten"]:
@@ -330,21 +330,21 @@ class MackieC4ListenerMixin(object):
     def remove_param_value_listener(self, pr):
         if liveobj_valid(pr) and self.has_param_value_listener(pr):
             ocb = self._lm["prlisten"][pr] # ocb == old callback (function reference)
-            # self.log_message(f"LM.remove_param_value_listener: removing parameter {pr.name} value listener")
+            # self.log_message(logging.DEBUG, f"LM.remove_param_value_listener: removing parameter {pr.name} value listener")
             if pr.value_has_listener(ocb):
                 pr.remove_value_listener(ocb)
 
     def remove_device_params_listener(self, de):
         if liveobj_valid(de) and self.has_device_parameters_listener(de):
             ocb = self._lm["plisten"][de]
-            # self.log_message(f"LM.remove_device_params_listener: removing device {de.name} parameters listener")
+            # self.log_message(logging.DEBUG, f"LM.remove_device_params_listener: removing device {de.name} parameters listener")
             if de.parameters_has_listener(ocb):
                 de.remove_parameters_listener(ocb)
 
     def remove_track_device_listener(self, tr):
         if liveobj_valid(tr) and self.has_track_device_listener(tr):
             ocb = self._lm["dlisten"][tr]
-            # self.log_message(f"LM.remove_track_device_listener: removing track {tr.name} device listener)
+            # self.log_message(logging.DEBUG, f"LM.remove_track_device_listener: removing track {tr.name} device listener)
             if tr.view.selected_device_has_listener(ocb):
                 tr.view.remove_selected_device_listener(ocb)
             if tr.devices_has_listener(ocb):
@@ -358,7 +358,7 @@ class MackieC4ListenerMixin(object):
             tt = "regular" if type == 0 else f"unknown type {type} "
             tt = "return" if type == 1 else tt
             tt = "master" if type == 2 else tt
-            # self.log_message(f"{log_id}added device listener (device_changestate) for <{tt}> track type {track.name}")
+            # self.log_message(logging.DEBUG, f"{log_id}added device listener (device_changestate) for <{tt}> track type {track.name}")
             if len(track.devices) >= 1:
                 self.do_add_parameters_listeners(track, i, type)
 
@@ -366,7 +366,7 @@ class MackieC4ListenerMixin(object):
         # log_id = "LM.do_add_parameters_listeners: "
         track_devices = track.devices
         extended_device_list = self.__my_ec_ref.get_device_list(track_devices)
-        # self.log_message(f"{log_id}standard device count {len(track_devices)} extended device count <{len(extended_device_list)}>")
+        # self.log_message(logging.DEBUG, f"{log_id}standard device count {len(track_devices)} extended device count <{len(extended_device_list)}>")
         self.do_add_track_devices_listeners(extended_device_list, tid, type, track.name)
 
     def do_add_track_devices_listeners(self, device_list, tid=0, type=0, track_name=""):
@@ -378,7 +378,7 @@ class MackieC4ListenerMixin(object):
         # log_id = "LM.do_add_one_devices_listeners: "
         self.add_device_parameters_listener(device)
         dtls = f"listener for track {track_name} device {device.name}"
-        # self.log_message(f"{log_id}added device parameters {dtls} devpm_change")
+        # self.log_message(logging.DEBUG, f"{log_id}added device parameters {dtls} devpm_change")
         self.do_add_parameter_value_listeners(device, tid, did, type, dtls)
 
     def do_add_parameter_value_listeners(self, device, tid=0, did=0, type=0, log_dtls=""):
@@ -388,7 +388,7 @@ class MackieC4ListenerMixin(object):
             for k in range(param_count):
                 par = device.parameters[k]
                 self.add_param_value_listener(par, tid, did, k, type)
-                # self.log_message(f"{log_id}added device parameter {log_dtls} parameter {par.name} param_changestate")
+                # self.log_message(logging.DEBUG, f"{log_id}added device parameter {log_dtls} parameter {par.name} param_changestate")
 
     def add_track_device_listener(self, track, tid=0, type=0):
         """for each track input, tid value is relative to the type value. 
@@ -399,7 +399,7 @@ class MackieC4ListenerMixin(object):
         if self.has_track_device_listener(track):
             self.remove_track_device_listener(track)
         cb = lambda: self.device_changestate(track, tid, type)
-        # self.log_message("LM.add_track_device_listener: input" + dtls)
+        # self.log_message(logging.DEBUG, "LM.add_track_device_listener: input" + dtls)
         if track.devices_has_listener(cb):
             track.remove_devices_listener(cb)
         if track.view.selected_device_has_listener(cb):
@@ -408,7 +408,7 @@ class MackieC4ListenerMixin(object):
         track.add_devices_listener(cb)
         track.view.add_selected_device_listener(cb)
         self._lm["dlisten"][track] = cb
-        # self.log_message("LM.add_track_device_listener: callback added for selected_device_listener with details: " + dtls)
+        # self.log_message(logging.DEBUG, "LM.add_track_device_listener: callback added for selected_device_listener with details: " + dtls)
 
     def has_track_device_listener(self, track):
         return True if track in self._lm["dlisten"] else False
