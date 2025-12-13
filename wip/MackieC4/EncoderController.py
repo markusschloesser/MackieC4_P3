@@ -103,7 +103,6 @@ class EncoderController(MackieC4Component, Component):
         self.__device_provider = device_provider
         self.__chosen_plugin = None
         self.is_locked_to_device = False
-        # self.__on_selected_track_changed.subject = self.song().view
         self.__device_listener_hit = False
         self.__on_device_changed.subject = self.__device_provider
         self.__on_is_locked_to_device_changed.subject = self.__device_provider
@@ -207,12 +206,6 @@ class EncoderController(MackieC4Component, Component):
     def get_encoders(self):
         return self.__encoders
 
-
-    # @listens("selected_track")
-    # def __on_selected_track_changed(self):
-    #     self.main_script().log_message("EC.__on_selected_track_changed: listener popped")
-    #     # self.main_script().log_message("EC.__on_selected_track_changed: listener popped, calling self.main_script().track_change()")
-    #     # self.main_script().track_change()
 
     @listens("device")
     def __on_device_changed(self):
