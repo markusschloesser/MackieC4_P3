@@ -309,21 +309,10 @@ class MackieC4ListenerMixin(object):
     def add_device_listeners(self):
         self.remove_device_listeners()
         # self.log_message(logging.DEBUG, "C4.add_device_listeners: removed any existing device_listeners")
-        try:
-            self.do_add_device_listeners(self.song().tracks, 0)
-            self.do_add_device_listeners(self.song().return_tracks, 1)
-            self.do_add_device_listeners([self.song().master_track], 2)
-            # self.log_message(logging.DEBUG, "LM.add_device_listeners: added all track device_listeners types 0, 1, 2")
-        except RuntimeError as re:
-            # "Can't obtain live set at this time" for example, thrown from deep in the M4L_core scripting code, while "reloading" a recent session
-            # _MxDCore\LomTypes.py", line 1073, in <lambda>
-            msg = "LM.add_device_listeners: can't add any track device_listeners due to runtime exception: "
-            if liveobj_valid(re.args):
-                msg += str(re.args)
-            else:
-                msg += "unknown"
-            self.log_message(logging.WARNING, msg)
-            pass
+        self.do_add_device_listeners(self.song().tracks, 0)
+        self.do_add_device_listeners(self.song().return_tracks, 1)
+        self.do_add_device_listeners([self.song().master_track], 2)
+        # self.log_message(logging.DEBUG, "LM.add_device_listeners: added all track device_listeners types 0, 1, 2")
 
     def remove_device_listeners(self):
         for pr in self._lm["prlisten"]:
