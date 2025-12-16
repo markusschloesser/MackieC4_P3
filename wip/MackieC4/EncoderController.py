@@ -105,7 +105,7 @@ class EncoderController(MackieC4Component, Component):
         self.__device_provider = device_provider
         self.__chosen_plugin = None
         self.is_locked_to_device = False
-        self.__device_listener_hit = False
+        # self.__device_listener_hit = False
         self.__on_device_changed.subject = self.__device_provider
         self.__on_is_locked_to_device_changed.subject = self.__device_provider
 
@@ -243,7 +243,7 @@ class EncoderController(MackieC4Component, Component):
                         msg = f"{log_id}listener popped, device is {d.name} but can't locate valid track reference. "
                         self.main_script().log_message(logging.ERROR, msg + "no device parameter listeners added, but something else will soon derail anyway")
             self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {d.name}, updating chosen plugin")
-            self.__device_listener_hit = True
+            # self.__device_listener_hit = True
             self.__update_chosen_plugin_device(d)
         else:
             self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but device not liveobj valid?")
@@ -409,9 +409,9 @@ class EncoderController(MackieC4Component, Component):
                 self.main_script().log_message(logging.DEBUG, f"{log_id}selected_track is now {self.selected_track.name} selecting device {device.name}")
                 self.__device_listener_hit = False
                 self.song().view.select_device(device) # this device selection might be redundant to Live
-                if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
-                    self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
+                # if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
+                #     self.main_script().log_message(logging.DEBUG, f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
+                #     self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
             else:
                 self.main_script().log_message(logging.DEBUG, f"{log_id}selected_track is now {self.selected_track.name} but no valid device found, self.__chosen_plugin == None")
                 self.__update_chosen_plugin_device(device)  # device == None
@@ -448,11 +448,11 @@ class EncoderController(MackieC4Component, Component):
                     device = selected_device
 
             if  liveobj_valid(device):
-                self.__device_listener_hit = False
+                # self.__device_listener_hit = False
                 self.song().view.select_device(device)
-                if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
-                    self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
+                # if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
+                #     self.main_script().log_message(logging.DEBUG, f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
+                #     self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
             else:
                 self.__update_chosen_plugin_device(device)  # device == None
         return
@@ -496,11 +496,11 @@ class EncoderController(MackieC4Component, Component):
 
             if liveobj_valid(device):
                 self.__locked_device_track = self.selected_track
-                self.__device_listener_hit = False
+                # self.__device_listener_hit = False
                 self.song().view.select_device(device)
-                if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
-                    self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
+                # if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
+                #     self.main_script().log_message(logging.DEBUG, f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
+                #     self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
             else:
                 self.__update_chosen_plugin_device(device)  # device == None
 
@@ -566,11 +566,11 @@ class EncoderController(MackieC4Component, Component):
 
                 if liveobj_valid(device):
                     self.__locked_device_track = self.selected_track
-                    self.__device_listener_hit = False
+                    # self.__device_listener_hit = False
                     self.song().view.select_device(device) # this should notify device listeners via "device provider"
-                    if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
-                        self.main_script().log_message(logging.DEBUG,  f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
-                        self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
+                    # if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
+                    #     self.main_script().log_message(logging.DEBUG,  f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
+                    #     self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
                 else:
                     self.__update_chosen_plugin_device(device) # device == None
 
@@ -650,7 +650,7 @@ class EncoderController(MackieC4Component, Component):
     # }
     # Currently,
     # C4SID_SPLIT_ERASE is the only system switch (button) with no associated behavior mapped
-    # C4SID_SPLIT behavior only affects "display updates" (feedback to leds and led rings)...
+    # C4SID_SPLIT behavior only affects the "display update" refresh rate (feedback to leds and led rings)...
     #    when the song is NOT playing:
     #    C4SID_SPLIT controls the amount of intentional lag applied between "on display update timer" calls and actual C4 display updates
     #    all split button leds OFF means full lag amount (send display update midi messages once every 20 times "on display update timer" is called)
