@@ -60,11 +60,11 @@ class C4DeviceProvider(DeviceProvider):
     def _update_appointed_device(self):
         super()._update_appointed_device()
         self.clear_last_param_details()
-        # self.canonical_parent.log_message(logging.DEBUG, "DP._update_appointed_device: invoked super")
+        self.canonical_parent.log_message(logging.DEBUG, "DP._update_appointed_device: invoked super")
 
     def update_device_selection(self):
         super().update_device_selection()
-        self.canonical_parent.log_message(logging.DEBUG, "DP.update_device_selection: clearing last param details")
+        # self.canonical_parent.log_message(logging.DEBUG, "DP.update_device_selection: clearing last param details")
         self.clear_last_param_details()
 
         view = self.song.view
@@ -72,3 +72,6 @@ class C4DeviceProvider(DeviceProvider):
         if isinstance(track_or_chain, Live.Track.Track):
             self._selected_track = track_or_chain
             self.canonical_parent.log_message(logging.DEBUG,  f"DP.update_device_selection: updating self._selected_track to {track_or_chain.name}")
+        else:
+            self._selected_track = view.selected_track # if liveobj_valid(view.selected_track) else None
+            self.canonical_parent.log_message(logging.DEBUG,  f"DP.update_device_selection: selected device came from chain {track_or_chain.name} not a Track")

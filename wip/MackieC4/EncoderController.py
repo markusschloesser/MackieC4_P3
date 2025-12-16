@@ -242,7 +242,7 @@ class EncoderController(MackieC4Component, Component):
                     else:
                         msg = f"{log_id}listener popped, device is {d.name} but can't locate valid track reference. "
                         self.main_script().log_message(logging.ERROR, msg + "no device parameter listeners added, but something else will soon derail anyway")
-            # self.main_script().log_message(logging.DEBUG, f"{log_id}: listener popped, device changed to {d.name}")
+            self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {d.name}, updating chosen plugin")
             self.__device_listener_hit = True
             self.__update_chosen_plugin_device(d)
         else:
@@ -293,15 +293,26 @@ class EncoderController(MackieC4Component, Component):
         log_id = "EC.__update_chosen_plugin_device: "
         self.__chosen_plugin = device  # in cases like a new midi track selected; device will == None here
         if not liveobj_valid(self.selected_track):
-            self.main_script().log_message(logging.INFO, f"{log_id}current selected_track is not valid, finding track")
-            # if self.__chosen_plugin is not valid going in here, the found track coming out will never be valid either, something will soon bug out
-            track, index = self.find_devices_track(self.__chosen_plugin)
-            if liveobj_valid(track):
-                self.selected_track = track
+            if liveobj_valid(device):
+                self.main_script().log_message(logging.INFO, f"{log_id} device is {device.name} but current selected_track is not valid, finding track")
+                # if self.__chosen_plugin is not valid going in here, the found track coming out will never be valid either, something will soon bug out
+                track, index = self.find_devices_track(self.__chosen_plugin)
+                if liveobj_valid(track):
+                    self.selected_track = track
+                    msg = f"{log_id}device is {device.name} and selected track is {self.selected_track.name}, rebuilding midi map after special device change"
+                    self.main_script().log_message(logging.INFO, msg)
+                else:
+                    self.main_script().log_message(logging.ERROR, f"{log_id}selected_track is still not valid, __reassign_encoder_parameters() will soon bug out")
             else:
-                self.main_script().log_message(logging.ERROR, f"{log_id}selected_track is still not valid, __reassign_encoder_parameters() will soon bug out")
-        # else:
-        #     self.main_script().log_message(logging.DEBUG, f"{log_id}selected track is valid, rebuilding midi map normally")
+                self.main_script().log_message(logging.INFO, f"{log_id} device is not valid and current selected_track is not valid, not rebuilding midi map")
+                return
+        else:
+            if liveobj_valid(device):
+                msg = f"{log_id}device is {device.name} and selected track is {self.selected_track.name}, rebuilding midi map after normal device change"
+                self.main_script().log_message(logging.INFO, msg)
+            else:
+                msg = f"{log_id}selected track is {self.selected_track.name} but device is not valid, rebuilding midi map for NoneType device"
+                self.main_script().log_message(logging.DEBUG, msg)
         self.__reorder_parameters()
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
@@ -320,7 +331,7 @@ class EncoderController(MackieC4Component, Component):
         self.is_locked_to_device = is_locked
 
     def build_setup_database(self):
-        # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4/building setup db")
+        # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4.building setup db")
         self.__eah.build_setup_database(self.song())        # self.track_count
 
         # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4.t_count after setup <{0}>".format(self.__eah.t_count))
