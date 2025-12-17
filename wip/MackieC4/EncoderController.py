@@ -407,7 +407,7 @@ class EncoderController(MackieC4Component, Component):
             if liveobj_valid(device):
                 self.__locked_device_track = self.selected_track
                 self.main_script().log_message(logging.DEBUG, f"{log_id}selected_track is now {self.selected_track.name} selecting device {device.name}")
-                self.__device_listener_hit = False
+                # self.__device_listener_hit = False
                 self.song().view.select_device(device) # this device selection might be redundant to Live
                 # if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
                 #     self.main_script().log_message(logging.DEBUG, f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
