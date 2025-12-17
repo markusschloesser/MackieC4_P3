@@ -355,12 +355,13 @@ class MackieC4ListenerMixin(object):
         for i in range(len(tracks)):
             track = tracks[i]
             self.add_track_device_listener(track, i, type)
-            tt = "regular" if type == 0 else f"unknown type {type} "
-            tt = "return" if type == 1 else tt
-            tt = "master" if type == 2 else tt
+            # tt = "regular" if type == 0 else f"unknown type {type} "
+            # tt = "return" if type == 1 else tt
+            # tt = "master" if type == 2 else tt
             # self.log_message(logging.DEBUG, f"{log_id}added device listener (device_changestate) for <{tt}> track type {track.name}")
-            if len(track.devices) >= 1:
-                self.do_add_parameters_listeners(track, i, type)
+            # "last changed parameter inc/dec" behavior only needs listeners on the current selected device, not all devices on all visible tracks
+            # if len(track.devices) >= 1:
+            #     self.do_add_parameters_listeners(track, i, type)
 
     def do_add_parameters_listeners(self, track, tid=0, type=0):
         # log_id = "LM.do_add_parameters_listeners: "
