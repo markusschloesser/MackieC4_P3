@@ -61,7 +61,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     track_count = 0
     
     script_log_levels = {"ALWAYS": 0, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NEVER": 99}
-    current_script_log_level = script_log_levels["DEBUG"]
+    current_script_log_level = script_log_levels["ERROR"]
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance

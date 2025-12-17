@@ -354,16 +354,16 @@ class EncoderController(MackieC4Component, Component):
     def track_changed(self, track_index):
         log_id = "EC.track_changed: "
         self.selected_track = self.song().view.selected_track
-        tracks = self.song().visible_tracks + self.song().return_tracks + (self.song().master_track,)
-        try:
-            j = tracks.index(self.selected_track)
-        except ValueError:
-            j = -1
-
-        if liveobj_valid(self.selected_track):
-            self.main_script().log_message(logging.DEBUG, f"{log_id}track_index input is {track_index}, selected_track is {self.selected_track.name} at index {j}")
-        else:
-            self.main_script().log_message(logging.WARNING, f"{log_id}track_index input is {track_index}, but selected_track is not liveobj valid at index {j}")
+        # tracks = self.song().visible_tracks + self.song().return_tracks + (self.song().master_track,)
+        # try:
+        #     j = tracks.index(self.selected_track)
+        # except ValueError:
+        #     j = -1
+        #
+        # if liveobj_valid(self.selected_track):
+        #     self.main_script().log_message(logging.DEBUG, f"{log_id}track_index input is {track_index}, selected_track is {self.selected_track.name} at index {j}")
+        # else:
+        #     self.main_script().log_message(logging.WARNING, f"{log_id}track_index input is {track_index}, but selected_track is not liveobj valid at index {j}")
 
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
@@ -373,7 +373,7 @@ class EncoderController(MackieC4Component, Component):
         device = None
         nbr_devices = len(extended_device_list)
         if nbr_devices == 0:
-            self.main_script().log_message(logging.INFO, f"{log_id}no devices found on track {self.selected_track.name}")
+            self.main_script().log_message(logging.DEBUG, f"{log_id}no devices found on track {self.selected_track.name}")
             self.__eah.update_device_counter(track_index, 0)
         else:
             if selected_device_index > -1:
