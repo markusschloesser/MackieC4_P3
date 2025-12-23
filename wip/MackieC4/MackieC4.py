@@ -855,7 +855,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         """ Overrides standard to use logger instead of c_instance. """
         if self.current_script_log_level <= level:
             try:
-                message = f'({self.__class__.__name__}) {" ".join(map(str, message))}'
+                message = f'{" ".join(map(str, message))}'
                 logger.info(message)
             except:
                 logger.info('Logging encountered illegal character(s)!')
