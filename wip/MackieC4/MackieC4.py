@@ -70,6 +70,8 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__surface_is_locked = False
         self.__device_provider = C4DeviceProvider(self.song())
         self.__handling_assignment_switch = False
+        self.__processing_track_device_state_change = False
+        self.__processing_track_state_change = False
 
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
@@ -734,12 +736,37 @@ class MackieC4(MackieC4ListenerMixin, object):
     def tracks_change(self):
         log_id = "C4.tracks_change: "
         self.log_message(logging.DEBUG,f"{log_id}listener popped, rebuilding surface midi map only")
+        self.__processing_track_state_change = True
         self.request_rebuild_midi_map()
+        self.__processing_track_state_change = False
+
+    def processing_track_state_change(self):
+        return self.__processing_track_state_change
+
+    def processing_track_device_state_change(self):
+        return self.__processing_track_device_state_change
+
+    def selected_device_change_state(self, track, tid, type):
+        log_id = "C4.selected_device_change_state: "
+        self.log_message(logging.DEBUG, f"{log_id}selected device listener for {track.name} at index {tid} with type {type} popped, passing")
+        # if self.track_index == tid:
+        #     self.log_message(logging.DEBUG, f"{log_id}processing device change on script's selected track")
+        #     self.__processing_track_device_state_change = True
+        #      # whatever track has the selected device
+        #     self.__processing_track_device_state_change = False
+        # else:
+        #     self.log_message(logging.DEBUG, f"{log_id}ignoring device change because {tid} is not the script's selected track index {self.track_index}")
 
     def device_changestate(self, track, tid, type):
-        # log_id = "C4.device_changestate: "
-        # self.log_message(f"{log_id}device listener for {track.name}{tid} type {type} popped")
-        self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
+        log_id = "C4.device_changestate: "
+        self.log_message(logging.DEBUG, f"{log_id}device listener for {track.name} at index {tid} with type {type} popped")
+        if self.track_index == tid:
+            self.log_message(logging.DEBUG, f"{log_id}processing device change on script's selected track")
+            self.__processing_track_device_state_change = True
+            self.__encoder_controller.device_added_deleted_or_changed(track, tid, type)
+            self.__processing_track_device_state_change = False
+        else:
+            self.log_message(logging.DEBUG, f"{log_id}ignoring device change because {tid} is not the script's selected track index {self.track_index}")
         # if type == 2:
         #     pass
         # elif type == 1:

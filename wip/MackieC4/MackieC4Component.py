@@ -89,6 +89,12 @@ class MackieC4Component(object):
     def refresh_state(self):
         self.__main_script.refresh_state()
 
+    def is_processing_track_state_change(self):
+        return self.__main_script.processing_track_state_change()
+
+    def is_processing_track_device_state_change(self):
+        return self.__main_script.processing_track_device_state_change()
+
     def get_device_list(self, container):
         """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively."""
         # device_list = track_util.get_racks_recursive(track)  # this refers to the method used by Ableton in track_selection (which didn't work, but I'll leave it in here for now)

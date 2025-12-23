@@ -396,17 +396,17 @@ class MackieC4ListenerMixin(object):
            for type 0: tid == self.song().tracks.index
            for type 1: tid == self.song().return_tracks.index
            for type 2: tid == self.song().master_track.index (always 0)"""
-        # dtls = f"track <{track.name}> tidx <{tid}> type <{type}>"
-        if self.has_track_device_listener(track):
-            self.remove_track_device_listener(track)
-        cb = lambda: self.device_changestate(track, tid, type)
-        # self.log_message(logging.DEBUG, "LM.add_track_device_listener: input" + dtls)
-        if track.devices_has_listener(cb):
-            track.remove_devices_listener(cb)
+        dtls = f"track <{track.name}> tidx <{tid}> type <{type}>"
+        # if self.has_track_device_listener(track):
+        #     self.remove_track_device_listener(track)
+        cb = lambda: self.selected_device_change_state(track, tid, type)
+        self.log_message(logging.DEBUG, "LM.add_track_device_listener: input" + dtls)
+        # if track.devices_has_listener(cb):
+        #     track.remove_devices_listener(cb)
         if track.view.selected_device_has_listener(cb):
             track.view.remove_selected_device_listener(cb)
 
-        track.add_devices_listener(cb)
+        # track.add_devices_listener(cb)
         track.view.add_selected_device_listener(cb)
         self._lm["dlisten"][track] = cb
         # self.log_message(logging.DEBUG, "LM.add_track_device_listener: callback added for selected_device_listener with details: " + dtls)
