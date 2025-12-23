@@ -61,7 +61,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     track_count = 0
     
     script_log_levels = {"ALWAYS": 0, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NEVER": 99}
-    current_script_log_level = script_log_levels["ERROR"]
+    current_script_log_level = script_log_levels["DEBUG"]
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
@@ -642,9 +642,8 @@ class MackieC4(MackieC4ListenerMixin, object):
 
         if not found:
             if selected_track == self.song().master_track:
-                # index is now "one past" the last index in tracks
                 # tracks = self.song().visible_tracks + self.song().return_tracks
-                # this script stores master track info "one past" the tracks above in the same "encoder assignment history" array
+                # this script stores master track info "one past" the tracks above
                 selected_index = len(tracks) 
             else:
                 # signal that something bad happened - selected track
@@ -660,7 +659,7 @@ class MackieC4(MackieC4ListenerMixin, object):
             if self.track_count - new_track_count > 1:
                 self.__encoder_controller.tracks_deleted(selected_index, tracks)
             else:
-                # self.log_message(logging.DEBUG,f"{log_id}calling track_deleted passing index {selected_index}")
+                self.log_message(logging.DEBUG,f"{log_id}calling track_deleted passing index {selected_index}")
                 self.__encoder_controller.track_deleted(selected_index)
             self.track_count = new_track_count
             self.tracks_change()
@@ -668,7 +667,7 @@ class MackieC4(MackieC4ListenerMixin, object):
             if new_track_count - self.track_count > 1:
                 self.__encoder_controller.tracks_added(selected_index, tracks)
             else:
-                # self.log_message(logging.DEBUG,f"{log_id}calling track_added passing index {selected_index}")
+                self.log_message(logging.DEBUG,f"{log_id}calling track_added passing index {selected_index}")
                 self.__encoder_controller.track_added(selected_index)
             self.track_count = new_track_count
             self.tracks_change()
