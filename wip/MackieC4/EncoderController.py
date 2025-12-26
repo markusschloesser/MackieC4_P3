@@ -141,13 +141,12 @@ class EncoderController(MackieC4Component, Component):
         self.returns_switch = 0
 
         found = False
-        index = -1
         for i, track in enumerate(tracks):
             if track == selected_track:
                 self.track_changed(i)
                 found = True
-                index = i
                 break
+
         if not found:# this means master track is selected when the song session is initializing
             index = len(tracks)
             self.track_changed(index)
@@ -214,6 +213,7 @@ class EncoderController(MackieC4Component, Component):
     def __on_device_changed(self):
         log_id = "EC.__on_device_changed: "
         d = self.__device_provider.provided_device
+        self.__eah.next_selected_device = d
         if self.__chosen_plugin != d:
             self.__device_provider.clear_last_param_details()
             if liveobj_valid(d):
@@ -250,6 +250,7 @@ class EncoderController(MackieC4Component, Component):
                 self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {d.name}, updating chosen plugin")
                 self.__update_chosen_plugin_device(d)
             else:
+                # landed here when folding a group track and new selected (group) track didn't have any devices
                 self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but device not liveobj valid?")
         else:
             self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but provided device is already self.__chosen_plugin")
@@ -421,9 +422,7 @@ class EncoderController(MackieC4Component, Component):
                 else:
                     self.main_script().log_message(logging.DEBUG, f"{log_id}len(extended_device_list) {nbr_devices} < {selected_device_index} selected_device_index, no update")
             # else:
-                # something isn't getting updated correctly at startup and/or when devices are deleted
-                # the track index is too big for the array holding devices on every track - old array based storage system
-                # self.main_script().log_message(logging.DEBUG, f"{log_id}")
+            # selected_device_index is None or selected_device_index < 0
 
 
         if not self.is_locked_to_device:
@@ -436,12 +435,12 @@ class EncoderController(MackieC4Component, Component):
                         self.song().view.select_device(device) # this device selection could cause cascading listener callbacks in Live
                         # don't update chosen plugin here, defer to device change listener callback
                     else:
-                        self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but selected device is already {device.name}")
+                        self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but song selected device is already {device.name}")
                         if self.__chosen_plugin == device:
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}and chosen plugin device is already {device.name}")
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}and script chosen plugin is already {device.name}")
                         else:
                             nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}only updating chosen plugin device from {nm} to {device.name}")
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}only updating script chosen plugin from {nm} to {device.name}")
                             self.__update_chosen_plugin_device(device)
                 else:
                     self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but device state is already actively changing")
