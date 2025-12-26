@@ -654,10 +654,20 @@ class MackieC4(MackieC4ListenerMixin, object):
             self.log_message(logging.DEBUG,f"{log_id}setting self.track_index {self.track_index} to selected index {selected_index}")
             self.track_index = selected_index
 
+        if selected_index < len(self.song().visible_tracks):
+            callback_track_type = 0
+        elif selected_index < len(self.song().visible_tracks) + len(self.song().return_tracks):
+            callback_track_type = 1
+        else:
+            callback_track_type = 2  # can't "fold" or delete master
+
         new_track_count = len(tracks)
         if self.track_count > new_track_count:
             if self.track_count - new_track_count > 1:
-                self.__encoder_controller.tracks_deleted(selected_index, tracks)
+                tracks_removed = self.track_count - new_track_count
+                msg = f"{log_id}calling ec.tracks_deleted(index={selected_index}, song_tracks=({len(tracks)} tracks), track_type={callback_track_type}"
+                self.log_message(logging.DEBUG, msg)
+                self.__encoder_controller.tracks_deleted(selected_index, tracks, callback_track_type)
             else:
                 self.log_message(logging.DEBUG,f"{log_id}calling track_deleted passing index {selected_index}")
                 self.__encoder_controller.track_deleted(selected_index)

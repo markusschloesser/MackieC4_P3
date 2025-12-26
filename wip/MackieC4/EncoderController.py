@@ -490,13 +490,16 @@ class EncoderController(MackieC4Component, Component):
                 self.__update_chosen_plugin_device(device)  # device == None
         return
 
-    def tracks_deleted(self, track_index, tracks):
-        self.__eah.tracks_deleted(track_index, tracks)
+    def tracks_deleted(self, track_index, tracks, track_type=-1):
+        log_id = "EC.tracks_deleted: "
+        self.main_script().log_message(logging.DEBUG, f"{log_id}deleting tracks from index: {track_index}")
+        self.__eah.tracks_deleted(track_index, tracks, track_type)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}updating selected track info at index: {track_index}")
         self.__update_selected_track(track_index)
 
     def track_deleted(self, track_index):
         # log_id = "EC.track_deleted: "
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}del tk idx before deleted track: {0}".format(track_index))
+        # self.main_script().log_message(logging.DEBUG, f"{log_id}at index: {track_index}")
         self.__eah.track_deleted(track_index)
         self.__update_selected_track(track_index)
 
