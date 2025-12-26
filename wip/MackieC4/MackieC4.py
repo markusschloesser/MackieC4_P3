@@ -672,7 +672,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                 self.log_message(logging.DEBUG,f"{log_id}calling track_deleted passing index {selected_index}")
                 self.__encoder_controller.track_deleted(selected_index)
             self.track_count = new_track_count
-            self.tracks_change()
+            self.request_rebuild_midi_map() # self.tracks_change()
         elif self.track_count < new_track_count:
             if new_track_count - self.track_count > 1:
                 self.__encoder_controller.tracks_added(selected_index, tracks)
@@ -680,7 +680,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                 self.log_message(logging.DEBUG,f"{log_id}calling track_added passing index {selected_index}")
                 self.__encoder_controller.track_added(selected_index)
             self.track_count = new_track_count
-            self.tracks_change()
+            self.request_rebuild_midi_map() # self.tracks_change()
         else:
             self.log_message(logging.DEBUG,f"{log_id}calling track_changed passing index {selected_index}")
             self.__encoder_controller.track_changed(selected_index)
@@ -742,12 +742,14 @@ class MackieC4(MackieC4ListenerMixin, object):
         except RuntimeError:
             pass
 
-    def tracks_change(self):
+    def tracks_change(self, *anything):
         log_id = "C4.tracks_change: "
-        self.log_message(logging.DEBUG,f"{log_id}listener popped, rebuilding surface midi map only")
-        self.__processing_track_state_change = True
-        self.request_rebuild_midi_map()
-        self.__processing_track_state_change = False
+        self.log_message(logging.DEBUG,f"{log_id}listener popped")
+        self.log_message(logging.DEBUG, anything)
+        self.log_message(logging.DEBUG,f"{log_id}passing")
+        # self.__processing_track_state_change = True
+        # self.request_rebuild_midi_map()
+        # self.__processing_track_state_change = False
 
     def processing_track_state_change(self):
         return self.__processing_track_state_change
