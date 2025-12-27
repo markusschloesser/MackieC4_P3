@@ -164,7 +164,7 @@ class SongData(object):
     @depends(logger=None)
     def __init__(self, logger=None):
         self.logger = logger
-        self.__active_logging = True
+        self.__class_logging = True  # False #
         self.track_table = {track_callback_types[0]: {},
                             track_callback_types[1]: {},
                             track_callback_types[2]: {}}
@@ -175,7 +175,7 @@ class SongData(object):
         self.__master_track_count = 1
 
     def log_msg(self, level, msg):
-        if self.__active_logging:
+        if self.__class_logging:
             self.logger(level, msg)
 
     @property
@@ -197,13 +197,17 @@ class SongData(object):
         rtn = tracks_before if tracks_before > 0 else 1
         return rtn
 
+    def get_master_track(self, master_track_index=None):
+        if master_track_index is None:
+            master_track_index = self.master_track_index
+        return self.get_track_by_type_key(track_callback_types[2], master_track_index)
+
     def init_master_track(self, track, song_index):
         self.clear_tracks_by_type_key(track_callback_types[2])
         nbr_devices = len(track.devices)
         selected_device_index = 0 if nbr_devices > 0 else None
         track_ref = ActiveTrack(track, self.table_keys[track_callback_types[2]], song_index, song_index, nbr_devices, selected_device_index)
         self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: BEFORE: master ref {track_ref} at index {song_index}")
-        # local_dict[key] = value
         self.track_table[track_callback_types[2]][song_index] = track_ref
         track_ref = self.track_table[track_callback_types[2]][song_index]
         self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: AFTER: master ref {track_ref} at index {song_index}")
@@ -218,9 +222,11 @@ class SongData(object):
         self.track_table[track_callback_types[2]][self.master_track_index] = master_ref
         # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
-    # NOTE: not updating any other "internal stored object indexes" to match their associated track or device "slot index" (map key)"
-    #       Whenever "getting" a track or device reference out of storage, set its "internal stored object indexes" to current values
-    #       BEFORE setting the reference object back into its "map slot"
+    # NOTE: no functions to update any other "internal stored object indexes" to match their associated track or device "slot index" (map key)"
+    #       See get_track() and get_device() below, the ActiveTrack and ActiveDevice object internal property index values are updated automatically
+    #       before ActiveTrack or ActiveDevice objects return from get_track() and get_device() (so they can "set themselves" back, see set_device() for example)
+    # The stored internal property index values fall out of sync with their actual associated "map key index" values every time tracks are added to or removed from the Song
+    # I.E. This class.  (Except for Master Track index, ) The internal indexes are not resynchronized / updated until "fetched" by get_track() or get_device()
 
     def clear_all_tracks(self):
         self.clear_tracks_by_type_key(track_callback_types[0])
@@ -260,22 +266,23 @@ class SongData(object):
         if self.track_table[primary_key][track_type_index].selected_device_index is not None:
             self.track_table[primary_key][track_type_index].selected_device_index = None
 
-    def get_master_track(self, master_track_index=None):
-        if master_track_index is None:
-            master_track_index = self.master_track_index
-        return self.get_track_by_type_key(track_callback_types[2], master_track_index)
-
     def get_track(self, song_track_index):
         callback_type_index = song_track_index
         rtns_index = song_track_index - self.plain_track_count
         rtn = None
         if song_track_index < self.plain_track_count:
             rtn = self.get_track_by_type_key(track_callback_types[0], song_track_index)
+            rtn.index = song_track_index
+            rtn.index_by_type = song_track_index
         elif rtns_index < self.return_track_count:
             callback_type_index = rtns_index
             rtn = self.get_track_by_type_key(track_callback_types[1], rtns_index)
+            rtn.index = song_track_index
+            rtn.index_by_type = rtns_index
         elif song_track_index == self.plain_track_count + self.return_track_count:
             rtn = self.get_track_by_type_key(track_callback_types[2], song_track_index)
+            rtn.index = song_track_index
+            rtn.index_by_type = song_track_index
 
         self.log_msg(logging.DEBUG, f"EAH.SD.get_track: {rtn}")
         self.log_msg(logging.DEBUG, f"EAH.SD.get_track: returning track_ref from index {callback_type_index}")
@@ -298,7 +305,8 @@ class SongData(object):
         else:
             raise RuntimeError("can't set a track not already in the track table")
 
-        self.log_msg(logging.DEBUG, f"EAH.SD.set_track: setting track_ref {active_track} at song track index {active_track.index} and callback type track index {active_track.index_by_type}")
+        msg = f"EAH.SD.set_track: done track_ref {active_track} at song track index {active_track.index} and callback type track index {active_track.index_by_type}"
+        self.log_msg(logging.DEBUG, msg)
         self.log_msg(logging.DEBUG, f"EAH.SD.set_track: plain tracks {self.plain_track_count} return tracks {self.return_track_count}")
 
     def init_tracks(self, p_tracks, r_tracks, m_track):
@@ -378,7 +386,6 @@ class SongData(object):
         elif rtns_index < self.return_track_count:
             self.add_track_by_call_back_type(track_callback_types[1], song_index, rtns_index, track)
         elif song_track_index == self.plain_track_count + self.return_track_count:
-            # self._insert_track_slot(self.track_table[track_callback_types[2]], track_index, track_ref)
             raise RuntimeError(f"can't add or remove master track at index {song_track_index}")
         else:
             raise RuntimeError(f"can't add track at OOB index {song_track_index}, max new index is less than {self.master_track_index}")
@@ -461,6 +468,12 @@ class SongData(object):
         device_map = self.get_track_device_map(song_track_index)
         if device_map and device_index < len(device_map.keys()):
             rtn = device_map[device_index]
+            rtn.index = device_index
+            rtn.track_index = song_track_index
+            if self.plain_track_count <= song_track_index < self.return_track_count:
+                rtn.track_index_by_type = song_track_index - self.plain_track_count
+            else:
+                rtn.track_index_by_type = song_track_index # plain or master track index by type
 
         self.log_msg(logging.DEBUG, f"EAH.SD.get_device: returning device_ref from song index {song_track_index} and d_index {device_index}")
         self.log_msg(logging.DEBUG, f"EAH.SD.get_device: {rtn}")
@@ -630,6 +643,7 @@ class SongData(object):
 
         vals = ["device list" if isinstance(x, dict) else x.to_string() for x in local_dict.values()]
         self.log_msg(logging.DEBUG, f"{log_id} returning updated dict keys {local_dict.keys()} and values {vals}")
+        return local_dict
 
     def __shift_keys_left(self, local_dict, key):
         log_id = "EAH.SD.__shift_keys_left: "
@@ -672,7 +686,6 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.__master_track_index = self.data.master_track_index  # not a valid index until build_setup_database() runs
         self.__last_selected_track_index = 0
         self.__next_selected_track_index = 0
-        # self.__last_selected_device_index = 0
         self.__next_selected_device_index = 0
 
     @property
@@ -840,19 +853,41 @@ class EncoderAssignmentHistory(MackieC4Component):
         if song_ref is None:
             song_ref = self.song()
 
-
     def track_changed(self, track_index):
         track_ref = self.data.get_track(track_index)
         self.last_selected_track_index = track_index
         return track_ref.selected_device_index
 
-    def tracks_added(self, track_index, tracks):
-        final_track_count = len(tracks)
-        at_index = track_index
-        while final_track_count > self.track_count:
-            track_obj = tracks[at_index]
-            self.track_added(at_index, track_obj, track_obj.devices)
-            at_index = self.last_selected_track_index
+    def tracks_added(self, song_track_index, song_tracks_after, callback_type):
+        log_id = "EAH.tracks_added: "
+        log_msg = f"{log_id}can't add master"
+        final_callback_type_track_count = 1  # minimum == 1 master
+        self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        if callback_type == 0:
+            final_callback_type_track_count = len(song_tracks_after) - self.data.return_track_count
+            at_index = song_track_index
+            while final_callback_type_track_count > self.data.plain_track_count:
+                self.main_script().log_message(logging.DEBUG, f"{log_id} adding at plains index: {at_index}")
+                track_obj = song_tracks_after[at_index]
+                self.track_added(at_index, track_obj, track_obj.devices)
+                at_index = self.last_selected_track_index
+                self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: plain {self.data.plain_track_count}")
+            assert final_callback_type_track_count == self.data.plain_track_count
+            final_callback_type_track_count += self.data.return_track_count
+        elif callback_type == 1:
+            final_callback_type_track_count = len(song_tracks_after) - self.data.plain_track_count
+            at_index = song_track_index
+            while final_callback_type_track_count > self.data.return_track_count:
+                self.main_script().log_message(logging.DEBUG, f"{log_id} adding at returns index: {at_index}")
+                track_obj = song_tracks_after[at_index]
+                self.track_added(at_index, track_obj, track_obj.devices)
+                at_index = self.last_selected_track_index
+                self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: return {self.data.return_track_count}")
+            assert final_callback_type_track_count == self.data.return_track_count
+            final_callback_type_track_count += self.data.plain_track_count
+
+        self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        assert final_callback_type_track_count == self.data.total_track_count - 1  # not counting master here
 
     def track_added(self, song_track_index, track_obj=None, devices_on_selected_track=None):
 
@@ -863,10 +898,10 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         type_key = None
         if song_track_index < self.data.plain_track_count:
-            type_key = self.data.table_keys["plain"]
+            type_key = self.data.table_keys[track_callback_types[0]]
             self.data.add_track(track_obj, type_key, song_track_index)
         elif rtn_idx < self.data.return_track_count:
-            type_key = self.data.table_keys["return"]
+            type_key = self.data.table_keys[track_callback_types[1]]
             self.data.add_track(track_obj, type_key, rtn_idx)
         # else can't add master
 
@@ -879,15 +914,14 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         self.last_selected_track_index = song_track_index
 
-    def tracks_deleted(self, callback_type_track_index, song_tracks_after, callback_type):
+    def tracks_deleted(self, song_track_index, song_tracks_after, callback_type):
         log_id = "EAH.tracks_deleted: "
         log_msg = f"{log_id}can't remove master"
         final_callback_type_track_count = 1 # minimum == 1 master
         self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         if callback_type == 0:
             final_callback_type_track_count = len(song_tracks_after) - self.data.return_track_count
-            at_index = callback_type_track_index
-            stable_count = self.data.plain_track_count
+            at_index = song_track_index
             log_msg = f"{log_id}removing {self.data.plain_track_count - final_callback_type_track_count} plain tracks from index {at_index}"
             self.main_script().log_message(logging.DEBUG, log_msg)
             while final_callback_type_track_count < self.data.plain_track_count:
@@ -898,15 +932,14 @@ class EncoderAssignmentHistory(MackieC4Component):
             final_callback_type_track_count += self.data.return_track_count
         elif callback_type == 1:
             final_callback_type_track_count = len(song_tracks_after) - self.data.plain_track_count
-            stable_track_count = self.data.return_track_count
-            at_index = callback_type_track_index
+            at_index = song_track_index
             log_msg = f"{log_id}removing {self.data.return_track_count - final_callback_type_track_count} return tracks from index {at_index}"
             self.main_script().log_message(logging.DEBUG, log_msg)
             while final_callback_type_track_count < self.data.return_track_count:
                 self.main_script().log_message(logging.DEBUG, f"{log_id} deleting at returns index: {at_index}")
                 self.track_deleted(at_index)
                 at_index = self.last_selected_track_index
-                self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: plains {self.data.return_track_count}")
+                self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: returns {self.data.return_track_count}")
             final_callback_type_track_count += self.data.plain_track_count
 
         # else:

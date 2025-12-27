@@ -137,7 +137,7 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.build_setup_database(song)
         tracks = song.visible_tracks + song.return_tracks
         selected_track = song.view.selected_track
-
+        self.__pending_device_change = False
         self.returns_switch = 0
 
         found = False
@@ -222,6 +222,7 @@ class EncoderController(MackieC4Component, Component):
                     msg = f"{log_id}listener popped, {d.name} is valid, but local selected_track is not song view selected track, "
                     msg += "deferring device change processing until track change callback pops"
                     self.main_script().log_message(logging.INFO, msg)
+                    self.__pending_device_change = True
                     return
                     # mismatch, script is behind? until "track changed" listener callback
                     # self.main_script().log_message(logging.INFO, f"{log_id}listener popped, {d.name} is valid, but local selected_track not song view selected track")
@@ -450,10 +451,10 @@ class EncoderController(MackieC4Component, Component):
 
         return
 
-    def tracks_added(self, track_index, tracks):
+    def tracks_added(self, track_index, tracks, callback_type):
         # does it matter that this code always adds these tracks here without accounting for each track's extended_device_list in the EAH arrays,
         # then only updates the local selected track? (using same update code as from self.track_deleted())
-        self.__eah.tracks_added(track_index, tracks)
+        self.__eah.tracks_added(track_index, tracks, callback_type)
         self.__update_selected_track(track_index)
 
     def track_added(self, track_index):
