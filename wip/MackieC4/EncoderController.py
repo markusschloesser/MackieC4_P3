@@ -457,6 +457,10 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.tracks_added(track_index, tracks, callback_type)
         self.__update_selected_track(track_index)
 
+    def unselected_tracks_added(self, found_changed_track_callback_type, callback_type_track_count):
+        self.__eah.unselected_tracks_added(found_changed_track_callback_type, callback_type_track_count)
+        self.__update_selected_track(self.__eah.last_selected_track_index)
+
     def track_added(self, track_index):
         log_id = "EC.track_added: "
         self.selected_track = self.song().view.selected_track
@@ -496,6 +500,14 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.tracks_deleted(track_index, tracks, track_type)
         self.main_script().log_message(logging.DEBUG, f"{log_id}updating selected track info at index: {track_index}")
         self.__update_selected_track(track_index)
+
+    def unselected_tracks_deleted(self, found_changed_track_callback_type, callback_type_track_count):
+        self.__eah.unselected_tracks_deleted(found_changed_track_callback_type, callback_type_track_count)
+        self.__update_selected_track(self.__eah.last_selected_track_index)
+
+    def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
+        self.__eah.unselected_tracks_changed(found_changed_track_callback_type, callback_type_track_count)
+        self.__update_selected_track(self.__eah.last_selected_track_index)
 
     def track_deleted(self, track_index):
         # log_id = "EC.track_deleted: "
