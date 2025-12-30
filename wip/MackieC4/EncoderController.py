@@ -223,12 +223,24 @@ class EncoderController(MackieC4Component, Component):
                     msg += "deferring device change processing until track change callback pops"
                     self.main_script().log_message(logging.INFO, msg)
                     self.__pending_device_change = True
+                    self.__eah.next_selected_device = d
                     return
 
+                msg = f"{log_id}listener popped, {d.name} is valid, and local selected_track is the song view selected track, processing device change"
+                self.main_script().log_message(logging.INFO, msg)
+                # index = self.__eah.last_selected_track_index
+                # cb_type = self.__eah.last_selected_track_callback_type
+                extended_device_list = self.get_device_list(self.selected_track.devices)
+                device_index = self.find_device_index_in_list(extended_device_list, d)
+                self.__eah.device_added_deleted_or_changed(extended_device_list, d, device_index)
+                self.main_script().log_message(logging.DEBUG, f"{log_id} local data updated on device change, updating special param listeners")
+                self.add_special_parameter_listeners(track, d)
+                last_name = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
+                self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {d.name}, updating chosen plugin from {last_name}")
                 self.__update_chosen_plugin_device(d)
-            else:
-                # landed here when folding a group track and new selected (group) track didn't have any devices
-                self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but device not liveobj valid?")
+            # else:
+            #     # can land here when folding a group track and new selected (group) track doesn't have any devices
+            #     self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but device not liveobj valid?")
         else:
             self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but provided device is already self.__chosen_plugin")
 
