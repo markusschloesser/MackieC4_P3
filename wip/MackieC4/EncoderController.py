@@ -232,6 +232,28 @@ class EncoderController(MackieC4Component, Component):
         else:
             self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but provided device is already self.__chosen_plugin")
 
+    def add_special_parameter_listeners(self, selected_track, selected_device):
+        log_id = "EC.add_special_parameter_listeners: "
+        if liveobj_valid(selected_track):
+            # note: these listeners are in addition to the script's normal midi mapping listeners
+            # they are associated with the C4.selected_device_change_state() callback method and
+            # they specifically support the Parameter Single left and right button behavior (increment/decrement value of last changed device parameter)
+            # existing (C4.selected_device_change_state() callback) listeners are automatically removed before adding new ones
+            self.main_script().do_add_one_devices_listeners(selected_device, track_name=selected_track.name)
+        else:
+            track = self.__device_provider.device_track
+            if liveobj_valid(track):
+                self.main_script().do_add_one_devices_listeners(selected_device, track_name=track.name)
+            else:
+                self.main_script().log_message(logging.INFO, f"{log_id}selected device {selected_device.name} is valid, but not selected_track, finding track")
+                track, index = self.find_devices_track(selected_device)
+                if liveobj_valid(track):
+                    self.selected_track = track
+                    self.main_script().do_add_one_devices_listeners(selected_device, track_name=track.name)
+                else:
+                    msg = f"{log_id}selected device is {selected_device.name} but can't locate valid track reference. "
+                    self.main_script().log_message(logging.ERROR, msg + "no device parameter listeners added, predicting something else will soon derail anyway")
+
     def find_devices_track(self, device):
         log_id = "EC.find_devices_track: "
         selected_track = self.song().view.selected_track
