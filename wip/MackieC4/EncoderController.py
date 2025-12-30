@@ -387,7 +387,7 @@ class EncoderController(MackieC4Component, Component):
                     device = extended_device_list[0] # nbr_devices - 1
                     msg = f"{log_id}Because there are only {nbr_devices} devices in device list for track {self.selected_track.name}, index "
                     if liveobj_valid(device):
-                        msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {device.name} found at index 0 instead."
+                        msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {device.name} found at index {nbr_devices - 1} instead."
                         self.main_script().log_message(logging.INFO, msg)
                     else:
                         nbr_devices = 0
@@ -416,15 +416,31 @@ class EncoderController(MackieC4Component, Component):
                         if self.__chosen_plugin == device:
                             self.main_script().log_message(logging.DEBUG, f"{log_id}and script chosen plugin is already {device.name}")
                         else:
+                            if self.__pending_device_change:
+                                msg_prefix = f"{log_id}and a local device change is pending, "
                             nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}only updating script chosen plugin from {nm} to {device.name}")
+                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix}only updating script chosen plugin from {nm} to {device.name}")
                             self.__update_chosen_plugin_device(device)
+                            self.__pending_device_change = False
+                            name = "None" if self.__eah.next_selected_device is None else self.__eah.next_selected_device.name
+                            if self.__eah.next_selected_device == device:
+                                self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} processed successfully")
+                                self.__eah.next_selected_device = None
+                            else:
+                                self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} ignored in favor of change to {device.name}?")
                 else:
                     self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but device state is already actively changing")
             else:
+                if self.__pending_device_change:
+                    msg_prefix += "and a local device change is pending, "
                 self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but no valid device found, self.__chosen_plugin == None")
                 self.__update_chosen_plugin_device(device)  # device == None
+                if self.__pending_device_change and self.__eah.next_selected_device != device:
+                    name = self.__eah.next_selected_device.name
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}pending device change to {name} ignored?, self.__eah.next_selected_device == None")
+                    self.__eah.next_selected_device = None
 
+                self.__pending_device_change = False
         return
 
     def tracks_added(self, track_index, tracks, callback_type):

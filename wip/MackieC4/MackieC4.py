@@ -825,10 +825,13 @@ class MackieC4(MackieC4ListenerMixin, object):
                 msg = f"{log_id}calling ec.unselected_tracks_deleted{dtls}"
                 self.log_message(logging.DEBUG, msg)
                 self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)
-            else:
-                msg = f"{log_id} assuption issue? calling EC.unselected_track_changed{dtls}"  # is this even possible
+            else: # different 'selected index' and 'event index' callback track types were detected, but no telltale track count differences
+                # landed here when two tracks were selected at the same time (shift + left-click) then Ctrl-G grouped
+                # future selected-tracks-got-grouped events should be ignored here in tracks_changed()
+                # in favor of new-track-added-and-selected event processing by track_changed(index)
+                msg = f"{log_id} assumption issue? passing on this event{dtls}"  # continuing to log in case of other triggers
                 self.log_message(logging.ERROR, msg)
-                self.__encoder_controller.unselected_tracks_changed(found_changed_track_callback_type, found_callback_type_track_count)
+                # self.__encoder_controller.unselected_tracks_changed(found_changed_track_callback_type, found_callback_type_track_count)
 
         self.update_callback_type_track_counts()
         self.track_count = new_track_count
@@ -841,6 +844,8 @@ class MackieC4(MackieC4ListenerMixin, object):
         return self.__processing_track_device_state_change
 
     def selected_device_change_state(self, track, tid, type):
+        # this was the only listener that popped when the index of the selected device changed (order of devices changed in device list)
+        # since passing here, the EC.eah "database" is not updated with the new sort order until the next event that is processed like select another device in chain
         log_id = "C4.selected_device_change_state: "
         self.log_message(logging.DEBUG, f"{log_id}selected device listener for {track.name} at index {tid} with type {type} popped, passing")
         # if self.last_selected_track_index == tid:
