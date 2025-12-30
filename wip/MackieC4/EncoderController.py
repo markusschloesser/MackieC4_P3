@@ -391,13 +391,18 @@ class EncoderController(MackieC4Component, Component):
         # selected_device_index would return from self.__eah.track_changed(track_index), except don't update EAH.last_selected_track_index yet
         # self.__eah.track_changed(track_index) is called as needed below
         next_active_track_ref = self.__eah.data.get_track(track_index)
+
         selected_device_index = next_active_track_ref.selected_device_index
         extended_device_list = self.get_device_list(self.selected_track.devices)
-        device = None
         nbr_devices = len(extended_device_list)
-        log_idx = "None" if selected_device_index is None else selected_device_index
-        if nbr_devices > 0 and (selected_device_index is None or not (0 <= selected_device_index < nbr_devices)):
-            msg = f"{log_id}selected device index is {log_idx} but there are {nbr_devices} devices, setting selected device index to 0"
+        device = None
+        if selected_device_index is not None and self.__pending_device_change:
+            device = self.__eah.next_selected_device
+            if nbr_devices > next_active_track_ref.device_count:
+                selected_device_index = nbr_devices - 1
+                msg = f"{log_id}pending device change, device added, index is last {selected_device_index}"
+            else:
+                msg = f"{log_id}assumption issue? pending device change, device changed, index is still {selected_device_index}"
             self.main_script().log_message(logging.DEBUG, msg)
         else: # selected_device_index is None or this track change is not a self.__pending_device_change case
             log_idx = "None" if selected_device_index is None else selected_device_index
@@ -415,7 +420,8 @@ class EncoderController(MackieC4Component, Component):
         else:
             if selected_device_index is not None and selected_device_index > -1:
                 if nbr_devices > selected_device_index:
-                    device = extended_device_list[selected_device_index]
+                    if device is None:
+                        device = extended_device_list[selected_device_index]
                     if liveobj_valid(device):
                         self.main_script().log_message(logging.DEBUG, f"{log_id}{device.name} found at index {selected_device_index}")
                     self.__eah.track_changed(track_index)
