@@ -624,13 +624,15 @@ class EncoderController(MackieC4Component, Component):
                 if liveobj_valid(selected_device):
                     log_msg = f"{log_id}track {self.selected_track.name} and device {selected_device.name} are valid"
                     self.main_script().log_message(logging.DEBUG, log_msg)
-                    current_selected_indexes = (x for x in range(len(extended_device_list))
-                                                if extended_device_list[x] == selected_device)
-                    selected_device_idx = next(current_selected_indexes, -1)
-                    extended_device_list = self.get_device_list(self.selected_track.devices)
-                    if selected_device_idx < 0 < len(extended_device_list):
-                        selected_device_idx = len(extended_device_list) - 1
-                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list, selected_device, selected_device_idx)
+                    # current_selected_indexes = (x for x in range(len(extended_device_list)) if extended_device_list[x] == selected_device)
+                    # # if the device list contains more than one selected instance of the selected device, collect all selected indexes
+                    # # and pass the first index collected
+                    # selected_device_idx = next(current_selected_indexes, -1)
+                    # extended_device_list = self.get_device_list(self.selected_track.devices)
+                    # if selected_device_idx < 0 < len(extended_device_list):
+                    #     selected_device_idx = len(extended_device_list) - 1
+                    selected_device_index = self.find_device_index_in_list(extended_device_list, selected_device)
+                    updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list, selected_device, selected_device_index)
 
             device = None
             if not self.is_locked_to_device:
@@ -677,6 +679,15 @@ class EncoderController(MackieC4Component, Component):
                     self.main_script().log_message(logging.ERROR, log_msg)
         # else:
             # self.main_script().log_message(logging.WARNING, f"{log_id}new_device_count_track was NOT > 0, NOT enumerating devices for log")
+
+    def find_device_index_in_list(self, device_list, device):
+        current_selected_indexes = (x for x in range(len(device_list)) if device_list[x] == device)
+        # if the device list contains more than one selected instance of the selected device, collect all selected indexes
+        # and pass the first index collected
+        device_index = next(current_selected_indexes, -1)
+        if device_index < 0 < len(device_list):
+            device_index = len(device_list) - 1
+        return device_index
 
     def toggle_devices(self, cc_no, cc_value):
         """any clockwise turn cc_value activates device represented by cc_no, counterclockwise turns deactivate device."""
