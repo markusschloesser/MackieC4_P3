@@ -913,9 +913,9 @@ class EncoderAssignmentHistory(MackieC4Component):
         # for j, device in enumerate(song_ref.master_track.devices):
         #     self.data.init_device(self.data.master_track_index, self.data.master_track_index, j, device)
 
-    def rebuild_database_on_tracks_change(self, song_ref=None):
-        if song_ref is None:
-            song_ref = self.song()
+    # def rebuild_database_on_tracks_change(self, song_ref=None):
+    #     if song_ref is None:
+    #         song_ref = self.song()
 
     def track_changed(self, track_index):
         track_ref = self.data.get_track(track_index)
@@ -1124,12 +1124,12 @@ class EncoderAssignmentHistory(MackieC4Component):
         # self.main_script().log_message(logging.DEBUG, f"{log_id}selected track_ref is now {track_ref.track_name} at index {self.last_selected_track_index}")
 
 
-    def device_added_deleted_or_changed(self, all_devices, selected_device, selected_device_idx):
+    def device_added_deleted_or_changed(self, all_track_devices, selected_device, selected_device_idx):
         log_id = "EAH.device_added_deleted_or_changed: "
-        new_device_count_track = len(all_devices)
+        new_device_count_track = len(all_track_devices)
         idx = 0
         log_msg = f"{log_id}device in input device list at index<{idx}> is "
-        for device in all_devices:
+        for device in all_track_devices:
             if liveobj_valid(device):
                 # pass
                 self.main_script().log_message(logging.DEBUG, f"{log_msg}a valid Live object named <{device.name}>")
@@ -1170,7 +1170,7 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         # if there are no devices on track, there are no devices in input all_devices list and this loop is not entered,
         # all "change indexes" stay 0. If a device was deleted, selected_device will be at the index before the deleted device
-        for index,device in enumerate(all_devices):
+        for index,device in enumerate(all_track_devices):
             if selected_device == device:
                 new_device_index = index
                 deleted_device_index = index
@@ -1197,7 +1197,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         # so we could return rtn_device_index right here, except for updating the "assignment history" database
 
         if device_was_added:
-            self.update_device_counts_on_addition(new_device_index, all_devices, old_device_count_track, new_device_count_track)
+            self.update_device_counts_on_addition(new_device_index, all_track_devices, old_device_count_track, new_device_count_track)
 
         elif device_was_removed:
             self.update_device_counts_on_removal(deleted_device_index, rack_devices_deleted, found_input_device_index,
