@@ -399,9 +399,14 @@ class EncoderController(MackieC4Component, Component):
         if nbr_devices > 0 and (selected_device_index is None or not (0 <= selected_device_index < nbr_devices)):
             msg = f"{log_id}selected device index is {log_idx} but there are {nbr_devices} devices, setting selected device index to 0"
             self.main_script().log_message(logging.DEBUG, msg)
-            next_active_track_ref.selected_device_index = 0
-            self.__eah.data.set_track(next_active_track_ref)
-            selected_device_index = next_active_track_ref.selected_device_index
+        else: # selected_device_index is None or this track change is not a self.__pending_device_change case
+            log_idx = "None" if selected_device_index is None else selected_device_index
+            if nbr_devices > 0 and (selected_device_index is None or not (0 <= selected_device_index < nbr_devices)):
+                msg = f"{log_id}selected device index is {log_idx} but there are {nbr_devices} devices, setting selected device index to {nbr_devices - 1}"
+                self.main_script().log_message(logging.DEBUG, msg)
+                next_active_track_ref.selected_device_index = nbr_devices - 1
+                self.__eah.data.set_track(next_active_track_ref)
+                selected_device_index = next_active_track_ref.selected_device_index
 
         if nbr_devices == 0:
             self.main_script().log_message(logging.DEBUG, f"{log_id}no devices found on track {self.selected_track.name}")
@@ -418,7 +423,7 @@ class EncoderController(MackieC4Component, Component):
                     self.main_script().log_message(logging.DEBUG, f"{log_id}called __eah.update_device_counter({track_index}, {nbr_devices})")
                 # else something didn't get updated correctly at startup and/or when devices deleted?
                 elif nbr_devices > 0: # punt if we can
-                    device = extended_device_list[0] # nbr_devices - 1
+                    device = extended_device_list[nbr_devices - 1]
                     msg = f"{log_id}Because there are only {nbr_devices} devices in device list for track {self.selected_track.name}, index "
                     if liveobj_valid(device):
                         msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {device.name} found at index {nbr_devices - 1} instead."
