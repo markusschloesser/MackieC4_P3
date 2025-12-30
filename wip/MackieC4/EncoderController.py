@@ -224,31 +224,7 @@ class EncoderController(MackieC4Component, Component):
                     self.main_script().log_message(logging.INFO, msg)
                     self.__pending_device_change = True
                     return
-                    # mismatch, script is behind? until "track changed" listener callback
-                    # self.main_script().log_message(logging.INFO, f"{log_id}listener popped, {d.name} is valid, but local selected_track not song view selected track")
-                    # if not self.is_locked_to_device and liveobj_valid(track):
-                    #     self.main_script().log_message(logging.INFO, f"{log_id}script is not locked to device, updating local selected track")
-                    #     self.selected_track = track
-                    #     self.__locked_device_track = self.selected_track
 
-                if liveobj_valid(track):
-                    # note: these listeners are in addition to the script's normal midi mapping listeners
-                    # they support the Parameter Single left and right button behavior (increment/decrement value of last changed device parameter)
-                    self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
-                else:
-                    track = self.__device_provider.device_track
-                    if liveobj_valid(track):
-                        self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
-                    else:
-                        self.main_script().log_message(logging.INFO, f"{log_id}listener popped, {d.name} is valid, but not selected_track, finding track")
-                        track, index = self.find_devices_track(d)
-                        if liveobj_valid(track):
-                            self.selected_track = track
-                            self.main_script().do_add_one_devices_listeners(d, track_name=track.name)
-                        else:
-                            msg = f"{log_id}listener popped, device is {d.name} but can't locate valid track reference. "
-                            self.main_script().log_message(logging.ERROR, msg + "no device parameter listeners added, but something else will soon derail anyway")
-                self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {d.name}, updating chosen plugin")
                 self.__update_chosen_plugin_device(d)
             else:
                 # landed here when folding a group track and new selected (group) track didn't have any devices
