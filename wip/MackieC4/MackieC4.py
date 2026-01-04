@@ -100,7 +100,7 @@ class MackieC4(MackieC4ListenerMixin, object):
             index = index + 1
 
         self.track_count = len(tracks)
-        self.callback_type_track_counts = {0: len(self.song().visible_tracks), 1: len(self.song().return_tracks), 2: 1}
+        self.callback_type_track_counts = {0: int(len(self.song().visible_tracks)), 1: int(len(self.song().return_tracks)), 2: 1}
 
         # if refresh_state is not already listening for visible tracks view changes
         if self.song().visible_tracks_has_listener(self.tracks_change) != 1:
@@ -624,6 +624,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         # self.request_rebuild_midi_map()  <--- called by EC
 
     def find_changed_track_callback_type(self):
+        log_id = "C4.find_changed_track_callback_type: "
         """ depending on the arrangement of tracks you can see on the screen in Live, a 'tracks listener' event's callback_type 'location' might not be the same 'location'
             as the selected track's callback_type location.  For example, an unfolded group track with 2 instruments and 2 audio tracks make 5 plain callback type 0 tracks,
             plus 2 callback type 1 return tracks (and callback type 2 master) result in 7 'song track indexes (plus master). If the first return track is selected
@@ -633,6 +634,12 @@ class MackieC4(MackieC4ListenerMixin, object):
         found_changed_track_callback_type = 2
         callback_type_track_count = 1
         next_type_counts = {0: len(self.song().visible_tracks), 1: len(self.song().return_tracks), 2: 1}
+        msg = f"{log_id}"
+        # for i in next_type_counts.keys():
+        #     msg += f"type {i}: old count {self.callback_type_track_counts[i]} new count {next_type_counts[i]}"
+        #     self.log_message(logging.DEBUG, msg)
+        #     msg = f"{log_id}"
+
         if self.callback_type_track_counts[0] < next_type_counts[0] and self.callback_type_track_counts[1] == next_type_counts[1]:
             # less plain type 0 tracks and same return type 1 tracks
             found_changed_track_callback_type = 0
@@ -650,11 +657,13 @@ class MackieC4(MackieC4ListenerMixin, object):
             found_changed_track_callback_type = 1
             callback_type_track_count = next_type_counts[1]
 
+        # msg = f"{log_id} returning found values ({found_changed_track_callback_type}, {callback_type_track_count})"
+        # self.log_message(logging.DEBUG, msg)
         return found_changed_track_callback_type, callback_type_track_count
 
     def update_callback_type_track_counts(self):
-        self.callback_type_track_counts[0] = len(self.song().visible_tracks)
-        self.callback_type_track_counts[1] = len(self.song().return_tracks)
+        self.callback_type_track_counts[0] = int(len(self.song().visible_tracks))
+        self.callback_type_track_counts[1] = int(len(self.song().return_tracks))
 
     def find_selected_track_index(self):
         log_id = "C4.find_selected_track_index: "
@@ -774,8 +783,10 @@ class MackieC4(MackieC4ListenerMixin, object):
 
         selected_index, callback_track_type_of_selected_index = self.find_selected_track_index()
         found_changed_track_callback_type, found_callback_type_track_count = self.find_changed_track_callback_type()
+        dtls = f"(selected_index={selected_index}, callback_track_type_of_selected_index={callback_track_type_of_selected_index}, "
+        dtls += f"found_cb_type={found_changed_track_callback_type}, found_cb_type_track_count={found_callback_type_track_count})"
         tracks = self.song().visible_tracks + self.song().return_tracks
-        self.log_message(logging.DEBUG, f"{log_id}listener popped, processing {len(tracks)} song tracks")
+        self.log_message(logging.DEBUG, f"{log_id}listener popped, processing {len(self.song().visible_tracks)} + {len(self.song().return_tracks)} = {len(tracks)} song tracks" + dtls)
         new_track_count = len(tracks)
 
         if callback_track_type_of_selected_index == found_changed_track_callback_type:
@@ -808,7 +819,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         else:
             # still need to add or remove from correct track collection in EAH.SongData, but the current Song selected index points to the wrong
             # track collection in SongData, so special handling for this situation
-            dtls = f"(found_cb_type={found_changed_track_callback_type}, found_cb_type_track_count={found_callback_type_track_count})"
+
             if found_changed_track_callback_type == 0 and found_callback_type_track_count > self.callback_type_track_counts[0]: # old len(self.song().visible_tracks):
                 msg = f"{log_id}calling ec.unselected_tracks_added{dtls}"
                 self.log_message(logging.DEBUG, msg)
@@ -829,7 +840,9 @@ class MackieC4(MackieC4ListenerMixin, object):
                 # landed here when two tracks were selected at the same time (shift + left-click) then Ctrl-G grouped
                 # future selected-tracks-got-grouped events should be ignored here in tracks_changed()
                 # in favor of new-track-added-and-selected event processing by track_changed(index)
-                msg = f"{log_id} assumption issue? passing on this event{dtls}"  # continuing to log in case of other triggers
+                # also landed here because (I think) two "tracks changed" when a track was added (Ctrl+Shift+T) "next to" the selected track inside a Group
+                # the first
+                msg = f"{log_id} assumption issue? passing on this event {dtls}"  # continuing to log in case of other triggers
                 self.log_message(logging.ERROR, msg)
                 # self.__encoder_controller.unselected_tracks_changed(found_changed_track_callback_type, found_callback_type_track_count)
 
@@ -845,9 +858,12 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def selected_device_change_state(self, track, tid, type):
         # this was the only listener that popped when the index of the selected device changed (order of devices changed in device list)
-        # since passing here, the EC.eah "database" is not updated with the new sort order until the next event that is processed like select another device in chain
         log_id = "C4.selected_device_change_state: "
-        self.log_message(logging.DEBUG, f"{log_id}selected device listener for {track.name} at index {tid} with type {type} popped, passing")
+        self.log_message(logging.DEBUG, f"{log_id}selected device change-state listener for {track.name} with callback type {type} at type index {tid} popped")
+        # self.__processing_track_device_state_change = True
+        # self.log_message(logging.DEBUG, f"{log_id}processing device list drag&drop on script's selected track")
+        # self.__encoder_controller.device_list_changed(track, tid, type)
+        # self.__processing_track_device_state_change = False
         # if self.last_selected_track_index == tid:
         #     self.log_message(logging.DEBUG, f"{log_id}processing device change on script's selected track")
         #     self.__processing_track_device_state_change = True

@@ -43,6 +43,14 @@ class ActiveTrack:
         return f"track {self.track_name} type {self.type} s_index {self.index} t_index {self.index_by_type} devices {self._device_count} d_index {d_index}"
 
     @property
+    def live_obj(self):
+        return self.track
+
+    @property
+    def common_name(self):
+        return self.track_name
+
+    @property
     def track_name(self):
         nm = "None"
         if not liveobj_valid(self.track):
@@ -112,6 +120,14 @@ class ActiveDevice:
         return f"device {self.device_name} d_index {self.index} t_index {self.track_index} tt_index {self.track_index_by_type} p_index {self._selected_parameter_index}"
 
     @property
+    def live_obj(self):
+        return self.device
+
+    @property
+    def common_name(self):
+        return self.device_name
+
+    @property
     def device_name(self):
         nm = "None"
         if not liveobj_valid(self.device):
@@ -154,6 +170,42 @@ class ActiveDevice:
         else:
             self._bank_index_of_selected_parameter = selected_parameter_index % self.required_parameter_banks
 
+
+class ActiveDeviceList:
+
+    def __init__(self, active_track_ref, devices=None):
+
+        self.active_track = active_track_ref
+        self.devices = {}
+        if devices is not None:
+            for i, d in enumerate(devices):
+                d_ref = ActiveDevice(d, i, len(d.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
+                self.devices[i] = d_ref
+
+    @property
+    def song_track_index(self):
+        return self.active_track.index
+    @property
+    def callback_type_key(self):
+        return self.active_track.type
+    @property
+    def track_index_by_type(self):
+        return self.active_track.index_by_type
+    @property
+    def device_count(self):
+        return self.active_track.device_count
+    @property
+    def selected_device_index(self):
+        return self.active_track.selected_device_index
+
+    @property
+    def is_device_list_empty(self):
+        return self.devices is None or len(self.devices.keys()) < 1
+
+    def to_string(self):
+        return self.active_track.to_string()
+
+
 track_callback_types = {0: "plain", 1: "return", 2: "master"}
 
 class SongData(object):
@@ -161,20 +213,19 @@ class SongData(object):
     # values 0, 1, and 2 are the track callback types used elsewhere in the script
     table_keys = {"plain": 0, "return": 1, "master": 2}
 
-    @depends(logger=None)
-    def __init__(self, logger=None):
+    @depends(logger=None, get_device_list=None)
+    def __init__(self, logger=None, get_device_list=None):
         self.logger = logger
+        self.extend_device_list = get_device_list
         # enable "class logging" to see mostly debug logging output from __shift_keys_right() and __shift_keys_left() methods
         # uncomment logging messages in other class methods to see more verbose debug logging from earlier in the class method call stack
-        self.__class_logging = False # True # False #
-        self.track_table = {track_callback_types[0]: {},
-                            track_callback_types[1]: {},
-                            track_callback_types[2]: {}}
-        self.device_table = {track_callback_types[0]: {},
-                            track_callback_types[1]: {},
-                            track_callback_types[2]: {}}
+        self.__class_logging = True # False #
+        self.device_list_table = {track_callback_types[0]: {},
+                             track_callback_types[1]: {},
+                             track_callback_types[2]: {}}
         
         self.__master_track_count = 1
+        self.__initializing_database = True
 
     def log_msg(self, level, msg):
         if self.__class_logging:
@@ -191,12 +242,20 @@ class SongData(object):
         return rtn
 
     @property
+    def initializing_database(self):
+        return self.__initializing_database
+
+    @initializing_database.setter
+    def initializing_database(self, state):
+        self.__initializing_database = state
+
+    @property
     def plain_track_count(self):
-        return int(len(self.track_table[track_callback_types[0]].keys()))
+        return int(len(self.device_list_table[track_callback_types[0]].keys()))
 
     @property
     def return_track_count(self):
-        return int(len(self.track_table[track_callback_types[1]].keys()))
+        return int(len(self.device_list_table[track_callback_types[1]].keys()))
 
     @property
     def total_track_count(self):
@@ -209,6 +268,21 @@ class SongData(object):
         rtn = tracks_before if tracks_before > 0 else 1
         return rtn
 
+    def get_active_device_list_at_song_index(self, song_track_index):
+        rtns_index = song_track_index - self.plain_track_count
+        if song_track_index < self.plain_track_count:
+            return self.get_active_device_list_reference(track_callback_types[0], song_track_index)
+        elif rtns_index < self.return_track_count:
+            return self.get_active_device_list_reference(track_callback_types[1], rtns_index)
+        elif song_track_index == self.plain_track_count + self.return_track_count:
+            return self.get_active_device_list_reference(track_callback_types[2], song_track_index)
+        return None
+
+    def get_active_device_list_reference(self, track_callback_type_key, track_index_by_type):
+        if track_callback_type_key == "return" and len(self.device_list_table[track_callback_type_key].keys()) < 1:
+            return None # song may not have any return tracks
+        return self.device_list_table[track_callback_type_key][track_index_by_type]
+
     def get_master_track(self, master_track_index=None):
         if master_track_index is None:
             master_track_index = self.master_track_index
@@ -217,21 +291,25 @@ class SongData(object):
     def init_master_track(self, track, song_index):
         self.clear_tracks_by_type_key(track_callback_types[2])
         nbr_devices = len(track.devices)
+        ext_devices = self.extend_device_list(track.devices)
         selected_device_index = 0 if nbr_devices > 0 else None
         track_ref = ActiveTrack(track, self.table_keys[track_callback_types[2]], song_index, song_index, nbr_devices, selected_device_index)
-        self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: BEFORE: master ref {track_ref} at index {song_index}")
-        self.track_table[track_callback_types[2]][song_index] = track_ref
-        track_ref = self.track_table[track_callback_types[2]][song_index]
-        self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: AFTER: master ref {track_ref} at index {song_index}")
+        self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: BEFORE: master track ref {track_ref} at index {song_index}")
+        track_device_list = ActiveDeviceList(track_ref, ext_devices)
+        self.device_list_table[track_callback_types[2]][song_index] = track_device_list
+        track_device_list = self.device_list_table[track_callback_types[2]][song_index]
+        self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: AFTER: master ref {track_device_list.active_track} at index {song_index}")
         # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
-    def update_master_track_index(self, master_ref):
-        if len(self.track_table[track_callback_types[2]]) > 0:
-            self.clear_tracks_by_type_key(track_callback_types[2]) # remove master_ref with key == old master index
+    def update_master_track_index(self, master_device_list_ref):
+        if len(self.device_list_table[track_callback_types[2]]) > 0:
+            self.clear_tracks_by_type_key(track_callback_types[2]) # remove master_device_list_ref with key == old master index
+        master_ref = master_device_list_ref.active_track
         master_ref.index = self.master_track_index
         master_ref.index_by_type = self.master_track_index
+        master_device_list_ref.active_track = master_ref
         # add master_ref back with new key == self.master_track_index
-        self.track_table[track_callback_types[2]][self.master_track_index] = master_ref
+        self.device_list_table[track_callback_types[2]][self.master_track_index] = master_device_list_ref
         # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
     # NOTE: no functions to update any other "internal stored object indexes" to match their associated track or device "slot index" (map key)"
@@ -246,15 +324,9 @@ class SongData(object):
         self.clear_tracks_by_type_key(track_callback_types[2])
 
     def clear_tracks_by_type_key(self, track_callback_type_key):
-        self.track_table[track_callback_type_key].clear()
+        self.device_list_table[track_callback_type_key].clear()
 
-    def clear_all_devices(self):
-        self.clear_devices_by_track_type_key(track_callback_types[0])
-        self.clear_devices_by_track_type_key(track_callback_types[1])
-        self.clear_devices_by_track_type_key(track_callback_types[2])
-
-    def clear_devices_by_track_type_key(self, track_callback_type_key):
-        self.device_table[track_callback_type_key].clear()
+    # clear_tracks_by_type_key() clears devices too as a side effect
 
     def clear_track_devices(self, song_track_index):
         rtns_index = song_track_index - self.plain_track_count
@@ -270,13 +342,22 @@ class SongData(object):
 
     def __clear_track_devices(self, primary_key, track_type_index):
         try:
-            self.device_table[primary_key][track_type_index].clear()
+            self.device_list_table[primary_key][track_type_index].devices.clear()
         except KeyError:
             pass # no devices to clear
-        if self.track_table[primary_key][track_type_index].device_count > 0:
-            self.track_table[primary_key][track_type_index].device_count = 0
-        if self.track_table[primary_key][track_type_index].selected_device_index is not None:
-            self.track_table[primary_key][track_type_index].selected_device_index = None
+        if self.device_list_table[primary_key][track_type_index].active_track.device_count > 0:
+            self.device_list_table[primary_key][track_type_index].active_track.device_count = 0
+        if self.device_list_table[primary_key][track_type_index].active_track.selected_device_index is not None:
+            self.device_list_table[primary_key][track_type_index].active_track.selected_device_index = None
+
+    def __update_track_devices(self, primary_key, track_type_index, device_count, selected_device_index):
+        stored_device_refs = self.get_track_device_map_by_callback_type(primary_key, track_type_index)
+        assert len(stored_device_refs.keys()) == device_count
+        track_ref = self.get_track_by_type_key(primary_key, track_type_index)
+        track_ref.device_count = device_count
+        assert selected_device_index < device_count
+        track_ref.selected_device_index = selected_device_index
+        self.set_track_by_type_key(primary_key, track_type_index, track_ref)
 
     def get_track(self, song_track_index):
         callback_type_index = song_track_index
@@ -301,16 +382,13 @@ class SongData(object):
         return rtn
 
     def get_all_tracks_by_type_key(self, track_callback_type_key):
-        return self.track_table[track_callback_type_key]
-
-    # def set_all_tracks_by_type_key(self, track_callback_type_key, track_callback_type_dict):
-    #     self.track_table[track_callback_type_key] = track_callback_type_dict
+        return self.device_list_table[track_callback_type_key]
 
     def get_track_by_type_key(self, track_callback_type_key, track_index_by_type):
-        return self.get_all_tracks_by_type_key(track_callback_type_key)[track_index_by_type]
+        return self.get_all_tracks_by_type_key(track_callback_type_key)[track_index_by_type].active_track
 
     def set_track_by_type_key(self, track_callback_type_key, track_index_by_type, active_track):
-        self.track_table[track_callback_type_key][track_index_by_type] = active_track
+        self.device_list_table[track_callback_type_key][track_index_by_type].active_track = active_track
 
     def set_track(self, active_track):
         rtns_index = active_track.index - self.plain_track_count
@@ -329,7 +407,7 @@ class SongData(object):
 
     def init_tracks(self, p_tracks, r_tracks, m_track):
         rtn = None
-        if len(self.track_table[track_callback_types[0]]) > 0 or len(self.track_table[track_callback_types[1]]) > 0:
+        if len(self.device_list_table[track_callback_types[0]]) > 0 or len(self.device_list_table[track_callback_types[1]]) > 0:
             # already initialized...  clear dicts, raise error, just log and return? (SongData can't reference self.main_script().log_message)
             rtn = "EAH.SD.init_tracks: assumption issue: track tables not already clear?"
 
@@ -359,11 +437,13 @@ class SongData(object):
     def init_tracks_by_callback_type(self, track_callback_type_key, tracks):
         rtn = None
         log_id = f"EAH.SD.init_tracks_by_callback_type: "
-        # self.log_msg(logging.DEBUG, f"{log_id}getting master track at index {self.master_track_index}")
-        last_master_track_ref = self.get_master_track(self.master_track_index)
+        self.log_msg(logging.DEBUG, f"{log_id}getting master track at index {self.master_track_index}")
+        master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
+        last_master_track_ref = master_device_list_ref.active_track
+        # last_master_track_ref = self.get_master_track(self.master_track_index)
         # self.log_msg(logging.DEBUG, f"{log_id}master track before {track_callback_type_key} tracks initialized: {last_master_track_ref}")
-        if len(self.track_table[track_callback_type_key]) > 0:
-            rtn = f"{log_id}assumption issue: track table {track_callback_type_key} not already clear?"
+        if len(self.device_list_table[track_callback_type_key]) > 0:
+            rtn = f"{log_id}assumption issue: device list table {track_callback_type_key} not already clear?"
 
         if rtn is None:
             track_type_index = 0
@@ -372,17 +452,13 @@ class SongData(object):
             if self.table_keys[track_callback_type_key] > 0:
                 song_index = self.plain_track_count
             for track in tracks:
-                nbr_devices = len(track.devices)
-                selected_device_index = 0 if nbr_devices > 0 else None
-                cumulative_song_index = song_index + track_type_index
-                track_ref = ActiveTrack(track, self.table_keys[track_callback_type_key], cumulative_song_index, track_type_index, nbr_devices, selected_device_index)
-                self._insert_track_slot(self.track_table[track_callback_type_key], track_type_index, track_ref)
+                self.add_track_by_callback_type(track_callback_type_key, song_index, track_type_index, track)
                 track_type_index += 1
-            assert track_count == len(self.track_table[track_callback_type_key])
+            assert track_count == len(self.device_list_table[track_callback_type_key].keys())
             if last_master_track_ref is not None:
                 if last_master_track_ref.index < self.master_track_index:
                     self.log_msg(logging.DEBUG, f"{log_id}updating master track index to {self.master_track_index}")
-                    self.update_master_track_index(last_master_track_ref)
+                    self.update_master_track_index(master_device_list_ref)
             #     else:
             #         self.log_msg(logging.DEBUG, f"{log_id}master track index is already {self.master_track_index}?")
             # else:
@@ -410,22 +486,18 @@ class SongData(object):
 
     def add_track_by_callback_type(self, track_callback_type_key, song_track_index, track_index_by_type, track):
         log_id = "EAH.SD.add_track_by_callback_type: "
-        last_master_track_ref = self.get_track(self.master_track_index)
-        nbr_devices = len(track.devices)
-        selected_index = 0 if nbr_devices > 0 else None
-        track_ref = ActiveTrack(track, self.table_keys[track_callback_type_key], song_track_index, track_index_by_type, nbr_devices, selected_index)
-        # log_msg = f"{log_id}inserting {track_callback_type_key} track {track_ref} at {track_callback_type_key} callback type index "
-        # log_msg += f"{track_index_by_type} and song tracks index {song_track_index}"
-        # self.log_msg(logging.DEBUG, log_msg)
-        # self.log_msg(logging.DEBUG, f"{log_id}BEFORE: plain tracks {self.plain_track_count}, return tracks {self.return_track_count}")
-        self._insert_track_slot(self.track_table[track_callback_type_key], track_index_by_type, track_ref)
-        self.log_msg(logging.DEBUG, f"{log_id}AFTER: plain tracks {self.plain_track_count}, return tracks {self.return_track_count}")
-
-        if last_master_track_ref is not None and last_master_track_ref.index_by_type != self.master_track_index:
-            self.update_master_track_index(last_master_track_ref)
-
-    def add_track_devices_by_track_callback_type(self, track_callback_type_key, song_track_index, track_index_by_type, track):
-        self.add_device_list(song_track_index, 0, track.devices)
+        master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
+        last_master_track_ref = master_device_list_ref.active_track
+        ext_devices = None if len(track.devices) < 1 else self.extend_device_list(track.devices)
+        nbr_devices = 0 if ext_devices is None else len(ext_devices)
+        selected_device_index = 0 if nbr_devices > 0 else None
+        cumulative_song_index = song_track_index + track_index_by_type
+        track_ref = ActiveTrack(track, self.table_keys[track_callback_type_key], cumulative_song_index, track_index_by_type, nbr_devices, selected_device_index)
+        track_device_list_ref = ActiveDeviceList(track_ref, devices=ext_devices)
+        self._insert_track_slot(self.device_list_table[track_callback_type_key], track_index_by_type, track_device_list_ref)
+        if last_master_track_ref.index < self.master_track_index:
+            self.log_msg(logging.DEBUG, f"{log_id}after adding track, updating master track index to {self.master_track_index}")
+            self.update_master_track_index(master_device_list_ref)
 
     def remove_track(self, song_track_index):
         rtns_index = song_track_index - self.plain_track_count
@@ -433,17 +505,17 @@ class SongData(object):
         # self.log_msg(logging.DEBUG, log_msg)
         if song_track_index < self.plain_track_count:
             self.remove_track_by_callback_type(track_callback_types[0], song_track_index)
-            self.remove_track_devices_by_callback_type(track_callback_types[0], song_track_index)
         elif rtns_index < self.return_track_count:
             self.remove_track_by_callback_type(track_callback_types[1], rtns_index)
-            self.remove_track_devices_by_callback_type(track_callback_types[1], rtns_index)
         else:
             raise RuntimeError(f"can't remove track at OOB index {song_track_index}, can't remove master_track {self.master_track_index} or after")
 
     def remove_track_by_callback_type(self, track_callback_type_key, track_index_by_type):
         log_id = "EAH.SD.remove_track_by_callback_type: "
-        last_master_track_ref = self.get_track(self.master_track_index)
-        old = self.track_table[track_callback_type_key][track_index_by_type]
+        master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
+        last_master_track_ref = master_device_list_ref.active_track
+        # last_master_track_ref = self.get_track(self.master_track_index)
+        old = self.device_list_table[track_callback_type_key][track_index_by_type]
         # if old.track_name == "Invalidobj":
         #     log_msg = f"{log_id}collapsing slot holding invalid liveobj "
         # else:
@@ -453,19 +525,12 @@ class SongData(object):
         # log_msg = f"{log_id}{track_callback_type_key} track at {track_callback_type_key} callback type index {track_index_by_type}: {old} "
         # self.log_msg(logging.DEBUG, log_msg)
         # self.log_msg(logging.DEBUG, f"{log_id}BEFORE: plain tracks {self.plain_track_count}, return tracks {self.return_track_count}")
-        self._collapse_track_slot(self.track_table[track_callback_type_key], track_index_by_type)
+        self._collapse_track_slot(self.device_list_table[track_callback_type_key], track_index_by_type)
         # new_count = len(self.track_table[track_callback_type_key])
         # self.log_msg(logging.DEBUG, f"{log_id}AFTER: new track count={new_count}")
         self.log_msg(logging.DEBUG, f"{log_id}AFTER: plain tracks {self.plain_track_count}, return tracks {self.return_track_count}")
         if last_master_track_ref is not None and last_master_track_ref.index_by_type != self.master_track_index:
-            self.update_master_track_index(last_master_track_ref)
-
-    def remove_track_devices_by_callback_type(self, track_callback_type_key, track_index_by_type):
-        # log_msg = f"EAH.SD.remove_track_devices_by_callback_type: collapsing slot holding {track_callback_type_key} track device list "
-        # log_msg += f"at {track_callback_type_key} callback type index {track_index_by_type}"
-        # self.log_msg(logging.DEBUG, log_msg)
-        self._collapse_track_slot(self.device_table[track_callback_type_key], track_index_by_type)
-
+            self.update_master_track_index(master_device_list_ref)
 
     def get_track_device_map(self, song_track_index):
         device_map = None
@@ -482,30 +547,37 @@ class SongData(object):
                 # self.log_msg(logging.DEBUG, log_msg + song_track_index)
                 device_map = self.get_track_device_map_by_callback_type(track_callback_types[0], song_track_index)
         except KeyError:
-            pass # track has no devices
+            # track should always have a device map that might be empty
+            raise RuntimeError(f"can't get device map for track at song index {song_track_index}")
 
         return device_map
 
     def get_track_device_map_by_callback_type(self, track_callback_type_key, track_index_by_type):
         # log_id = "EAH.SD.get_track_device_map_by_callback_type: "
         # self.log_msg(logging.DEBUG, f"{log_id}returning device map from {track_callback_type_key} track index {track_index_by_type}")
-        return self.device_table[track_callback_type_key][track_index_by_type]
+        return self.device_list_table[track_callback_type_key][track_index_by_type].devices
+
+
+    def set_track_device_map_by_callback_type(self, track_callback_type_key, track_index_by_type, device_map):
+        # log_id = "EAH.SD.set_track_device_map_by_callback_type: "
+        # self.log_msg(logging.DEBUG, f"{log_id}setting device map for {track_callback_type_key} track index {track_index_by_type}")
+        self.device_list_table[track_callback_type_key][track_index_by_type].devices = device_map
 
     def get_device(self, song_track_index, device_index):
-        rtn = None
+        active_device = None
         device_map = self.get_track_device_map(song_track_index)
-        if device_map and device_index < len(device_map.keys()):
-            rtn = device_map[device_index]
-            rtn.index = device_index
-            rtn.track_index = song_track_index
+        if device_map is not None and device_index < len(device_map.keys()):
+            active_device = device_map[device_index]
+            active_device.index = device_index
+            active_device.track_index = song_track_index
             if self.plain_track_count <= song_track_index < self.return_track_count:
-                rtn.track_index_by_type = song_track_index - self.plain_track_count
+                active_device.track_index_by_type = song_track_index - self.plain_track_count
             else:
-                rtn.track_index_by_type = song_track_index # plain or master track index by type
+                active_device.track_index_by_type = song_track_index # plain or master track index by type
 
         # self.log_msg(logging.DEBUG, f"EAH.SD.get_device: returning device_ref from song index {song_track_index} and d_index {device_index}")
-        # self.log_msg(logging.DEBUG, f"EAH.SD.get_device: {rtn}")
-        return rtn
+        # self.log_msg(logging.DEBUG, f"EAH.SD.get_device: {active_device}")
+        return active_device
 
     def set_device(self, active_device):
         device_map = self.get_track_device_map(active_device.track_index)
@@ -517,42 +589,6 @@ class SongData(object):
             device_map[active_device.index] = active_device
         else:
             raise RuntimeError("can't set a device not already in the device map")
-
-    def add_device_list(self, track_index, device_index, device_list):
-        rtns_index = track_index - self.plain_track_count
-        if track_index < self.plain_track_count:
-            self.add_device_list_by_track_callback_type(track_callback_types[0], track_index, device_index, device_list)
-        elif rtns_index < self.return_track_count:
-            self.add_device_list_by_track_callback_type(track_callback_types[1], rtns_index, device_index, device_list)
-        elif track_index == self.plain_track_count + self.return_track_count:
-            self.add_device_list_by_track_callback_type(track_callback_types[2], track_index, device_index, device_list)
-
-    def add_device_list_by_track_callback_type(self, callback_type_key, callback_type_index, from_device_index, device_list):
-        song_index = callback_type_index
-        if callback_type_key == track_callback_types[1]:
-            song_index = self.plain_track_count + callback_type_index
-        if len(device_list) > 0:
-            for i, device in enumerate(device_list):
-                self.add_device(song_index, callback_type_index, from_device_index + i, device)
-        else:
-            self.device_table[callback_type_key][song_index] = {}
-
-    def init_device(self, song_track_index, track_callback_type_index, device_index, device_obj):
-        selected_parameter_index = 0 if len(device_obj.parameters) > 0 else None  # devices always have at least 1 parameter
-        rtns_index = song_track_index - self.plain_track_count
-
-        if song_track_index < self.plain_track_count:
-            device_ref = ActiveDevice(device_obj, device_index, len(device_obj.parameters), selected_parameter_index, song_track_index, track_callback_type_index)
-            self.init_device_by_track_callback_type(track_callback_types[0], song_track_index, device_index, device_ref)
-        elif rtns_index < self.return_track_count:
-            device_ref = ActiveDevice(device_obj, device_index, len(device_obj.parameters), selected_parameter_index, rtns_index, track_callback_type_index)
-            self.init_device_by_track_callback_type(track_callback_types[1], rtns_index, device_index, device_ref)
-        elif song_track_index == self.plain_track_count + self.return_track_count:
-            device_ref = ActiveDevice(device_obj, device_index, len(device_obj.parameters), selected_parameter_index, song_track_index, track_callback_type_index)
-            self.init_device_by_track_callback_type(track_callback_types[2], song_track_index, device_index, device_ref)
-
-    def init_device_by_track_callback_type(self, track_callback_type_key, callback_type_index, device_index, device_ref):
-        self._insert_device_slot(self.device_table[track_callback_type_key], callback_type_index, device_index, device_ref)
 
     def add_device(self, song_track_index, track_callback_type_index, device_index, device_obj):
         selected_parameter_index = 0 if len(device_obj.parameters) > 0 else None  # devices always have at least 1 parameter
@@ -572,14 +608,20 @@ class SongData(object):
             raise RuntimeError(f"can't add device at OOB track index {song_track_index}, max track index is master_track {self.master_track_index}")
 
     def add_device_by_track_callback_type(self, track_callback_type_key, callback_type_index, device_index, device_ref):
-        # log_msg = f"EAH.SD.add_device_by_track_callback_type: adding device to {track_callback_type_key} track at callback index {callback_type_index} and "
-        # self.log_msg(logging.DEBUG, log_msg + f"device list index {device_index}")
-        self._insert_device_slot(self.device_table[track_callback_type_key], callback_type_index, device_index, device_ref)
-        # old_count = self.track_table[track_callback_type_key][callback_type_index].device_count
-        # log_msg = f"EAH.SD.add_device_by_track_callback_type: incrementing device count and setting selected device index values on associated {track_callback_type_key} "
-        # self.log_msg(logging.DEBUG, log_msg + f"track at callback type index {callback_type_index} to {old_count + 1} devices and selected index {device_index}")
-        self.track_table[track_callback_type_key][callback_type_index].device_count += 1
-        self.track_table[track_callback_type_key][callback_type_index].selected_device_index = device_index
+        log_msg = f"EAH.SD.add_device_by_track_callback_type: adding device to {track_callback_type_key} track at callback index {callback_type_index} and "
+        self.log_msg(logging.DEBUG, log_msg + f"device list index {device_index}")
+        device_map = self.get_active_device_list_reference(track_callback_type_key, callback_type_index).devices
+        if device_index < len(device_map.keys()) and device_map[device_index] == device_ref:
+            log_msg = f"EAH.SD.add_device_by_track_callback_type: device to add already present in device map at index {device_map}, device not added again"
+            self.log_msg(logging.DEBUG, log_msg)
+        else:
+            self._insert_track_device_list_slot(device_map, device_index, device_ref)
+            old_count = self.get_track_by_type_key(track_callback_type_key, callback_type_index).device_count
+            log_msg = f"EAH.SD.add_device_by_track_callback_type: incrementing device count and setting selected device index values on associated {track_callback_type_key} "
+            self.log_msg(logging.DEBUG, log_msg + f"track at callback type index {callback_type_index} to {old_count + 1} devices and selected index {device_index}")
+        track_ref = self.get_track_by_type_key(track_callback_type_key, callback_type_index)
+        self._update_track_table_after_device_add(track_ref, device_index)
+        self.set_track_by_type_key(track_callback_type_key, callback_type_index, track_ref)
 
     def clear_device_list(self, track_index):
         """ defers to: self.clear_track_devices(track_index) """
@@ -587,15 +629,35 @@ class SongData(object):
 
         rtns_index = track_index - self.plain_track_count
         if track_index < self.plain_track_count:
-            new_device_count = self.track_table[track_callback_types[0]][track_index].device_count
+            new_device_count = self.device_list_table[track_callback_types[0]][track_index].active_track.device_count
         elif rtns_index < self.return_track_count:
-            new_device_count = self.track_table[track_callback_types[1]][rtns_index].device_count
+            new_device_count = self.device_list_table[track_callback_types[1]][rtns_index].active_track.device_count
         elif track_index == self.plain_track_count + self.return_track_count:
-            new_device_count = self.track_table[track_callback_types[2]][track_index].device_count
+            new_device_count = self.device_list_table[track_callback_types[2]][track_index].active_track.device_count
         else:
             raise RuntimeError(f"can't clear device list at OOB track index {track_index}, max track index is master_track {self.master_track_index}")
         device_map_len = len(self.get_track_device_map(track_index))
         assert new_device_count == 0 == device_map_len
+
+    def rekey_device_list_by_track_callback_type(self, track_callback_type_key, callback_type_index, all_track_devices, selected_device_obj):
+        old_keyed_map = self.get_track_device_map_by_callback_type(track_callback_type_key, callback_type_index)
+        new_keyed_map = {}
+        track_ref = self.get_track_by_type_key(track_callback_type_key, callback_type_index)
+        if len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count:
+            for new_index, device_obj in enumerate(all_track_devices):
+                for device_ref_index in old_keyed_map.keys():
+                    device_ref = old_keyed_map[device_ref_index]
+                    if device_ref.device == device_obj:
+                        new_keyed_map[new_index] = device_ref
+                        if device_obj == selected_device_obj:
+                            track_ref.selected_device_index = new_index
+                        break
+            assert len(old_keyed_map.keys()) == len(new_keyed_map.keys())
+            old_keyed_map.update(new_keyed_map)
+            self.set_track_device_map_by_callback_type(track_callback_type_key, callback_type_index, old_keyed_map)
+        else:  # len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count
+            log_msg = f"EAH.SD.rekey_device_list_by_track_callback_type: counts don't match, stored device list order not changed: "
+            self.log_msg(logging.DEBUG, log_msg + f"new {len(all_track_devices)} old {len(old_keyed_map.keys())} old count {track_ref.device_count}")
 
     def remove_devices(self, song_track_index, nbr_devices_to_remove, track_device_list_first_remove_index=0):
         active_devices = self.get_track_device_map(song_track_index)
@@ -632,13 +694,13 @@ class SongData(object):
     def remove_device_by_track_callback_type(self, track_callback_type_key, callback_type_index, device_index):
         # log_id = "EAH.SD.remove_device_by_track_callback_type: "
         # log_msg = f"{log_id}collapsing device at index {device_index} at {track_callback_type_key} "
-        device_map = self.device_table[track_callback_type_key]
+        device_map = self.device_list_table[track_callback_type_key][callback_type_index].devices
         # self.log_msg(logging.DEBUG, log_msg + f"track callback index {callback_type_index}")
         # self.log_msg(logging.DEBUG, f"{log_id}BEFORE: device count {len(device_map)}")
-        self._collapse_device_slot(device_map, callback_type_index, device_index)
+        self._collapse_track_device_list_slot(device_map, device_index)
         # self.log_msg(logging.DEBUG, f"{log_id}AFTER: device count {len(device_map)}")
-        self.device_table[track_callback_type_key] = device_map
-        track_ref = self.track_table[track_callback_type_key][callback_type_index]
+        self.device_list_table[track_callback_type_key][callback_type_index].devices = device_map
+        track_ref = self.device_list_table[track_callback_type_key][callback_type_index].active_track
         # self.log_msg(logging.DEBUG, f"{log_id}after device removal BEFORE updating track ref {track_ref}")
         self._update_track_table_after_device_removal(track_ref, device_index)
         # self.log_msg(logging.DEBUG, f"{log_id}after device removal AFTER updating track ref {track_ref}")
@@ -656,70 +718,116 @@ class SongData(object):
             track_ref.selected_device_index = None
         return track_ref
 
-    def _insert_track_slot(self, type_dict, track_callback_type_index, track_ref):
-        return self.__shift_keys_right(type_dict, track_callback_type_index, track_ref)
-
-    def _insert_device_slot(self, type_dict, track_callback_type_index, device_index, device_ref):
-        if track_callback_type_index in type_dict.keys():
-            device_map = type_dict[track_callback_type_index]
-            type_dict = self.__shift_keys_right(device_map, device_index, device_ref)
+    @staticmethod
+    def _update_track_table_after_device_add(track_ref, at_device_index):
+        old_device_count = track_ref.device_count
+        new_device_count = old_device_count + 1
+        track_ref.device_count = new_device_count
+        if 0 >= at_device_index < new_device_count:
+            track_ref.selected_device_index = at_device_index
+        elif at_device_index >= new_device_count:
+            track_ref.selected_device_index = new_device_count - 1
         else:
-            type_dict[track_callback_type_index] = {device_index: device_ref}
+            track_ref.selected_device_index = None
+        return track_ref
+
+    def _insert_track_slot(self, type_dict, track_callback_type_index, track_device_list_ref):
+        log_id = "EAH.SD._insert_track_slot: "
+        if track_callback_type_index in type_dict.keys():
+            type_dict = self.__shift_keys_right(type_dict, track_callback_type_index, track_device_list_ref)
+        else:
+            assert track_callback_type_index == len(type_dict.keys())
+            self.log_msg(logging.DEBUG, f"{log_id}inserting last or only track of type at type index {track_callback_type_index}, no shift")
+            type_dict[track_callback_type_index] = track_device_list_ref
+        return type_dict
+
+    def _insert_track_device_list_slot(self, type_dict, device_index, active_device):
+        log_id = "EAH.SD._insert_track_device_list_slot: "
+        if device_index in type_dict.keys():
+            type_dict = self.__shift_keys_right(type_dict, device_index, active_device)
+        else:
+            assert device_index == len(type_dict.keys())
+            self.log_msg(logging.DEBUG, f"{log_id}inserting last or only device at device index {device_index}, no shift")
+            type_dict[device_index] = active_device
         return type_dict
 
     def _collapse_track_slot(self, type_dict, track_callback_type_index):
         return self.__shift_keys_left(type_dict, track_callback_type_index)
 
-    def _collapse_device_track_slot(self, type_dict, track_callback_type_index):
-        return self.__shift_keys_left(type_dict, track_callback_type_index)
+    def _collapse_track_device_list_slot(self, type_dict, device_index):
+        return self.__shift_keys_left(type_dict, device_index)
 
-
-    def _collapse_device_slot(self, type_dict, track_callback_type_index, device_index):
-        if track_callback_type_index in type_dict.keys():
-            device_map = type_dict[track_callback_type_index]
-            type_dict[track_callback_type_index] = self.__shift_keys_left(device_map, device_index)
-            return type_dict
-        else:
-            return None
-
-    def __shift_keys_right(self, local_dict, key, value):
+    def __shift_keys_right(self, local_dict, key_of_add, value_to_add):
         log_id = "EAH.SD.__shift_keys_right: "
-        self.log_msg(logging.DEBUG, f"{log_id} input dict keys {local_dict.keys()} and key, value {key}, {value}")
-        if key in local_dict.keys():
-            right_slots = {j + 1: local_dict[j] for j in range(key, len(local_dict.keys()))}
-            self.log_msg(logging.DEBUG, f"{log_id} right slots {right_slots.keys()} from range({key}, {len(local_dict.keys())})")
-            local_dict[key] = value
-            local_dict.update(right_slots)
-            self.log_msg(logging.DEBUG, f"{log_id} insert-into-key-sequence dict keys {local_dict.keys()}")
-        else:
-            local_dict[key] = value
-            self.log_msg(logging.DEBUG, f"{log_id} append-to-key-sequence dict keys {local_dict.keys()}")
+        # local_dict is either an active_track reference mapped by type index
+        #     {callback_type_index=key_of_add: active_device_list=value_to_add}
+        # or an active_device reference mapped by device index (active_device_list.devices)
+        #     {device_index=key_of_add: active_device=value_to_add
+        # "left slots" range is (0, key_of_add) if any
+        # "right slots" range is (key_of_add, len(local_dict.keys()) if any (and index shifted right)
+        # assumes local_dict is not empty
+        vals = [x.active_track.common_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
+        txt_to_add = value_to_add.active_track.common_name if isinstance(value_to_add, ActiveDeviceList) else value_to_add.common_name
+        self.log_msg(logging.DEBUG, f"{log_id}input dict keys {local_dict.keys()} and values {vals} with input key={key_of_add}, value={txt_to_add}")
+        right_slots = {j + 1: local_dict[j] for j in range(key_of_add, len(local_dict.keys()))}
+        left_slots = {j: local_dict[j] for j in range(0, key_of_add)}
 
-        vals = ["device list" if isinstance(x, dict) else x.to_string() for x in local_dict.values()]
-        self.log_msg(logging.DEBUG, f"{log_id} returning updated dict keys {local_dict.keys()} and values {vals}")
+        left_slots[key_of_add] = value_to_add
+        if len(right_slots.keys()) > 0:
+            left_slots.update(right_slots)
+        if len(left_slots.keys()) > 0:
+            local_dict.update(left_slots)
+
+        vals = [x.active_track.common_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
+        self.log_msg(logging.DEBUG, f"{log_id}returning updated dict keys {local_dict.keys()} and values {vals}")
         return local_dict
 
-    def __shift_keys_left(self, local_dict, key):
+    def __shift_keys_left(self, local_dict, key_before_del):
         log_id = "EAH.SD.__shift_keys_left: "
-        self.log_msg(logging.DEBUG, f"{log_id} input dict keys {local_dict.keys()} and key {key}")
-        if key in local_dict.keys():
-            # delete 3 of 3 == range(2, 2), 0 "right slots"
-            # delete 2 of 3 == range(1, 2), 1 "right_slots" starting at key 
-            # delete 1 of 3 == range(0, 2), 2 "right_slots" starting at key
-            right_slots = {j: local_dict[j + 1] for j in range(key, len(local_dict.keys()) - 1)}
-            self.log_msg(logging.DEBUG, f"{log_id} right slots {right_slots.keys()} from input range({key + 1}, {len(local_dict.keys())})")
-            del local_dict[key]
-            left_slots = {k: local_dict[k] for k in local_dict.keys() if k < key}
+        key_to_remove = key_before_del + 1
+        # local_dict is either an active_track reference mapped by track type index
+        #     {callback_type_index=key_of_add: active_device_list=value_to_add}
+        # or an active_device reference mapped by device index (active_device_list.devices)
+        #     {device_index=key_of_add: active_device=value_to_add
+        # "left slots" range is (0, key_to_remove) if any
+        # "right slots" range is (key_to_remove + 1, len(local_dict.keys()) if any (and index shifted left)
+        # delete 3 of 3 == range(2, 3), 2 "left slots", 0 "right slots"
+        # delete 2 of 3 == range(1, 3), 1 "left slots", 1 "right_slots"
+        # delete 1 of 3 == range(0, 3), 0 "left slots", 2 "right slots"
+        # returned local_dict has 2 keys [0, 1], one less than before
+        vals = [x.active_track.common_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
+        self.log_msg(logging.DEBUG, f"{log_id}input dict keys {local_dict.keys()} and values {vals}")
+        # self.log_msg(logging.DEBUG, f"{log_id} with input key {key_before_del} means remove key {key_to_remove}")
+        if key_before_del in local_dict.keys():
+            if key_to_remove in local_dict.keys():
+                right_slots = None
+                if key_to_remove + 1 in local_dict.keys():
+                    right_slots = {j - 1: local_dict[j] for j in range(key_to_remove + 1, len(local_dict.keys()))}
+                left_slots = {j: local_dict[j] for j in range(0, key_to_remove)}
 
-            self.log_msg(logging.DEBUG, f"{log_id} left slots {left_slots.keys()} with key < {key})")
-            self.log_msg(logging.DEBUG, f"{log_id} deleted dict keys {local_dict.keys()}")
-            local_dict.clear()
-            if len(right_slots.keys()) > 0:
-                left_slots.update(right_slots)
-            if len(left_slots.keys()) > 0:
-                local_dict.update(left_slots)
-            vals = ["device list" if isinstance(x, dict) else x.to_string() for x in local_dict.values()]
-            self.log_msg(logging.DEBUG, f"{log_id} returning updated dict keys {local_dict.keys()} and values {vals}")
+                if isinstance(local_dict[key_to_remove], ActiveDeviceList):
+                    obj = local_dict[key_to_remove].active_track.live_obj
+                else:
+                    obj = local_dict[key_to_remove].live_obj
+
+                # if not liveobj_valid(obj):
+                #     self.log_msg(logging.DEBUG, f"{log_id} removed data ref stored object was invalid, Live object was deleted")
+                # else:
+                #     self.log_msg(logging.DEBUG, f"{log_id} removed data ref stored object was still valid, Live object disappeared from view")
+
+                del local_dict[key_to_remove]
+                local_dict.clear()
+                if right_slots is not None and len(right_slots.keys()) > 0:
+                    left_slots.update(right_slots)
+                if len(left_slots.keys()) > 0:
+                    local_dict.update(left_slots)
+            else:
+                self.log_msg(logging.DEBUG, f"{log_id} assumption issue? key to remove {key_to_remove} is not in the key set {local_dict.keys()}")
+        else:
+            self.log_msg(logging.DEBUG, f"{log_id} assumption issue? input key {key_before_del} is not in the key set {local_dict.keys()}")
+
+        vals = [x.active_track.track_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
+        self.log_msg(logging.DEBUG, f"{log_id} returning updated dict keys {local_dict.keys()} and values {vals}")
         return local_dict
 
 
@@ -732,7 +840,7 @@ class EncoderAssignmentHistory(MackieC4Component):
     def __init__(self, main_script, encoder_controller):
         MackieC4Component.__init__(self, main_script)
 
-        self.data = SongData(logger=self.main_script().log_message)
+        self.data = SongData(logger=self.main_script().log_message, get_device_list=self.get_device_list)
 
         self.__my_controlling_encoder = encoder_controller
         self.__selected_track = self.main_script().song().view.selected_track
@@ -743,6 +851,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.__last_selected_track_index = 0
         self.__next_selected_track_index = 0
         self.__next_selected_device_index = 0
+
 
     @property
     def next_selected_track(self):
@@ -834,11 +943,6 @@ class EncoderAssignmentHistory(MackieC4Component):
     def selected_device_bank_index(self):
         return self.data.get_track(self.last_selected_track_index).device_bank_index_of_selected_device
 
-    # track table device_bank_index value automatically updated when selected_device_index changes
-    # @selected_device_bank_index.setter 
-    # def selected_device_bank_index(self, selected_device_bank_index):
-    #     self.data.get_track(self.last_selected_track_index).device_bank_index = selected_device_bank_index
-
     @property
     def max_device_count(self):
         return self.data.get_track(self.last_selected_track_index).device_count
@@ -855,12 +959,6 @@ class EncoderAssignmentHistory(MackieC4Component):
         else:
             return 0
 
-    # @max_last_selected_track_device_parameter_bank_nbr.setter <--- automatically set when device added
-    # def max_last_selected_track_device_parameter_bank_nbr(self, updated_bank_nbr):
-    #     device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
-    #     if device_ref is not None:
-    #         device_ref.required_parameter_banks = updated_bank_nbr
-
     @property
     def last_selected_track_device_parameter_bank_nbr(self, t_d_idx=None):
         device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
@@ -868,12 +966,6 @@ class EncoderAssignmentHistory(MackieC4Component):
             return device_ref.parameter_bank_index_of_selected_parameter
         else:
             return 0
-
-    # @last_selected_track_device_parameter_bank_nbr.setter <--- automatically set when selected device parameter cahnges
-    # def last_selected_track_device_parameter_bank_nbr(self, last_selected_bank_nbr):
-    #     device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
-    #     if device_ref is not None:
-    #         device_ref.parameter_bank_index = last_selected_bank_nbr
 
 
     def update_device_counter(self, track_index, device_count):
@@ -886,36 +978,19 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.track_changed(track_index)
 
     def build_setup_database(self, song_ref=None):
+        log_id = "EAH.build_setup_database: "
         if song_ref is None:
             song_ref = self.song()
 
+        self.data.initializing_database = True
         self.data.clear_all_tracks()
-        self.data.clear_all_devices()
 
-        # tracks first
+        # tracks include devices
         error_msg = self.data.init_tracks(song_ref.visible_tracks, song_ref.return_tracks, song_ref.master_track)
         if error_msg is not None:
             self.main_script().log_message(logging.ERROR, error_msg)
 
-        # then devices
-
-        for i, track in enumerate(song_ref.visible_tracks):
-            self.data.add_device_list(i, 0, track.devices)
-        #     for j, device in enumerate(track.devices):
-        #         self.data.init_device(i, i, j, device)
-        plain_count = len(song_ref.visible_tracks)
-        for i, track in enumerate(song_ref.return_tracks):
-            self.data.add_device_list(plain_count + i, 0, track.devices)
-            # for j, device in enumerate(track.devices):
-            #     self.data.init_device(plain_count + i, i, j, device)
-
-        self.data.add_device_list(self.data.master_track_index, 0, song_ref.master_track.devices)
-        # for j, device in enumerate(song_ref.master_track.devices):
-        #     self.data.init_device(self.data.master_track_index, self.data.master_track_index, j, device)
-
-    # def rebuild_database_on_tracks_change(self, song_ref=None):
-    #     if song_ref is None:
-    #         song_ref = self.song()
+        self.data.initializing_database = False
 
     def track_changed(self, track_index):
         track_ref = self.data.get_track(track_index)
@@ -941,7 +1016,8 @@ class EncoderAssignmentHistory(MackieC4Component):
             while final_callback_type_track_count > self.data.plain_track_count:
                 # self.main_script().log_message(logging.DEBUG, f"{log_id} adding at plains index: {at_index}")
                 track_obj = song_tracks_after[at_index]
-                self.track_added(at_index, track_obj, track_obj.devices)
+                d_list = self.get_device_list(track_obj.devices)
+                self.track_added(at_index, track_obj, d_list)
                 at_index = self.last_selected_track_index
                 # self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: plain {self.data.plain_track_count}")
             assert final_callback_type_track_count == self.data.plain_track_count
@@ -952,7 +1028,8 @@ class EncoderAssignmentHistory(MackieC4Component):
             while final_callback_type_track_count > self.data.return_track_count:
                 # self.main_script().log_message(logging.DEBUG, f"{log_id} adding at returns index: {at_index}")
                 track_obj = song_tracks_after[at_index]
-                self.track_added(at_index, track_obj, track_obj.devices)
+                d_list = self.get_device_list(track_obj.devices)
+                self.track_added(at_index, track_obj, d_list)
                 at_index = self.last_selected_track_index
                 # self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: return {self.data.return_track_count}")
             assert final_callback_type_track_count == self.data.return_track_count
@@ -980,17 +1057,19 @@ class EncoderAssignmentHistory(MackieC4Component):
         # self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         while len(changed_track_type_table.keys()) < callback_type_track_count and at_index < len(tracks_of_type):
             track_obj = tracks_of_type[at_index]
-            if track_obj == changed_track_type_table[at_index].track:
-                # self.main_script().log_message(logging.DEBUG, f"{log_id}{t_type} tracks added, but cb type index {at_index} track_ref matches {track_obj.name}, no add")
+            if track_obj == changed_track_type_table[at_index].active_track.track:
+                # msg = f"{log_id}{t_type} tracks added, but cb type index {at_index} track_ref matches {track_obj.name}, no add"
+                # self.main_script().log_message(logging.DEBUG, msg)
                 pass
             else:
                 msg = f"{log_id}{t_type} tracks added, and cb type index {at_index} track_ref doesn't equal {track_obj.name}, "
+                extended_device_list = self.get_device_list(track_obj.devices)
                 if found_changed_track_callback_type == 1:
                     self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at returns offset track index {rtns_offset + at_index}")
-                    self.track_added(rtns_offset + at_index, track_obj, track_obj.devices, is_selected=False)
+                    self.track_added(rtns_offset + at_index, track_obj, extended_device_list, is_selected=False)
                 else:
                     self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at plains track index {at_index}")
-                    self.track_added(at_index, track_obj, track_obj.devices, is_selected=False)
+                    self.track_added(at_index, track_obj, extended_device_list, is_selected=False)
             at_index += 1
             table_size = len(self.data.get_all_tracks_by_type_key(t_type))
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
@@ -1024,7 +1103,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             if self.last_selected_track_index < self.data.plain_track_count + self.data.return_track_count:
                 self.last_selected_track_index = self.last_selected_track_index + 1
             else:
-                self.last_selected_track_index = self.data.plain_track_count + self.data.return_track_count
+                self.last_selected_track_index = self.master_track_index
 
     def tracks_deleted(self, song_track_index, tracks_to_process, callback_type):
         log_id = "EAH.tracks_deleted: "
@@ -1076,32 +1155,36 @@ class EncoderAssignmentHistory(MackieC4Component):
         at_index = 0
         tracks_of_type_index = 0
         table_size = len(changed_track_type_table.keys())
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
+        self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         while len(changed_track_type_table.keys()) > callback_type_track_count and at_index < table_size:
-            track_obj = tracks_of_type[tracks_of_type_index]
-            track_ref = changed_track_type_table[at_index].track
+            track_obj = None if not tracks_of_type_index < len(tracks_of_type) else tracks_of_type[tracks_of_type_index]
+            track_ref = changed_track_type_table[at_index].active_track.track
             if liveobj_valid(track_ref):
                 # msg = f"{log_id}{t_type_key} tracks deleted, and cb type index {at_index} track_ref is liveobj valid {track_ref.name}, "
-                if  liveobj_changed(track_ref, track_obj):
-                    # msg += f"but changed to {track_obj.name} "
+                if track_obj is None or liveobj_changed(track_ref, track_obj):
+                    # msg += f"but changed to {'None' if track_obj is None else track_obj.name} "
                     if found_changed_track_callback_type == 1:
-                        # self.main_script().log_message(logging.DEBUG, msg + f"deleting track ref from returns offset track index {rtns_offset + at_index}")
-                        self.track_deleted(rtns_offset + at_index, is_selected=False)
+                        # self.main_script().log_message(logging.DEBUG, msg + f"deleting track ref at returns offset track index {rtns_offset + at_index}")
+                        index_before_deleted_track = 0 if rtns_offset + at_index < 1 else rtns_offset + at_index - 1
+                        self.track_deleted(index_before_deleted_track, is_selected=False)
                     else:
-                        # self.main_script().log_message(logging.DEBUG, msg + f"deleting track ref from plains track index {at_index}")
-                        self.track_deleted(at_index, is_selected=False)
+                        # self.main_script().log_message(logging.DEBUG, msg + f"deleting track ref at plains track index {at_index}")
+                        index_before_deleted_track = 0 if at_index < 1 else at_index - 1
+                        self.track_deleted(index_before_deleted_track, is_selected=False)
                 else:
-                    # self.main_script().log_message(logging.DEBUG, msg + "no delete")
+                    # self.main_script().log_message(logging.DEBUG, msg + "no delete, incrementing")
                     at_index += 1
             else:
                 # execution would land here if 2 or more unselected tracks were (not just removed from view but) deleted at the same time (not possible?)
                 msg = f"{log_id}unselected {t_type_key} tracks deleted, but assumption issue? cb type index {at_index} track_ref is not liveobj valid "
                 if found_changed_track_callback_type == 1:
                     self.main_script().log_message(logging.WARNING, msg + f"deleting track ref from returns offset track index {rtns_offset + at_index}")
-                    self.track_deleted(rtns_offset + at_index, is_selected=False)
+                    index_before_deleted_track = 0 if rtns_offset + at_index < 1 else rtns_offset + at_index - 1
+                    self.track_deleted(index_before_deleted_track, is_selected=False)
                 else:
                     self.main_script().log_message(logging.WARNING, msg + f"deleting track ref from plains track index {at_index}")
-                    self.track_deleted(at_index, is_selected=False)
+                    index_before_deleted_track = 0 if at_index < 1 else at_index - 1
+                    self.track_deleted(index_before_deleted_track, is_selected=False)
             tracks_of_type_index += 1
         table_size = len(self.data.get_all_tracks_by_type_key(t_type_key).keys())
         self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
@@ -1143,9 +1226,11 @@ class EncoderAssignmentHistory(MackieC4Component):
         #     self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device is a valid Live object named<{selected_device.name}>")
         # if selected_device_idx > -1:
         #     self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device_idx<{selected_device_idx}> points to a non-negative index")
-        last_track_ref = self.data.get_track(self.last_selected_track_index)
-        old_device_count_track = last_track_ref.device_count # self.t_d_count[self.t_current]
-        old_selected_device_index = last_track_ref.selected_device_index # self.t_d_current[self.t_current]
+        active_device_list_ref = self.data.get_active_device_list_at_song_index(self.last_selected_track_index)
+        last_track_ref = active_device_list_ref.active_track
+        # last_track_ref = self.data.get_track(self.last_selected_track_index)
+        old_device_count_track = last_track_ref.device_count
+        old_selected_device_index = last_track_ref.selected_device_index # could be None
         msg = f"{log_id}track index ref {last_track_ref.index} has name {last_track_ref.track_name} and old device count {old_device_count_track}"
         self.main_script().log_message(logging.DEBUG, msg)
 
@@ -1204,7 +1289,7 @@ class EncoderAssignmentHistory(MackieC4Component):
                                                  old_device_count_track, new_device_count_track)
 
         elif selected_device_was_changed:
-            self.update_device_counts_on_change(changed_device_index, new_device_count_track)
+            self.update_device_counts_on_change(all_track_devices, selected_device, old_selected_device_index, changed_device_index, new_device_count_track)
 
         return rtn_device_index
 
@@ -1256,14 +1341,24 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.main_script().log_message(logging.ERROR, msg)
 
 
-    def update_device_counts_on_change(self, changed_device_index, new_device_count_track):
-        # log_id = "EAH.update_device_counts_on_change: "
+    def update_device_counts_on_change(self, all_track_devices, selected_device, old_selected_device_index, changed_device_index, new_device_count_track):
+        log_id = "EAH.update_device_counts_on_change: "
         # self.main_script().log_message(logging.DEBUG, f"{log_id}")
 
         last_track_ref = self.data.get_track(self.last_selected_track_index)
+        # can't assert this 'condition' because some drag&drop device movements fail to trigger this script's callbacks
+        # (so the local database doesn't reflect the last selected index (or the new one) yet)
+        # assert old_selected_device_index == self.last_selected_device_index
+
+        last_selected_device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
+        if old_selected_device_index != changed_device_index and not liveobj_changed(last_selected_device_ref.device, selected_device):
+            msg = f"{log_id}selected device index of track {last_track_ref.track_name} changed from {last_track_ref.selected_device_index} to {changed_device_index} "
+            self.main_script().log_message(logging.DEBUG, msg + f"but selected device remains {last_selected_device_ref.device_name}, moving device reference to new index")
+            self.data.rekey_device_list_by_track_callback_type(track_callback_types[last_track_ref.type], last_track_ref.index_by_type, all_track_devices, selected_device)
         # msg = f"{log_id}selected device index of track {last_track_ref.track_name} changed from {last_track_ref.selected_device_index} to {changed_device_index}"
         # self.main_script().log_message(logging.DEBUG, msg)
         last_track_ref.selected_device_index = changed_device_index
+        self.last_selected_device_index = changed_device_index
         assert new_device_count_track == last_track_ref.device_count
         self.data.set_track(last_track_ref)
 

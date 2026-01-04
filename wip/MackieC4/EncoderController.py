@@ -24,7 +24,7 @@ if sys.version_info[0] >= 3:  # Python 3.x (Live 11+)
 
 from . import track_util
 from . import song_util
-from .EncoderAssignmentHistory import EncoderAssignmentHistory
+from .EncoderAssignmentHistory import EncoderAssignmentHistory, track_callback_types
 from .EncoderDisplaySegment import EncoderDisplaySegment
 from .MackieC4Component import *
 from _Generic.Devices import *
@@ -134,22 +134,24 @@ class EncoderController(MackieC4Component, Component):
         }
 
         song = self.song()
-        self.__eah.build_setup_database(song)
-        tracks = song.visible_tracks + song.return_tracks
-        selected_track = song.view.selected_track
+        # called later by main_script(), see self.build_setup_database()
+        # self.__eah.build_setup_database(song)
+        # tracks = song.visible_tracks + song.return_tracks
+        # selected_track = song.view.selected_track
         self.__pending_device_change = False
         self.returns_switch = 0
 
-        found = False
-        for i, track in enumerate(tracks):
-            if track == selected_track:
-                self.track_changed(i)
-                found = True
-                break
-
-        if not found:# this means master track is selected when the song session is initializing
-            index = len(tracks)
-            self.track_changed(index)
+        # defer track_changed() until "setup database" runs
+        # found = False
+        # for i, track in enumerate(tracks):
+        #     if track == selected_track:
+        #         self.track_changed(i)
+        #         found = True
+        #         break
+        #
+        # if not found:# this means master track is selected when the song session is initializing
+        #     index = len(tracks)
+        #     self.track_changed(index)
 
         self.update_assignment_mode_leds()
 
@@ -235,7 +237,13 @@ class EncoderController(MackieC4Component, Component):
                 self.__eah.device_added_deleted_or_changed(extended_device_list, d, device_index)
                 self.main_script().log_message(logging.DEBUG, f"{log_id} local data updated on device change, updating special param listeners")
                 self.add_special_parameter_listeners(track, d)
-                last_name = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
+                if self.__chosen_plugin is None:
+                    last_name = "None"
+                elif not liveobj_valid(self.__chosen_plugin):
+                    last_name = "<device deleted>"
+                else:
+                    last_name = self.__chosen_plugin.name
+
                 self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {d.name}, updating chosen plugin from {last_name}")
                 self.__update_chosen_plugin_device(d)
             # else:
@@ -350,12 +358,26 @@ class EncoderController(MackieC4Component, Component):
 
     def build_setup_database(self):
         # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4.building setup db")
-        self.__eah.build_setup_database(self.song())        # self.track_count
+        song = self.song()
+        self.__eah.build_setup_database(song)
 
         # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4.t_count after setup <{0}>".format(self.__eah.t_count))
         # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4.main_script().track_count after setup <{0}>".format(self.main_script().track_count))
 
-        self.selected_track = self.song().view.selected_track
+        tracks = song.visible_tracks + song.return_tracks
+        selected_track = song.view.selected_track
+        found = False
+        for i, track in enumerate(tracks):
+            if track == selected_track:
+                self.track_changed(i)
+                found = True
+                break
+
+        if not found:  # this means master track is selected when the song session is initializing
+            index = len(tracks)
+            self.track_changed(index)
+
+        self.selected_track = selected_track
         self.__eah.selected_track = self.selected_track
         devices_on_selected_trk = self.get_device_list(self.selected_track.devices)
         if not self.is_locked_to_device:
@@ -464,7 +486,9 @@ class EncoderController(MackieC4Component, Component):
                             if self.__pending_device_change:
                                 msg_prefix = f"{log_id}and a local device change is pending, "
                             nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
-                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix}only updating script chosen plugin from {nm} to {device.name}")
+                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix}processing local device change with index {selected_device_index}")
+                            self.__eah.device_added_deleted_or_changed(extended_device_list, device, selected_device_index)
+                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix} updating script chosen plugin from {nm} to {device.name}")
                             self.__update_chosen_plugin_device(device)
                             self.__pending_device_change = False
                             name = "None" if self.__eah.next_selected_device is None else self.__eah.next_selected_device.name
@@ -594,6 +618,37 @@ class EncoderController(MackieC4Component, Component):
                 self.__update_chosen_plugin_device(device)  # device == None
 
         return
+
+    def device_list_changed(self, track, track_type_index, track_type):
+        log_id = "EC.device_list_changed: "
+        if track == self.selected_track and len(track.devices) == len(self.selected_track.devices):
+            # only processing drag&drop movement of the selected device
+            extended_device_list = self.get_device_list(self.selected_track.devices)
+            track_ref = self.__eah.data.get_track_by_type_key(track_callback_types[track_type], track_type_index)
+            stored_selected_device_index = track_ref.selected_device_index
+            stored_device_count = len(self.__eah.data.get_track_device_map_by_callback_type(track_callback_types[track_type], track_type_index).keys())
+            if stored_device_count == track_ref.device_count:
+                if stored_device_count == len(extended_device_list):
+                    selected_device = self.selected_track.view.selected_device
+                    self.__eah.data.rekey_device_list_by_track_callback_type(track_callback_types[track_type], track_type_index, extended_device_list, selected_device)
+                    track_ref = self.__eah.data.get_track_by_type_key(track_callback_types[track_type], track_type_index)
+                    dtls = f"changed from {stored_selected_device_index} to {track_ref.selected_device_index}"
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}drag&drop event processed successfully selected device index {dtls}")
+                else:
+                    dtls = f"{log_id}stored device list length {stored_device_count} not equal to changed device list length {len(extended_device_list)}"
+                    self.main_script().log_message(logging.DEBUG, dtls + ", pass, not a drag&drop event")
+            else:
+                dtls = f"{log_id}stored device list length {stored_device_count} not equal to stored track device count {track_ref.device_count}"
+                self.main_script().log_message(logging.WARNING, dtls + ", assumption issue?")
+                d_map = self.__eah.data.get_track_device_map_by_callback_type(track_callback_types[track_type], track_type_index)
+                dtls = f"{log_id}{track_callback_types[track_type]} track at index {track_type_index} s {str(d_map)}"
+                for key in d_map.keys():
+                    d = d_map[key]
+                    dtls += f"stored device list key {key} has value {str(d)}"
+                    self.main_script().log_message(logging.WARNING, dtls)
+        else:
+            self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue? Live objects don't agree?, pass, not a drag&drop event")
+
 
     def device_added_deleted_or_changed(self, track, track_index, track_type):
         log_id = "EC.device_added_deleted_or_changed: "
