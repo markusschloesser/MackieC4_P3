@@ -163,10 +163,11 @@ banks without changing selected parameters. """
         """ the calculated number of banks of (24) parameters required to support all parameters in parameter list """
         return self._parameter_bank_count
     
-    @parameter_count.setter
-    def parameter_count(self, new_count):
-        self._parameter_count = new_count
-        self._parameter_bank_count = math.ceil(self._parameter_count // SETUP_DB_PARAM_BANK_SIZE)
+    # @parameter_count.setter
+    # def parameter_count(self, new_count):
+    #     """ parameter count is automatically set by devices and constant """
+    #     self._parameter_count = new_count
+    #     self._parameter_bank_count = math.ceil(self._parameter_count // SETUP_DB_PARAM_BANK_SIZE)
 
     @property
     def selected_parameter_index(self):
