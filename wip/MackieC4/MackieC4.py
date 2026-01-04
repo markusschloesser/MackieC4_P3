@@ -784,9 +784,16 @@ class MackieC4(MackieC4ListenerMixin, object):
         selected_index, callback_track_type_of_selected_index = self.find_selected_track_index()
         found_changed_track_callback_type, found_callback_type_track_count = self.find_changed_track_callback_type()
         dtls = f"(selected_index={selected_index}, callback_track_type_of_selected_index={callback_track_type_of_selected_index}, "
-        dtls += f"found_cb_type={found_changed_track_callback_type}, found_cb_type_track_count={found_callback_type_track_count})"
+        found_type = '2 (master - always 1 track)'
+        if found_changed_track_callback_type == 1:
+            found_type = "1 (return)"
+        elif found_changed_track_callback_type == 0:
+            found_type = "0 (visible)"
+        dtls += f"found_cb_type={found_type}, found_cb_type_track_count={found_callback_type_track_count})"
         tracks = self.song().visible_tracks + self.song().return_tracks
-        self.log_message(logging.DEBUG, f"{log_id}listener popped, processing {len(self.song().visible_tracks)} + {len(self.song().return_tracks)} = {len(tracks)} song tracks" + dtls)
+        msg = f"{log_id}callback event with {len(self.song().visible_tracks)} + {len(self.song().return_tracks)} = {len(tracks)} visible and return tracks in song "
+        self.log_message(logging.DEBUG, msg)
+        self.log_message(logging.DEBUG, dtls)
         new_track_count = len(tracks)
 
         if callback_track_type_of_selected_index == found_changed_track_callback_type:
@@ -799,7 +806,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.log_message(logging.DEBUG, msg)
                     self.__encoder_controller.tracks_deleted(selected_index, tracks, callback_track_type_of_selected_index)
                 else:
-                    self.log_message(logging.DEBUG,f"{log_id}calling track_deleted passing index {selected_index}")
+                    self.log_message(logging.DEBUG,f"{log_id}calling track_deleted passing index {selected_index} only")
                     self.__encoder_controller.track_deleted(selected_index)
                 #self.request_rebuild_midi_map()   <-- called by EC
             elif self.track_count < new_track_count:
@@ -810,11 +817,12 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.log_message(logging.DEBUG, msg)
                     self.__encoder_controller.tracks_added(selected_index, tracks, callback_track_type_of_selected_index)
                 else:
-                    self.log_message(logging.DEBUG,f"{log_id}calling track_added passing index {selected_index}")
+                    self.log_message(logging.DEBUG,f"{log_id}calling track_added passing index {selected_index} only")
                     self.__encoder_controller.track_added(selected_index)
                 #self.request_rebuild_midi_map() <-- called by EC
             else:
                 self.log_message(logging.DEBUG,f"{log_id}calling EC.track_changed passing index {selected_index}")
+                # since track counts match, something else in the callback_track_type collection of the selected_index's Track changed
                 self.__encoder_controller.track_changed(selected_index)
         else:
             # still need to add or remove from correct track collection in EAH.SongData, but the current Song selected index points to the wrong
@@ -836,13 +844,14 @@ class MackieC4(MackieC4ListenerMixin, object):
                 msg = f"{log_id}calling ec.unselected_tracks_deleted{dtls}"
                 self.log_message(logging.DEBUG, msg)
                 self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)
-            else: # different 'selected index' and 'event index' callback track types were detected, but no telltale track count differences
-                # landed here when two tracks were selected at the same time (shift + left-click) then Ctrl-G grouped
-                # future selected-tracks-got-grouped events should be ignored here in tracks_changed()
+            else: # different 'selected index' and 'event index' callback track types were detected, but no telltale track-type count differences
+                # landed here when two tracks were selected at the same time (shift + left-click) then Ctrl-G grouped (Group Track was added, processed above)
+                # future new-track(s)-in-group events should be ignored here in tracks_changed()
                 # in favor of new-track-added-and-selected event processing by track_changed(index)
-                # also landed here because (I think) two "tracks changed" when a track was added (Ctrl+Shift+T) "next to" the selected track inside a Group
-                # the first
-                msg = f"{log_id} assumption issue? passing on this event {dtls}"  # continuing to log in case of other triggers
+                # also landed here when a track was added (Ctrl+Shift+T) "next to" the selected track inside a Group because (I think)
+                # the first event was "new track added in visible tracks" (processed above) and the second event was new-track-in-group (landed here)
+                # also safe to ignore here in tracks_changed()
+                msg = f"{log_id} logic issue? passing on this event {dtls}"  # continuing to log in case of other triggers
                 self.log_message(logging.ERROR, msg)
                 # self.__encoder_controller.unselected_tracks_changed(found_changed_track_callback_type, found_callback_type_track_count)
 
@@ -859,7 +868,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     def selected_device_change_state(self, track, tid, type):
         # this was the only listener that popped when the index of the selected device changed (order of devices changed in device list)
         log_id = "C4.selected_device_change_state: "
-        self.log_message(logging.DEBUG, f"{log_id}selected device change-state listener for {track.name} with callback type {type} at type index {tid} popped")
+        self.log_message(logging.DEBUG, f"{log_id}passing on selected device change-state listener for {track.name} with callback type {type} at type index {tid} event")
         # self.__processing_track_device_state_change = True
         # self.log_message(logging.DEBUG, f"{log_id}processing device list drag&drop on script's selected track")
         # self.__encoder_controller.device_list_changed(track, tid, type)

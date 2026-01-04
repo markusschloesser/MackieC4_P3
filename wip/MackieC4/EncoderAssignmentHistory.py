@@ -24,9 +24,16 @@ class ActiveTrack:
         self._device_count = device_count
         self._device_bank_count = int(math.ceil(device_count // SETUP_DB_DEVICE_BANK_SIZE))
         self._selected_device_index = selected_device_index
+        """ index of this track's selected device in the track's device list """
         self._selected_devices_bank_index = None if selected_device_index is None else selected_device_index % SETUP_DB_DEVICE_BANK_SIZE
+        """ 0 - 7 index within a device bank where the selected device index would fall, automatically calculated 
+            when selected device changes. (9th device falls in the second bank at bank index 0) """
+        self._track_view_device_bank_index = self._selected_devices_bank_index
+        """ device bank index currently "on display" on the C4 (and selected in Live) of this track's device-bank list (0 - 9 if the track device list has 80 devices) """
         if selected_device_index is None or self.required_device_banks < 1:
             self._device_bank_index_of_selected_device = None
+            """ device bank index of this track's selected device in the track's device-bank list (0 unless the track has more than 8 devices), automatically calculated 
+when selected device changes. This value can differ from the device bank index currently "on display". You can 'browse' device banks without changing selected devices. """
         else:
             self._device_bank_index_of_selected_device = int(math.floor(selected_device_index % self.required_device_banks))
 
@@ -81,7 +88,7 @@ class ActiveTrack:
         return self._selected_devices_bank_index
     @property
     def device_bank_index_of_selected_device(self):
-        """ the raw device index value % self.device_bank_count (0 unless a track has more than 8 devices) or None if no devices """
+        """ the raw device index value % self.device_bank_count (0 unless a track has more than 8 devices, 10+ if a track has more than 80 devices) or None if no devices """
         return self._device_bank_index_of_selected_device
 
     @selected_device_index.setter
@@ -100,12 +107,23 @@ class ActiveDevice:
         self.index = dev_index
         self.track_index = song_track_index
         self.track_index_by_type = callback_type_index
-        self._selected_parameter_index = selected_parameter_index
         self._parameter_count = parameter_count
+        self._selected_parameter_index = selected_parameter_index
+        """ index of this device's selected parameter in the device's parameter list """
         self._parameter_bank_count = math.ceil(parameter_count // SETUP_DB_PARAM_BANK_SIZE)
+        """ the number of parameter banks worth of parameters in the device's parameter list (0 unless the device has more than 24 parameters) """
         self._selected_parameters_bank_index = selected_parameter_index % SETUP_DB_PARAM_BANK_SIZE
+        """ the index of the parameter bank where the selected parameter would fall (0 - 23 unless SETUP_DB_PARAM_BANK_SIZE changes) """        
+
+        self._device_view_parameter_bank_index = self._selected_parameters_bank_index
+        """ device bank index currently "on display" on the C4 (and selected in Live) of this device's parameter-bank list (indexes 0 - 9 if the device parameter list 
+        has 240 parameters) """
+        
         if self.required_parameter_banks < 1:
             self._bank_index_of_selected_parameter = 0
+            """ parameter bank index of this device's selected parameter in the device's parameter-bank list (0 unless the device has more than 8 parameters), 
+automatically calculated when selected parameter changes. This value can differ from the parameter bank index currently "on display". You can 'browse' parameter 
+banks without changing selected parameters. """  
         else:
             self._bank_index_of_selected_parameter = int(math.floor(selected_parameter_index % self.required_parameter_banks))
 
@@ -138,9 +156,11 @@ class ActiveDevice:
 
     @property
     def parameter_count(self):
+        """ the raw count of parameters in parameter list """
         return self._parameter_count
     @property
     def required_parameter_banks(self):
+        """ the calculated number of banks of (24) parameters required to support all parameters in parameter list """
         return self._parameter_bank_count
     
     @parameter_count.setter
@@ -154,11 +174,11 @@ class ActiveDevice:
         return self._selected_parameter_index
     @property
     def selected_parameters_bank_index(self):
-        """ the raw parameter index value % SETUP_DB_PARAM_BANK_SIZE (0 - 23 by default) """
+        """ the raw parameter index value % SETUP_DB_PARAM_BANK_SIZE (0 - 23 unless SETUP_DB_PARAM_BANK_SIZE changes) """
         return self._selected_parameters_bank_index
     @property
     def parameter_bank_index_of_selected_parameter(self):
-        """ the raw parameter index value % self.parameter_bank_count (0 unless a device has more than 24 parameters) """
+        """ the raw parameter index value % self.parameter_bank_count (0 unless a device has more than 24 parameters, 5+ if a device has more than 120 parameters) """
         return self._bank_index_of_selected_parameter
 
     @selected_parameter_index.setter
@@ -184,18 +204,24 @@ class ActiveDeviceList:
 
     @property
     def song_track_index(self):
+        """ when type 0 (visible) and type 1 (return) tracks are combined into one collection, index of this Track in that collection """
         return self.active_track.index
     @property
     def callback_type_key(self):
+        """ type 0 (visible); type 1 (return); or type 2 (master) callback type of this Track """
         return self.active_track.type
     @property
     def track_index_by_type(self):
+        """ index of this Track within its callback type collection, except the master track index is not really in a collection (since there is only ever one master track),
+         the master track index always equals the number of visible + return tracks in the song (and moves automatically when tracks are added or removed from the song """
         return self.active_track.index_by_type
     @property
     def device_count(self):
+        """ The number of devices on this Track """
         return self.active_track.device_count
     @property
     def selected_device_index(self):
+        """ The index of the selected device in the device list (of size == device_count)"""
         return self.active_track.selected_device_index
 
     @property
@@ -207,11 +233,13 @@ class ActiveDeviceList:
 
 
 track_callback_types = {0: "plain", 1: "return", 2: "master"}
+""" keys [0, 1, 2] are the track callback types used by Live; values ["plain", "return", "master"] are the associated 'primary keys' used for local SongData storage """
 
 class SongData(object):
     # keys "plain", "return", and "master" are the "primary key column" in self.track_table and device_table
     # values 0, 1, and 2 are the track callback types used elsewhere in the script
     table_keys = {"plain": 0, "return": 1, "master": 2}
+    """ keys ["plain", "return", "master"] are the 'primary keys' used in SongData; values [0, 1, 2] are the track callback types used by Live """
 
     @depends(logger=None, get_device_list=None)
     def __init__(self, logger=None, get_device_list=None):
@@ -268,7 +296,7 @@ class SongData(object):
         rtn = tracks_before if tracks_before > 0 else 1
         return rtn
 
-    def get_active_device_list_at_song_index(self, song_track_index):
+    def get_active_device_list_at_song_index(self, song_track_index) -> ActiveDeviceList | None:
         rtns_index = song_track_index - self.plain_track_count
         if song_track_index < self.plain_track_count:
             return self.get_active_device_list_reference(track_callback_types[0], song_track_index)
@@ -283,7 +311,7 @@ class SongData(object):
             return None # song may not have any return tracks
         return self.device_list_table[track_callback_type_key][track_index_by_type]
 
-    def get_master_track(self, master_track_index=None):
+    def get_master_track(self, master_track_index=None)-> ActiveTrack:
         if master_track_index is None:
             master_track_index = self.master_track_index
         return self.get_track_by_type_key(track_callback_types[2], master_track_index)
@@ -359,7 +387,7 @@ class SongData(object):
         track_ref.selected_device_index = selected_device_index
         self.set_track_by_type_key(primary_key, track_type_index, track_ref)
 
-    def get_track(self, song_track_index):
+    def get_track(self, song_track_index)-> ActiveTrack | None:
         callback_type_index = song_track_index
         rtns_index = song_track_index - self.plain_track_count
         rtn = None
@@ -563,7 +591,7 @@ class SongData(object):
         # self.log_msg(logging.DEBUG, f"{log_id}setting device map for {track_callback_type_key} track index {track_index_by_type}")
         self.device_list_table[track_callback_type_key][track_index_by_type].devices = device_map
 
-    def get_device(self, song_track_index, device_index):
+    def get_device(self, song_track_index, device_index)-> ActiveDevice | None:
         active_device = None
         device_map = self.get_track_device_map(song_track_index)
         if device_map is not None and device_index < len(device_map.keys()):
@@ -731,7 +759,7 @@ class SongData(object):
             track_ref.selected_device_index = None
         return track_ref
 
-    def _insert_track_slot(self, type_dict, track_callback_type_index, track_device_list_ref):
+    def _insert_track_slot(self, type_dict, track_callback_type_index, track_device_list_ref)-> dict[int, ActiveDeviceList]:
         log_id = "EAH.SD._insert_track_slot: "
         if track_callback_type_index in type_dict.keys():
             type_dict = self.__shift_keys_right(type_dict, track_callback_type_index, track_device_list_ref)
@@ -741,7 +769,7 @@ class SongData(object):
             type_dict[track_callback_type_index] = track_device_list_ref
         return type_dict
 
-    def _insert_track_device_list_slot(self, type_dict, device_index, active_device):
+    def _insert_track_device_list_slot(self, type_dict, device_index, active_device)-> dict[int, ActiveDevice]:
         log_id = "EAH.SD._insert_track_device_list_slot: "
         if device_index in type_dict.keys():
             type_dict = self.__shift_keys_right(type_dict, device_index, active_device)
@@ -751,10 +779,10 @@ class SongData(object):
             type_dict[device_index] = active_device
         return type_dict
 
-    def _collapse_track_slot(self, type_dict, track_callback_type_index):
+    def _collapse_track_slot(self, type_dict, track_callback_type_index)-> dict[int, ActiveDeviceList]:
         return self.__shift_keys_left(type_dict, track_callback_type_index)
 
-    def _collapse_track_device_list_slot(self, type_dict, device_index):
+    def _collapse_track_device_list_slot(self, type_dict, device_index)-> dict[int, ActiveDevice]:
         return self.__shift_keys_left(type_dict, device_index)
 
     def __shift_keys_right(self, local_dict, key_of_add, value_to_add):
