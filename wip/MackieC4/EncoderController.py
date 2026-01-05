@@ -754,7 +754,7 @@ class EncoderController(MackieC4Component, Component):
             extended_device_list = self.get_device_list(device_list)
 
             # Calculate the index of the first device in the current device bank
-            current_device_bank_track = self.__eah.selected_device_bank_index
+            current_device_bank_track = self.__eah.last_selected_track_device_bank_view_index # .selected_device_bank_index
             bank_start_index = current_device_bank_track * 8
 
             # Ensure that bank_start_index is non-negative
@@ -892,7 +892,7 @@ class EncoderController(MackieC4Component, Component):
         log_id = "EC.handle_bank_switch_ids: "
         # is_assignment_mode = "True" if self.__assignment_mode == C4M_CHANNEL_STRIP else "False"
         # self.main_script().log_message(logging.DEBUG, f"{log_id}the current assignment mode is C4M_CHANNEL_STRIP: <{is_assignment_mode}>")
-        current_bank_nbr = self.__eah.selected_device_bank_index
+        current_bank_nbr = self.__eah.last_selected_track_device_bank_view_index  # .selected_device_bank_index
         update_self = False
         if switch_id == C4SID_BANK_LEFT:
             if current_bank_nbr > 0:
@@ -972,7 +972,8 @@ class EncoderController(MackieC4Component, Component):
                 self.__last_assignment_mode = self.__assignment_mode
                 self.__assignment_mode = button_id_to_assignment_mode[C4SID_TRACK]  # C4M_PLUGINS
 
-                if self.__eah.selected_device_bank_index == 0 and self.__eah.selected_device_bank_count > 0:
+                # if self.__eah.selected_device_bank_index == 0 and self.__eah.selected_device_bank_count > 0:
+                if self.__eah.last_selected_track_device_bank_view_index == 0 and self.__eah.selected_device_bank_count > 0:
                     self.song().view.select_device(self.get_device_list(self.selected_track.devices)[0])
                 update_self = True
 
@@ -1323,8 +1324,10 @@ class EncoderController(MackieC4Component, Component):
         log_id = "EC.handle_pressed_v_pot: "
         """ 'encoder button' /vpot push clicks"""
         encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
-        selected_device_bank_index = 0 if self.__eah.selected_device_bank_index is None else self.__eah.selected_device_bank_index
-        old_selected_bank = selected_device_bank_index
+        # selected_device_bank_index = 0 if self.__eah.selected_device_bank_index is None else self.__eah.selected_device_bank_index
+        # current_device_bank_index = 0 if active_track_ref.device_bank_index_of_selected_device is None else active_track_ref.device_bank_index_of_selected_device
+        current_device_bank_index = self.__eah.last_selected_track_device_bank_view_index
+        old_selected_bank = current_device_bank_index
         max_device_bank_index = self.__eah.selected_device_bank_count - 1
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             is_armable_track_selected = track_util.can_be_armed(self.selected_track)
@@ -1339,25 +1342,25 @@ class EncoderController(MackieC4Component, Component):
 
                 # group track fold toggle, also groups from within
                 if encoder_index == encoder_04_index:
-                    track_util.toggle_fold(self.selected_track)
+                    track_util.toggle_fold(self.selected_track)  # <-- triggers track_changed() callback, maybe selected_track_changed() also
 
                 if encoder_index == encoder_07_index:
-                    if selected_device_bank_index > 0:
-                        selected_device_bank_index -= 1
+                    if current_device_bank_index > 0:
+                        current_device_bank_index -= 1
                         update_self = True
-                    else:
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}selected_device_bank_index is already bank 0")
+                    # else:
+                    #     self.main_script().log_message(logging.DEBUG, f"{log_id}selected_device_bank_index is already bank 0")
                 elif encoder_index == encoder_08_index:
-                    if selected_device_bank_index < max_device_bank_index:
-                        selected_device_bank_index += 1
+                    if current_device_bank_index < max_device_bank_index:
+                        current_device_bank_index += 1
                         update_self = True
-                    else:
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}selected_device_bank_index is already on max bank")
+                    # else:
+                    #     self.main_script().log_message(logging.DEBUG, f"{log_id}selected_device_bank_index is already on max bank")
 
                 if update_self:
                     # log_msg = f"EC.handle_pressed_v_pot: updating selected device bank index from <{old_selected_bank}> to <{selected_device_bank_index}>"
                     # self.main_script().log_message(logging.DEBUG, log_msg)
-                    self.__eah.selected_device_index = (selected_device_bank_index * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.selected_device_index
+                    self.__eah.last_selected_track_device_bank_view_index = current_device_bank_index
                     self.__reassign_encoder_parameters()
                     self.one_display_update()
 
@@ -1370,7 +1373,7 @@ class EncoderController(MackieC4Component, Component):
                 # switch to Track/Plugins mode using "self.__chosen_plugin" the "device to which the script is locked"
                 self.handle_assignment_switch_ids(C4SID_TRACK)
 
-                device_bank_offset = int(NUM_ENCODERS_ONE_ROW * selected_device_bank_index)
+                device_bank_offset = int(NUM_ENCODERS_ONE_ROW * current_device_bank_index)
                 device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
                 extended_device_list = self.get_device_list(self.selected_track.devices)
                 if not self.is_locked_to_device:
@@ -1379,7 +1382,7 @@ class EncoderController(MackieC4Component, Component):
                         self.__eah.selected_device_index = device_offset
                         device = extended_device_list[device_offset]
                         if liveobj_valid(device):
-                            self.song().view.select_device(device)
+                            self.song().view.select_device(device)  # <-- triggers on_device_changed() callback
                         else:
                             self.__update_chosen_plugin_device(device) # device == None
                     else:
@@ -1461,8 +1464,16 @@ class EncoderController(MackieC4Component, Component):
             encoder_04_index = 3
             encoder_07_index = 6
             encoder_08_index = 7
-            current_device_track = self.__eah.last_selected_device_index
-            current_parameter_bank_track = self.__eah.last_selected_track_device_parameter_bank_nbr = current_device_track
+            # current_device_track = self.__eah.last_selected_device_index <-- was this a bug? util.is_parameter_quantized(param, current_device_track) below
+            #                                                                  expects a parameter and a device, not a parameter and a device index
+            last_index = 0 if self.__eah.last_selected_device_index is None else self.__eah.last_selected_device_index
+
+            device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, last_index)
+            current_parameter_bank_track = self.__eah.last_selected_device_parameter_bank_view_index
+            if device_ref.parameter_bank_index_of_selected_parameter == current_parameter_bank_track:
+                msg = f"{log_id}stored auto-generated current-parameter-bank values agree on bank {current_parameter_bank_track} before pressed-vpot event handling"
+                self.main_script().log_message(logging.DEBUG, msg)
+
             current_track_device_parameter_bank_nbr_changed = False
             # self.main_script().log_message(logging.DEBUG, f"{log_id}current_parameter_bank_track: {current_parameter_bank_track}")
             stop = len(self.__display_parameters) + SETUP_DB_DEVICE_BANK_SIZE  # always 40?
@@ -1488,7 +1499,8 @@ class EncoderController(MackieC4Component, Component):
             elif encoder_index == encoder_08_index:
                 current_track_device_preset_bank = current_parameter_bank_track
                 # self.main_script().log_message(logging.DEBUG, f"{log_id}current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
-                track_device_preset_bank_count = self.__eah.max_last_selected_track_device_parameter_bank_nbr   # get_max_current_track_device_parameter_bank_nbr(current_device_track)
+                # track_device_preset_bank_count = get_max_current_track_device_parameter_bank_nbr(current_device_track)
+                track_device_preset_bank_count = self.__eah.max_last_selected_track_device_parameter_bank_nbr
                 # self.main_script().log_message(logging.DEBUG, f"{log_id}track_device_preset_bank_count: {0}".format(track_device_preset_bank_count))
                 if current_track_device_preset_bank < track_device_preset_bank_count - 1:
                     current_parameter_bank_track += 1
@@ -1504,7 +1516,8 @@ class EncoderController(MackieC4Component, Component):
                     # if param is not tuple:
                     try:
                         if param.is_enabled:
-                            if util.is_parameter_quantized(param, current_device_track):  # for stepped params or those that only have a limited range
+                            # if util.is_parameter_quantized(param, current_device_track):
+                            if util.is_parameter_quantized(param, device_ref.device):  # for stepped params or those that only have a limited range
                                 toggle_or_cycle_parameter_value(param)
                             else:
                                 # button press == jump to default value of device parameter
@@ -1519,7 +1532,7 @@ class EncoderController(MackieC4Component, Component):
                 # log_msg = f"{log_id}updating current_track_device_parameter_bank_nbr from <{old_t_d_p_bank_nbr}> to {current_parameter_bank_track}"
                 # self.main_script().log_message(logging.DEBUG, log_msg)
                 if current_track_device_parameter_bank_nbr_changed:
-                    self.__eah.last_selected_track_device_parameter_bank_nbr = current_parameter_bank_track  # self.__eah.set_current_track_device_parameter_bank_nbr(current_parameter_bank_track)
+                    self.__eah.last_selected_device_parameter_bank_view_index = current_parameter_bank_track
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
 
@@ -1797,7 +1810,7 @@ class EncoderController(MackieC4Component, Component):
             self.__eah.selected_device_bank_count = nbr_of_full_device_pages
 
             # the current selected bank should already be updated (and accurate)?
-            current_device_bank_track = self.__eah.selected_device_bank_index
+            current_device_bank_track = self.__eah.last_selected_track_device_bank_view_index  # .selected_device_bank_index
             if current_device_bank_track is None:
                 current_device_bank_track = 0
 
@@ -2083,7 +2096,7 @@ class EncoderController(MackieC4Component, Component):
 
     def _update_vpot_leds_for_device_toggle(self):
         extended_device_list = self.get_device_list(self.selected_track.devices)
-        current_device_bank_track = self.__eah.selected_device_bank_index
+        current_device_bank_track = self.__eah.last_selected_track_device_bank_view_index  # selected_device_bank_index
 
         for s in self.__encoders:
             s_index = s.vpot_index()

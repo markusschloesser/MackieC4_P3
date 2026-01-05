@@ -99,6 +99,13 @@ when selected device changes. This value can differ from the device bank index c
             self._device_bank_index_of_selected_device = None
         else:
             self._device_bank_index_of_selected_device = selected_device_index % self.required_device_banks
+    
+    @property
+    def track_device_bank_view_index(self):
+        return self._track_view_device_bank_index
+    @track_device_bank_view_index.setter
+    def track_device_bank_view_index(self, next_bank_index):
+        self._track_view_device_bank_index = next_bank_index
 
 class ActiveDevice:
 
@@ -190,6 +197,13 @@ banks without changing selected parameters. """
             self._bank_index_of_selected_parameter = 0
         else:
             self._bank_index_of_selected_parameter = selected_parameter_index % self.required_parameter_banks
+    
+    @property
+    def device_parameter_bank_view_index(self):
+        return self._device_view_parameter_bank_index
+    @device_parameter_bank_view_index.setter
+    def device_parameter_bank_view_index(self, next_bank_index):
+        self._device_view_parameter_bank_index = next_bank_index
 
 
 class ActiveDeviceList:
@@ -990,11 +1004,32 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     @property
     def last_selected_track_device_parameter_bank_nbr(self, t_d_idx=None):
-        device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
-        if device_ref is not None:
-            return device_ref.parameter_bank_index_of_selected_parameter
-        else:
-            return 0
+        return self.last_selected_device_parameter_bank_view_index  # parameter_bank_index_of_selected_parameter
+        
+    @property
+    def last_selected_track_device_bank_view_index(self):
+        """ index of the selected track's current device-bank-view.  Which could differ from the device-bank of the track's selected device """
+        rtn = 0
+        if self.data.get_track(self.last_selected_track_index).track_device_bank_view_index is not None:
+            rtn = self.data.get_track(self.last_selected_track_index).track_device_bank_view_index
+        return rtn
+    @last_selected_track_device_bank_view_index.setter
+    def last_selected_track_device_bank_view_index(self, next_bank_view_index):
+        self.data.get_track(self.last_selected_track_index).track_device_bank_view_index = next_bank_view_index
+        
+    @property
+    def last_selected_device_parameter_bank_view_index(self):
+        """ index of the selected device's current parameter-bank-view.  Which could differ from the parameter-bank of the device's selected (last changed) parameter """
+        rtn = 0
+        if self.last_selected_device_index is not None:
+            d = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
+            if d.device_parameter_bank_view_index is not None:
+                rtn = d.device_parameter_bank_view_index
+        return rtn
+    @last_selected_device_parameter_bank_view_index.setter
+    def last_selected_device_parameter_bank_view_index(self, next_bank_view_index):
+        if self.last_selected_device_index is not None:
+            self.data.get_device(self.last_selected_track_index, self.last_selected_device_index).device_parameter_bank_view_index = next_bank_view_index
 
 
     def update_device_counter(self, track_index, device_count):
