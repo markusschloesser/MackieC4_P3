@@ -1885,18 +1885,20 @@ class EncoderController(MackieC4Component, Component):
                                 self.__encoders[encoder_index].unlight_vpot_leds()
 
                 elif s_index < encoder_27_index:
-                    # changed from 29, which means that the 12th send will not be shown on the C4, but who needs 12 sends that anyway?
-                    # if you want to get back to 12 sends being shown, out-comment all encoder_28_index stuff and change "elif s_index < encoder_28_index" to 29
                     if self.__filter_mst_trk_allow_audio:
-                        send_param = self.__send_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE * 2)
-                        vpot_param = (send_param[0], VPOT_DISPLAY_WRAP)
-                        format_nbr = s_index % NUM_ENCODERS_ONE_ROW
-                        if s_index in row_03_encoders:
-                            format_nbr += NUM_ENCODERS_ONE_ROW
-                        # encoder 17 index is (16 % 8) = send 0
-                        # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
-                        if liveobj_valid(send_param[0]):
-                            vpot_display_text.set_text(send_param[0], send_param[1])
+                        if not self.__eah.is_return_track_selected:
+                            send_param = self.__send_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE * 2)
+                            vpot_param = (send_param[0], VPOT_DISPLAY_WRAP)
+                            format_nbr = s_index % NUM_ENCODERS_ONE_ROW
+                            if s_index in row_03_encoders:
+                                format_nbr += NUM_ENCODERS_ONE_ROW
+                            # encoder 17 index is (16 % 8) = send 0
+                            # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
+                            if liveobj_valid(send_param[0]):
+                                vpot_display_text.set_text(send_param[0], send_param[1])
+                        else:
+                            # return tracks don't have "sends" (can't send to themselves)
+                            pass  # vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
 

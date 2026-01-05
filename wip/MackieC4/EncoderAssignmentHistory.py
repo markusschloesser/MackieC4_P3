@@ -274,11 +274,11 @@ class SongData(object):
         if self.__class_logging:
             self.logger(level, msg)
 
-    def get_callback_type_for_index(self, track_index):
+    def get_callback_type_for_song_index(self, track_index):
         rtn = 3
         if track_index < self.plain_track_count:
             rtn = 0
-        elif track_index < self.return_track_count:
+        elif track_index < self.plain_track_count + self.return_track_count:
             rtn = 1
         elif track_index == self.plain_track_count + self.return_track_count:
             rtn = 2
@@ -951,7 +951,22 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     @property
     def last_selected_track_callback_type(self):
-        return self.data.get_callback_type_for_index(self.last_selected_track_index)
+        return self.data.get_callback_type_for_song_index(self.last_selected_track_index)
+
+    @property
+    def is_plain_track_selected(self):
+        """True if track at selected track index is listener callback type 0"""
+        return self.last_selected_track_callback_type == 0
+
+    @property
+    def is_return_track_selected(self):
+        """True if track at selected track index is listener callback type 1"""
+        return self.last_selected_track_callback_type == 1
+
+    @property
+    def is_master_track_selected(self):
+        """True if track at selected track index is listener callback type 2"""
+        return self.last_selected_track_callback_type == 2
 
     @property
     def track_count(self):
