@@ -1470,9 +1470,11 @@ class EncoderController(MackieC4Component, Component):
 
             device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, last_index)
             current_parameter_bank_track = self.__eah.last_selected_device_parameter_bank_view_index
-            if device_ref.parameter_bank_index_of_selected_parameter == current_parameter_bank_track:
-                msg = f"{log_id}stored auto-generated current-parameter-bank values agree on bank {current_parameter_bank_track} before pressed-vpot event handling"
-                self.main_script().log_message(logging.DEBUG, msg)
+            # msg = f"{log_id}device parameter-bank in view {current_parameter_bank_track} before pressed-vpot event handling, "
+            # if device_ref.parameter_bank_index_of_selected_parameter == current_parameter_bank_track:
+            #     self.main_script().log_message(logging.DEBUG, msg + "does contain selected parameter")
+            # else:
+            #     self.main_script().log_message(logging.DEBUG, msg + "does NOT contain selected parameter")
 
             current_track_device_parameter_bank_nbr_changed = False
             # self.main_script().log_message(logging.DEBUG, f"{log_id}current_parameter_bank_track: {current_parameter_bank_track}")
@@ -1533,6 +1535,16 @@ class EncoderController(MackieC4Component, Component):
                 # self.main_script().log_message(logging.DEBUG, log_msg)
                 if current_track_device_parameter_bank_nbr_changed:
                     self.__eah.last_selected_device_parameter_bank_view_index = current_parameter_bank_track
+                    # msg = f"{log_id}device parameter-bank in view {current_parameter_bank_track} after pressed-vpot event handling, "
+                    # if device_ref.parameter_bank_index_of_selected_parameter == current_parameter_bank_track:
+                    #     self.main_script().log_message(logging.DEBUG, msg + "contains selected parameter")
+                    # else:
+                    #     # execution lands here whenever a device's "selected parameter" (normally, the last parameter that changed)
+                    #     # is not one of the 24 parameters in the "parameter bank" currently mapped to the 24 associated C4 encoders
+                    #     # in this self.__assignment_mode == C4M_PLUGINS state. (Track - Devices mode)
+                    #     idx = device_ref.parameter_bank_index_of_selected_parameter
+                    #     self.main_script().log_message(logging.DEBUG, msg + f"doesn't match device_ref value {idx}")
+
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
 
@@ -1637,7 +1649,7 @@ class EncoderController(MackieC4Component, Component):
 
             elif s.vpot_index() == encoder_18_index:
                 if self.song().re_enable_automation_enabled:
-                    """Returns true if some automated parameter has been overriden"""
+                    """Returns true if some automated parameter has been overridden"""
                     self.song().re_enable_automation()
 
             elif s.vpot_index() == encoder_19_index:
