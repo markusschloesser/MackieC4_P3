@@ -973,8 +973,10 @@ class EncoderController(MackieC4Component, Component):
                 self.__assignment_mode = button_id_to_assignment_mode[C4SID_TRACK]  # C4M_PLUGINS
 
                 # if self.__eah.selected_device_bank_index == 0 and self.__eah.selected_device_bank_count > 0:
-                if self.__eah.last_selected_track_device_bank_view_index == 0 and self.__eah.selected_device_bank_count > 0:
-                    self.song().view.select_device(self.get_device_list(self.selected_track.devices)[0])
+                # if self.__eah.last_selected_track_device_bank_view_index == 0 and self.__eah.selected_device_bank_count > 0:
+                # ??? why select device at index 0 when changing to Track-Devices mode
+                # if the selected device-bank is index 0 and the track has more than 8 devices?
+                #     self.song().view.select_device(self.get_device_list(self.selected_track.devices)[0])
                 update_self = True
 
         # C4 assignment.chan_strip button == C4M_CHANNEL_STRIP mode
