@@ -105,7 +105,6 @@ class EncoderController(MackieC4Component, Component):
         self.__device_provider = device_provider
         self.__chosen_plugin = None
         self.is_locked_to_device = False
-        # self.__device_listener_hit = False
         self.__on_device_changed.subject = self.__device_provider
         self.__on_is_locked_to_device_changed.subject = self.__device_provider
 
@@ -399,18 +398,13 @@ class EncoderController(MackieC4Component, Component):
 
     def track_changed(self, track_index):
         log_id = "EC.track_changed: "
+        # not calling self.__update_selected_track(track_index) because it does too much like don't update EAH.last_selected_track_index yet
         self.selected_track = self.song().view.selected_track
 
-        # tracks = self.song().visible_tracks + self.song().return_tracks + (self.song().master_track,)
-        # try:
-        #     j = tracks.index(self.selected_track)
-        # except ValueError:
-        #     j = -1
-        #
         if liveobj_valid(self.selected_track):
-            self.main_script().log_message(logging.DEBUG, f"{log_id}track_index input is {track_index}, selected_track is {self.selected_track.name}") # at index {j}")
+            self.main_script().log_message(logging.DEBUG, f"{log_id}track_index input is {track_index}, selected_track is {self.selected_track.name}")
         else:
-            self.main_script().log_message(logging.WARNING, f"{log_id}track_index input is {track_index}, but selected_track is not liveobj valid") # at index {j}")
+            self.main_script().log_message(logging.WARNING, f"{log_id}track_index input is {track_index}, but selected_track is not liveobj valid")
 
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
@@ -418,11 +412,14 @@ class EncoderController(MackieC4Component, Component):
         # selected_device_index would return from self.__eah.track_changed(track_index), except don't update EAH.last_selected_track_index yet
         # self.__eah.track_changed(track_index) is called as needed below
         next_active_track_ref = self.__eah.data.get_track(track_index)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}track_index input is {track_index}, stored active_track is {next_active_track_ref.track_name}")
 
-        selected_device_index = next_active_track_ref.selected_device_index
+        selected_device_index = next_active_track_ref.selected_device_index # next_active_track_ref.device_count
+        msg = f"{log_id}stored active_track {next_active_track_ref.track_name} has {next_active_track_ref.device_count} devices and "
+        self.main_script().log_message(logging.DEBUG, msg + f"selected_device_index {selected_device_index}")
         extended_device_list = self.get_device_list(self.selected_track.devices)
         nbr_devices = len(extended_device_list)
-        device = None
+        next_device = None
         if selected_device_index is not None and self.__pending_device_change:
             device = self.__eah.next_selected_device
             if nbr_devices > next_active_track_ref.device_count:
@@ -447,19 +444,19 @@ class EncoderController(MackieC4Component, Component):
         else:
             if selected_device_index is not None and selected_device_index > -1:
                 if nbr_devices > selected_device_index:
-                    if device is None:
-                        device = extended_device_list[selected_device_index]
-                    if liveobj_valid(device):
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}{device.name} found at index {selected_device_index}")
+                    if next_device is None:
+                        next_device = extended_device_list[selected_device_index]
+                    if liveobj_valid(next_device):
+                        self.main_script().log_message(logging.DEBUG, f"{log_id}{next_device.name} found at index {selected_device_index}")
                     self.__eah.track_changed(track_index)
                     self.__eah.update_device_counter(track_index, nbr_devices)
                     self.main_script().log_message(logging.DEBUG, f"{log_id}called __eah.update_device_counter({track_index}, {nbr_devices})")
                 # else something didn't get updated correctly at startup and/or when devices deleted?
                 elif nbr_devices > 0: # punt if we can
-                    device = extended_device_list[nbr_devices - 1]
+                    next_device = extended_device_list[nbr_devices - 1]
                     msg = f"{log_id}Because there are only {nbr_devices} devices in device list for track {self.selected_track.name}, index "
-                    if liveobj_valid(device):
-                        msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {device.name} found at index {nbr_devices - 1} instead."
+                    if liveobj_valid(next_device):
+                        msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {next_device.name} found at index {nbr_devices - 1} instead."
                         self.main_script().log_message(logging.INFO, msg)
                     else:
                         nbr_devices = 0
@@ -476,40 +473,40 @@ class EncoderController(MackieC4Component, Component):
 
         if not self.is_locked_to_device:
             msg_prefix = f"{log_id}self.selected_track is now {self.selected_track.name} "
-            if liveobj_valid(device):
+            if liveobj_valid(next_device):
                 self.__locked_device_track = self.selected_track
                 if not self.is_processing_track_device_state_change():
-                    if not self.selected_track.view.selected_device == device:
-                        self.main_script().log_message(logging.DEBUG, f"{msg_prefix}selecting device {device.name} and updating chosen plugin device")
-                        self.song().view.select_device(device) # this device selection could cause cascading listener callbacks in Live
+                    if not self.selected_track.view.selected_device == next_device:
+                        self.main_script().log_message(logging.DEBUG, f"{msg_prefix}selecting device {next_device.name} and updating chosen plugin device")
+                        self.song().view.select_device(next_device) # this device selection could cause cascading listener callbacks in Live
                         # don't update chosen plugin here, defer to device change listener callback
                     else:
-                        self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but song selected device is already {device.name}")
-                        if self.__chosen_plugin == device:
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}and script chosen plugin is already {device.name}")
+                        self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but song selected device is already {next_device.name}")
+                        if self.__chosen_plugin == next_device:
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}and script chosen plugin is already {next_device.name}")
                         else:
                             if self.__pending_device_change:
                                 msg_prefix = f"{log_id}and a local device change is pending, "
                             nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
                             self.main_script().log_message(logging.DEBUG, f"{msg_prefix}processing local device change with index {selected_device_index}")
-                            self.__eah.device_added_deleted_or_changed(extended_device_list, device, selected_device_index)
-                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix} updating script chosen plugin from {nm} to {device.name}")
-                            self.__update_chosen_plugin_device(device)
+                            self.__eah.device_added_deleted_or_changed(extended_device_list, next_device, selected_device_index)
+                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix} updating script chosen plugin from {nm} to {next_device.name}")
+                            self.__update_chosen_plugin_device(next_device)
                             self.__pending_device_change = False
                             name = "None" if self.__eah.next_selected_device is None else self.__eah.next_selected_device.name
-                            if self.__eah.next_selected_device == device:
+                            if self.__eah.next_selected_device == next_device:
                                 self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} processed successfully")
                                 self.__eah.next_selected_device = None
                             else:
-                                self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} ignored in favor of change to {device.name}?")
+                                self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} ignored in favor of change to {next_device.name}?")
                 else:
                     self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but device state is already actively changing")
             else:
                 if self.__pending_device_change:
                     msg_prefix += "and a local device change is pending, "
                 self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but no valid device found, self.__chosen_plugin == None")
-                self.__update_chosen_plugin_device(device)  # device == None
-                if self.__pending_device_change and self.__eah.next_selected_device != device:
+                self.__update_chosen_plugin_device(next_device)  # device == None
+                if self.__pending_device_change and self.__eah.next_selected_device != next_device:
                     name = self.__eah.next_selected_device.name
                     self.main_script().log_message(logging.DEBUG, f"{log_id}pending device change to {name} ignored?, self.__eah.next_selected_device == None")
                     self.__eah.next_selected_device = None
@@ -551,11 +548,7 @@ class EncoderController(MackieC4Component, Component):
                     device = selected_device
 
             if  liveobj_valid(device):
-                # self.__device_listener_hit = False
                 self.song().view.select_device(device)
-                # if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
-                #     self.main_script().log_message(logging.DEBUG, f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
-                #     self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
             else:
                 self.__update_chosen_plugin_device(device)  # device == None
         return
@@ -583,44 +576,46 @@ class EncoderController(MackieC4Component, Component):
 
     def __update_selected_track(self, track_index):
         log_id = "EC.__update_selected_track: "
-        track = self.song().view.selected_track
-        if not liveobj_valid(track):
+        track_obj = self.song().view.selected_track
+        if not liveobj_valid(track_obj):
             self.main_script().log_message(logging.DEBUG, f"{log_id}song().view.selected_track is not valid, neither is index {track_index}")
-        self.selected_track = track
+        self.selected_track = track_obj
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
+            self.__eah.track_changed(track_index)
         # self.main_script().log_message(logging.DEBUG, f"{log_id}selected tk after: {0}".format(self.selected_track.name))
-        self.refresh_state()
+        self.refresh_state()  # class local refresh
 
         extended_device_list = self.get_device_list(self.selected_track.devices)
-        selected_device_index = self.__eah.last_selected_device_index
+        last_selected_device_index = self.__eah.last_selected_device_index # at track_index
         # self.main_script().log_message(logging.DEBUG, f"{log_id}selected tk device index after: {0}".format(selected_device_index))
         # self.main_script().log_message(logging.DEBUG, "f"{log_id}nbr of devices on selected track after: {0}".format(len(extended_device_list)))
-        device = None
+        device_obj = None
         if not self.is_locked_to_device:
 
-            if selected_device_index is not None and selected_device_index > -1:
-                if len(extended_device_list) > selected_device_index:
-                    selected_device = extended_device_list[selected_device_index]
-                    device = selected_device
-                elif len(extended_device_list) > 0:
-                    selected_device = extended_device_list[0]
-                    self.__eah.last_selected_device_index = 0
-                    device = selected_device
+            if last_selected_device_index is not None and last_selected_device_index > -1:
+                nbr_devices = len(extended_device_list)
+                if last_selected_device_index < nbr_devices:
+                    selected_device = extended_device_list[last_selected_device_index]
+                    device_obj = selected_device
+                elif nbr_devices > 0:
+                    selected_device = extended_device_list[nbr_devices - 1]
+                    self.__eah.last_selected_device_index = nbr_devices - 1
+                    device_obj = selected_device
 
-            if liveobj_valid(device):
+            if liveobj_valid(device_obj):
                 self.__locked_device_track = self.selected_track
-                if not (self.song().view.selected_track.view.selected_device == device or self.is_processing_track_device_state_change()):
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}selecting device {device.name} at new device index {selected_device_index}")
-                    self.song().view.select_device(device)
+                if not (self.song().view.selected_track.view.selected_device == device_obj or self.is_processing_track_device_state_change()):
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}selecting device {device_obj.name} at new device index {last_selected_device_index}")
+                    self.song().view.select_device(device_obj)
                 else:
-                    msg = f"{log_id}device {device.name} at index {selected_device_index} is "
-                    if self.song().view.selected_track.view.selected_device == device:
+                    msg = f"{log_id}device {device_obj.name} at index {last_selected_device_index} is "
+                    if self.song().view.selected_track.view.selected_device == device_obj:
                         self.main_script().log_message(logging.DEBUG, f"{msg}already selected in song, not selecting again")
                     else:
                         self.main_script().log_message(logging.DEBUG, f"{msg}not selected but script is already processing a track device state change")
             else:
-                self.__update_chosen_plugin_device(device)  # device == None
+                self.__update_chosen_plugin_device(device_obj)  # device == None
 
         return
 
@@ -684,13 +679,6 @@ class EncoderController(MackieC4Component, Component):
                 if liveobj_valid(selected_device):
                     log_msg = f"{log_id}track {self.selected_track.name} and device {selected_device.name} are valid"
                     self.main_script().log_message(logging.DEBUG, log_msg)
-                    # current_selected_indexes = (x for x in range(len(extended_device_list)) if extended_device_list[x] == selected_device)
-                    # # if the device list contains more than one selected instance of the selected device, collect all selected indexes
-                    # # and pass the first index collected
-                    # selected_device_idx = next(current_selected_indexes, -1)
-                    # extended_device_list = self.get_device_list(self.selected_track.devices)
-                    # if selected_device_idx < 0 < len(extended_device_list):
-                    #     selected_device_idx = len(extended_device_list) - 1
                     selected_device_index = self.find_device_index_in_list(extended_device_list, selected_device)
                     updated_idx = self.__eah.device_added_deleted_or_changed(extended_device_list, selected_device, selected_device_index)
 
@@ -717,11 +705,7 @@ class EncoderController(MackieC4Component, Component):
 
                 if liveobj_valid(device):
                     self.__locked_device_track = self.selected_track
-                    # self.__device_listener_hit = False
                     self.song().view.select_device(device) # this should notify device listeners via "device provider"
-                    # if not self.__device_listener_hit:  # if this device selection didn't trigger Live listener notifications (yet?), update here now
-                    #     self.main_script().log_message(logging.DEBUG,  f"{log_id}device listener hit not detected, manually updating local chosen device {device.name}")
-                    #     self.__update_chosen_plugin_device(device)  # this device selection updates the state of this script
                 else:
                     self.__update_chosen_plugin_device(device) # device == None
 
@@ -2719,6 +2703,7 @@ class EncoderController(MackieC4Component, Component):
         return ascii_text_sysex_ints
 
     def refresh_state(self):
+        # overrides MackieC4Component.refresh_state() which defers to C4.refresh_state() which drops and reloads all listeners, and we don't want that
         self.main_script().set_shift_is_pressed(False)
         self.main_script().set_option_is_pressed(False)
         self.main_script().set_ctrl_is_pressed(False)
