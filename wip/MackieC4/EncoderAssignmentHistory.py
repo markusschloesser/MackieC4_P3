@@ -1047,6 +1047,38 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.data.get_device(self.last_selected_track_index, self.last_selected_device_index).device_parameter_bank_view_index = next_bank_view_index
 
 
+    def on_param_state_change(self, callback_track_type, callback_track_type_index, device_index, parameter_index, param):
+        track_of_type = self.song().master_track
+        if callback_track_type == 0:
+            track_of_type = self.song().visible_tracks[callback_track_type_index]
+        elif callback_track_type == 1:
+            track_of_type = self.song().return_tracks[callback_track_type_index]
+        elif callback_track_type != 2:
+            track_of_type = None  # not possible?
+
+        if track_of_type is not None:
+            device_obj = track_of_type.devices[device_index]
+            if liveobj_valid(device_obj):
+                device_map = self.data.get_track_device_map_by_callback_type(track_callback_types[callback_track_type], callback_track_type_index)
+                if device_index < len(device_map.keys()):
+                    device_ref = device_map[device_index]
+                    if device_ref.device == device_obj:
+                        device_ref.selected_parameter_index = parameter_index
+                    else:
+                        extended_index = None
+                        for i in device_map.keys():
+                            active_device = device_map[i]
+                            if active_device.device == device_obj:
+                                extended_index = i
+                                break
+
+                        if extended_index is not None:
+                            device_ref = device_map[extended_index]
+                            device_ref.selected_parameter_index = parameter_index
+                        else: # unknown device on this track?
+                            pass
+
+
     def update_device_counter(self, track_index, device_count):
         log_id = "EAH.update_device_counter: "
         max_device_banks = math.ceil(device_count // SETUP_DB_DEVICE_BANK_SIZE)

@@ -392,6 +392,11 @@ class EncoderController(MackieC4Component, Component):
     def master_track_index(self):
         return self.__eah.master_track_index()
 
+
+    def on_param_state_change(self, param, callback_track_type_index, device_index, parameter_index, callback_track_type):
+        # reorder method inputs
+        self.__eah.on_param_state_change(callback_track_type, callback_track_type_index, device_index, parameter_index, param)
+
     def track_changed(self, track_index):
         log_id = "EC.track_changed: "
         self.selected_track = self.song().view.selected_track

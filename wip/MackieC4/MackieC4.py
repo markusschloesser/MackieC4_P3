@@ -897,8 +897,12 @@ class MackieC4(MackieC4ListenerMixin, object):
         #     pass
 
     def param_changestate(self, param, tid, did, pid, type):
-        # log_id = "C4.param_changestate: "
-        # self.log_message(f"{log_id}parameter {param.name} changed state to value {param.value}")
+        log_id = "C4.param_changestate: "
+        self.log_message(logging.DEBUG, f"{log_id}parameter change state listener for {param.name} popped")
+
+        msg = f"{log_id} cb type {type} track index {tid} device at device chain index {did} parameter at parameter list index {pid} "
+        self.log_message(logging.DEBUG, msg + f"{param.name} changed state to value {param.value}")
+        self.__encoder_controller.on_param_state_change(param, tid, did, pid, type)
         self.__device_provider.set_last_param_value_change_details(param, tid, did, pid)
         # if type == 2:
         #     pass
@@ -906,9 +910,9 @@ class MackieC4(MackieC4ListenerMixin, object):
         #     pass
 
     def devpm_change(self, device):
-        # log_id = "C4.devpm_change: "
-        # self.log_message(f"{log_id}parameters listener for {device.name} popped, refreshing surface state")
-        self.refresh_state()
+        log_id = "C4.devpm_change: "
+        self.log_message(logging.DEBUG, f"{log_id}parameters listener for {device.name} popped, refreshing encoder controller state")
+        self.__encoder_controller.refresh_state()
 
     def mixerv_changestate(self, type, tid, track, r=0):
         cmd = f"track.mixer_device.{type}.value"
