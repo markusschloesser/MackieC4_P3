@@ -2,6 +2,7 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from __future__ import division
 import sys
+from itertools import zip_longest
 from typing import Dict
 
 from ableton.v2.base import liveobj_valid, depends, liveobj_changed
@@ -244,6 +245,23 @@ class ActiveDeviceList:
     def is_device_list_empty(self):
         return self.devices is None or len(self.devices.keys()) < 1
 
+    def has_matching_device_list(self, other_devices: dict[int, ActiveDevice]):
+        rtn = True
+        for this, that in zip_longest(self.devices.values(), other_devices.values()):
+            if liveobj_valid(this.live_obj) and not liveobj_valid(that.live_obj):
+                rtn = False
+                break
+            elif not liveobj_valid(this.live_obj) and liveobj_valid(that.live_obj):
+                rtn = False
+                break
+            elif not (liveobj_valid(this.live_obj) or liveobj_valid(that.live_obj)):  # !x and !y == !(x or y)
+                # both items are "not valid", this is a match that should only happen if both dict value lists contain 
+                # a "deleted device" reference at the same index at the time of comparison?
+                pass
+            elif liveobj_changed(this, that):
+                rtn = False
+                break
+        return rtn
     
     def set_track_device_map(self, device_map: dict[int, ActiveDevice], selected_index: int|None=None):
         """Setting an empty map won't change the track's selected device index to None, use clear_device_list()"""
@@ -298,6 +316,11 @@ class SongData(object):
         elif track_index == self.plain_track_count + self.return_track_count:
             rtn = 2 # master
         return rtn
+
+    def get_callback_index_for_song_index(self, track_index):
+        rtn = track_index
+        if self.get_callback_type_for_song_index(track_index) == 1: # callback-track-type == return
+            rtn = track_index - self.plain_track_count
         return rtn
 
     @property
