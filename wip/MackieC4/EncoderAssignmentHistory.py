@@ -526,7 +526,8 @@ class SongData(object):
 
         return rtn
 
-    def add_track(self, track, track_type, song_track_index):
+    def add_track(self, track, track_type, song_track_index, selected_device_index=0):
+        """automatically adds existing devices on input Live track objects"""
 
         rtns_index = song_track_index - self.plain_track_count
         song_index = 0
@@ -534,25 +535,27 @@ class SongData(object):
             song_index = self.plain_track_count
 
         if song_track_index < self.plain_track_count:
-            self.add_track_by_callback_type(track_callback_types[0], song_index, song_track_index, track)
+            self.add_track_by_callback_type(track_callback_types[0], song_index, song_track_index, track, selected_device_index)
         elif rtns_index < self.return_track_count:
-            self.add_track_by_callback_type(track_callback_types[1], song_index, rtns_index, track)
+            self.add_track_by_callback_type(track_callback_types[1], song_index, rtns_index, track, selected_device_index)
         elif song_track_index == self.plain_track_count + self.return_track_count:
             raise RuntimeError(f"can't add or remove master track at index {song_track_index}")
         else:
             raise RuntimeError(f"can't add track at OOB index {song_track_index}, max new index is less than {self.master_track_index}")
 
-    def add_track_by_callback_type(self, track_callback_type_key, song_track_index, track_index_by_type, track):
+    def add_track_by_callback_type(self, track_callback_type_key, song_track_index, track_index_by_type, track, selected_device_index=0):
+        """automatically adds existing devices on input Live track objects"""
         log_id = "EAH.SD.add_track_by_callback_type: "
         master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
         last_master_track_ref = master_device_list_ref.active_track
         ext_devices = None if len(track.devices) < 1 else self.extend_device_list(track.devices)
         nbr_devices = 0 if ext_devices is None else len(ext_devices)
-        selected_device_index = 0 if nbr_devices > 0 else None
+        selected_device_index = selected_device_index if nbr_devices > 0 else None
         cumulative_song_index = song_track_index + track_index_by_type
         track_ref = ActiveTrack(track, self.table_keys[track_callback_type_key], cumulative_song_index, track_index_by_type, nbr_devices, selected_device_index)
         track_device_list_ref = ActiveDeviceList(track_ref, devices=ext_devices)
-        self._insert_track_slot(self.device_list_table[track_callback_type_key], track_index_by_type, track_device_list_ref)
+        tracks_of_type = self.get_all_tracks_by_type_key(track_callback_type_key)
+        self._insert_track_slot(tracks_of_type, track_index_by_type, track_device_list_ref)
         if last_master_track_ref.index < self.master_track_index:
             self.log_msg(logging.DEBUG, f"{log_id}after adding track, updating master track index to {self.master_track_index}")
             self.update_master_track_index(master_device_list_ref)
@@ -1132,6 +1135,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.main_script().log_message(logging.ERROR, msg + "tracks didn't change, but the tracks_changed() callback fired for some other reason")
 
     def tracks_added(self, song_track_index, song_tracks_after, callback_type):
+        """automatically adds existing devices on added Live (song) track objects"""
         log_id = "EAH.tracks_added: "
         log_msg = f"{log_id}can't add master"
         final_callback_type_track_count = 1  # minimum == 1 master
@@ -1142,8 +1146,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             while final_callback_type_track_count > self.data.plain_track_count:
                 # self.main_script().log_message(logging.DEBUG, f"{log_id} adding at plains index: {at_index}")
                 track_obj = song_tracks_after[at_index]
-                d_list = self.get_device_list(track_obj.devices)
-                self.track_added(at_index, track_obj, d_list)
+                self.track_added(at_index, track_obj)
                 at_index = self.last_selected_track_index
                 # self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: plain {self.data.plain_track_count}")
             assert final_callback_type_track_count == self.data.plain_track_count
@@ -1154,8 +1157,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             while final_callback_type_track_count > self.data.return_track_count:
                 # self.main_script().log_message(logging.DEBUG, f"{log_id} adding at returns index: {at_index}")
                 track_obj = song_tracks_after[at_index]
-                d_list = self.get_device_list(track_obj.devices)
-                self.track_added(at_index, track_obj, d_list)
+                self.track_added(at_index, track_obj)
                 at_index = self.last_selected_track_index
                 # self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: return {self.data.return_track_count}")
             assert final_callback_type_track_count == self.data.return_track_count
@@ -1165,6 +1167,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         assert final_callback_type_track_count == self.data.total_track_count - 1  # not counting master here
 
     def unselected_tracks_added(self, found_changed_track_callback_type, callback_type_track_count):
+        """automatically adds existing devices on input Live track objects"""
         # unselected means we can't find the tracks that "came into view" in the list of tracks of this callback type
         # by the selected track index.  When tracks are added, no tracks are invalidated, we can search for the
         # index of the first liveobj_valid track not equal to the stored track reference at that callback type index,
@@ -1189,39 +1192,36 @@ class EncoderAssignmentHistory(MackieC4Component):
                 pass
             else:
                 msg = f"{log_id}{t_type} tracks added, and cb type index {at_index} track_ref doesn't equal {track_obj.name}, "
-                extended_device_list = self.get_device_list(track_obj.devices)
+                # extended_device_list = self.get_device_list(track_obj.devices)
                 if found_changed_track_callback_type == 1:
                     self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at returns offset track index {rtns_offset + at_index}")
-                    self.track_added(rtns_offset + at_index, track_obj, extended_device_list, is_selected=False)
+                    self.track_added(rtns_offset + at_index, track_obj, is_selected=False)
                 else:
                     self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at plains track index {at_index}")
-                    self.track_added(at_index, track_obj, extended_device_list, is_selected=False)
+                    self.track_added(at_index, track_obj, is_selected=False)
             at_index += 1
             table_size = len(self.data.get_all_tracks_by_type_key(t_type))
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
 
-    def track_added(self, song_track_index, track_obj=None, devices_on_selected_track=None, is_selected=True):
+    def track_added(self, song_track_index, track_obj=None, is_selected=True):
+        """automatically adds existing devices on input Live track objects"""
+        # rtn_idx = song_track_index - self.data.plain_track_count
 
-        if devices_on_selected_track is None:
-            devices_on_selected_track = []
+        type_key = self.data.get_callback_type_for_song_index(song_track_index)
+        type_index = self.data.get_callback_index_for_song_index(song_track_index)
+        self.data.add_track(track_obj, type_key, type_index)
+        # if song_track_index < self.data.plain_track_count:
+        #     self.data.add_track(track_obj, type_key, song_track_index)
+        # elif rtn_idx < self.data.return_track_count:
+        #     self.data.add_track(track_obj, type_key, rtn_idx)
+        # # else add last return track (can't add master)
 
-        rtn_idx = song_track_index - self.data.plain_track_count
-
-        type_key = None
-        if song_track_index < self.data.plain_track_count:
-            type_key = self.data.table_keys[track_callback_types[0]]
-            self.data.add_track(track_obj, type_key, song_track_index)
-        elif rtn_idx < self.data.return_track_count:
-            type_key = self.data.table_keys[track_callback_types[1]]
-            self.data.add_track(track_obj, type_key, rtn_idx)
-        # else can't add master
-
-        if len(devices_on_selected_track) > 0:
-            type_index = song_track_index
-            if type_key > 0:
-                type_index = rtn_idx
-            for i, dev_obj in enumerate(devices_on_selected_track):
-                self.data.add_device(song_track_index, type_index, i, dev_obj)
+        # if len(devices_on_selected_track) > 0:
+        #     type_index = song_track_index
+        #     if type_key > 0:
+        #         type_index = rtn_idx
+        #     for i, dev_obj in enumerate(devices_on_selected_track):
+        #         self.data.add_device(song_track_index, type_index, i, dev_obj)
 
         if is_selected:
             self.last_selected_track_index = song_track_index
