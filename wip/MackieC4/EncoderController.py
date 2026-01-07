@@ -421,8 +421,15 @@ class EncoderController(MackieC4Component, Component):
         nbr_devices = len(extended_device_list)
         next_device = None
         if selected_device_index is not None and self.__pending_device_change:
-            device = self.__eah.next_selected_device
-            if nbr_devices > next_active_track_ref.device_count:
+            next_device = self.__eah.next_selected_device
+            last_selected_device_on_track = self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
+            if last_selected_device_on_track == next_device:
+                selected_device_index = self.__eah.last_selected_device_index
+                self.__pending_device_change = False
+                self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {next_device.name} cancelled, ")
+                # self.__update_chosen_plugin_device(next_device)
+                # self.__eah.next_selected_device = None
+            elif nbr_devices > next_active_track_ref.device_count:
                 selected_device_index = nbr_devices - 1
                 msg = f"{log_id}pending device change, device added, index is last {selected_device_index}"
             else:

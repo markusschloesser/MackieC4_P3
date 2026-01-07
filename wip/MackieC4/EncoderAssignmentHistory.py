@@ -748,16 +748,25 @@ class SongData(object):
             self.log_msg(logging.DEBUG, log_msg + f"new {len(all_track_devices)} old {len(old_keyed_map.keys())} old count {track_ref.device_count}")
 
     def remove_devices(self, song_track_index, nbr_devices_to_remove, track_device_list_first_remove_index=0):
-        active_devices = self.get_track_device_map(song_track_index)
-        if (track_device_list_first_remove_index < len(active_devices.keys()) and
-                track_device_list_first_remove_index + nbr_devices_to_remove <= len(active_devices.keys())):  # 5 active devices remove 2 starting from index 3
-            for i in range(track_device_list_first_remove_index, track_device_list_first_remove_index + nbr_devices_to_remove):
-                self.remove_device(song_track_index, i)
+
+        orig_nbr_keys = len(self.get_track_device_map(song_track_index).keys())
+        if orig_nbr_keys == nbr_devices_to_remove and track_device_list_first_remove_index == 0:
+            self.clear_track_devices(song_track_index)
+        elif (track_device_list_first_remove_index < orig_nbr_keys and
+                track_device_list_first_remove_index + nbr_devices_to_remove <= orig_nbr_keys):  # 5 active devices remove 2 starting from index 3
+            nbr = track_device_list_first_remove_index + nbr_devices_to_remove
+            end_of_remove_range = nbr if track_device_list_first_remove_index == 0 else nbr + 1
+            remove_range_nbr = end_of_remove_range - track_device_list_first_remove_index
+            log_msg = f"EAH.SD.remove_devices: removing {remove_range_nbr} devices between indexes {track_device_list_first_remove_index} and {end_of_remove_range} (one past) "
+            self.log_msg(logging.DEBUG, log_msg)
+            for i in range(track_device_list_first_remove_index, end_of_remove_range):
+                index_left_of_remove_index = i if i == 0 else i - 1
+                self.remove_device(song_track_index, index_left_of_remove_index)
         else:
-            log_msg = f"EAH.SD.remove_devices: song track index {song_track_index} has {len(active_devices.keys())} active devices, can't remove "
-            if not track_device_list_first_remove_index < len(active_devices.keys()):
+            log_msg = f"EAH.SD.remove_devices: song track index {song_track_index} has {orig_nbr_keys} active devices, can't remove "
+            if not track_device_list_first_remove_index < orig_nbr_keys:
                 log_msg += f"any devices starting from OOB index {track_device_list_first_remove_index}"
-            elif not track_device_list_first_remove_index + nbr_devices_to_remove <= len(active_devices.keys()):
+            elif not track_device_list_first_remove_index + nbr_devices_to_remove <= orig_nbr_keys:
                 log_msg += f"{nbr_devices_to_remove} devices starting from index {track_device_list_first_remove_index}, not enough devices after index"
             self.log_msg(logging.DEBUG, log_msg)
 
@@ -835,9 +844,14 @@ class SongData(object):
         if insert_at_device_index in type_dict.keys():
             type_dict = self.__shift_keys_right(type_dict, insert_at_device_index, active_device)
         else:
-            assert device_index == len(type_dict.keys())
-            self.log_msg(logging.DEBUG, f"{log_id}inserting last or only device at device index {device_index}, no shift")
-            type_dict[device_index] = active_device
+            try:
+                assert insert_at_device_index == len(type_dict.keys())
+                self.log_msg(logging.DEBUG, f"{log_id}inserting last or only device at device index {insert_at_device_index}, insert without shift")
+                type_dict[insert_at_device_index] = active_device
+            except AssertionError:
+                self.log_msg(logging.DEBUG, f"{log_id}NOT inserting at non-consecutive device index {insert_at_device_index}, max insert index is {len(type_dict.keys())}")
+                # raise RuntimeError()
+
         return type_dict
 
     def _collapse_track_slot(self, type_dict, track_callback_type_index_left_of_collapse_index)-> dict[int, ActiveDeviceList]:
@@ -1150,8 +1164,16 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.data.initializing_database = False
 
     def track_changed(self, track_index):
+        """track changes update self. 'last selected index' values for tracks, devices, and track-device-bank-views. Returns last selected device index """ \
+        """value for track at input track index"""
         track_ref = self.data.get_track(track_index)
         self.last_selected_track_index = track_index
+        self.last_selected_device_index = track_ref.selected_device_index
+        self.last_selected_track_device_bank_view_index = 0
+        if self.last_selected_device_index is not None:
+            last_d_ref = self.data.get_device(track_index, self.last_selected_device_index)
+            bvi = 0 if last_d_ref is None else last_d_ref.parameter_bank_index_of_selected_parameter
+            self.last_selected_track_device_bank_view_index = bvi
         return track_ref.selected_device_index
 
     def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
