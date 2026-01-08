@@ -522,9 +522,8 @@ class EncoderController(MackieC4Component, Component):
         return
 
     def tracks_added(self, track_index, tracks, callback_type):
-        # does it matter that this code always adds these tracks here without accounting for each track's extended_device_list in the EAH arrays,
-        # then only updates the local selected track? (using same update code as from self.track_deleted())
         self.__eah.tracks_added(track_index, tracks, callback_type)
+        # (using same update selected track code as from self.track_deleted() instead of same update logic in track_added())
         self.__update_selected_track(track_index)
 
     def unselected_tracks_added(self, found_changed_track_callback_type, callback_type_track_count):

@@ -1221,7 +1221,8 @@ class EncoderAssignmentHistory(MackieC4Component):
         # unselected means we can't find the tracks that "came into view" in the list of tracks of this callback type
         # by the selected track index.  When tracks are added, no tracks are invalidated, we can search for the
         # index of the first liveobj_valid track not equal to the stored track reference at that callback type index,
-        # add that track at that index, rinse and repeat. Imagine unfolding a group track using a mouse while master track is selected
+        # add that track at that index, rinse and repeat. Imagine unfolding a group track using a mouse while any other track is selected,
+        # the "added tracks" will occupy indexes formerly occupied by non-group tracks (of the same callback type) that shifted right to make room (index += 1)
         log_id = "EAH.unselected_tracks_added: "
         tracks_of_type = self.main_script().song().visible_tracks
         rtns_offset = len(tracks_of_type)

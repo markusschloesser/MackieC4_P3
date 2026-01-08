@@ -882,6 +882,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         #     self.log_message(logging.DEBUG, f"{log_id}ignoring device change because {tid} is not the script's selected track index {self.last_selected_track_index}")
 
     def device_changestate(self, track, tid, type):
+        # this callback event is never logged?
         log_id = "C4.device_changestate: "
         self.log_message(logging.DEBUG, f"{log_id}device listener for {track.name} at index {tid} with type {type} popped")
         if self.last_selected_track_index == tid:
