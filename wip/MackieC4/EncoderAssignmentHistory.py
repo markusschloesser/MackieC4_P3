@@ -1174,7 +1174,7 @@ class EncoderAssignmentHistory(MackieC4Component):
             last_d_ref = self.data.get_device(track_index, self.last_selected_device_index)
             bvi = 0 if last_d_ref is None else last_d_ref.parameter_bank_index_of_selected_parameter
             self.last_selected_track_device_bank_view_index = bvi
-        return track_ref.selected_device_index
+        return self.last_selected_device_index
 
     def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
         # Not sure unselected "tracks" can actually just change in this respect.  Say master track is selected when "all return tracks"
@@ -1184,37 +1184,35 @@ class EncoderAssignmentHistory(MackieC4Component):
         msg = f"{log_id}the count ({callback_type_track_count} of {cb_type} track callback type {found_changed_track_callback_type} "
         self.main_script().log_message(logging.ERROR, msg + "tracks didn't change, but the tracks_changed() callback fired. Did the track list order change?")
 
-    def tracks_added(self, song_track_index, song_tracks_after, callback_type):
+    def tracks_added(self, selected_song_track_index_after, song_tracks_after, callback_type):
         """automatically adds existing devices on added Live (song) track objects"""
         log_id = "EAH.tracks_added: "
         log_msg = f"{log_id}can't add master"
-        final_callback_type_track_count = 1  # minimum == 1 master
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        if selected_song_track_index_after != self.last_selected_track_index and self.last_selected_track_callback_type == callback_type:
+            # tracks (of the same callback type) were added to the left of the selected track
+            update_selected_track_index_after = True
+        else:
+            # tracks were added to the right of the selected track
+            update_selected_track_index_after = False
+
+        final_callback_type_track_count = 0  # minimum == no return tracks (always 1 master and 1 visible for 2 total minimum)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         if callback_type == 0:
             final_callback_type_track_count = len(song_tracks_after) - self.data.return_track_count
-            at_index = song_track_index
-            while final_callback_type_track_count > self.data.plain_track_count:
-                # self.main_script().log_message(logging.DEBUG, f"{log_id} adding at plains index: {at_index}")
-                track_obj = song_tracks_after[at_index]
-                self.track_added(at_index, track_obj)
-                at_index = self.last_selected_track_index
-                # self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: plain {self.data.plain_track_count}")
+            self.unselected_tracks_added(callback_type, final_callback_type_track_count)
             assert final_callback_type_track_count == self.data.plain_track_count
             final_callback_type_track_count += self.data.return_track_count
         elif callback_type == 1:
             final_callback_type_track_count = len(song_tracks_after) - self.data.plain_track_count
-            at_index = song_track_index
-            while final_callback_type_track_count > self.data.return_track_count:
-                # self.main_script().log_message(logging.DEBUG, f"{log_id} adding at returns index: {at_index}")
-                track_obj = song_tracks_after[at_index]
-                self.track_added(at_index, track_obj)
-                at_index = self.last_selected_track_index
-                # self.main_script().log_message(logging.DEBUG, f"{log_id}DURING: return {self.data.return_track_count}")
+            self.unselected_tracks_added(callback_type, final_callback_type_track_count)
             assert final_callback_type_track_count == self.data.return_track_count
             final_callback_type_track_count += self.data.plain_track_count
+        if update_selected_track_index_after:
+            self.last_selected_track_index = selected_song_track_index_after
 
         self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         assert final_callback_type_track_count == self.data.total_track_count - 1  # not counting master here
+
 
     def unselected_tracks_added(self, found_changed_track_callback_type, callback_type_track_count):
         """automatically adds existing devices on input Live track objects"""
