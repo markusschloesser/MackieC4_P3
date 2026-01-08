@@ -797,28 +797,30 @@ class MackieC4(MackieC4ListenerMixin, object):
         new_track_count = len(tracks)
 
         if callback_track_type_of_selected_index == found_changed_track_callback_type:
+            tracks_of_type = self.song().visible_tracks
             if self.track_count > new_track_count:
                 if self.track_count - new_track_count > 1:
                     tracks_removed = self.track_count - new_track_count
                     if callback_track_type_of_selected_index == 1:
-                        tracks = self.song().return_tracks
-                    msg = f"{log_id}calling ec.tracks_deleted(index={selected_index}, cbt_track_count({len(tracks)}), track_type={callback_track_type_of_selected_index}"
+                        tracks_of_type = self.song().return_tracks
+                    msg = f"{log_id}calling ec.tracks_deleted(index={selected_index}, cbt_track_count({len(tracks_of_type)}), track_type={callback_track_type_of_selected_index}"
                     self.log_message(logging.DEBUG, msg)
-                    self.__encoder_controller.tracks_deleted(selected_index, tracks, callback_track_type_of_selected_index)
+                    self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                 else:
                     self.log_message(logging.DEBUG,f"{log_id}calling track_deleted passing index {selected_index} only")
                     self.__encoder_controller.track_deleted(selected_index)
                 #self.request_rebuild_midi_map()   <-- called by EC
             elif self.track_count < new_track_count:
+                tracks_of_type = self.song().visible_tracks
                 if new_track_count - self.track_count > 1:
                     if callback_track_type_of_selected_index == 1:
-                        tracks = self.song().return_tracks
-                    msg = f"{log_id}calling ec.tracks_added(index={selected_index}, cbt_tracks=({len(tracks)} tracks), cb_type={callback_track_type_of_selected_index}"
+                        tracks_of_type = self.song().return_tracks
+                    msg = f"{log_id}calling ec.tracks_added(index={selected_index}, cbt_tracks=({len(tracks_of_type)} tracks), cb_type={callback_track_type_of_selected_index}"
                     self.log_message(logging.DEBUG, msg)
-                    self.__encoder_controller.tracks_added(selected_index, tracks, callback_track_type_of_selected_index)
+                    self.__encoder_controller.tracks_added(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                 else:
                     self.log_message(logging.DEBUG,f"{log_id}calling track_added passing index {selected_index} only")
-                    self.__encoder_controller.track_added(selected_index)
+                    self.__encoder_controller.track_added(selected_index, found_changed_track_callback_type)
                 #self.request_rebuild_midi_map() <-- called by EC
             else:
                 self.log_message(logging.DEBUG,f"{log_id}calling EC.track_changed passing index {selected_index}")

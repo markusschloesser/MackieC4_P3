@@ -530,15 +530,16 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.unselected_tracks_added(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
 
-    def track_added(self, track_index):
+    def track_added(self, track_index, found_changed_track_callback_type):
         log_id = "EC.track_added: "
         self.selected_track = self.song().view.selected_track
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
         extended_device_list = self.get_device_list(self.selected_track.devices)
-        self.__eah.track_added(track_index, self.selected_track, extended_device_list)
+        self.__eah.track_added(track_index, self.selected_track, extended_device_list, found_changed_track_callback_type)
 
-        # This is a way to call a super-class method from a subclass with a method of the same name see def refresh_state() below (way, way below)
+        # do we really need to refresh the whole control surface?
+        # couldn't we just "add listeners" for this one new track?
         MackieC4Component.refresh_state(self)
         device = None
         if not self.is_locked_to_device:
@@ -559,10 +560,10 @@ class EncoderController(MackieC4Component, Component):
                 self.__update_chosen_plugin_device(device)  # device == None
         return
 
-    def tracks_deleted(self, track_index, tracks, track_type=-1):
+    def tracks_deleted(self, track_index, tracks_of_type, track_type=-1):
         log_id = "EC.tracks_deleted: "
-        self.main_script().log_message(logging.DEBUG, f"{log_id}deleting tracks from index: {track_index}")
-        self.__eah.tracks_deleted(track_index, tracks, track_type)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}deleting tracks of type {track_type} from index: {track_index}")
+        self.__eah.tracks_deleted(track_index, tracks_of_type, track_type)
         self.main_script().log_message(logging.DEBUG, f"{log_id}updating selected track info at index: {track_index}")
         self.__update_selected_track(track_index)
 
