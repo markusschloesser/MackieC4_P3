@@ -853,9 +853,11 @@ class MackieC4(MackieC4ListenerMixin, object):
                 # also landed here when a track was added (Ctrl+Shift+T) "next to" the selected track inside a Group because (I think)
                 # the first event was "new track added in visible tracks" (processed above) and the second event was new-track-in-group (landed here)
                 # also safe to ignore here in tracks_changed()
-                msg = f"{log_id} logic issue? passing on this event {dtls}"  # continuing to log in case of other triggers
+                # also landed here when a new track was (drag&drop an Instrument) added and this method was called twice, once (I think) for the "track add" change
+                # (handled above) and again for the "selected track" change which landed here - and this case should defer in favor of track_change() handling
+                # also safe to ignore here in tracks_changed()
+                msg = f"{log_id} logic issue? passing on this event {dtls}"  # continuing to log in case of other triggers that shouldn't be ignored
                 self.log_message(logging.ERROR, msg)
-                # self.__encoder_controller.unselected_tracks_changed(found_changed_track_callback_type, found_callback_type_track_count)
 
         self.update_callback_type_track_counts()
         self.track_count = new_track_count
@@ -901,11 +903,12 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def param_changestate(self, param, tid, did, pid, type):
         log_id = "C4.param_changestate: "
-        self.log_message(logging.DEBUG, f"{log_id}parameter change state listener for {param.name} popped")
+        self.log_message(logging.DEBUG, f"{log_id}parameter change state listener for parameter {param.name} popped")
 
         msg = f"{log_id} cb type {type} track index {tid} device at device chain index {did} parameter at parameter list index {pid} "
-        self.log_message(logging.DEBUG, msg + f"{param.name} changed state to value {param.value}")
-        self.__encoder_controller.on_param_state_change(param, tid, did, pid, type)
+        self.log_message(logging.DEBUG, msg + f"{param.name} changed state to value {param.value} setting last param changed details")
+        # tid value is always 0 when this callback fires?
+        # self.__encoder_controller.on_param_state_change(param, tid, did, pid, type)
         self.__device_provider.set_last_param_value_change_details(param, tid, did, pid)
         # if type == 2:
         #     pass

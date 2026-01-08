@@ -651,7 +651,7 @@ class SongData(object):
         # log_id = "EAH.SD.set_track_device_map_by_callback_type: "
         # self.log_msg(logging.DEBUG, f"{log_id}setting device map for {track_callback_type_key} track index {track_index_by_type}")
         active_device_list_ref = self.get_active_device_list_reference(track_callback_type_key, track_index_by_type)
-        active_device_list_ref.set_device_map(device_map)
+        active_device_list_ref.set_track_device_map(device_map)
         # self.device_list_table[track_callback_type_key][track_index_by_type].devices = device_map
 
     def get_device(self, song_track_index, device_index)-> ActiveDevice | None:
@@ -1101,7 +1101,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         rtn = 0
         if self.last_selected_device_index is not None:
             d = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
-            if d.device_parameter_bank_view_index is not None:
+            if liveobj_valid(d) and d.device_parameter_bank_view_index is not None:
                 rtn = d.device_parameter_bank_view_index
         return rtn
     @last_selected_device_parameter_bank_view_index.setter
@@ -1239,7 +1239,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         # self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         while len(changed_track_type_table.keys()) < callback_type_track_count and at_index < len(tracks_of_type):
             track_obj = tracks_of_type[at_index]
-            if track_obj == changed_track_type_table[at_index].active_track.track:
+            if at_index < len(changed_track_type_table.keys()) and track_obj == changed_track_type_table[at_index].active_track.track:
                 # msg = f"{log_id}{t_type} tracks added, but cb type index {at_index} track_ref matches {track_obj.name}, no add"
                 # self.main_script().log_message(logging.DEBUG, msg)
                 pass
@@ -1541,7 +1541,8 @@ class EncoderAssignmentHistory(MackieC4Component):
         # assert old_selected_device_index == self.last_selected_device_index
 
         last_selected_device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
-        if old_selected_device_index != changed_device_index and not liveobj_changed(last_selected_device_ref.device, selected_device):
+        if (old_selected_device_index != changed_device_index and liveobj_valid(last_selected_device_ref) and
+                not liveobj_changed(last_selected_device_ref.device, selected_device)):
             msg = f"{log_id}selected device index of track {last_track_ref.track_name} changed from {last_track_ref.selected_device_index} to {changed_device_index} "
             self.main_script().log_message(logging.DEBUG, msg + f"but selected device remains {last_selected_device_ref.device_name}, moving device reference to new index")
             self.data.rekey_device_list_by_track_callback_type(track_callback_types[last_track_ref.type], last_track_ref.index_by_type, all_track_devices, selected_device)

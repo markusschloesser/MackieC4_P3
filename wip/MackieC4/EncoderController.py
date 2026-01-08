@@ -945,7 +945,7 @@ class EncoderController(MackieC4Component, Component):
 
         if update_self:
             # selected device index assignments automatically update the selected device bank number
-            self.__eah.selected_device_index = (current_bank_nbr * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.selected_device_index
+            self.__eah.last_selected_device_index = (current_bank_nbr * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.last_selected_device_index
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
             self.one_display_update()
@@ -1377,7 +1377,7 @@ class EncoderController(MackieC4Component, Component):
                 if not self.is_locked_to_device:
                     if len(extended_device_list) > device_offset:  # if the calculated offset is valid device index
                         # self.__eah.selected_device_bank_index = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
-                        self.__eah.selected_device_index = device_offset
+                        self.__eah.last_selected_device_index = device_offset
                         device = extended_device_list[device_offset]
                         if liveobj_valid(device):
                             self.song().view.select_device(device)  # <-- triggers on_device_changed() callback
@@ -1491,7 +1491,7 @@ class EncoderController(MackieC4Component, Component):
             if encoder_index == encoder_07_index:
                 if current_parameter_bank_track > 0:
                     current_parameter_bank_track -= 1
-                    # self.main_script().log_message(logging.DEBUG, f"{log_id}self.t_d_p_bank_current[self.t_current]: {self.__eah.selected_device_index})
+                    # self.main_script().log_message(logging.DEBUG, f"{log_id}self.t_d_p_bank_current[self.t_current]: {self.__eah.last_selected_device_index})
                     update_self = True
                     current_track_device_parameter_bank_nbr_changed = True
                 # else:
