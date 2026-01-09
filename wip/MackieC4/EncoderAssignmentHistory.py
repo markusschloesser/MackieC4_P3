@@ -1541,7 +1541,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         # assert old_selected_device_index == self.last_selected_device_index
 
         last_selected_device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
-        if (old_selected_device_index != changed_device_index and liveobj_valid(last_selected_device_ref) and
+        if (int(old_selected_device_index) != int(changed_device_index) and liveobj_valid(last_selected_device_ref) and
                 not liveobj_changed(last_selected_device_ref.device, selected_device)):
             msg = f"{log_id}selected device index of track {last_track_ref.track_name} changed from {last_track_ref.selected_device_index} to {changed_device_index} "
             self.main_script().log_message(logging.DEBUG, msg + f"but selected device remains {last_selected_device_ref.device_name}, moving device reference to new index")

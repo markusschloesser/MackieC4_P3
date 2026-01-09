@@ -870,23 +870,23 @@ class MackieC4(MackieC4ListenerMixin, object):
         return self.__processing_track_device_state_change
 
     def selected_device_change_state(self, track, tid, type):
-        # this was the only listener that popped when the index of the selected device changed (order of devices changed in device list)
+        # the EC.__on_device_changed() callback  listener that popped when the index of the selected device changed (order of devices changed in device list)
         log_id = "C4.selected_device_change_state: "
-        self.log_message(logging.DEBUG, f"{log_id}passing on selected device change-state listener for {track.name} with callback type {type} at type index {tid} event")
-        # self.__processing_track_device_state_change = True
+        self.log_message(logging.DEBUG, f"{log_id}callback event for {track.name} with callback type {type} at type index {tid}")
         # self.log_message(logging.DEBUG, f"{log_id}processing device list drag&drop on script's selected track")
+        # self.__processing_track_device_state_change = True
         # self.__encoder_controller.device_list_changed(track, tid, type)
         # self.__processing_track_device_state_change = False
-        # if self.last_selected_track_index == tid:
-        #     self.log_message(logging.DEBUG, f"{log_id}processing device change on script's selected track")
-        #     self.__processing_track_device_state_change = True
-        #      # whatever track has the selected device
-        #     self.__processing_track_device_state_change = False
-        # else:
-        #     self.log_message(logging.DEBUG, f"{log_id}ignoring device change because {tid} is not the script's selected track index {self.last_selected_track_index}")
+        if self.last_selected_track_index == tid:
+            self.log_message(logging.DEBUG, f"{log_id}processing device change on script's selected track")
+            self.__processing_track_device_state_change = True
+            self.__encoder_controller.device_list_changed(track, tid, type)
+            self.__processing_track_device_state_change = False
+        else:
+            self.log_message(logging.DEBUG, f"{log_id}ignoring device change because {tid} is not the script's selected track index {self.last_selected_track_index}")
 
     def device_changestate(self, track, tid, type):
-        # this callback event is never logged?
+        # this callback method is never logged - because selected_device_change_state() replaced it
         log_id = "C4.device_changestate: "
         self.log_message(logging.DEBUG, f"{log_id}device listener for {track.name} at index {tid} with type {type} popped")
         if self.last_selected_track_index == tid:
@@ -917,8 +917,8 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def devpm_change(self, device):
         log_id = "C4.devpm_change: "
-        self.log_message(logging.DEBUG, f"{log_id}parameters listener for {device.name} popped, refreshing encoder controller state")
-        self.__encoder_controller.refresh_state()
+        self.log_message(logging.DEBUG, f"{log_id}parameters listener for {device.name} popped, passing")
+        # self.__encoder_controller.on_selected_device_movement(device)
 
     def mixerv_changestate(self, type, tid, track, r=0):
         cmd = f"track.mixer_device.{type}.value"

@@ -654,7 +654,7 @@ class EncoderController(MackieC4Component, Component):
                     dtls += f"stored device list key {key} has value {str(d)}"
                     self.main_script().log_message(logging.WARNING, dtls)
         else:
-            self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue? Live objects don't agree?, pass, not a drag&drop event")
+            self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue? Live objects don't agree?, pass, not a drag&drop device movement event")
 
 
     def device_added_deleted_or_changed(self, track, track_index, track_type):
