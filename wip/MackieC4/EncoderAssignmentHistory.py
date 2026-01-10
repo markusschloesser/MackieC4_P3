@@ -215,7 +215,20 @@ class ActiveDeviceList:
         self.active_track = active_track_ref
         self.devices = dict[int, ActiveDevice]({})
         if devices is not None:
-            for i, d in enumerate(devices):
+            self.build_device_map(devices)
+
+    def new_copy(self, new_song_index, new_type_index):
+        track_ref = self.active_track
+        track_ref.index = new_song_index
+        track_ref.index_by_type = new_type_index
+        copy = ActiveDeviceList(track_ref)
+        copy.devices = self.devices
+        return copy
+
+    def build_device_map(self, new_devices=None):
+        if new_devices is not None and len(new_devices) > 0:
+            self.devices.clear()
+            for i, d in enumerate(new_devices):
                 d_ref = ActiveDevice(d, i, len(d.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
                 self.devices[i] = d_ref
 
@@ -569,7 +582,7 @@ class SongData(object):
         else:
             raise RuntimeError(f"can't add track at OOB index {song_track_index}, max new index is less than {self.master_track_index}")
 
-    def add_track_by_callback_type(self, track_callback_type_key, song_track_index, track_index_by_type, track, selected_device_index=0):
+    def add_track_by_callback_type(self, track_callback_type_key, song_index_type_offset, track_index_by_type, track, selected_device_index=0):
         """automatically adds existing devices on input Live track objects"""
         log_id = "EAH.SD.add_track_by_callback_type: "
         master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
@@ -577,14 +590,18 @@ class SongData(object):
         ext_devices = None if len(track.devices) < 1 else self.extend_device_list(track.devices)
         nbr_devices = 0 if ext_devices is None else len(ext_devices)
         selected_device_index = selected_device_index if nbr_devices > 0 else None
-        cumulative_song_index = song_track_index + track_index_by_type
+        cumulative_song_index = song_index_type_offset + track_index_by_type
         track_ref = ActiveTrack(track, self.table_keys[track_callback_type_key], cumulative_song_index, track_index_by_type, nbr_devices, selected_device_index)
         track_device_list_ref = ActiveDeviceList(track_ref, devices=ext_devices)
-        tracks_of_type = self.get_all_tracks_by_type_key(track_callback_type_key)
-        self._insert_track_slot(tracks_of_type, track_index_by_type, track_device_list_ref)
+        self.add_track_device_list_by_callback_type(track_callback_type_key, track_index_by_type, track_device_list_ref)
         if last_master_track_ref.index < self.master_track_index:
             self.log_msg(logging.DEBUG, f"{log_id}after adding track, updating master track index to {self.master_track_index}")
             self.update_master_track_index(master_device_list_ref)
+
+
+    def add_track_device_list_by_callback_type(self, track_callback_type_key, track_index_by_type, track_device_list_ref):
+        tracks_of_type = self.get_all_tracks_by_type_key(track_callback_type_key)
+        self._insert_track_slot(tracks_of_type, track_index_by_type, track_device_list_ref)
 
     def remove_track(self, song_track_index):
         rtns_index = song_track_index - self.plain_track_count
@@ -730,18 +747,71 @@ class SongData(object):
         device_map_len = len(self.get_track_device_map(track_index))
         assert new_device_count == 0 == device_map_len
 
+    def rekey_track_list_of_callback_type(self, track_callback_type, next_selected_callback_type_index, all_tracks_of_type, selected_track_obj):
+        log_id = "EAH.SD.rekey_track_list_of_callback_type: "
+        type_key = track_callback_types[track_callback_type]
+        old_track_list_of_type = self.get_all_tracks_by_type_key(type_key)
+        self.log_msg(logging.DEBUG, f"{log_id}BEFORE: stored {type_key} track count {len(old_track_list_of_type)} vs input count {len(all_tracks_of_type)}")
+        new_keyed_map = {}
+        if len(all_tracks_of_type) < 50:
+            if len(all_tracks_of_type) == len(old_track_list_of_type.keys()):
+                shallow_copy = old_track_list_of_type.copy()
+                for new_index, track_obj in enumerate(all_tracks_of_type):
+                    for track_ref_index in shallow_copy.keys():
+                        track_list_ref = old_track_list_of_type[track_ref_index]
+                        if track_list_ref.active_track.track == track_obj:
+                            track_list_ref.active_track.index_by_type = new_index
+                            track_list_ref.active_track.index = new_index
+                            if track_list_ref.active_track.type == 1:
+                                track_list_ref.active_track.index += self.plain_track_count
+                            if track_obj == selected_track_obj and not next_selected_callback_type_index == new_index:
+                                e_msg = f"input track obj {selected_track_obj.name} found at different index {new_index} from input index {next_selected_callback_type_index}"
+                                raise RuntimeError(e_msg)
+                            new_keyed_map[new_index] = track_list_ref
+                            del shallow_copy[track_ref_index]  # so the inner search loop gets smaller after each match
+                            break
+
+                self.log_msg(logging.DEBUG, f"{log_id}AFTER: updated {type_key} track count {len(new_keyed_map.keys())} vs input count {len(all_tracks_of_type)}")
+                assert len(all_tracks_of_type) == len(new_keyed_map.keys())
+                old_track_list_of_type.update(new_keyed_map)
+        # else: # too many tracks for worst case above? delete ref from old stored index location, then add back at new index location, but we don't have the old index
+        #     old_adl_ref_at_new_index = self.get_active_device_list_reference(type_key, next_selected_callback_type_index)
+        #     self.get_song_index_for_callback_index()
+        #     if old_adl_ref_at_new_index.active_track.track == selected_track_obj:
+        #         self.log_msg(logging.DEBUG, f"{log_id}stored track ref at next index {next_selected_callback_type_index} already matches {selected_track_obj.name} ")
+        #         pass # no sorting required
+        #     else:
+        #         master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
+        #         last_master_track_ref = master_device_list_ref.active_track
+        #         song_index = next_selected_callback_type_index
+        #         if track_callback_type == 1:
+        #             song_index = self.plain_track_count + next_selected_callback_type_index
+        #         copy_of_old_ref_at_new_loc = old_adl_ref_at_new_index.new_copy(song_index, next_selected_callback_type_index)
+        #         self.remove_track_by_callback_type(type_key, old_adl_ref_at_new_index.track_index_by_type)
+        #         # self.add_track_by_callback_type(type_key, song_index, next_selected_callback_type_index, selected_track_obj)  <-- don't rebuild track's extended device list
+        #         self.add_track_device_list_by_callback_type(type_key, next_selected_callback_type_index, copy_of_old_ref_at_new_loc)
+        #         if last_master_track_ref.index < self.master_track_index:
+        #             self.log_msg(logging.DEBUG, f"{log_id}after removing and re-adding track, updating master track ref index to {self.master_track_index}")
+        #             self.update_master_track_index(master_device_list_ref)
+        #         else:
+        #             self.log_msg(logging.DEBUG, f"{log_id}oddly, after removing and re-adding track, master track ref index is already {self.master_track_index}")
+
+
+
     def rekey_device_list_by_track_callback_type(self, track_callback_type_key, callback_type_index, all_track_devices, selected_device_obj):
         old_keyed_map = self.get_track_device_map_by_callback_type(track_callback_type_key, callback_type_index)
         new_keyed_map = {}
         track_ref = self.get_track_by_type_key(track_callback_type_key, callback_type_index)
         if len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count:
+            shallow_copy = old_keyed_map.copy()
             for new_index, device_obj in enumerate(all_track_devices):
-                for device_ref_index in old_keyed_map.keys():
+                for device_ref_index in shallow_copy.keys():
                     device_ref = old_keyed_map[device_ref_index]
                     if device_ref.device == device_obj:
                         new_keyed_map[new_index] = device_ref
                         if device_obj == selected_device_obj:
                             track_ref.selected_device_index = new_index
+                        del shallow_copy[device_ref_index]  # <-- inner search loop gets smaller after every match
                         break
             assert len(old_keyed_map.keys()) == len(new_keyed_map.keys())
             old_keyed_map.update(new_keyed_map)
@@ -1178,6 +1248,22 @@ class EncoderAssignmentHistory(MackieC4Component):
             bvi = 0 if last_d_ref is None else last_d_ref.parameter_bank_index_of_selected_parameter
             self.last_selected_track_device_bank_view_index = bvi
         return self.last_selected_device_index
+
+    def track_moved(self, callback_track_type, next_song_index, track_obj_that_moved):
+        log_id = "EAH.track_moved: "
+        all_track_objs_of_type = self.song().visible_tracks
+        next_callback_type_index = next_song_index
+        if callback_track_type == 1:
+            all_track_objs_of_type = self.song().return_tracks
+            next_callback_type_index = next_song_index - self.data.plain_track_count
+
+        if len(self.data.get_all_tracks_by_type_key(track_callback_types[callback_track_type]).keys()) == len(all_track_objs_of_type):
+            self.main_script().log_message(logging.ERROR, f"{log_id}moving {track_obj_that_moved.name} to new stored cb type index {next_callback_type_index}")
+            self.data.rekey_track_list_of_callback_type(callback_track_type, next_callback_type_index, all_track_objs_of_type, track_obj_that_moved)
+            self.track_changed(next_song_index)
+        # else:
+        #     # stored and live counts don't match, a track was added or removed, not moved
+        #     pass
 
     def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
         # Not sure unselected "tracks" can actually just change in this respect.  Say master track is selected when "all return tracks"

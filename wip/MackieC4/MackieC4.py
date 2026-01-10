@@ -823,9 +823,9 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.__encoder_controller.track_added(selected_index, found_changed_track_callback_type)
                 #self.request_rebuild_midi_map() <-- called by EC
             else:
-                self.log_message(logging.DEBUG,f"{log_id}calling EC.track_changed passing index {selected_index}")
+                self.log_message(logging.DEBUG,f"{log_id}calling EC.track_changed passing cb type {callback_track_type_of_selected_index} and song index {selected_index}")
                 # since track counts match, something else in the callback_track_type collection of the selected_index's Track changed
-                self.__encoder_controller.track_changed(selected_index)
+                self.__encoder_controller.track_moved(callback_track_type_of_selected_index, selected_index)
         else:
             # still need to add or remove from correct track collection in EAH.SongData, but the current Song selected index points to the wrong
             # track collection in SongData, so special handling for this situation
@@ -846,6 +846,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                 msg = f"{log_id}calling ec.unselected_tracks_deleted{dtls}"
                 self.log_message(logging.DEBUG, msg)
                 self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)
+            # elif found_changed_track_callback_type == 0 or found_changed_track_callback_type == 1: # callback_type_track_count didn't change (an unselected track moved?)
             else: # different 'selected index' and 'event index' callback track types were detected, but no telltale track-type count differences
                 # landed here when two tracks were selected at the same time (shift + left-click) then Ctrl-G grouped (Group Track was added, processed above)
                 # future new-track(s)-in-group events should be ignored here in tracks_changed()
