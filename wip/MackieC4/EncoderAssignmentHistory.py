@@ -631,7 +631,10 @@ class SongData(object):
         else:
             raise RuntimeError(f"can't remove track at OOB index {song_track_index}, can't remove master_track {self.master_track_index} or after")
 
-    def remove_track_by_callback_type(self, track_callback_type_key, track_index_by_type):
+    def remove_track_by_callback_type(self, track_callback_type_key, track_index_by_type, is_track_move=False):
+        """type index values input should be >= 0, the track slot to the right of this index will be removed.  If a track at index 0 is deleted, the stored liveobj """ \
+        """reference will not be liveobj valid and the zero value input will be adjusted automatically.  If a Track moves (is dragged left) to index 0, use the """ \
+        """is_track_move=True flag"""
         log_id = "EAH.SD.remove_track_by_callback_type: "
         master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
         last_master_track_ref = master_device_list_ref.active_track
@@ -646,7 +649,7 @@ class SongData(object):
         self.log_msg(logging.DEBUG, log_msg)
         self.log_msg(logging.DEBUG, f"{log_id}BEFORE: plain tracks {self.plain_track_count}, return tracks {self.return_track_count}")
         tracks_of_type = self.get_all_tracks_by_type_key(track_callback_type_key)
-        if not liveobj_valid(old.active_track.track) and track_index_by_type == 0:
+        if (not liveobj_valid(old.active_track.track) or is_track_move) and track_index_by_type == 0:
             track_index_by_type = -1
 
         self._collapse_track_slot(tracks_of_type, track_index_by_type)
@@ -823,40 +826,45 @@ class SongData(object):
                 old_track_list_of_type.update(new_keyed_map)
         else: # too many tracks for worst case above? delete ref from old stored index location, then add back at new index location
             old_cb_type_of_selected_track, old_cb_index_of_selected_track = self.find_track_obj_type_and_index(selected_track_obj)
-            cb_key = track_callback_types[old_cb_type_of_selected_track]
-            if cb_key == type_key:
-                old_adl_ref_at_old_index = self.get_active_device_list_reference(type_key, old_cb_index_of_selected_track)
-                old_adl_ref_at_new_index = self.get_active_device_list_reference(type_key, next_selected_callback_type_index)
-                msg = f"{log_id}stored track ref at old index {old_cb_index_of_selected_track} is {old_adl_ref_at_old_index.active_track.track_name}"
-                self.log_msg(logging.DEBUG, msg)
-                msg = f"{log_id}stored track ref at new index {next_selected_callback_type_index} is {old_adl_ref_at_new_index.active_track.track_name}"
-                self.log_msg(logging.DEBUG, msg)
-                if old_adl_ref_at_new_index.active_track.track == selected_track_obj:
-                    self.log_msg(logging.DEBUG, f"{log_id}stored track ref at next index {next_selected_callback_type_index} already matches {selected_track_obj.name} ")
-                    pass # no sorting required, no "track move" detected
-                else:
-                    master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
-                    last_master_track_ref = master_device_list_ref.active_track
-                    new_song_index = self.get_song_index_for_callback_index(type_key, next_selected_callback_type_index)
-                    copy_of_old_ref_at_old_loc = old_adl_ref_at_old_index.new_copy(new_song_index, next_selected_callback_type_index)
-                    msg = f"{log_id}removing {copy_of_old_ref_at_old_loc.active_track.track_name} from type index {old_adl_ref_at_old_index.track_index_by_type}"
+            if old_cb_type_of_selected_track >= 0:
+                cb_key = track_callback_types[old_cb_type_of_selected_track]
+                if cb_key == type_key:
+                    old_adl_ref_at_old_index = self.get_active_device_list_reference(type_key, old_cb_index_of_selected_track)
+                    old_adl_ref_at_new_index = self.get_active_device_list_reference(type_key, next_selected_callback_type_index)
+                    msg = f"{log_id}stored track ref at old index {old_cb_index_of_selected_track} is {old_adl_ref_at_old_index.active_track.track_name}"
                     self.log_msg(logging.DEBUG, msg)
-                    self.remove_track_by_callback_type(type_key, old_adl_ref_at_old_index.track_index_by_type - 1) # removes "right of" input index
-                    # don't rebuild track's extended device list from scratch
-                    # self.add_track_by_callback_type(type_key, song_index, next_selected_callback_type_index, selected_track_obj)
-                    msg = f"{log_id}adding {copy_of_old_ref_at_old_loc.active_track.track_name} at type index {copy_of_old_ref_at_old_loc.track_index_by_type}"
+                    msg = f"{log_id}stored track ref at new index {next_selected_callback_type_index} is {old_adl_ref_at_new_index.active_track.track_name}"
                     self.log_msg(logging.DEBUG, msg)
-                    self.add_adl_track_by_callback_type(type_key, next_selected_callback_type_index, copy_of_old_ref_at_old_loc)
-                    if last_master_track_ref.index < self.master_track_index:
-                        self.log_msg(logging.DEBUG, f"{log_id}after removing and re-adding track, updating master track ref index to {self.master_track_index}")
-                        self.update_master_track_index(master_device_list_ref)
+                    if old_adl_ref_at_new_index.active_track.track == selected_track_obj:
+                        self.log_msg(logging.DEBUG, f"{log_id}stored track ref at next index {next_selected_callback_type_index} already matches {selected_track_obj.name} ")
+                        pass # no sorting required, no "track move" detected
                     else:
-                        self.log_msg(logging.DEBUG, f"{log_id}oddly, after removing and re-adding track, master track ref index is already {self.master_track_index}")
+                        master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
+                        last_master_track_ref = master_device_list_ref.active_track
+                        new_song_index = self.get_song_index_for_callback_index(type_key, next_selected_callback_type_index)
+                        copy_of_old_ref_at_old_loc = old_adl_ref_at_old_index.new_copy(new_song_index, next_selected_callback_type_index)
+                        msg = f"{log_id}removing {copy_of_old_ref_at_old_loc.active_track.track_name} from type index {old_adl_ref_at_old_index.track_index_by_type}"
+                        self.log_msg(logging.DEBUG, msg)
+                        old_idx = old_adl_ref_at_old_index.track_index_by_type  # removes "right of" input index, zero index requires special handling
+                        self.remove_track_by_callback_type(type_key, 0 if old_idx < 1 else old_idx - 1, is_track_move=True)
+                        # don't rebuild track's extended device list from scratch
+                        # self.add_track_by_callback_type(type_key, song_index, next_selected_callback_type_index, selected_track_obj)
+                        msg = f"{log_id}adding {copy_of_old_ref_at_old_loc.active_track.track_name} at type index {copy_of_old_ref_at_old_loc.track_index_by_type}"
+                        self.log_msg(logging.DEBUG, msg)
+                        self.add_adl_track_by_callback_type(type_key, next_selected_callback_type_index, copy_of_old_ref_at_old_loc)
+                        if last_master_track_ref.index < self.master_track_index:
+                            self.log_msg(logging.DEBUG, f"{log_id}after removing and re-adding track, updating master track ref index to {self.master_track_index}")
+                            self.update_master_track_index(master_device_list_ref)
+                        else:
+                            self.log_msg(logging.DEBUG, f"{log_id}oddly, after removing and re-adding track, master track ref index is already {self.master_track_index}")
 
-                self.log_msg(logging.DEBUG, f"{log_id}AFTER: updated {type_key} track count {len(old_track_list_of_type.keys())} vs input count {len(all_tracks_of_type)}")
-                assert len(all_tracks_of_type) == len(old_track_list_of_type.keys())
+                    self.log_msg(logging.DEBUG, f"{log_id}AFTER: updated {type_key} track count {len(old_track_list_of_type.keys())} vs input count {len(all_tracks_of_type)}")
+                    assert len(all_tracks_of_type) == len(old_track_list_of_type.keys())
+                else:
+                    self.log_msg(logging.WARNING, f"{log_id}oddly, callback type table keys didn't match?")
             else:
-                self.log_msg(logging.WARNING, f"{log_id}oddly, callback type table keys didn't match?")
+                # can land here when a track is dragged right to the first position, the index before that position is -1
+                pass
 
     def find_stored_device_obj_index(self, track_callback_type_key, callback_type_index, selected_device_obj):
         stored_devices = self.get_track_device_map_by_callback_type(track_callback_type_key, callback_type_index)
