@@ -249,7 +249,19 @@ class EncoderController(MackieC4Component, Component):
             #     # can land here when folding a group track and new selected (group) track doesn't have any devices
             #     self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but device not liveobj valid?")
         else:
-            self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but provided device is already self.__chosen_plugin")
+            # can land here when a track's only device is deleted (because None == not liveobj_valid()) <-- but we need to handle on this "equal difference" event
+            provided_name = "None" if d is None else "Invalid" if not liveobj_valid(d) else d.name
+            chosen_name = "None" if self.__chosen_plugin is None else "Invalid" if not liveobj_valid(self.__chosen_plugin) else self.__chosen_plugin.name
+            if d is None and not liveobj_valid(self.__chosen_plugin):
+                # selected track did not change and selected device (the only device) was deleted
+                self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {provided_name}, updating chosen plugin from {chosen_name}")
+                self.main_script().log_message(logging.DEBUG, f"{log_id}clearing devices for track at song index {self.__eah.last_selected_track_index}")
+                self.__eah.data.clear_track_devices(self.__eah.last_selected_track_index)
+                self.__update_chosen_plugin_device(d)
+            else:
+                msg = f"{log_id}listener popped, but provided device {provided_name} is already self.__chosen_plugin {chosen_name}, pass"
+                self.main_script().log_message(logging.DEBUG, msg)
+
 
     def add_special_parameter_listeners(self, selected_track, selected_device):
         log_id = "EC.add_special_parameter_listeners: "
@@ -416,116 +428,122 @@ class EncoderController(MackieC4Component, Component):
         # self.__eah.track_changed(track_index) is called as needed below
         next_active_track_ref = self.__eah.data.get_track(track_index)
         self.main_script().log_message(logging.DEBUG, f"{log_id}track_index input is {track_index}, stored active_track is {next_active_track_ref.track_name}")
-        if self.selected_track != next_active_track_ref.track:
+        if liveobj_valid(next_active_track_ref.track) and self.selected_track != next_active_track_ref.track:
             self.main_script().log_message(logging.DEBUG, f"{log_id}live obj at index differs from stored ref at same index, track moved")
             self.track_moved(next_active_track_ref.type, track_index)
         else:
-            selected_device_index = next_active_track_ref.selected_device_index # next_active_track_ref.device_count
-            msg = f"{log_id}stored active_track {next_active_track_ref.track_name} has {next_active_track_ref.device_count} devices and "
-            self.main_script().log_message(logging.DEBUG, msg + f"selected_device_index {selected_device_index}")
-            extended_device_list = self.get_device_list(self.selected_track.devices)
-            nbr_devices = len(extended_device_list)
-            next_device = None
-            if selected_device_index is not None and self.__pending_device_change:
-                next_device = self.__eah.next_selected_device
-                last_selected_device_on_track = self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
-                if last_selected_device_on_track == next_device:
-                    selected_device_index = self.__eah.last_selected_device_index
-                    self.__pending_device_change = False
-                    self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {next_device.name} cancelled, ")
-                    # self.__update_chosen_plugin_device(next_device)
-                    # self.__eah.next_selected_device = None
-                elif nbr_devices > next_active_track_ref.device_count:
-                    selected_device_index = nbr_devices - 1
-                    msg = f"{log_id}pending device change, device added, index is last {selected_device_index}"
-                else:
-                    msg = f"{log_id}assumption issue? pending device change, device changed, index is still {selected_device_index}"
-                self.main_script().log_message(logging.DEBUG, msg)
-            else: # selected_device_index is None or this track change is not a self.__pending_device_change case
-                log_idx = "None" if selected_device_index is None else selected_device_index
-                if nbr_devices > 0 and (selected_device_index is None or not (0 <= selected_device_index < nbr_devices)):
-                    msg = f"{log_id}selected device index is {log_idx} but there are {nbr_devices} devices, setting selected device index to {nbr_devices - 1}"
-                    self.main_script().log_message(logging.DEBUG, msg)
-                    next_active_track_ref.selected_device_index = nbr_devices - 1
-                    self.__eah.data.set_track(next_active_track_ref)
-                    selected_device_index = next_active_track_ref.selected_device_index
-
-            if nbr_devices == 0:
-                self.main_script().log_message(logging.DEBUG, f"{log_id}no devices found on track {self.selected_track.name}")
-                self.__eah.track_changed(track_index)
-                self.__eah.update_device_counter(track_index, 0)
+            if not liveobj_valid(next_active_track_ref.track) and liveobj_valid(self.selected_track):
+                msg = f"{log_id}stored active_track {next_active_track_ref.track_name} is not valid and selected track is valid {self.selected_track.name} "
+                self.main_script().log_message(logging.DEBUG, msg + "")
+                return
             else:
-                if selected_device_index is not None and selected_device_index > -1:
-                    if nbr_devices > selected_device_index:
-                        if next_device is None:
-                            next_device = extended_device_list[selected_device_index]
-                        if liveobj_valid(next_device):
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}{next_device.name} found at index {selected_device_index}")
-                        self.__eah.track_changed(track_index)
-                        self.__eah.update_device_counter(track_index, nbr_devices)
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}called __eah.update_device_counter({track_index}, {nbr_devices})")
-                    # else something didn't get updated correctly at startup and/or when devices deleted?
-                    elif nbr_devices > 0: # punt if we can
-                        next_device = extended_device_list[nbr_devices - 1]
-                        msg = f"{log_id}Because there are only {nbr_devices} devices in device list for track {self.selected_track.name}, index "
-                        if liveobj_valid(next_device):
-                            msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {next_device.name} found at index {nbr_devices - 1} instead."
-                            self.main_script().log_message(logging.INFO, msg)
-                        else:
-                            nbr_devices = 0
-                            msg += f"{selected_device_index} returned by EAH is OOB, and "
-                            self.main_script().log_message(logging.ERROR, msg + f"invalid device found at index 0 of track's device list. assumption issue?")
-                        self.__eah.track_changed(track_index)
-                        self.__eah.update_device_counter(track_index, nbr_devices)
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}called __eah.update_device_counter(track_index={track_index}, nbr_of_devices={nbr_devices})")
+                selected_device_index = next_active_track_ref.selected_device_index # next_active_track_ref.device_count
+                msg = f"{log_id}stored active_track {next_active_track_ref.track_name} has {next_active_track_ref.device_count} devices and "
+                self.main_script().log_message(logging.DEBUG, msg + f"selected_device_index {selected_device_index}")
+                extended_device_list = self.get_device_list(self.selected_track.devices)
+                nbr_devices = len(extended_device_list)
+                next_device = None
+                if selected_device_index is not None and self.__pending_device_change:
+                    next_device = self.__eah.next_selected_device
+                    last_selected_device_on_track = self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
+                    if last_selected_device_on_track == next_device:
+                        selected_device_index = self.__eah.last_selected_device_index
+                        self.__pending_device_change = False
+                        self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {next_device.name} cancelled, ")
+                        # self.__update_chosen_plugin_device(next_device)
+                        # self.__eah.next_selected_device = None
+                    elif nbr_devices > next_active_track_ref.device_count:
+                        selected_device_index = nbr_devices - 1
+                        msg = f"{log_id}pending device change, device added, index is last {selected_device_index}"
                     else:
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}len(extended_device_list) {nbr_devices} < {selected_device_index} selected_device_index, no update")
-                # else:
-                # selected_device_index is None or selected_device_index < 0
+                        msg = f"{log_id}assumption issue? pending device change, device changed, index is still {selected_device_index}"
+                    self.main_script().log_message(logging.DEBUG, msg)
+                else: # selected_device_index is None or this track change is not a self.__pending_device_change case
+                    log_idx = "None" if selected_device_index is None else selected_device_index
+                    if nbr_devices > 0 and (selected_device_index is None or not (0 <= selected_device_index < nbr_devices)):
+                        msg = f"{log_id}selected device index is {log_idx} but there are {nbr_devices} devices, setting selected device index to {nbr_devices - 1}"
+                        self.main_script().log_message(logging.DEBUG, msg)
+                        next_active_track_ref.selected_device_index = nbr_devices - 1
+                        self.__eah.data.set_track(next_active_track_ref)
+                        selected_device_index = next_active_track_ref.selected_device_index
 
-
-            if not self.is_locked_to_device:
-                msg_prefix = f"{log_id}self.selected_track is now {self.selected_track.name} "
-                if liveobj_valid(next_device):
-                    self.__locked_device_track = self.selected_track
-                    if not self.is_processing_track_device_state_change():
-                        if not self.selected_track.view.selected_device == next_device:
-                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix}selecting device {next_device.name} and updating chosen plugin device")
-                            self.song().view.select_device(next_device) # this device selection could cause cascading listener callbacks in Live
-                            # don't update chosen plugin here, defer to device change listener callback
-                        else:
-                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but song selected device is already {next_device.name}")
-                            if self.__chosen_plugin == next_device:
-                                self.main_script().log_message(logging.DEBUG, f"{log_id}and script chosen plugin is already {next_device.name}")
-                            else:
-                                if self.__pending_device_change:
-                                    msg_prefix = f"{log_id}and a local device change is pending, "
-                                nm = "None" if self.__chosen_plugin is None else self.__chosen_plugin.name
-                                self.main_script().log_message(logging.DEBUG, f"{msg_prefix}processing local device change with index {selected_device_index}")
-                                self.__eah.device_added_deleted_or_changed(extended_device_list, next_device, selected_device_index)
-                                self.main_script().log_message(logging.DEBUG, f"{msg_prefix} updating script chosen plugin from {nm} to {next_device.name}")
-                                self.__update_chosen_plugin_device(next_device)
-                                self.__pending_device_change = False
-                                name = "None" if self.__eah.next_selected_device is None else self.__eah.next_selected_device.name
-                                if self.__eah.next_selected_device == next_device:
-                                    self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} processed successfully")
-                                    self.__eah.next_selected_device = None
-                                else:
-                                    self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} ignored in favor of change to {next_device.name}?")
-                    else:
-                        self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but device state is already actively changing")
+                if nbr_devices == 0:
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}no devices found on track {self.selected_track.name}")
+                    self.__eah.track_changed(track_index)
+                    self.__eah.update_device_counter(track_index, 0)
                 else:
-                    if self.__pending_device_change:
-                        msg_prefix += "and a local device change is pending, "
-                    self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but no valid device found, self.__chosen_plugin == None")
-                    self.__update_chosen_plugin_device(next_device)  # device == None
-                    if self.__pending_device_change and self.__eah.next_selected_device != next_device:
-                        name = self.__eah.next_selected_device.name
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}pending device change to {name} ignored?, self.__eah.next_selected_device == None")
-                        self.__eah.next_selected_device = None
+                    if selected_device_index is not None and selected_device_index > -1:
+                        if nbr_devices > selected_device_index:
+                            if next_device is None:
+                                next_device = extended_device_list[selected_device_index]
+                            if liveobj_valid(next_device):
+                                self.main_script().log_message(logging.DEBUG, f"{log_id}{next_device.name} found at index {selected_device_index}")
+                            self.__eah.track_changed(track_index)
+                            self.__eah.update_device_counter(track_index, nbr_devices)
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}called __eah.update_device_counter({track_index}, {nbr_devices})")
+                        # else something didn't get updated correctly at startup and/or when devices deleted?
+                        elif nbr_devices > 0: # punt if we can
+                            next_device = extended_device_list[nbr_devices - 1]
+                            msg = f"{log_id}Because there are only {nbr_devices} devices in device list for track {self.selected_track.name}, index "
+                            if liveobj_valid(next_device):
+                                msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {next_device.name} found at index {nbr_devices - 1} instead."
+                                self.main_script().log_message(logging.INFO, msg)
+                            else:
+                                nbr_devices = 0
+                                msg += f"{selected_device_index} returned by EAH is OOB, and "
+                                self.main_script().log_message(logging.ERROR, msg + f"invalid device found at index 0 of track's device list. assumption issue?")
+                            self.__eah.track_changed(track_index)
+                            self.__eah.update_device_counter(track_index, nbr_devices)
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}called __eah.update_device_counter(track_index={track_index}, nbr_of_devices={nbr_devices})")
+                        else:
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}len(extended_device_list) {nbr_devices} < {selected_device_index} selected_device_index, no update")
+                    # else:
+                    # selected_device_index is None or selected_device_index < 0
 
-                    self.__pending_device_change = False
-            return
+
+                if not self.is_locked_to_device:
+                    msg_prefix = f"{log_id}self.selected_track is now {self.selected_track.name} "
+                    if liveobj_valid(next_device):
+                        self.__locked_device_track = self.selected_track
+                        if not self.is_processing_track_device_state_change():
+                            if not self.selected_track.view.selected_device == next_device:
+                                self.main_script().log_message(logging.DEBUG, f"{msg_prefix}selecting device {next_device.name} and updating chosen plugin device")
+                                self.song().view.select_device(next_device) # this device selection could cause cascading listener callbacks in Live
+                                # don't update chosen plugin here, defer to device change listener callback
+                            else:
+                                self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but song selected device is already {next_device.name}")
+                                if self.__chosen_plugin == next_device:
+                                    self.main_script().log_message(logging.DEBUG, f"{log_id}and script chosen plugin is already {next_device.name}")
+                                else:
+                                    if self.__pending_device_change:
+                                        msg_prefix = f"{log_id}and a local device change is pending, "
+                                    nm = "None" if self.__chosen_plugin is None else "Invalid" if not liveobj_valid(self.__chosen_plugin) else self.__chosen_plugin.name
+                                    self.main_script().log_message(logging.DEBUG, f"{msg_prefix}processing local device change with index {selected_device_index}")
+                                    self.__eah.device_added_deleted_or_changed(extended_device_list, next_device, selected_device_index)
+                                    self.main_script().log_message(logging.DEBUG, f"{msg_prefix} updating script chosen plugin from {nm} to {next_device.name}")
+                                    self.__update_chosen_plugin_device(next_device)
+                                    self.__pending_device_change = False
+                                    name = "None" if self.__eah.next_selected_device is None else "Invalid" if not liveobj_valid(self.__eah.next_selected_device) \
+                                        else self.__eah.next_selected_device.name
+                                    if self.__eah.next_selected_device == next_device:
+                                        self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} processed successfully")
+                                        self.__eah.next_selected_device = None
+                                    else:
+                                        self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} ignored in favor of change to {next_device.name}?")
+                        else:
+                            self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but device state is already actively changing")
+                    else:
+                        if self.__pending_device_change:
+                            msg_prefix += "and a local device change is pending, "
+                        self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but no valid device found, self.__chosen_plugin == None")
+                        self.__update_chosen_plugin_device(next_device)  # device == None
+                        if self.__pending_device_change and self.__eah.next_selected_device != next_device:
+                            name = self.__eah.next_selected_device.name
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}pending device change to {name} ignored?, self.__eah.next_selected_device == None")
+                            self.__eah.next_selected_device = None
+
+                        self.__pending_device_change = False
+                return
 
     def tracks_added(self, track_index, tracks, callback_type):
         self.__eah.tracks_added(track_index, tracks, callback_type)
@@ -642,23 +660,26 @@ class EncoderController(MackieC4Component, Component):
             stored_device_count = len(self.__eah.data.get_track_device_map_by_callback_type(track_callback_types[track_type], track_type_index).keys())
             if stored_device_count == track_ref.device_count:
                 if stored_device_count == len(extended_device_list):
-                    selected_device = self.selected_track.view.selected_device
-                    self.__eah.data.rekey_device_list_by_track_callback_type(track_callback_types[track_type], track_type_index, extended_device_list, selected_device)
-                    track_ref = self.__eah.data.get_track_by_type_key(track_callback_types[track_type], track_type_index)
-                    dtls = f"changed from {stored_selected_device_index} to {track_ref.selected_device_index}"
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}drag&drop event processed successfully selected device index {dtls}")
+                    selected_device_obj = self.selected_track.view.selected_device
+                    last_device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
+                    last_device_ref_obj = None if last_device_ref is None else last_device_ref.device
+                    if liveobj_valid(last_device_ref_obj) and selected_device_obj == last_device_ref_obj:
+                        self.__eah.data.rekey_device_list_by_track_callback_type(track_callback_types[track_type], track_type_index, extended_device_list, selected_device_obj)
+                        track_ref = self.__eah.data.get_track_by_type_key(track_callback_types[track_type], track_type_index)
+                        dtls = f"changed from {stored_selected_device_index} to {track_ref.selected_device_index}"
+                        self.main_script().log_message(logging.DEBUG, f"{log_id}device move event processed successfully selected device index {dtls}")
+                    else:
+                        self.main_script().log_message(logging.DEBUG, f"{log_id}pass, no device move detected, selected device is changing")
                 else:
                     dtls = f"{log_id}stored device list length {stored_device_count} not equal to changed device list length {len(extended_device_list)}"
-                    self.main_script().log_message(logging.DEBUG, dtls + ", pass, not a drag&drop event")
+                    self.main_script().log_message(logging.DEBUG, dtls + ", pass, not a device move event")
             else:
-                dtls = f"{log_id}stored device list length {stored_device_count} not equal to stored track device count {track_ref.device_count}"
-                self.main_script().log_message(logging.WARNING, dtls + ", assumption issue?")
+                dtls = f"{log_id}number of stored devices {stored_device_count} not equal to stored track ref device count {track_ref.device_count}"
+                self.main_script().log_message(logging.WARNING, dtls + ", defer processing to other event handlers, not a device move event")
                 d_map = self.__eah.data.get_track_device_map_by_callback_type(track_callback_types[track_type], track_type_index)
-                dtls = f"{log_id}{track_callback_types[track_type]} track at index {track_type_index} s {str(d_map)}"
-                for key in d_map.keys():
-                    d = d_map[key]
-                    dtls += f"stored device list key {key} has value {str(d)}"
-                    self.main_script().log_message(logging.WARNING, dtls)
+                type_key = track_callback_types[track_type]
+                dtls = f"{log_id}{type_key} track ref at {type_key} index {track_type_index} has stored devices {[x.device_name for x in d_map.values()]}"
+                self.main_script().log_message(logging.WARNING, dtls)
         else:
             self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue? Live objects don't agree?, pass, not a drag&drop device movement event")
 

@@ -39,6 +39,9 @@ when selected device changes. This value can differ from the device bank index c
         else:
             self._device_bank_index_of_selected_device = int(math.floor(selected_device_index % self.required_device_banks))
 
+    def new_copy(self, new_song_index, new_type_index):
+        return ActiveTrack(self.track, self.type, new_song_index, new_type_index, self.device_count, self.selected_device_index)
+
     def __str__(self):
         if self is None:
             return "None"
@@ -136,6 +139,9 @@ banks without changing selected parameters. """
         else:
             self._bank_index_of_selected_parameter = int(math.floor(selected_parameter_index % self.required_parameter_banks))
 
+    def new_copy(self, new_device_index):
+        return ActiveDevice(self.device, new_device_index, self.parameter_count, self.selected_parameter_index, self.track_index, self.track_index_by_type)
+
     def __str__(self):
         if self is None:
             return "None"
@@ -218,9 +224,7 @@ class ActiveDeviceList:
             self.build_device_map(devices)
 
     def new_copy(self, new_song_index, new_type_index):
-        track_ref = self.active_track
-        track_ref.index = new_song_index
-        track_ref.index_by_type = new_type_index
+        track_ref = self.active_track.new_copy(new_song_index, new_type_index)
         copy = ActiveDeviceList(track_ref)
         copy.devices = self.devices
         return copy
@@ -338,6 +342,14 @@ class SongData(object):
             rtn = track_index - self.plain_track_count
         return rtn
 
+    def get_song_index_for_callback_index(self, callback_type, callback_type_index):
+        song_index = self.master_track_index
+        if callback_type == 0:
+            song_index = callback_type_index
+        if callback_type == 1:
+            song_index = self.plain_track_count + callback_type_index
+        return song_index
+
     @property
     def initializing_database(self):
         return self.__initializing_database
@@ -421,6 +433,7 @@ class SongData(object):
         self.clear_tracks_by_type_key(track_callback_types[2])
 
     def clear_tracks_by_type_key(self, track_callback_type_key):
+        """clears devices too"""
         self.device_list_table[track_callback_type_key].clear()
 
     # clear_tracks_by_type_key() clears devices too as a side effect
@@ -593,20 +606,20 @@ class SongData(object):
         cumulative_song_index = song_index_type_offset + track_index_by_type
         track_ref = ActiveTrack(track, self.table_keys[track_callback_type_key], cumulative_song_index, track_index_by_type, nbr_devices, selected_device_index)
         track_device_list_ref = ActiveDeviceList(track_ref, devices=ext_devices)
-        self.add_track_device_list_by_callback_type(track_callback_type_key, track_index_by_type, track_device_list_ref)
+        self.add_adl_track_by_callback_type(track_callback_type_key, track_index_by_type, track_device_list_ref)
         if last_master_track_ref.index < self.master_track_index:
             self.log_msg(logging.DEBUG, f"{log_id}after adding track, updating master track index to {self.master_track_index}")
             self.update_master_track_index(master_device_list_ref)
 
 
-    def add_track_device_list_by_callback_type(self, track_callback_type_key, track_index_by_type, track_device_list_ref):
+    def add_adl_track_by_callback_type(self, track_callback_type_key, track_index_by_type, track_device_list_ref):
         tracks_of_type = self.get_all_tracks_by_type_key(track_callback_type_key)
         self._insert_track_slot(tracks_of_type, track_index_by_type, track_device_list_ref)
 
     def remove_track(self, song_track_index):
         rtns_index = song_track_index - self.plain_track_count
-        # log_msg = f"EAH.SD.remove_track: at song track index {song_track_index}"
-        # self.log_msg(logging.DEBUG, log_msg)
+        log_msg = f"EAH.SD.remove_track: at song track index {song_track_index}"
+        self.log_msg(logging.DEBUG, log_msg)
         if song_track_index < self.plain_track_count:
             self.remove_track_by_callback_type(track_callback_types[0], song_track_index)
         elif rtns_index < self.return_track_count:
@@ -618,21 +631,23 @@ class SongData(object):
         log_id = "EAH.SD.remove_track_by_callback_type: "
         master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
         last_master_track_ref = master_device_list_ref.active_track
-        # last_master_track_ref = self.get_track(self.master_track_index)
-        # old = self.device_list_table[track_callback_type_key][track_index_by_type]
-        # if old.track_name == "Invalidobj":
-        #     log_msg = f"{log_id}collapsing slot holding invalid liveobj "
-        # else:
-        #     log_msg = f"{log_id}collapsing slot holding a valid liveobj {old.track_name} "
-        #
-        # self.log_msg(logging.DEBUG, log_msg)
-        # log_msg = f"{log_id}{track_callback_type_key} track at {track_callback_type_key} callback type index {track_index_by_type}: {old} "
-        # self.log_msg(logging.DEBUG, log_msg)
-        # self.log_msg(logging.DEBUG, f"{log_id}BEFORE: plain tracks {self.plain_track_count}, return tracks {self.return_track_count}")
+        old = self.device_list_table[track_callback_type_key][track_index_by_type]
+        if old.active_track.track_name == "Invalidobj":
+            log_msg = f"{log_id}collapsing slot holding invalid liveobj "
+        else:
+            log_msg = f"{log_id}collapsing slot holding a valid liveobj {old.active_track.track_name} "
+
+        self.log_msg(logging.DEBUG, log_msg)
+        log_msg = f"{log_id}{track_callback_type_key} track at {track_callback_type_key} callback type index {track_index_by_type}: {old.active_track.track_name} "
+        self.log_msg(logging.DEBUG, log_msg)
+        self.log_msg(logging.DEBUG, f"{log_id}BEFORE: plain tracks {self.plain_track_count}, return tracks {self.return_track_count}")
         tracks_of_type = self.get_all_tracks_by_type_key(track_callback_type_key)
+        if not liveobj_valid(old.active_track.track) and track_index_by_type == 0:
+            track_index_by_type = -1
+
         self._collapse_track_slot(tracks_of_type, track_index_by_type)
-        # new_count = len(self.track_table[track_callback_type_key])
-        # self.log_msg(logging.DEBUG, f"{log_id}AFTER: new track count={new_count}")
+        new_count = len(self.device_list_table[track_callback_type_key])
+        self.log_msg(logging.DEBUG, f"{log_id}AFTER: new track count={new_count}")
         self.log_msg(logging.DEBUG, f"{log_id}AFTER: plain tracks {self.plain_track_count}, return tracks {self.return_track_count}")
         if last_master_track_ref is not None and last_master_track_ref.index_by_type != self.master_track_index:
             self.update_master_track_index(master_device_list_ref)
@@ -747,13 +762,41 @@ class SongData(object):
         device_map_len = len(self.get_track_device_map(track_index))
         assert new_device_count == 0 == device_map_len
 
+    def find_track_obj_type_and_index(self, track_obj):
+        rtn = -1, -1
+        found = False
+        all_plain_track_list_refs = self.get_all_tracks_by_type_key(track_callback_types[0])
+        for i in all_plain_track_list_refs.keys():
+            track_ref = all_plain_track_list_refs[i]
+            if track_ref.active_track.track == track_obj:
+                rtn = 0, i
+                found = True
+                break
+        if not found:
+            all_return_track_list_refs = self.get_all_tracks_by_type_key(track_callback_types[1])
+            for i in all_return_track_list_refs.keys():
+                track_ref = all_return_track_list_refs[i]
+                if track_ref.active_track.track == track_obj:
+                    rtn = 1, i
+                    found = True
+                    break
+        return rtn
+
+
     def rekey_track_list_of_callback_type(self, track_callback_type, next_selected_callback_type_index, all_tracks_of_type, selected_track_obj):
+        """moves the stored ActiveDeviceList track reference representing the selected track obj input from its last stored index to its next stored index"""
+        # uses two algorithms first traverses "all tracks of type" input once and "old tracks of type" once for every track in "all tracks of type" until it finds the
+        # matching track.  The inner loop gets smaller after each match, but it's still an expensive big-O algorithm.  The second algorithm does a swap, removing the
+        # "track that moved" from its old stored index location, and re-inserting an updated copy at its new stored index location (matching Live).
+        # This second algorithm is least efficient when a song has many tracks and tracks with low index numbers move
+        # (meaning lots of tracks to the right of the moving track also move (twice)), its performance decline is less exponential than the first algorithm,
+        # closer to constant time but still not great
         log_id = "EAH.SD.rekey_track_list_of_callback_type: "
         type_key = track_callback_types[track_callback_type]
         old_track_list_of_type = self.get_all_tracks_by_type_key(type_key)
         self.log_msg(logging.DEBUG, f"{log_id}BEFORE: stored {type_key} track count {len(old_track_list_of_type)} vs input count {len(all_tracks_of_type)}")
         new_keyed_map = {}
-        if len(all_tracks_of_type) < 50:
+        if len(all_tracks_of_type) < 5:
             if len(all_tracks_of_type) == len(old_track_list_of_type.keys()):
                 shallow_copy = old_track_list_of_type.copy()
                 for new_index, track_obj in enumerate(all_tracks_of_type):
@@ -774,49 +817,105 @@ class SongData(object):
                 self.log_msg(logging.DEBUG, f"{log_id}AFTER: updated {type_key} track count {len(new_keyed_map.keys())} vs input count {len(all_tracks_of_type)}")
                 assert len(all_tracks_of_type) == len(new_keyed_map.keys())
                 old_track_list_of_type.update(new_keyed_map)
-        # else: # too many tracks for worst case above? delete ref from old stored index location, then add back at new index location, but we don't have the old index
-        #     old_adl_ref_at_new_index = self.get_active_device_list_reference(type_key, next_selected_callback_type_index)
-        #     self.get_song_index_for_callback_index()
-        #     if old_adl_ref_at_new_index.active_track.track == selected_track_obj:
-        #         self.log_msg(logging.DEBUG, f"{log_id}stored track ref at next index {next_selected_callback_type_index} already matches {selected_track_obj.name} ")
-        #         pass # no sorting required
-        #     else:
-        #         master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
-        #         last_master_track_ref = master_device_list_ref.active_track
-        #         song_index = next_selected_callback_type_index
-        #         if track_callback_type == 1:
-        #             song_index = self.plain_track_count + next_selected_callback_type_index
-        #         copy_of_old_ref_at_new_loc = old_adl_ref_at_new_index.new_copy(song_index, next_selected_callback_type_index)
-        #         self.remove_track_by_callback_type(type_key, old_adl_ref_at_new_index.track_index_by_type)
-        #         # self.add_track_by_callback_type(type_key, song_index, next_selected_callback_type_index, selected_track_obj)  <-- don't rebuild track's extended device list
-        #         self.add_track_device_list_by_callback_type(type_key, next_selected_callback_type_index, copy_of_old_ref_at_new_loc)
-        #         if last_master_track_ref.index < self.master_track_index:
-        #             self.log_msg(logging.DEBUG, f"{log_id}after removing and re-adding track, updating master track ref index to {self.master_track_index}")
-        #             self.update_master_track_index(master_device_list_ref)
-        #         else:
-        #             self.log_msg(logging.DEBUG, f"{log_id}oddly, after removing and re-adding track, master track ref index is already {self.master_track_index}")
+        else: # too many tracks for worst case above? delete ref from old stored index location, then add back at new index location
+            old_cb_type_of_selected_track, old_cb_index_of_selected_track = self.find_track_obj_type_and_index(selected_track_obj)
+            cb_key = track_callback_types[old_cb_type_of_selected_track]
+            if cb_key == type_key:
+                old_adl_ref_at_old_index = self.get_active_device_list_reference(type_key, old_cb_index_of_selected_track)
+                old_adl_ref_at_new_index = self.get_active_device_list_reference(type_key, next_selected_callback_type_index)
+                msg = f"{log_id}stored track ref at old index {old_cb_index_of_selected_track} is {old_adl_ref_at_old_index.active_track.track_name}"
+                self.log_msg(logging.DEBUG, msg)
+                msg = f"{log_id}stored track ref at new index {next_selected_callback_type_index} is {old_adl_ref_at_new_index.active_track.track_name}"
+                self.log_msg(logging.DEBUG, msg)
+                if old_adl_ref_at_new_index.active_track.track == selected_track_obj:
+                    self.log_msg(logging.DEBUG, f"{log_id}stored track ref at next index {next_selected_callback_type_index} already matches {selected_track_obj.name} ")
+                    pass # no sorting required, no "track move" detected
+                else:
+                    master_device_list_ref = self.get_active_device_list_reference(track_callback_types[2], self.master_track_index)
+                    last_master_track_ref = master_device_list_ref.active_track
+                    new_song_index = self.get_song_index_for_callback_index(type_key, next_selected_callback_type_index)
+                    copy_of_old_ref_at_old_loc = old_adl_ref_at_old_index.new_copy(new_song_index, next_selected_callback_type_index)
+                    msg = f"{log_id}removing {copy_of_old_ref_at_old_loc.active_track.track_name} from type index {old_adl_ref_at_old_index.track_index_by_type}"
+                    self.log_msg(logging.DEBUG, msg)
+                    self.remove_track_by_callback_type(type_key, old_adl_ref_at_old_index.track_index_by_type - 1) # removes "right of" input index
+                    # don't rebuild track's extended device list from scratch
+                    # self.add_track_by_callback_type(type_key, song_index, next_selected_callback_type_index, selected_track_obj)
+                    msg = f"{log_id}adding {copy_of_old_ref_at_old_loc.active_track.track_name} at type index {copy_of_old_ref_at_old_loc.track_index_by_type}"
+                    self.log_msg(logging.DEBUG, msg)
+                    self.add_adl_track_by_callback_type(type_key, next_selected_callback_type_index, copy_of_old_ref_at_old_loc)
+                    if last_master_track_ref.index < self.master_track_index:
+                        self.log_msg(logging.DEBUG, f"{log_id}after removing and re-adding track, updating master track ref index to {self.master_track_index}")
+                        self.update_master_track_index(master_device_list_ref)
+                    else:
+                        self.log_msg(logging.DEBUG, f"{log_id}oddly, after removing and re-adding track, master track ref index is already {self.master_track_index}")
 
+                self.log_msg(logging.DEBUG, f"{log_id}AFTER: updated {type_key} track count {len(old_track_list_of_type.keys())} vs input count {len(all_tracks_of_type)}")
+                assert len(all_tracks_of_type) == len(old_track_list_of_type.keys())
+            else:
+                self.log_msg(logging.WARNING, f"{log_id}oddly, callback type table keys didn't match?")
 
+    def find_stored_device_obj_index(self, track_callback_type_key, callback_type_index, selected_device_obj):
+        stored_devices = self.get_track_device_map_by_callback_type(track_callback_type_key, callback_type_index)
+        rtn = -1, None
+        for i in stored_devices.keys():
+            device_ref = stored_devices[i]
+            if device_ref.device == selected_device_obj:
+                rtn = i, device_ref
+                break
+        return rtn
 
-    def rekey_device_list_by_track_callback_type(self, track_callback_type_key, callback_type_index, all_track_devices, selected_device_obj):
+    def rekey_device_list_by_track_callback_type(self, track_callback_type_key, callback_type_index, all_track_devices, selected_device_obj, selected_device_obj_index=None):
+
         old_keyed_map = self.get_track_device_map_by_callback_type(track_callback_type_key, callback_type_index)
         new_keyed_map = {}
         track_ref = self.get_track_by_type_key(track_callback_type_key, callback_type_index)
+        self.log_msg(logging.WARNING, f"EAH.SD.rekey_device_list_by_track_callback_type: track {track_ref.track_name} has {track_ref.device_count} active devices")
         if len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count:
-            shallow_copy = old_keyed_map.copy()
-            for new_index, device_obj in enumerate(all_track_devices):
-                for device_ref_index in shallow_copy.keys():
-                    device_ref = old_keyed_map[device_ref_index]
-                    if device_ref.device == device_obj:
-                        new_keyed_map[new_index] = device_ref
-                        if device_obj == selected_device_obj:
-                            track_ref.selected_device_index = new_index
-                        del shallow_copy[device_ref_index]  # <-- inner search loop gets smaller after every match
+            if track_ref.device_count < 5:
+                shallow_copy = old_keyed_map.copy()
+                for new_index, device_obj in enumerate(all_track_devices):
+                    for device_ref_index in shallow_copy.keys():
+                        device_ref = old_keyed_map[device_ref_index]
+                        if device_ref.device == device_obj:
+                            new_keyed_map[new_index] = device_ref
+                            self.log_msg(logging.WARNING, f"EAH.SD.rekey_device_list_by_track_callback_type: moving {device_ref.device_name} to new stored index {new_index}")
+                            if device_obj == selected_device_obj:
+                                track_ref.selected_device_index = new_index
+                            del shallow_copy[device_ref_index]  # <-- inner search loop gets smaller after every match
+                            break
+                if not len(old_keyed_map.keys()) == len(new_keyed_map.keys()):
+                    log_msg = f"EAH.SD.rekey_device_list_by_track_callback_type: updated key counts don't match: live {len(all_track_devices)} "
+                    self.log_msg(logging.WARNING, log_msg + f"old stored {len(old_keyed_map.keys())} new stored {new_keyed_map} old count {track_ref.device_count}")
+                else:
+                    assert len(old_keyed_map.keys()) == len(new_keyed_map.keys())
+                old_keyed_map.update(new_keyed_map)
+                self.set_track_device_map_by_callback_type(track_callback_type_key, callback_type_index, old_keyed_map)
+            else:
+                # old_device_index, old_active_device = self.find_stored_device_obj_index(track_callback_type_key, callback_type_index, selected_device_obj)
+                stored_track_device_map = self.get_track_device_map_by_callback_type(track_callback_type_key, callback_type_index)
+                new_device_index = -1
+                old_device_index = -1
+                old_active_device = None
+                found_items = 0
+                for new_index, device_obj in enumerate(all_track_devices):
+                    device_ref = stored_track_device_map[new_index]
+                    if device_ref.device == selected_device_obj:
+                        old_device_index = new_index
+                        old_active_device = device_ref
+                        found_items += 1
+                    if device_obj == selected_device_obj:
+                        new_device_index = new_index
+                        found_items += 1
+                    if found_items > 1:
                         break
-            assert len(old_keyed_map.keys()) == len(new_keyed_map.keys())
-            old_keyed_map.update(new_keyed_map)
-            self.set_track_device_map_by_callback_type(track_callback_type_key, callback_type_index, old_keyed_map)
-        else:  # len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count
+
+                copy_of_device_at_new_index = old_active_device.new_copy(new_device_index)
+                old_device_index = 0 if old_device_index < 1 else old_device_index - 1
+                self.remove_device_by_track_callback_type(track_callback_type_key, callback_type_index, old_device_index)
+                self.add_device_by_track_callback_type(track_callback_type_key, callback_type_index, new_device_index, copy_of_device_at_new_index)
+                track_ref.selected_device_index = new_device_index
+
+        else:  # not len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count
             log_msg = f"EAH.SD.rekey_device_list_by_track_callback_type: counts don't match, stored device list order not changed: "
             self.log_msg(logging.DEBUG, log_msg + f"new {len(all_track_devices)} old {len(old_keyed_map.keys())} old count {track_ref.device_count}")
 
@@ -873,7 +972,7 @@ class SongData(object):
         active_device_list_ref.devices = device_map
         track_ref = active_device_list_ref.active_track
         # self.log_msg(logging.DEBUG, f"{log_id}after device removal BEFORE updating track ref {track_ref}")
-        self._update_track_table_after_device_removal(track_ref, device_index_before_remove_index)
+        self._update_track_table_after_device_removal(track_ref, 0 if device_index_before_remove_index == -1 else device_index_before_remove_index)
         # self.log_msg(logging.DEBUG, f"{log_id}after device removal AFTER updating track ref {track_ref}")
 
     @staticmethod
@@ -928,12 +1027,43 @@ class SongData(object):
         return type_dict
 
     def _collapse_track_slot(self, type_dict, track_callback_type_index_left_of_collapse_index)-> dict[int, ActiveDeviceList]:
-        return self.__shift_keys_left(type_dict, track_callback_type_index_left_of_collapse_index)
+        """track_callback_type_index_left_of_collapse_index means input value should be one less than the collapsing index"""
+        log_id = "EAH.SD._collapse_track_slot: "
+        if track_callback_type_index_left_of_collapse_index in type_dict.keys():
+            return self.__shift_keys_left(type_dict, track_callback_type_index_left_of_collapse_index)
+        else:
+            try:
+                assert track_callback_type_index_left_of_collapse_index == -1
+                self.log_msg(logging.DEBUG, f"{log_id}collapsing first track of type at type index 0, collapse and shift here")
+                del type_dict[0]
+                self.log_msg(logging.DEBUG, f"{log_id}type dict keys after del {type_dict.keys()} and values {[x.active_track.track_name for x in type_dict.values()]}")
+                remaining_slots = {i - 1:type_dict[i] for i in type_dict.keys()}
+                type_dict.clear()
+                self.log_msg(logging.DEBUG, f"{log_id}remaining dict after shift {remaining_slots.keys()} and values {[x.active_track.track_name for x in remaining_slots.values()]}")
+                type_dict.update(remaining_slots)
+                self.log_msg(logging.DEBUG, f"{log_id}returning keys {type_dict.keys()} and values {[x.active_track.track_name for x in type_dict.values()]}")
+                return type_dict
+            except AssertionError:
+                self.log_msg(logging.DEBUG, f"{log_id}NOT collapsing at negative track index {track_callback_type_index_left_of_collapse_index}, min collapse index is -1")
 
     def _collapse_track_device_list_slot(self, type_dict, device_index_left_of_collapse_index)-> dict[int, ActiveDevice]:
-        return self.__shift_keys_left(type_dict, device_index_left_of_collapse_index)
+        log_id = "EAH.SD._collapse_track_device_list_slot: "
+        if device_index_left_of_collapse_index in type_dict.keys():
+            return self.__shift_keys_left(type_dict, device_index_left_of_collapse_index)
+        else:
+            try:
+                assert device_index_left_of_collapse_index == -1
+                self.log_msg(logging.DEBUG, f"{log_id}collapsing first device at device index 0, collapse and shift here")
+                del type_dict[0]
+                remaining_slots = {i - 1:type_dict[i] for i in type_dict.keys()}
+                type_dict.clear()
+                type_dict.update(remaining_slots)
+                return type_dict
+            except AssertionError:
+                self.log_msg(logging.DEBUG, f"{log_id}NOT collapsing at negative device index {device_index_left_of_collapse_index}, min collapse index is -1")
 
-    def __shift_keys_right(self, local_dict: Dict[int, ActiveDevice]|Dict[int,ActiveDeviceList], key_of_add, value_to_add: ActiveDevice|ActiveDeviceList) -> Dict[int, ActiveDevice]|Dict[int,ActiveDeviceList]:
+
+    def __shift_keys_right(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveDeviceList], key_of_add, value_to_add: ActiveDevice|ActiveDeviceList) -> dict[int, ActiveDevice]|dict[int,ActiveDeviceList]:
         log_id = "EAH.SD.__shift_keys_right: "
         # local_dict is either an active_track reference mapped by type index
         #     {callback_type_index=key_of_add: active_device_list=value_to_add}
@@ -974,7 +1104,14 @@ class SongData(object):
         vals = [x.active_track.common_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
         self.log_msg(logging.DEBUG, f"{log_id}input dict keys {local_dict.keys()} and values {vals}")
         # self.log_msg(logging.DEBUG, f"{log_id} with input key {key_before_del} means remove key {key_to_remove}")
-        if key_before_del in local_dict.keys():
+        if key_before_del == -1 and key_to_remove in local_dict.keys():
+            if key_to_remove + 1 in local_dict.keys():
+                right_slots = {j - 1: local_dict[j] for j in range(key_to_remove + 1, len(local_dict.keys()))}
+                del local_dict[key_to_remove]
+                local_dict.update(right_slots)
+            else:
+                del local_dict[key_to_remove]
+        elif key_before_del in local_dict.keys():
             if key_to_remove in local_dict.keys():
                 right_slots = None
                 if key_to_remove + 1 in local_dict.keys():
@@ -1353,8 +1490,9 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.data.add_track_by_callback_type(track_callback_types[1], song_track_index, self.data.return_track_count, track_obj, selected_device_index=0)
         else: # not a "callback type boundary" case
             cb_type = self.data.get_callback_type_for_song_index(song_track_index)
-            type_index = self.data.get_callback_index_for_song_index(song_track_index)
-            self.data.add_track(track_obj, cb_type, type_index)
+            msg = f"EAH.track_added: get_cb_type {cb_type} for input index {song_track_index} and "
+            self.main_script().log_message(logging.DEBUG, msg + f"input found type {found_changed_track_callback_type}")
+            self.data.add_track(track_obj, cb_type, song_track_index)
 
         if is_selected:
             self.last_selected_track_index = song_track_index
@@ -1451,22 +1589,29 @@ class EncoderAssignmentHistory(MackieC4Component):
                     # self.main_script().log_message(logging.DEBUG, msg + "no delete, incrementing")
                     at_index += 1
             else:
-                # execution would land here if 2 or more unselected tracks were (not just removed from view but) deleted at the same time (not possible?)
+                # execution lands here if the only return track is deleted
+                # execution might also land here if 2 or more unselected tracks were (not just removed from view but) deleted at the same time (not possible?)
                 msg = f"{log_id}unselected {t_type_key} tracks deleted, but assumption issue? cb type index {at_index} track_ref is not liveobj valid "
                 if found_changed_track_callback_type == 1:
                     self.main_script().log_message(logging.WARNING, msg + f"deleting track ref from returns offset track index {rtns_offset + at_index}")
-                    index_before_deleted_track = 0 if rtns_offset + at_index < 1 else rtns_offset + at_index - 1
-                    self.track_deleted(index_before_deleted_track, is_selected=False)
+                    song_index_before_deleted_track = 0 if rtns_offset + at_index < 1 else rtns_offset + at_index - 1
+                    type_index_before_deleted_track = 0 if at_index < 1 else at_index - 1
+                    self.data.remove_track_by_callback_type(track_callback_types[found_changed_track_callback_type], type_index_before_deleted_track)
+                    self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
+                    # self.track_deleted(index_before_deleted_track, is_selected=False)
                 else:
                     self.main_script().log_message(logging.WARNING, msg + f"deleting track ref from plains track index {at_index}")
-                    index_before_deleted_track = 0 if at_index < 1 else at_index - 1
-                    self.track_deleted(index_before_deleted_track, is_selected=False)
+                    type_index_before_deleted_track = 0 if at_index < 1 else at_index - 1
+                    self.data.remove_track_by_callback_type(track_callback_types[found_changed_track_callback_type], type_index_before_deleted_track)
+                    self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
+                    # self.track_deleted(index_before_deleted_track, is_selected=False)
             tracks_of_type_index += 1
         table_size = len(self.data.get_all_tracks_by_type_key(t_type_key).keys())
         self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
 
     def track_deleted(self, track_index, is_selected=True):
+        """input track_index value should be 'before' (one less than) the index to be deleted"""
         log_id = "EAH.track_deleted: "
         # if self.last_selected_track_index != track_index:
         #     msg = f"{log_id} deleting track index {track_index} that is not last_selected_index {self.last_selected_track_index}"
@@ -1606,7 +1751,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         # last_track_ref.selected_device_index = deleted_device_index  # self.t_d_current[self.t_current] = deleted_device_index
         # self.data.set_track(last_track_ref)
         # last_track_ref counts updated automatically by remove_device()
-        self.data.remove_device(last_track_ref.index, deleted_device_index)
+        self.data.remove_device(last_track_ref.index, deleted_device_index - 1)
         # msg = f"{log_id}updated track {last_track_ref.track_name}, removed device at index {deleted_device_index} new device count is {last_track_ref.device_count}"
         # self.main_script().log_message(logging.DEBUG, msg)
 
@@ -1622,16 +1767,17 @@ class EncoderAssignmentHistory(MackieC4Component):
         # self.main_script().log_message(logging.DEBUG, f"{log_id}")
 
         last_track_ref = self.data.get_track(self.last_selected_track_index)
-        # can't assert this 'condition' because some drag&drop device movements fail to trigger this script's callbacks
-        # (so the local database doesn't reflect the last selected index (or the new one) yet)
-        # assert old_selected_device_index == self.last_selected_device_index
+        # from_none = True if old_selected_device_index is None else False
+        # to_none = True if changed_device_index is None else False
+        # from_index = old_selected_device_index if from_none else int(old_selected_device_index)
+        # to_index = changed_device_index if to_none else int(changed_device_index)
 
-        last_selected_device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
-        if (int(old_selected_device_index) != int(changed_device_index) and liveobj_valid(last_selected_device_ref) and
-                not liveobj_changed(last_selected_device_ref.device, selected_device)):
-            msg = f"{log_id}selected device index of track {last_track_ref.track_name} changed from {last_track_ref.selected_device_index} to {changed_device_index} "
-            self.main_script().log_message(logging.DEBUG, msg + f"but selected device remains {last_selected_device_ref.device_name}, moving device reference to new index")
-            self.data.rekey_device_list_by_track_callback_type(track_callback_types[last_track_ref.type], last_track_ref.index_by_type, all_track_devices, selected_device)
+        # last_selected_device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
+        # if (from_index != to_index and last_selected_device_ref is not None and liveobj_valid(last_selected_device_ref.device) and
+        #         not liveobj_changed(last_selected_device_ref.device, selected_device)):
+        #     msg = f"{log_id}selected device remains {last_selected_device_ref.device_name} but selected device index of track {last_track_ref.track_name} changed from "
+        #     self.main_script().log_message(logging.DEBUG, msg + f"{old_selected_device_index} to {changed_device_index}, moving device reference to changed index")
+        #     self.data.rekey_device_list_by_track_callback_type(track_callback_types[last_track_ref.type], last_track_ref.index_by_type, all_track_devices, selected_device)
         # msg = f"{log_id}selected device index of track {last_track_ref.track_name} changed from {last_track_ref.selected_device_index} to {changed_device_index}"
         # self.main_script().log_message(logging.DEBUG, msg)
         last_track_ref.selected_device_index = changed_device_index
