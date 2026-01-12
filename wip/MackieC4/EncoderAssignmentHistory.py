@@ -319,6 +319,10 @@ class SongData(object):
         
         self.__master_track_count = 1
         self.__initializing_database = True
+        # the default swap alg is O^2 but more accurate, the fallback alg is not much better ln(O^2) (I think)
+        # and has boundary issues like when moving a track or device to the zero index position (fix the boundary issues, or find a better swap alg eventually?)
+        # 500^2 is 25k operations, 100^2 is "only" 10k operations, 50^2 is 2500.
+        self.__rekey_map_algorithm_swap_limit = 50  # use fallback alg if 50 devices on track or 50 plain or return tracks in song
 
     def log_msg(self, level, msg):
         if self.__class_logging:
@@ -796,7 +800,7 @@ class SongData(object):
         old_track_list_of_type = self.get_all_tracks_by_type_key(type_key)
         self.log_msg(logging.DEBUG, f"{log_id}BEFORE: stored {type_key} track count {len(old_track_list_of_type)} vs input count {len(all_tracks_of_type)}")
         new_keyed_map = {}
-        if len(all_tracks_of_type) < 5:
+        if len(all_tracks_of_type) < self.__rekey_map_algorithm_swap_limit:
             if len(all_tracks_of_type) == len(old_track_list_of_type.keys()):
                 shallow_copy = old_track_list_of_type.copy()
                 for new_index, track_obj in enumerate(all_tracks_of_type):
@@ -871,14 +875,14 @@ class SongData(object):
         track_ref = self.get_track_by_type_key(track_callback_type_key, callback_type_index)
         self.log_msg(logging.WARNING, f"EAH.SD.rekey_device_list_by_track_callback_type: track {track_ref.track_name} has {track_ref.device_count} active devices")
         if len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count:
-            if track_ref.device_count < 5:
+            if track_ref.device_count < self.__rekey_map_algorithm_swap_limit:
                 shallow_copy = old_keyed_map.copy()
                 for new_index, device_obj in enumerate(all_track_devices):
                     for device_ref_index in shallow_copy.keys():
                         device_ref = old_keyed_map[device_ref_index]
                         if device_ref.device == device_obj:
                             new_keyed_map[new_index] = device_ref
-                            self.log_msg(logging.WARNING, f"EAH.SD.rekey_device_list_by_track_callback_type: moving {device_ref.device_name} to new stored index {new_index}")
+                            self.log_msg(logging.INFO, f"EAH.SD.rekey_device_list_by_track_callback_type: moving {device_ref.device_name} to new stored index {new_index}")
                             if device_obj == selected_device_obj:
                                 track_ref.selected_device_index = new_index
                             del shallow_copy[device_ref_index]  # <-- inner search loop gets smaller after every match
