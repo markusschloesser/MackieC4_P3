@@ -26,16 +26,17 @@ class ActiveTrack:
         self._device_count = device_count
         self._device_bank_count = int(math.ceil(device_count // SETUP_DB_DEVICE_BANK_SIZE))
         self._selected_device_index = selected_device_index
-        """ index of this track's selected device in the track's device list """
+        """ index of this track's selected device in the track's device list, or None """
         self._selected_devices_bank_index = None if selected_device_index is None else selected_device_index % SETUP_DB_DEVICE_BANK_SIZE
         """ 0 - 7 index within a device bank where the selected device index would fall, automatically calculated 
             when selected device changes. (9th device falls in the second bank at bank index 0) """
         self._track_view_device_bank_index = self._selected_devices_bank_index
-        """ device bank index currently "on display" on the C4 (and selected in Live) of this track's device-bank list (0 - 9 if the track device list has 80 devices) """
+        """device bank index currently "on display" on the C4 (and selected in Live) of this track's device-bank list (0 - 9 if the track device list has 80 devices) """
         if selected_device_index is None or self.required_device_banks < 1:
             self._device_bank_index_of_selected_device = None
-            """ device bank index of this track's selected device in the track's device-bank list (0 unless the track has more than 8 devices), automatically calculated 
-when selected device changes. This value can differ from the device bank index currently "on display". You can 'browse' device banks without changing selected devices. """
+            """device bank index of this track's selected device in the track's device-bank list (0 unless the track has more than 8 devices), automatically calculated """ \
+            """when selected device changes. This value can differ from the device bank index currently "on display". You can 'browse' device banks without changing """ \
+            """selected devices. """
         else:
             self._device_bank_index_of_selected_device = int(math.floor(selected_device_index % self.required_device_banks))
 
@@ -309,7 +310,7 @@ class SongData(object):
     def __init__(self, logger=None, get_device_list=None):
         self.logger = logger
         self.extend_device_list = get_device_list
-        # enable "class logging" to see mostly debug logging output from __shift_keys_right() and __shift_keys_left() methods
+        # enable "class logging" to see debug logging mostly from __shift_keys_right() and __shift_keys_left() methods
         # uncomment logging messages in other class methods to see more verbose debug logging from earlier in the class method call stack
         self.__class_logging = True # False #
         self.device_list_table = dict[str, dict[int, ActiveTrackDeviceList]]({
@@ -322,7 +323,7 @@ class SongData(object):
         # the default swap alg is O^2 but more accurate, the fallback alg is not much better ln(O^2) (I think)
         # and has boundary issues like when moving a track or device to the zero index position (fix the boundary issues, or find a better swap alg eventually?)
         # 500^2 is 25k operations, 100^2 is "only" 10k operations, 50^2 is 2500.
-        self.__rekey_map_algorithm_swap_limit = 50  # use fallback alg if 50 devices on track or 50 plain or return tracks in song
+        self.__rekey_map_algorithm_swap_limit = 50  # use fallback alg if 50+ devices on track or 50+ plain or return tracks in song
 
     def log_msg(self, level, msg):
         if self.__class_logging:
@@ -584,11 +585,11 @@ class SongData(object):
         if rtn is None:
             track_type_index = 0
             track_count = len(tracks)
-            song_index = 0
+            song_index_offset = 0
             if self.table_keys[track_callback_type_key] > 0:
-                song_index = self.plain_track_count
+                song_index_offset = self.plain_track_count
             for track in tracks:
-                self.add_track_by_callback_type(track_callback_type_key, song_index, track_type_index, track)
+                self.add_track_by_callback_type(track_callback_type_key, song_index_offset, track_type_index, track)
                 track_type_index += 1
             assert track_count == len(self.device_list_table[track_callback_type_key].keys())
             if last_master_track_ref is not None:
@@ -894,8 +895,10 @@ class SongData(object):
                     assert len(all_tracks_of_type) == len(old_track_list_of_type.keys())
                 else:
                     self.log_msg(logging.WARNING, f"{log_id}oddly, callback type table keys didn't match?")
-            else:
-                # can land here when a track is dragged right to the first position, the index before that position is -1
+            else: # old_cb_type_of_selected_track < 0 and old_cb_index_of_selected_track < 0
+                msg = f"{log_id}pass, self.find_track_obj_type_and_index() was unable to locate stored reference to selected_track_obj {selected_track_obj.name} "
+                self.log_msg(logging.WARNING, msg)
+                type_key = track_callback_types[track_callback_type]
                 pass
 
     def find_stored_device_obj_index(self, track_callback_type_key, callback_type_index, selected_device_obj):
@@ -1284,6 +1287,10 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     @property
     def track_count(self):
+        return self.data.total_track_count - 1 # self.data.total_track_count - 1 == self.data.master_track_index
+
+    @property
+    def master_track_count(self):
         return self.data.total_track_count
 
     @property
