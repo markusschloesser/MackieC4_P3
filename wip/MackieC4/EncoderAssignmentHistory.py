@@ -214,7 +214,7 @@ banks without changing selected parameters. """
         self._device_view_parameter_bank_index = next_bank_index
 
 
-class ActiveDeviceList:
+class ActiveTrackDeviceList:
 
     def __init__(self, active_track_ref: ActiveTrack, devices=None):
 
@@ -225,7 +225,7 @@ class ActiveDeviceList:
 
     def new_copy(self, new_song_index, new_type_index):
         track_ref = self.active_track.new_copy(new_song_index, new_type_index)
-        copy = ActiveDeviceList(track_ref)
+        copy = ActiveTrackDeviceList(track_ref)
         copy.devices = self.devices
         return copy
 
@@ -312,7 +312,7 @@ class SongData(object):
         # enable "class logging" to see mostly debug logging output from __shift_keys_right() and __shift_keys_left() methods
         # uncomment logging messages in other class methods to see more verbose debug logging from earlier in the class method call stack
         self.__class_logging = True # False #
-        self.device_list_table = dict[str, dict[int, ActiveDeviceList]]({
+        self.device_list_table = dict[str, dict[int, ActiveTrackDeviceList]]({
             track_callback_types[0]: {},
             track_callback_types[1]: {},
             track_callback_types[2]: {}})
@@ -381,7 +381,7 @@ class SongData(object):
         rtn = tracks_before if tracks_before > 0 else 1
         return rtn
 
-    def get_active_device_list_at_song_index(self, song_track_index) -> ActiveDeviceList | None:
+    def get_active_device_list_at_song_index(self, song_track_index) -> ActiveTrackDeviceList | None:
         rtns_index = song_track_index - self.plain_track_count
         if song_track_index < self.plain_track_count:
             return self.get_active_device_list_reference(track_callback_types[0], song_track_index)
@@ -391,7 +391,7 @@ class SongData(object):
             return self.get_active_device_list_reference(track_callback_types[2], song_track_index)
         return None
 
-    def get_active_device_list_reference(self, track_callback_type_key, track_index_by_type) -> ActiveDeviceList | None:
+    def get_active_device_list_reference(self, track_callback_type_key, track_index_by_type) -> ActiveTrackDeviceList | None:
         if track_callback_type_key == "return" and len(self.device_list_table[track_callback_type_key].keys()) < 1:
             return None # song may not have any return tracks
         return self.device_list_table[track_callback_type_key][track_index_by_type]
@@ -408,7 +408,7 @@ class SongData(object):
         selected_device_index = 0 if nbr_devices > 0 else None
         track_ref = ActiveTrack(track, self.table_keys[track_callback_types[2]], song_index, song_index, nbr_devices, selected_device_index)
         self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: BEFORE: master track ref {track_ref} at index {song_index}")
-        track_device_list = ActiveDeviceList(track_ref, ext_devices)
+        track_device_list = ActiveTrackDeviceList(track_ref, ext_devices)
         self.device_list_table[track_callback_types[2]][song_index] = track_device_list
         track_device_list = self.device_list_table[track_callback_types[2]][song_index]
         self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: AFTER: master ref {track_device_list.active_track} at index {song_index}")
@@ -495,11 +495,17 @@ class SongData(object):
         # self.log_msg(logging.DEBUG, f"EAH.SD.get_track: returning track_ref from index {callback_type_index}")
         return rtn
 
-    def get_all_tracks_by_type_key(self, track_callback_type_key) -> Dict[int, ActiveDeviceList]:
+    def get_all_tracks_by_type_key(self, track_callback_type_key) -> Dict[int, ActiveTrackDeviceList]:
         return self.device_list_table[track_callback_type_key]
 
     def get_track_by_type_key(self, track_callback_type_key, track_index_by_type) -> ActiveTrack:
-        return self.get_all_tracks_by_type_key(track_callback_type_key)[track_index_by_type].active_track
+        rtn = self.get_all_tracks_by_type_key(track_callback_type_key)[track_index_by_type].active_track
+        song_index = track_index_by_type if track_callback_types[0] == track_callback_type_key else self.plain_track_count + track_index_by_type
+        song_index = self.plain_track_count + self.return_track_count if track_callback_types[2] == track_callback_type_key else song_index
+        rtn.index = song_index
+        rtn.index_by_type = track_index_by_type
+        rtn.type = self.table_keys[track_callback_type_key]
+        return rtn
 
     def set_track_by_type_key(self, track_callback_type_key, track_index_by_type, active_track: ActiveTrack):
         self.device_list_table[track_callback_type_key][track_index_by_type].active_track = active_track
@@ -609,7 +615,7 @@ class SongData(object):
         selected_device_index = selected_device_index if nbr_devices > 0 else None
         cumulative_song_index = song_index_type_offset + track_index_by_type
         track_ref = ActiveTrack(track, self.table_keys[track_callback_type_key], cumulative_song_index, track_index_by_type, nbr_devices, selected_device_index)
-        track_device_list_ref = ActiveDeviceList(track_ref, devices=ext_devices)
+        track_device_list_ref = ActiveTrackDeviceList(track_ref, devices=ext_devices)
         self.add_adl_track_by_callback_type(track_callback_type_key, track_index_by_type, track_device_list_ref)
         if last_master_track_ref.index < self.master_track_index:
             self.log_msg(logging.DEBUG, f"{log_id}after adding track, updating master track index to updated track count {self.master_track_index}")
@@ -1015,7 +1021,7 @@ class SongData(object):
             track_ref.selected_device_index = None
         return track_ref
 
-    def _insert_track_slot(self, type_dict: Dict[int, ActiveDeviceList], insert_at_track_callback_type_index, track_device_list_ref: ActiveDeviceList)-> dict[int, ActiveDeviceList]:
+    def _insert_track_slot(self, type_dict: Dict[int, ActiveTrackDeviceList], insert_at_track_callback_type_index, track_device_list_ref: ActiveTrackDeviceList)-> dict[int, ActiveTrackDeviceList]:
         log_id = "EAH.SD._insert_track_slot: "
         if insert_at_track_callback_type_index in type_dict.keys():
             type_dict = self.__shift_keys_right(type_dict, insert_at_track_callback_type_index, track_device_list_ref)
@@ -1040,7 +1046,7 @@ class SongData(object):
 
         return type_dict
 
-    def _collapse_track_slot(self, type_dict, track_callback_type_index_left_of_collapse_index)-> dict[int, ActiveDeviceList]:
+    def _collapse_track_slot(self, type_dict, track_callback_type_index_left_of_collapse_index)-> dict[int, ActiveTrackDeviceList]:
         """track_callback_type_index_left_of_collapse_index means input value should be one less than the collapsing index"""
         log_id = "EAH.SD._collapse_track_slot: "
         if track_callback_type_index_left_of_collapse_index in type_dict.keys():
@@ -1077,7 +1083,7 @@ class SongData(object):
                 self.log_msg(logging.DEBUG, f"{log_id}NOT collapsing at negative device index {device_index_left_of_collapse_index}, min collapse index is -1")
 
 
-    def __shift_keys_right(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveDeviceList], key_of_add, value_to_add: ActiveDevice|ActiveDeviceList) -> dict[int, ActiveDevice]|dict[int,ActiveDeviceList]:
+    def __shift_keys_right(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveTrackDeviceList], key_of_add, value_to_add: ActiveDevice | ActiveTrackDeviceList) -> dict[int, ActiveDevice] | dict[int,ActiveTrackDeviceList]:
         log_id = "EAH.SD.__shift_keys_right: "
         # local_dict is either an active_track reference mapped by type index
         #     {callback_type_index=key_of_add: active_device_list=value_to_add}
@@ -1086,8 +1092,8 @@ class SongData(object):
         # "left slots" range is (0, key_of_add) if any
         # "right slots" range is (key_of_add, len(local_dict.keys()) if any (and index shifted right)
         # assumes local_dict is not empty
-        vals = [x.active_track.common_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
-        txt_to_add = value_to_add.active_track.common_name if isinstance(value_to_add, ActiveDeviceList) else value_to_add.common_name
+        vals = [x.active_track.common_name if isinstance(x, ActiveTrackDeviceList) else x.common_name for x in local_dict.values()]
+        txt_to_add = value_to_add.active_track.common_name if isinstance(value_to_add, ActiveTrackDeviceList) else value_to_add.common_name
         self.log_msg(logging.DEBUG, f"{log_id}input dict keys {local_dict.keys()} and values {vals} with input key={key_of_add}, value={txt_to_add}")
         right_slots = {j + 1: local_dict[j] for j in range(key_of_add, len(local_dict.keys()))}
         left_slots = {j: local_dict[j] for j in range(0, key_of_add)}
@@ -1098,11 +1104,11 @@ class SongData(object):
         if len(left_slots.keys()) > 0:
             local_dict.update(left_slots)
 
-        vals = [x.active_track.common_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
+        vals = [x.active_track.common_name if isinstance(x, ActiveTrackDeviceList) else x.common_name for x in local_dict.values()]
         self.log_msg(logging.DEBUG, f"{log_id}returning updated dict keys {local_dict.keys()} and values {vals}")
         return local_dict
 
-    def __shift_keys_left(self, local_dict: Dict[int, ActiveDevice]|Dict[int,ActiveDeviceList], key_before_del) -> Dict[int, ActiveDevice]|Dict[int,ActiveDeviceList]:
+    def __shift_keys_left(self, local_dict: Dict[int, ActiveDevice]|Dict[int,ActiveTrackDeviceList], key_before_del) -> Dict[int, ActiveDevice] | Dict[int,ActiveTrackDeviceList]:
         log_id = "EAH.SD.__shift_keys_left: "
         key_to_remove = key_before_del + 1
         # local_dict is either an active_track reference mapped by track type index
@@ -1115,7 +1121,7 @@ class SongData(object):
         # delete 2 of 3 == range(1, 3), 1 "left slots", 1 "right_slots"
         # delete 1 of 3 == range(0, 3), 0 "left slots", 2 "right slots"
         # returned local_dict has 2 keys [0, 1], one less than before
-        vals = [x.active_track.common_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
+        vals = [x.active_track.common_name if isinstance(x, ActiveTrackDeviceList) else x.common_name for x in local_dict.values()]
         self.log_msg(logging.DEBUG, f"{log_id}input dict keys {local_dict.keys()} and values {vals}")
         # self.log_msg(logging.DEBUG, f"{log_id} with input key {key_before_del} means remove key {key_to_remove}")
         if key_before_del == -1 and key_to_remove in local_dict.keys():
@@ -1132,7 +1138,7 @@ class SongData(object):
                     right_slots = {j - 1: local_dict[j] for j in range(key_to_remove + 1, len(local_dict.keys()))}
                 left_slots = {j: local_dict[j] for j in range(0, key_to_remove)}
 
-                if isinstance(local_dict[key_to_remove], ActiveDeviceList):
+                if isinstance(local_dict[key_to_remove], ActiveTrackDeviceList):
                     obj = local_dict[key_to_remove].active_track.live_obj
                 else:
                     obj = local_dict[key_to_remove].live_obj
@@ -1153,7 +1159,7 @@ class SongData(object):
         else:
             self.log_msg(logging.DEBUG, f"{log_id} assumption issue? input key {key_before_del} is not in the key set {local_dict.keys()}")
 
-        vals = [x.active_track.track_name if isinstance(x, ActiveDeviceList) else x.common_name for x in local_dict.values()]
+        vals = [x.active_track.track_name if isinstance(x, ActiveTrackDeviceList) else x.common_name for x in local_dict.values()]
         self.log_msg(logging.DEBUG, f"{log_id} returning updated dict keys {local_dict.keys()} and values {vals}")
         return local_dict
 
