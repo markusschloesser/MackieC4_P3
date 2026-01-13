@@ -347,11 +347,21 @@ class SongData(object):
         return rtn
 
     def get_song_index_for_callback_index(self, callback_type, callback_type_index):
+        """converts -1 callback_type_index input values to 0, for example, returns song_index of "plain track count" (return track index 0) instead "plain track count """ \
+        """- 1 (return track index -1).  Don't use the raw return value from this method to remove the item at the zero map type-index-key, at that level you need to use """ \
+        """the -1 value to remove the 0 index item.  This method won't return an OOB index value like -1. (which is ambiguous when referring to the 'index before' the """ \
+        """first return track in the 'song array' because that's the index of the last plain (regular visible) track (not -1)"""
         song_index = self.master_track_index
-        if callback_type == 0:
-            song_index = callback_type_index
-        if callback_type == 1:
-            song_index = self.plain_track_count + callback_type_index
+        if callback_type_index >= 0:
+            if callback_type == 0:
+                song_index = callback_type_index
+            if callback_type == 1:
+                song_index = self.plain_track_count + callback_type_index
+        else:
+            song_index = 0
+            if callback_type == 1:
+                song_index = self.plain_track_count
+
         return song_index
 
     @property
@@ -464,13 +474,19 @@ class SongData(object):
         if self.device_list_table[primary_key][track_type_index].active_track.selected_device_index is not None:
             self.device_list_table[primary_key][track_type_index].active_track.selected_device_index = None
 
-    def __update_track_devices(self, primary_key, track_type_index, device_count, selected_device_index):
-        stored_device_refs = self.get_track_device_map_by_callback_type(primary_key, track_type_index)
-        assert len(stored_device_refs.keys()) == device_count
-        track_ref = self.get_track_by_type_key(primary_key, track_type_index)
-        track_ref.device_count = device_count
-        assert selected_device_index < device_count
-        track_ref.selected_device_index = selected_device_index
+    def update_track_refs_device_properties(self, primary_key, track_type_index, device_count, selected_device_index):
+        """The track's device map should have already been updated, device count or selected device already changed (or neither because the selected device moved)"""
+        active_track_device_list_ref = self.get_active_device_list_reference(primary_key, track_type_index)
+        track_ref = active_track_device_list_ref.active_track
+        stored_device_refs = active_track_device_list_ref.devices
+        track_ref.device_count = device_count if len(stored_device_refs.keys()) == device_count else len(stored_device_refs.keys())
+        if 0 == track_ref.device_count:
+            track_ref.selected_device_index = None
+        elif selected_device_index is not None:
+            track_ref.selected_device_index = selected_device_index if selected_device_index < track_ref.device_count else track_ref.device_count - 1
+        else:
+            track_ref.selected_device_index = selected_device_index # selected_device_index == None
+        # is setting back the updated track_ref strictly necessary?
         self.set_track_by_type_key(primary_key, track_type_index, track_ref)
 
     def get_track(self, song_track_index)-> ActiveTrack | None:
@@ -778,23 +794,31 @@ class SongData(object):
         assert new_device_count == 0 == device_map_len
 
     def find_track_obj_type_and_index(self, track_obj):
+        """returns the "callback type of" and "type index of" the stored type 0 or 1 ActiveTrackDeviceList reference obj associated with """ \
+        """the input valid Live track object (visible or return). returns -1, -1 if no == match is found."""
+        # NOTE: a None "object" will == a not liveobj_valid "object" and that index would be returned (possibly spuriously)
         rtn = -1, -1
-        found = False
-        all_plain_track_list_refs = self.get_all_tracks_by_type_key(track_callback_types[0])
-        for i in all_plain_track_list_refs.keys():
-            track_ref = all_plain_track_list_refs[i]
-            if track_ref.active_track.track == track_obj:
-                rtn = 0, i
-                found = True
-                break
-        if not found:
-            all_return_track_list_refs = self.get_all_tracks_by_type_key(track_callback_types[1])
-            for i in all_return_track_list_refs.keys():
-                track_ref = all_return_track_list_refs[i]
+        if liveobj_valid(track_obj):
+            found = False
+            all_plain_track_list_refs = self.get_all_tracks_by_type_key(track_callback_types[0])
+            for i in all_plain_track_list_refs.keys():
+                track_ref = all_plain_track_list_refs[i]
                 if track_ref.active_track.track == track_obj:
-                    rtn = 1, i
+                    rtn = 0, i
                     found = True
                     break
+            if not found:
+                all_return_track_list_refs = self.get_all_tracks_by_type_key(track_callback_types[1])
+                for i in all_return_track_list_refs.keys():
+                    track_ref = all_return_track_list_refs[i]
+                    if track_ref.active_track.track == track_obj:
+                        rtn = 1, i
+                        found = True
+                        break
+            if not found:
+                master_track_ref = self.get_master_track(self.master_track_index)
+                if master_track_ref.track == track_obj:
+                    rtn = 2, self.master_track_index
         return rtn
 
 
