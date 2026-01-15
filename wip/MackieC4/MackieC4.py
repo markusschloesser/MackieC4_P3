@@ -619,7 +619,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def track_change(self):
         log_id = "C4.track_change: "
-        selected_track_index, selected_track_callback_type = self.find_and_assign_selected_track_index()
+        selected_track_index, selected_track_callback_type, callback_type_index = self.find_and_assign_selected_track_index()
         self.log_message(logging.DEBUG, f"{log_id}calling track_changed passing index {selected_track_index} only")
         self.__encoder_controller.track_changed(selected_track_index)
         # self.request_rebuild_midi_map()  <--- called by EC
@@ -641,20 +641,20 @@ class MackieC4(MackieC4ListenerMixin, object):
         #     self.log_message(logging.DEBUG, msg)
         #     msg = f"{log_id}"
 
-        if self.callback_type_track_counts[0] < next_type_counts[0] and self.callback_type_track_counts[1] == next_type_counts[1]:
-            # less plain type 0 tracks and same return type 1 tracks
+        is_type0_decrease = self.callback_type_track_counts[0] < next_type_counts[0] and self.callback_type_track_counts[1] == next_type_counts[1]
+        is_type0_increase = self.callback_type_track_counts[0] > next_type_counts[0] and self.callback_type_track_counts[1] == next_type_counts[1]
+        is_type1_decrease = self.callback_type_track_counts[0] == next_type_counts[0] and self.callback_type_track_counts[1] < next_type_counts[1]
+        is_type1_increase = self.callback_type_track_counts[0] == next_type_counts[0] and self.callback_type_track_counts[1] > next_type_counts[1]
+        if is_type0_decrease:
             found_changed_track_callback_type = 0
             callback_type_track_count = next_type_counts[0]
-        elif self.callback_type_track_counts[0] > next_type_counts[0] and self.callback_type_track_counts[1] == next_type_counts[1]:
-            # more plain type 0 tracks and same return type 1 tracks
+        elif is_type0_increase:
             found_changed_track_callback_type = 0
             callback_type_track_count = next_type_counts[0]
-        elif self.callback_type_track_counts[0] == next_type_counts[0] and self.callback_type_track_counts[1] < next_type_counts[1]:
-            # same plain type 0 tracks and less return type 1 tracks
+        elif is_type1_decrease:
             found_changed_track_callback_type = 1
             callback_type_track_count = next_type_counts[1]
-        elif self.callback_type_track_counts[0] == next_type_counts[0] and self.callback_type_track_counts[1] > next_type_counts[1]:
-            # same plain type 0 tracks and more return type 1 tracks
+        elif is_type1_increase:
             found_changed_track_callback_type = 1
             callback_type_track_count = next_type_counts[1]
 
@@ -820,7 +820,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         log_id = "C4.tracks_change: "
 
         # selected_index, callback_track_type_of_selected_index = self.find_and_assign_selected_track_index()
-        selected_index, callback_track_type_of_selected_index, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
+        selected_index, callback_track_type_of_selected_index, callback_type_index, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
         found_changed_track_callback_type, found_callback_type_track_count = self.find_changed_track_callback_type()
         # dtls = f"(selected_index={selected_index}, callback_track_type_of_selected_index={callback_track_type_of_selected_index}, "
         # found_type = '2 (master - always 1 track)'
