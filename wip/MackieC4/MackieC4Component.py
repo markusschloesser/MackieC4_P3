@@ -96,25 +96,7 @@ class MackieC4Component(object):
         return self.__main_script.processing_track_device_state_change()
 
     def get_device_list(self, container):
-        """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively."""
-        # device_list = track_util.get_racks_recursive(track)  # this refers to the method used by Ableton in track_selection (which didn't work, but I'll leave it in here for now)
-        device_list = []
-        for device in container:
-            if len(device_list) < 127:  # now limited to 127 devices, because some drum racks have over 136 and that kind of breaks it
-                device_list.append(device)
-                if device.can_have_chains:  # is a rack and it's open
-                    # if device.view.is_showing_chain_devices:  # this makes device list foldable, which wouldn't work with current script.
-                    # So for now, everything is a flattened list
-                    for ch in device.chains:
-                        chain_devices = [d for ch in device.chains for d in self.get_device_list(ch.devices)]
-                        for d in chain_devices:
-                            if len(device_list) < 127:
-                                device_list.append(d)
-                            else:
-                                break
-            else:
-                break
-        return device_list
+        return self.__main_script.get_device_list(container) # moved up so C4 class can use
 
 
 def make_interpolater(Live_value_min, Live_value_max, C4_min, C4_max):
