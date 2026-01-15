@@ -144,7 +144,7 @@ banks without changing selected parameters. """
         return ActiveDevice(self.device, new_device_index, self.parameter_count, self.selected_parameter_index, self.track_index, self.track_index_by_type)
 
     def __str__(self):
-        if self is None:
+        if self is None:  #  :)
             return "None"
         else:
             return self.to_string()
@@ -644,6 +644,7 @@ class SongData(object):
         self._insert_track_slot(tracks_of_type, track_index_by_type, track_device_list_ref)
 
     def remove_track(self, song_track_index):
+        """input song_track_index values should be >= 0 and 'left of' the index to remove"""
         rtns_index = song_track_index - self.plain_track_count
         log_msg = f"EAH.SD.remove_track: at song track index {song_track_index}"
         self.log_msg(logging.DEBUG, log_msg)
@@ -1522,10 +1523,10 @@ class EncoderAssignmentHistory(MackieC4Component):
                 # extended_device_list = self.get_device_list(track_obj.devices)
                 if found_changed_track_callback_type == 1:
                     self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at returns offset track index {rtns_offset + at_index}")
-                    self.track_added(rtns_offset + at_index, track_obj, is_selected=False)
+                    self.track_added(rtns_offset + at_index, track_obj, is_selected=False, found_changed_track_callback_type=1)
                 else:
                     self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at plains track index {at_index}")
-                    self.track_added(at_index, track_obj, is_selected=False)
+                    self.track_added(at_index, track_obj, is_selected=False, found_changed_track_callback_type=0)
             at_index += 1
             table_size = len(self.data.get_all_tracks_by_type_key(t_type))
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
@@ -1663,19 +1664,19 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
 
-    def track_deleted(self, track_index, is_selected=True):
+    def track_deleted(self, track_index_before_delete_index, is_selected=True):
         """input track_index value should be 'before' (one less than) the index to be deleted"""
         log_id = "EAH.track_deleted: "
         # if self.last_selected_track_index != track_index:
         #     msg = f"{log_id} deleting track index {track_index} that is not last_selected_index {self.last_selected_track_index}"
         #     self.main_script().log_message(logging.DEBUG, msg)
-        track_ref = self.data.get_track(track_index)
+        # track_ref = self.data.get_track(track_index_before_delete_index)
         # self.main_script().log_message(logging.DEBUG, f"{log_id}removing track_ref {track_ref.track_name} at index {track_index}")
-        self.data.remove_track(track_index)
+        self.data.remove_track(0 if track_index_before_delete_index < 0 else track_index_before_delete_index)
         if is_selected:
-            self.last_selected_track_index = 0 if track_index < 1 else track_index - 1
+            self.last_selected_track_index = 0 if track_index_before_delete_index < 1 else track_index_before_delete_index
         else:
-            self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
+            self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index
             # self.main_script().log_message(logging.DEBUG, f"{log_id}removed unselected track reference at song index {track_index}")
         # track_ref = self.data.get_track(self.last_selected_track_index)
         # self.main_script().log_message(logging.DEBUG, f"{log_id}selected track_ref is now {track_ref.track_name} at index {self.last_selected_track_index}")

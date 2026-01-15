@@ -434,7 +434,10 @@ class EncoderController(MackieC4Component, Component):
         else:
             if not liveobj_valid(next_active_track_ref.track) and liveobj_valid(self.selected_track):
                 msg = f"{log_id}stored active_track {next_active_track_ref.track_name} is not valid and selected track is valid {self.selected_track.name} "
-                self.main_script().log_message(logging.DEBUG, msg + "")
+                self.main_script().log_message(logging.WARNING, msg + "updating invalid stored reference and re-entering")
+                self.__eah.data.remove_track(0 if track_index < 1 else track_index - 1) # pass the "index before" the track to be removed
+                self.__eah.data.add_track(self.selected_track, next_active_track_ref.type, track_index)
+                self.track_changed(track_index) # stored track is valid now so we can process track_changed()
                 return
             else:
                 selected_device_index = next_active_track_ref.selected_device_index # next_active_track_ref.device_count
@@ -454,9 +457,9 @@ class EncoderController(MackieC4Component, Component):
                         # self.__eah.next_selected_device = None
                     elif nbr_devices > next_active_track_ref.device_count:
                         selected_device_index = nbr_devices - 1
-                        msg = f"{log_id}pending device change, device added, index is last {selected_device_index}"
+                        msg = f"{log_id}pending device change, device added, selected index is last device {selected_device_index}"
                     else:
-                        msg = f"{log_id}assumption issue? pending device change, device changed, index is still {selected_device_index}"
+                        msg = f"{log_id}pending device change, device changed because track changed and selected index is {selected_device_index} here too"
                     self.main_script().log_message(logging.DEBUG, msg)
                 else: # selected_device_index is None or this track change is not a self.__pending_device_change case
                     log_idx = "None" if selected_device_index is None else selected_device_index
@@ -599,11 +602,13 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.unselected_tracks_changed(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
 
-    def track_deleted(self, track_index):
-        # log_id = "EC.track_deleted: "
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}at index: {track_index}")
-        self.__eah.track_deleted(track_index)
-        self.__update_selected_track(track_index)
+    def track_deleted(self, next_selected_track_index):
+        log_id = "EC.track_deleted: "
+        self.main_script().log_message(logging.DEBUG, f"{log_id}stored ref object at song index {next_selected_track_index} will be deleted")
+        self.__eah.track_deleted(0 if next_selected_track_index < 1 else next_selected_track_index - 1)
+        next_ref = self.__eah.data.get_active_device_list_at_song_index(next_selected_track_index)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}shifted stored ref at song index {next_selected_track_index} is now {next_ref.active_track.track_name}")
+        self.__update_selected_track(next_selected_track_index)
 
     def __update_selected_track(self, track_index):
         log_id = "EC.__update_selected_track: "
@@ -613,9 +618,15 @@ class EncoderController(MackieC4Component, Component):
         self.selected_track = track_obj
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
-            self.__eah.track_changed(track_index)
+            track_ref = self.__eah.data.get_active_device_list_at_song_index(track_index)
+            if liveobj_changed(self.selected_track, track_ref.active_track.track):
+                msg = f"{log_id}processing track change, song selected track {self.selected_track.name} "
+                self.main_script().log_message(logging.DEBUG, msg + f"does NOT match stored selected track {track_ref.active_track.track_name}")
+                self.__eah.track_changed(track_index)
+            else:
+                self.main_script().log_message(logging.DEBUG, f"{log_id}pass, song selected track already matches stored selected track {track_ref.active_track.track_name}")
         # self.main_script().log_message(logging.DEBUG, f"{log_id}selected tk after: {0}".format(self.selected_track.name))
-        self.refresh_state()  # class local refresh
+        self.refresh_state()  # class local refresh, resets "modifier is pressed" states to "released"
 
         extended_device_list = self.get_device_list(self.selected_track.devices)
         last_selected_device_index = self.__eah.last_selected_device_index # at track_index
