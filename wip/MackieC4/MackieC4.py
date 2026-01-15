@@ -840,17 +840,22 @@ class MackieC4(MackieC4ListenerMixin, object):
             tracks_of_type = self.song().visible_tracks
             if self.track_count > new_track_count:
                 if self.track_count - new_track_count > 1:
-                    tracks_removed = self.track_count - new_track_count
+                    nbr_tracks_removed = self.track_count - new_track_count
                     if callback_track_type_of_selected_index == 1:
                         tracks_of_type = self.song().return_tracks
-                    msg = f"{log_id}calling ec.tracks_deleted"#(index={selected_index}, cbt_track_count({len(tracks_of_type)}), track_type={callback_track_type_of_selected_index}"
+                    # (index={selected_index}, cbt_track_count({len(tracks_of_type)}), track_type={callback_track_type_of_selected_index}"
+                    msg = f"{log_id}calling ec.tracks_deleted"
                     self.log_message(logging.DEBUG, msg)
                     self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                 else:
-                    self.log_message(logging.DEBUG,f"{log_id}calling track_deleted")# passing index {selected_index} only")
                     if selected_index_changed and selected_index < self.last_selected_track_index:
-                        selected_index += 1
-                    self.__encoder_controller.track_deleted(selected_index)
+                        if callback_track_type_of_selected_index == 1:
+                            tracks_of_type = self.song().return_tracks
+                        self.log_message(logging.DEBUG, f"{log_id}calling tracks_deleted, last track of type was deleted, selected index moved left {selected_index}")
+                        self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
+                    else:
+                        self.log_message(logging.DEBUG, f"{log_id}calling track_deleted at index {selected_index}")
+                        self.__encoder_controller.track_deleted(selected_index)
                 #self.request_rebuild_midi_map()   <-- called by EC
             elif self.track_count < new_track_count:
                 tracks_of_type = self.song().visible_tracks
