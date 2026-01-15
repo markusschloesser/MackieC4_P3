@@ -815,11 +815,12 @@ class MackieC4(MackieC4ListenerMixin, object):
         # elif found_changed_track_callback_type == 0:
         #     found_type = "0 (visible)"
         # dtls += f"found_cb_type={found_type}, found_cb_type_track_count={found_callback_type_track_count})"
-        tracks = self.song().visible_tracks + self.song().return_tracks
+        # tracks = self.song().visible_tracks + self.song().return_tracks
         # msg = f"{log_id}callback event with {len(self.song().visible_tracks)} + {len(self.song().return_tracks)} = {len(tracks)} visible and return tracks in song "
         # self.log_message(logging.DEBUG, msg)
         # self.log_message(logging.DEBUG, dtls)
-        new_track_count = len(tracks)
+        selected_index_changed = self.last_selected_track_index != selected_index
+        new_track_count = nbr_song_tracks
 
         if callback_track_type_of_selected_index == found_changed_track_callback_type:
             tracks_of_type = self.song().visible_tracks
@@ -833,6 +834,8 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                 else:
                     self.log_message(logging.DEBUG,f"{log_id}calling track_deleted")# passing index {selected_index} only")
+                    if selected_index_changed and selected_index < self.last_selected_track_index:
+                        selected_index += 1
                     self.__encoder_controller.track_deleted(selected_index)
                 #self.request_rebuild_midi_map()   <-- called by EC
             elif self.track_count < new_track_count:
