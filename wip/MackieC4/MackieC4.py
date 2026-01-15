@@ -678,11 +678,25 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def set_selected_track_index(self, next_selected_track_index=0, selected_callback_type=0, selected_callback_type_index=0, nbr_song_tracks=1):
         log_id = "C4.set_selected_track_index: "
-        if next_selected_track_index != self.last_selected_track_index and selected_callback_type != self.last_selected_track_callback_type:
-            self.log_message(logging.DEBUG,f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to next index {next_selected_track_index}")
+        if next_selected_track_index != self.last_selected_track_index:
+            msg = f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to next index {next_selected_track_index}"
+            self.log_message(logging.DEBUG,msg)
             self.last_selected_track_index = next_selected_track_index # "song index" is ambiguous at first return track index
-            self.last_selected_track_callback_type = selected_callback_type
-            self.last_selected_callback_type_index = selected_callback_type_index
+            if selected_callback_type != self.last_selected_track_callback_type:
+                msg = f"{log_id}setting self.last_selected_track_callback_type {self.last_selected_track_callback_type} to next type {selected_callback_type}"
+                self.log_message(logging.DEBUG, msg)
+                self.last_selected_track_callback_type = selected_callback_type
+                if selected_callback_type_index != self.last_selected_callback_type_index:
+                    msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
+                    self.log_message(logging.DEBUG, msg)
+                    self.last_selected_callback_type_index = selected_callback_type_index
+                else:
+                    msg = f"{log_id}type index of next selected track remains {selected_callback_type_index} "
+                    self.log_message(logging.DEBUG, msg)
+            else: # track index changed but callback type didn't, type index must have changed
+                msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
+                self.log_message(logging.DEBUG, msg)
+                self.last_selected_callback_type_index = selected_callback_type_index
         else:
             self.log_message(logging.DEBUG, f"{log_id}self.last_selected_track_index {self.last_selected_track_index} is already {next_selected_track_index}")
         return self.last_selected_track_index, self.last_selected_track_callback_type, self.last_selected_callback_type_index
@@ -924,9 +938,11 @@ class MackieC4(MackieC4ListenerMixin, object):
         # note that the tid input index here can include non-visible track indices (tid is 3 for track 2 if track 1 is a collapsed Group holding 2 tracks)
         log_id = "C4.selected_device_change_state: "
         self.log_message(logging.DEBUG, f"{log_id}callback event for {track.name} with callback type {type} at input index {tid}")
-        selected_index, callback_track_type_of_selected_index, track_count = self.find_track_index(track)
+        selected_index, callback_track_type_of_selected_index, cbtt_index_of_selected_index, track_count = self.find_track_index(track)
         type_key = "visible" if type == 0 else "return" if type == 1 else "master"
-        self.log_message(logging.DEBUG, f"{log_id}{type_key} track {track.name} with callback type {type} at found index {selected_index}")
+        type_index = cbtt_index_of_selected_index
+        msg = f"{log_id}found {type_key} track {track.name} with callback type {type} at type {type_index} and song {selected_index} indexes"
+        self.log_message(logging.DEBUG, msg)
 
         if self.last_selected_track_index == selected_index:
             self.log_message(logging.DEBUG, f"{log_id}processing device change on script's selected track")
