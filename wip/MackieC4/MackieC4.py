@@ -74,6 +74,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__processing_track_state_change = False
         self._selected_track_index = 0
         self._selected_track_callback_type = 0
+        self._selected_callback_type_index = 0
 
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
@@ -671,19 +672,20 @@ class MackieC4(MackieC4ListenerMixin, object):
         # - determine the 'song tracks index' of Live's selected track
         # - assign the last_selected_track_index property the determined 'selected Track Index' value
         # - return the new 'song index' value and the 'callback type' of the (visible_tracks or return_tracks) list containing the selected track
-        selected_index, selected_callback_type, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
-        return self.set_selected_track_index(selected_index, selected_callback_type)
+        selected_index, selected_callback_type, callback_type_index, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
+        return self.set_selected_track_index(selected_index, selected_callback_type, callback_type_index)
 
 
-    def set_selected_track_index(self, next_selected_track_index=0, selected_callback_type=0, nbr_song_tracks=1):
+    def set_selected_track_index(self, next_selected_track_index=0, selected_callback_type=0, selected_callback_type_index=0, nbr_song_tracks=1):
         log_id = "C4.set_selected_track_index: "
-        if next_selected_track_index != self.last_selected_track_index:
+        if next_selected_track_index != self.last_selected_track_index and selected_callback_type != self.last_selected_track_callback_type:
             self.log_message(logging.DEBUG,f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to next index {next_selected_track_index}")
-            self.last_selected_track_index = next_selected_track_index
+            self.last_selected_track_index = next_selected_track_index # "song index" is ambiguous at first return track index
             self.last_selected_track_callback_type = selected_callback_type
+            self.last_selected_callback_type_index = selected_callback_type_index
         else:
             self.log_message(logging.DEBUG, f"{log_id}self.last_selected_track_index {self.last_selected_track_index} is already {next_selected_track_index}")
-        return self.last_selected_track_index, self.last_selected_track_callback_type
+        return self.last_selected_track_index, self.last_selected_track_callback_type, self.last_selected_callback_type_index
 
     def find_track_index(self, track_obj):
         log_id = "C4.find_track_index: "
@@ -691,33 +693,37 @@ class MackieC4(MackieC4ListenerMixin, object):
         song_tracks = self.song().visible_tracks + self.song().return_tracks
         nbr_song_tracks = len(song_tracks)
 
-        selected_index = 0
+        selected_song_index = 0
         found = target_track in song_tracks
 
         if found:
             for i, track in enumerate(song_tracks):
                 if track == target_track:
-                    selected_index = i
+                    selected_song_index = i
                     break
         else:
             if target_track == self.song().master_track:
                 # tracks = self.song().visible_tracks + self.song().return_tracks
                 # this script stores master track info "one past" the tracks above
-                selected_index = nbr_song_tracks
+                selected_song_index = nbr_song_tracks
             else:
                 # signal that something bad happened - selected track
-                self.log_message(logging.ERROR,f"{log_id}setting selected index to a bad value {selected_index}")
-                selected_index = 555
+                self.log_message(logging.ERROR,f"{log_id}setting selected index to a bad value {selected_song_index}")
+                selected_song_index = 555
 
-        rtn_track_callback_type = 555
-        if selected_index < len(self.song().visible_tracks):
-            rtn_track_callback_type = 0
-        elif selected_index < nbr_song_tracks:
-            rtn_track_callback_type = 1
-        elif selected_index == nbr_song_tracks:
-            rtn_track_callback_type = 2
+        track_callback_type = 555
+        callback_type_index = 555
+        if selected_song_index < len(self.song().visible_tracks):
+            track_callback_type = 0
+            callback_type_index = selected_song_index
+        elif selected_song_index < nbr_song_tracks:
+            track_callback_type = 1
+            callback_type_index = selected_song_index - len(self.song().visible_tracks)
+        elif selected_song_index == nbr_song_tracks:
+            track_callback_type = 2
+            callback_type_index = nbr_song_tracks
 
-        return selected_index, rtn_track_callback_type, nbr_song_tracks
+        return selected_song_index, track_callback_type, callback_type_index, nbr_song_tracks
         # if selected_index != self.last_selected_track_index:
         #     self.log_message(logging.DEBUG,f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to found index {selected_index}")
         #     self.last_selected_track_index = selected_index
@@ -743,6 +749,14 @@ class MackieC4(MackieC4ListenerMixin, object):
     @last_selected_track_callback_type.setter
     def last_selected_track_callback_type(self, cb_type):
         self._selected_track_callback_type = cb_type
+
+    @property
+    def last_selected_callback_type_index(self):
+        return self._selected_callback_type_index
+
+    @last_selected_callback_type_index.setter
+    def last_selected_callback_type_index(self, index):
+        self.last_selected_callback_type_index = index
 
     def scene_change(self): 
         selected_scene = self.song().view.selected_scene
