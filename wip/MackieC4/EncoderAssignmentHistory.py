@@ -1392,12 +1392,13 @@ class EncoderAssignmentHistory(MackieC4Component):
     def last_selected_track_device_bank_view_index(self):
         """ index of the selected track's current device-bank-view.  Which could differ from the device-bank of the track's selected device """
         rtn = 0
-        if self.data.get_track(self.last_selected_track_index).track_device_bank_view_index is not None:
+        if self.data.get_track(self.last_selected_track_index) is not None and self.data.get_track(self.last_selected_track_index).track_device_bank_view_index is not None:
             rtn = self.data.get_track(self.last_selected_track_index).track_device_bank_view_index
         return rtn
     @last_selected_track_device_bank_view_index.setter
     def last_selected_track_device_bank_view_index(self, next_bank_view_index):
-        self.data.get_track(self.last_selected_track_index).track_device_bank_view_index = next_bank_view_index
+        if self.data.get_track(self.last_selected_track_index) is not None:
+            self.data.get_track(self.last_selected_track_index).track_device_bank_view_index = next_bank_view_index
         
     @property
     def last_selected_device_parameter_bank_view_index(self):

@@ -642,13 +642,22 @@ class EncoderController(MackieC4Component, Component):
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
             track_ref = self.__eah.data.get_active_device_list_at_song_index(track_index)
-            if liveobj_changed(self.selected_track, track_ref.active_track.track):
-                msg = f"{log_id}processing track change, song selected track {self.selected_track.name} "
-                self.main_script().log_message(logging.DEBUG, msg + f"does NOT match stored selected track {track_ref.active_track.track_name}")
+            msg = f"{log_id}processing track change, song selected track {self.selected_track.name} "
+            if track_ref is not None:
+                if liveobj_changed(self.selected_track, track_ref.active_track.track):
+                    self.main_script().log_message(logging.DEBUG, msg + f"changed versus stored track {track_ref.active_track.track_name}")
+                else:
+                    self.main_script().log_message(logging.DEBUG, msg + f"already matches stored track {track_ref.active_track.track_name}")
                 self.__eah.track_changed(track_index)
+                insert = "is now"
             else:
-                self.main_script().log_message(logging.DEBUG, f"{log_id}pass, song selected track already matches stored selected track {track_ref.active_track.track_name}")
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}selected tk after: {0}".format(self.selected_track.name))
+                msg += f"is not stored at song index {track_index}, None atdl_ref returned, no stored 'last selected' updates based on None"
+                self.main_script().log_message(logging.DEBUG, msg)
+                insert = "remains"
+
+            log_list = [self.__eah.last_selected_track_index, self.__eah.last_selected_track_callback_type, self.__eah.last_selected_track_callback_type_index]
+            self.main_script().log_message(logging.DEBUG, f"{log_id}song index {track_index} {insert} last selected [song index, cb_type, type_index] {log_list}")
+
         self.refresh_state()  # class local refresh, resets "modifier is pressed" states to "released"
 
         extended_device_list = self.get_device_list(self.selected_track.devices)
