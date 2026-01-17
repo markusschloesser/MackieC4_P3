@@ -548,14 +548,20 @@ class EncoderController(MackieC4Component, Component):
                         self.__pending_device_change = False
                 return
 
-    def tracks_added(self, track_index, tracks, callback_type):
-        self.__eah.tracks_added(track_index, tracks, callback_type)
+    def tracks_added(self, track_index, tracks_of_type, callback_track_type_of_selected_index):
+        log_id = "EC.tracks_added: "
+        self.__eah.tracks_added(track_index, tracks_of_type, callback_track_type_of_selected_index)
         # (using same update selected track code as from self.track_deleted() instead of same update logic in track_added())
         self.__update_selected_track(track_index)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
+        self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[callback_track_type_of_selected_index])
 
     def unselected_tracks_added(self, found_changed_track_callback_type, callback_type_track_count):
+        log_id = "EC.unselected_tracks_added: "
         self.__eah.unselected_tracks_added(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
 
     def track_added(self, track_index, found_changed_track_callback_type):
         log_id = "EC.track_added: "
@@ -585,6 +591,9 @@ class EncoderController(MackieC4Component, Component):
                 self.song().view.select_device(device)
             else:
                 self.__update_chosen_plugin_device(device)  # device == None
+
+        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
         return
 
     def tracks_deleted(self, track_index, tracks_of_type, track_type=-1):
@@ -593,22 +602,36 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.tracks_deleted(track_index, tracks_of_type, track_type)
         self.main_script().log_message(logging.DEBUG, f"{log_id}updating selected track info at index: {track_index}")
         self.__update_selected_track(track_index)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[track_type]} tracks:")
+        self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[track_type])
 
     def unselected_tracks_deleted(self, found_changed_track_callback_type, callback_type_track_count):
+        log_id = "EC.unselected_tracks_deleted: "
         self.__eah.unselected_tracks_deleted(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
 
     def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
+        log_id = "EC.unselected_tracks_changed: "
         self.__eah.unselected_tracks_changed(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
 
-    def track_deleted(self, next_selected_track_index):
+    def track_deleted(self, next_selected_track_index, callback_track_type_of_selected_index, callback_type_index):
         log_id = "EC.track_deleted: "
         self.main_script().log_message(logging.DEBUG, f"{log_id}stored ref object at song index {next_selected_track_index} will be deleted")
-        self.__eah.track_deleted(0 if next_selected_track_index < 1 else next_selected_track_index - 1)
+        if callback_track_type_of_selected_index == 1 and callback_type_index == 0:
+            self.__eah.data.remove_track_by_callback_type(track_callback_types[callback_track_type_of_selected_index], callback_type_index)
+        else:
+            self.__eah.track_deleted(0 if next_selected_track_index < 1 else next_selected_track_index - 1)
+
         next_ref = self.__eah.data.get_active_device_list_at_song_index(next_selected_track_index)
         self.main_script().log_message(logging.DEBUG, f"{log_id}shifted stored ref at song index {next_selected_track_index} is now {next_ref.active_track.track_name}")
         self.__update_selected_track(next_selected_track_index)
+        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
+        self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[callback_track_type_of_selected_index])
 
     def __update_selected_track(self, track_index):
         log_id = "EC.__update_selected_track: "

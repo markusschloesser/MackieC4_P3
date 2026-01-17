@@ -329,6 +329,35 @@ class SongData(object):
         if self.__class_logging:
             self.logger(level, msg)
 
+    def log_dump(self):
+        self.log_dump_by_callback_track_type_key(track_callback_types[0])
+        self.log_dump_by_callback_track_type_key(track_callback_types[1])
+        self.log_dump_by_callback_track_type_key(track_callback_types[2])
+    def log_dump_with_devices(self):
+        self.log_dump_with_devices_by_callback_track_type_key(track_callback_types[0])
+        self.log_dump_with_devices_by_callback_track_type_key(track_callback_types[1])
+        self.log_dump_with_devices_by_callback_track_type_key(track_callback_types[2])
+
+    def log_dump_with_devices_by_callback_track_type_key(self, type_key):
+        log_id = "EAH.SD.dump_w_devs: "
+        msg = f"{log_id}{type_key} cb_type index "
+        dump_dict = self.get_all_tracks_by_type_key(type_key)
+        vals = [x.active_track.track_name if isinstance(x, ActiveTrackDeviceList) else str(x) for x in dump_dict.values()]
+        for key_index in dump_dict.keys():
+            atdl_ref = dump_dict[key_index]
+            device_map = atdl_ref.devices
+            d_vals = [x.device_name if isinstance(x, ActiveDevice) else str(x) for x in device_map.values()]
+            d_dump = f"{key_index}: {atdl_ref.active_track.track_name} "
+            self.log_msg(logging.DEBUG, msg + d_dump)
+            self.log_msg(logging.DEBUG, f"d_list {device_map.keys()}: {d_vals}")
+
+    def log_dump_by_callback_track_type_key(self, type_key):
+        log_id = "EAH.SD.dump: "
+        msg = f"{log_id}"
+        dump_dict = self.get_all_tracks_by_type_key(type_key)
+        vals = [x.active_track.track_name if isinstance(x, ActiveTrackDeviceList) else str(x) for x in dump_dict.values()]
+        self.log_msg(logging.DEBUG, f"{type_key} cb_type dict keys {dump_dict.keys()} and values {vals}")
+
     def get_callback_type_for_song_index(self, track_index):
         rtn = 3
         if track_index < self.plain_track_count:
