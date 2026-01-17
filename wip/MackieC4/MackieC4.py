@@ -621,7 +621,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         log_id = "C4.track_change: "
         selected_track_index, selected_track_callback_type, callback_type_index = self.find_and_assign_selected_track_index()
         self.log_message(logging.DEBUG, f"{log_id}calling track_changed passing index {selected_track_index} only")
-        self.__encoder_controller.track_changed(selected_track_index)
+        self.__encoder_controller.track_changed(selected_track_index, selected_track_callback_type, callback_type_index)
         # self.request_rebuild_midi_map()  <--- called by EC
 
     def find_changed_track_callback_type(self):
@@ -869,7 +869,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                         self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                     else:
                         self.log_message(logging.DEBUG, f"{log_id}calling track_deleted at index {selected_index}")
-                        self.__encoder_controller.track_deleted(selected_index)
+                        self.__encoder_controller.track_deleted(selected_index, callback_track_type_of_selected_index, callback_type_index)
                 #self.request_rebuild_midi_map()   <-- called by EC
             elif self.track_count < new_track_count:
                 tracks_of_type = self.song().visible_tracks

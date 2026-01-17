@@ -411,9 +411,8 @@ class EncoderController(MackieC4Component, Component):
     def track_moved(self, callback_track_type, next_song_index):
         self.__eah.track_moved(callback_track_type, next_song_index, self.selected_track)
 
-    def track_changed(self, track_index):
+    def track_changed(self, track_index, selected_track_callback_type, callback_type_index):
         log_id = "EC.track_changed: "
-        # not calling self.__update_selected_track(track_index) because it does too much like don't update EAH.last_selected_track_index yet
         self.selected_track = self.song().view.selected_track
 
         if liveobj_valid(self.selected_track):
@@ -436,8 +435,8 @@ class EncoderController(MackieC4Component, Component):
                 msg = f"{log_id}stored active_track {next_active_track_ref.track_name} is not valid and selected track is valid {self.selected_track.name} "
                 self.main_script().log_message(logging.WARNING, msg + "updating invalid stored reference and re-entering")
                 self.__eah.data.remove_track(0 if track_index < 1 else track_index - 1) # pass the "index before" the track to be removed
-                self.__eah.data.add_track(self.selected_track, next_active_track_ref.type, track_index)
-                self.track_changed(track_index) # stored track is valid now so we can process track_changed()
+                self.__eah.data.add_track(self.selected_track, selected_track_callback_type, track_index)
+                self.track_changed(track_index, selected_track_callback_type, callback_type_index) # stored track is valid now so we can process track_changed()
                 return
             else:
                 selected_device_index = next_active_track_ref.selected_device_index # next_active_track_ref.device_count
@@ -727,7 +726,7 @@ class EncoderController(MackieC4Component, Component):
             self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue? Live objects don't agree?, pass, not a drag&drop device movement event")
 
 
-    def device_added_deleted_or_changed(self, track, track_index, track_type):
+    def device_added_deleted_or_changed(self, track, track_index, track_type, track_type_index):
         log_id = "EC.device_added_deleted_or_changed: "
         updated_idx = -1
         # extended_device_list is the device list with enumerated/flattened rack devices
@@ -747,7 +746,7 @@ class EncoderController(MackieC4Component, Component):
                 log_msg += f"updating self.selected_track from <{sel_trk_nm}> to <{track.name}> and calling self.track_changed({track_index}) "
                 self.main_script().log_message(logging.DEBUG, log_msg + f"to update self.__eah before calling self.__eah.device_added_deleted_or_changed() below")
                 self.selected_track = track
-                self.track_changed(track_index)  # <--- ???
+                self.track_changed(track_index, track_type, track_type_index)  # <--- ???
                 # update the extended (flattened) device list for the changed selected Track
                 # extended_device_list = self.get_device_list(self.selected_track.devices)
 
