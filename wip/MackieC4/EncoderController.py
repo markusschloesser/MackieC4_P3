@@ -374,19 +374,20 @@ class EncoderController(MackieC4Component, Component):
 
         # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4.t_count after setup <{0}>".format(self.__eah.t_count))
         # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4.main_script().track_count after setup <{0}>".format(self.main_script().track_count))
-
-        tracks = song.visible_tracks + song.return_tracks
         selected_track = song.view.selected_track
-        found = False
-        for i, track in enumerate(tracks):
-            if track == selected_track:
-                self.track_changed(i)
-                found = True
-                break
-
-        if not found:  # this means master track is selected when the song session is initializing
-            index = len(tracks)
-            self.track_changed(index)
+        selected_index, selected_callback_type, callback_type_index, nbr_song_tracks = self.find_track_index(selected_track)
+        self.track_changed(selected_index, selected_callback_type, callback_type_index)
+        # tracks = song.visible_tracks + song.return_tracks
+        # found = False
+        # for i, track in enumerate(tracks):
+        #     if track == selected_track:
+        #         self.track_changed(i)
+        #         found = True
+        #         break
+        #
+        # if not found:  # this means master track is selected when the song session is initializing
+        #     index = len(tracks)
+        #     self.track_changed(index)
 
         self.selected_track = selected_track
         self.__eah.selected_track = self.selected_track
@@ -396,7 +397,8 @@ class EncoderController(MackieC4Component, Component):
             if len(devices_on_selected_trk) == 0:
                 self.__update_chosen_plugin_device(None)
             else:
-                self.song().view.select_device(devices_on_selected_trk[0])
+                if not devices_on_selected_trk[0] == song.view.selected_track.view.selected_device:
+                    self.song().view.select_device(devices_on_selected_trk[0])
 
         return
 
