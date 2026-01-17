@@ -676,7 +676,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         return self.set_selected_track_index(selected_index, selected_callback_type, callback_type_index)
 
 
-    def set_selected_track_index(self, next_selected_track_index=0, selected_callback_type=0, selected_callback_type_index=0, nbr_song_tracks=1):
+    def set_selected_track_index(self, next_selected_track_index, selected_callback_type, selected_callback_type_index, nbr_song_tracks=1):
         log_id = "C4.set_selected_track_index: "
         if next_selected_track_index != self.last_selected_track_index:
             msg = f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to next index {next_selected_track_index}"
@@ -921,7 +921,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                 msg = f"{log_id} passing on this event "#{dtls}"  # continuing to log in case of other triggers that shouldn't be ignored
                 self.log_message(logging.ERROR, msg)
 
-        self.set_selected_track_index(selected_index, callback_track_type_of_selected_index)
+        self.set_selected_track_index(selected_index, callback_track_type_of_selected_index, callback_type_index)
         self.update_callback_type_track_counts()
         self.track_count = new_track_count
         self.__processing_track_state_change = False
@@ -944,15 +944,17 @@ class MackieC4(MackieC4ListenerMixin, object):
         msg = f"{log_id}found {type_key} track {track.name} with callback type {type} at type {type_index} and song {selected_index} indexes"
         self.log_message(logging.DEBUG, msg)
 
+
         if self.last_selected_track_index == selected_index:
             self.log_message(logging.DEBUG, f"{log_id}processing device change on script's selected track")
-            if type == 1:
-                selected_index -= len(self.song().visible_tracks)
+            # if type == 1:
+            #     selected_index  = type_index
             self.__processing_track_device_state_change = True
-            self.__encoder_controller.device_list_changed(track, selected_index, type)
+            self.__encoder_controller.device_list_changed(track, cbtt_index_of_selected_index, type)
+            self.set_selected_track_index(selected_index, callback_track_type_of_selected_index, cbtt_index_of_selected_index, track_count)
             self.__processing_track_device_state_change = False
         else:
-            msg = f"{log_id}ignoring device change because found index {selected_index} is not the script's selected track index {self.last_selected_track_index}"
+            msg = f"{log_id}pass on device change handling, selected track is changing to index {selected_index} "
             self.log_message(logging.DEBUG, msg)
 
     def device_changestate(self, track, tid, type):

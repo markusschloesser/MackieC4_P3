@@ -98,6 +98,9 @@ class MackieC4Component(object):
     def get_device_list(self, container):
         return self.__main_script.get_device_list(container) # moved up so C4 class can use
 
+    def find_track_index(self, track_obj):
+        return self.__main_script.find_track_index(track_obj)
+
 
 def make_interpolater(Live_value_min, Live_value_max, C4_min, C4_max):
     # Figure out how 'wide' each range is
