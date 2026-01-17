@@ -629,7 +629,7 @@ class EncoderController(MackieC4Component, Component):
         else:
             self.__eah.track_deleted(0 if next_selected_track_index < 1 else next_selected_track_index - 1)
 
-        next_ref = self.__eah.data.get_active_device_list_at_song_index(next_selected_track_index)
+        next_ref = self.__eah.data.get_active_track_details_at_song_index(next_selected_track_index)
         self.main_script().log_message(logging.DEBUG, f"{log_id}shifted stored ref at song index {next_selected_track_index} is now {next_ref.active_track.track_name}")
         self.__update_selected_track(next_selected_track_index)
         self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
@@ -643,7 +643,7 @@ class EncoderController(MackieC4Component, Component):
         self.selected_track = track_obj
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
-            track_ref = self.__eah.data.get_active_device_list_at_song_index(track_index)
+            track_ref = self.__eah.data.get_active_track_details_at_song_index(track_index)
             msg = f"{log_id}processing track change, song selected track {self.selected_track.name} "
             if track_ref is not None:
                 if liveobj_changed(self.selected_track, track_ref.active_track.track):
