@@ -1687,22 +1687,23 @@ class EncoderAssignmentHistory(MackieC4Component):
                     # self.main_script().log_message(logging.DEBUG, msg + "no delete, incrementing")
                     at_index += 1
             else:
-                # execution lands here if the only return track is deleted
-                # execution might also land here if 2 or more unselected tracks were (not just removed from view but) deleted at the same time (likely not possible?)
-                if found_changed_track_callback_type == 1:
+                if found_changed_track_callback_type == 1: # return tracks
+                    # execution lands here if the selected track is the only return track and is deleted
                     msg = f"{log_id}only {t_type_key} track deleted, cb type index {at_index} track_ref is not liveobj valid "
                     self.main_script().log_message(logging.WARNING, msg + f"deleting track ref from {t_type_key} offset track index {rtns_offset + at_index}")
-                    # song_index_before_deleted_track = 0 if rtns_offset + at_index < 1 else rtns_offset + at_index - 1
                     type_index_before_deleted_track = 0 if at_index < 1 else at_index - 1
                     self.data.remove_track_by_callback_type(track_callback_types[found_changed_track_callback_type], type_index_before_deleted_track)
-                    self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
-                    # self.track_deleted(index_before_deleted_track, is_selected=False)
+                    # all we need to do here is remove the stored last return track reference, since the last return track was the selected track before it was deleted
+                    # the normal track_changed(i) handler for the next selected track will update self.last_selected_track_index (temp selection becomes main)
+                    # self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
+                    # self.last_selected_track_index = self.data.plain_track_count - 1
                 else:
+                    # execution might also land here if 2 or more unselected tracks were (not just removed from view but) deleted at the same time (likely not possible?)
                     msg = f"{log_id}unselected {t_type_key} tracks deleted, but selected cb type index {at_index} track is not liveobj valid "
                     self.main_script().log_message(logging.WARNING, msg + f"deleting track ref from {t_type_key} track index {at_index}")
                     type_index_before_deleted_track = 0 if at_index < 1 else at_index - 1
                     self.data.remove_track_by_callback_type(track_callback_types[found_changed_track_callback_type], type_index_before_deleted_track)
-                    self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
+                    # self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
                     # self.track_deleted(index_before_deleted_track, is_selected=False)
             tracks_of_type_index += 1
         table_size = len(self.data.get_all_tracks_by_type_key(t_type_key).keys())
