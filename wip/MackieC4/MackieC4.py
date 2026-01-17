@@ -693,7 +693,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                 else:
                     msg = f"{log_id}type index of next selected track remains {selected_callback_type_index} "
                     self.log_message(logging.DEBUG, msg)
-            else: # track index changed but callback type didn't, type index must have changed
+            else: # track index changed but callback type didn't, type index must have changed too
                 msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
                 self.log_message(logging.DEBUG, msg)
                 self.last_selected_callback_type_index = selected_callback_type_index
@@ -890,20 +890,23 @@ class MackieC4(MackieC4ListenerMixin, object):
         else:
             # still need to add or remove from correct track collection in EAH.SongData, but the current Song selected index points to the wrong
             # track collection in SongData, so special handling for this situation
-
-            if found_changed_track_callback_type == 0 and found_callback_type_track_count > self.callback_type_track_counts[0]: # old len(self.song().visible_tracks):
+            type0_added = found_changed_track_callback_type == 0 and found_callback_type_track_count > self.callback_type_track_counts[0]
+            type0_removed = found_changed_track_callback_type == 0 and found_callback_type_track_count < self.callback_type_track_counts[0]
+            type1_added = found_changed_track_callback_type == 1 and found_callback_type_track_count > self.callback_type_track_counts[1]
+            type1_removed = found_changed_track_callback_type == 1 and found_callback_type_track_count < self.callback_type_track_counts[1]
+            if type0_added:
                 msg = f"{log_id}calling ec.unselected_tracks_added"#{dtls}"
                 self.log_message(logging.DEBUG, msg)
                 self.__encoder_controller.unselected_tracks_added(found_changed_track_callback_type, found_callback_type_track_count)
-            elif found_changed_track_callback_type == 0 and found_callback_type_track_count < self.callback_type_track_counts[0]: # old len(self.song().visible_tracks):
+            elif type0_removed:
                 msg = f"{log_id}calling ec.unselected_tracks_deleted"#{dtls}"
                 self.log_message(logging.DEBUG, msg)
                 self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)
-            elif found_changed_track_callback_type == 1 and found_callback_type_track_count > self.callback_type_track_counts[1]: # old len(self.song().return_tracks):
+            elif type1_added:
                 msg = f"{log_id}calling ec.unselected_tracks_added"#{dtls}"
                 self.log_message(logging.DEBUG, msg)
                 self.__encoder_controller.unselected_tracks_added(found_changed_track_callback_type, found_callback_type_track_count)
-            elif found_changed_track_callback_type == 1 and found_callback_type_track_count < self.callback_type_track_counts[1]: # old len(self.song().return_tracks):
+            elif type1_removed:
                 msg = f"{log_id}calling ec.unselected_tracks_deleted"#{dtls}"
                 self.log_message(logging.DEBUG, msg)
                 self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)

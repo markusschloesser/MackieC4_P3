@@ -518,13 +518,14 @@ class EncoderController(MackieC4Component, Component):
                                 self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but song selected device is already {next_device.name}")
                                 if self.__chosen_plugin == next_device:
                                     self.main_script().log_message(logging.DEBUG, f"{log_id}and script chosen plugin is already {next_device.name}")
+                                    self.__update_chosen_plugin_device(next_device)
                                 else:
                                     if self.__pending_device_change:
                                         msg_prefix = f"{log_id}and a local device change is pending, "
                                     nm = "None" if self.__chosen_plugin is None else "Invalid" if not liveobj_valid(self.__chosen_plugin) else self.__chosen_plugin.name
                                     self.main_script().log_message(logging.DEBUG, f"{msg_prefix}processing local device change with index {selected_device_index}")
                                     self.__eah.device_added_deleted_or_changed(extended_device_list, next_device, selected_device_index)
-                                    self.main_script().log_message(logging.DEBUG, f"{msg_prefix} updating script chosen plugin from {nm} to {next_device.name}")
+                                    self.main_script().log_message(logging.DEBUG, f"{msg_prefix}updating script chosen plugin from {nm} to {next_device.name}")
                                     self.__update_chosen_plugin_device(next_device)
                                     self.__pending_device_change = False
                                     name = "None" if self.__eah.next_selected_device is None else "Invalid" if not liveobj_valid(self.__eah.next_selected_device) \
@@ -1872,7 +1873,8 @@ class EncoderController(MackieC4Component, Component):
             is_armable_track_selected = track_util.can_be_armed(self.selected_track)
 
             current_nbr_of_devices_on_selected_track = len(extended_device_list)
-            self.__eah.max_device_count = current_nbr_of_devices_on_selected_track  # set_max_device_count(current_nbr_of_devices_on_selected_track)
+            # value automatically calculated when devices are added/removed from track device list
+            # self.__eah.max_device_count = current_nbr_of_devices_on_selected_track  # set_max_device_count(current_nbr_of_devices_on_selected_track)
 
             nbr_of_full_device_pages = int(current_nbr_of_devices_on_selected_track / SETUP_DB_DEVICE_BANK_SIZE)  # / 8
             nbr_of_remainder_devices = int(current_nbr_of_devices_on_selected_track % SETUP_DB_DEVICE_BANK_SIZE)
@@ -1888,7 +1890,8 @@ class EncoderController(MackieC4Component, Component):
                 nbr_of_full_device_pages += 1
 
             # this is the max (channel mode) device page count (based on the current number of devices on the selected track)
-            self.__eah.selected_device_bank_count = nbr_of_full_device_pages
+            # value automatically calculated when devices are added/removed from track device list
+            # self.__eah.selected_device_bank_count = nbr_of_full_device_pages
 
             # the current selected bank should already be updated (and accurate)?
             current_device_bank_track = self.__eah.last_selected_track_device_bank_view_index  # .selected_device_bank_index

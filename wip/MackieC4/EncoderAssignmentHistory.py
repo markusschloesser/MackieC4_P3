@@ -1,6 +1,7 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 from __future__ import division
+
 import sys
 from itertools import zip_longest
 from typing import Dict
@@ -869,7 +870,9 @@ class SongData(object):
         if len(all_tracks_of_type) < self.__rekey_map_algorithm_swap_limit:
             if len(all_tracks_of_type) == len(old_track_list_of_type.keys()):
                 shallow_copy = old_track_list_of_type.copy()
+                missed = {}
                 for new_index, track_obj in enumerate(all_tracks_of_type):
+                    assigned = False
                     for track_ref_index in shallow_copy.keys():
                         track_list_ref = old_track_list_of_type[track_ref_index]
                         if track_list_ref.active_track.track == track_obj:
@@ -880,11 +883,21 @@ class SongData(object):
                             if track_obj == selected_track_obj and not next_selected_callback_type_index == new_index:
                                 e_msg = f"input track obj {selected_track_obj.name} found at different index {new_index} from input index {next_selected_callback_type_index}"
                                 raise RuntimeError(e_msg)
+                            assigned = True
+                            self.log_msg(logging.DEBUG, f"{log_id}{track_list_ref.active_track.track_name} assigned to new stored index {new_index}")
                             new_keyed_map[new_index] = track_list_ref
                             del shallow_copy[track_ref_index]  # so the inner search loop gets smaller after each match
                             break
+                    if not assigned:
+                        missed[new_index] = track_obj
+
 
                 self.log_msg(logging.DEBUG, f"{log_id}AFTER: updated {type_key} track count {len(new_keyed_map.keys())} vs input count {len(all_tracks_of_type)}")
+                if len(all_tracks_of_type) != len(new_keyed_map.keys()):
+                    msg = f"{log_id}no match found for input keys {shallow_copy.keys()} and values {[x.active_track.track_name for x in shallow_copy.values()]}"
+                    self.log_msg(logging.DEBUG, msg)
+                    msg = f"{log_id}missed keys {missed.keys()} and values {[x.name for x in missed.values()]}"
+                    self.log_msg(logging.DEBUG, msg)
                 assert len(all_tracks_of_type) == len(new_keyed_map.keys())
                 old_track_list_of_type.update(new_keyed_map)
         else: # too many tracks for worst case above? delete ref from old stored index location, then add back at new index location
@@ -920,8 +933,8 @@ class SongData(object):
                             self.update_master_track_index(master_device_list_ref)
                         else:
                             self.log_msg(logging.DEBUG, f"{log_id}oddly, after removing and re-adding track, master track ref index is already {self.master_track_index}")
-
-                    self.log_msg(logging.DEBUG, f"{log_id}AFTER: updated {type_key} track count {len(old_track_list_of_type.keys())} vs input count {len(all_tracks_of_type)}")
+                    msg = f"{log_id}AFTER: updated {type_key} track count {len(old_track_list_of_type.keys())} vs input count {len(all_tracks_of_type)}"
+                    self.log_msg(logging.DEBUG, msg)
                     assert len(all_tracks_of_type) == len(old_track_list_of_type.keys())
                 else:
                     self.log_msg(logging.WARNING, f"{log_id}oddly, callback type table keys didn't match?")
@@ -1151,7 +1164,7 @@ class SongData(object):
         # assumes local_dict is not empty
         vals = [x.active_track.common_name if isinstance(x, ActiveTrackDeviceList) else x.common_name for x in local_dict.values()]
         txt_to_add = value_to_add.active_track.common_name if isinstance(value_to_add, ActiveTrackDeviceList) else value_to_add.common_name
-        self.log_msg(logging.DEBUG, f"{log_id}input dict keys {local_dict.keys()} and values {vals} with input key={key_of_add}, value={txt_to_add}")
+        self.log_msg(logging.DEBUG, f"{log_id}with input key={key_of_add}, value={txt_to_add}, input dict keys {local_dict.keys()} and values {vals}")
         right_slots = {j + 1: local_dict[j] for j in range(key_of_add, len(local_dict.keys()))}
         left_slots = {j: local_dict[j] for j in range(0, key_of_add)}
 
