@@ -1301,6 +1301,10 @@ class EncoderAssignmentHistory(MackieC4Component):
         return self.data.get_callback_type_for_song_index(self.last_selected_track_index)
 
     @property
+    def last_selected_track_callback_type_index(self):
+        return self.data.get_callback_index_for_song_index(self.last_selected_track_index)
+
+    @property
     def is_plain_track_selected(self):
         """True if track at selected track index is listener callback type 0"""
         return self.last_selected_track_callback_type == 0
@@ -1316,7 +1320,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         return self.last_selected_track_callback_type == 2
 
     @property
-    def track_count(self):
+    def song_track_count(self):
         return self.data.total_track_count - 1 # self.data.total_track_count - 1 == self.data.master_track_index
 
     @property
@@ -1334,31 +1338,43 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     @property
     def last_selected_device_index(self):
-        return self.data.get_track(self.last_selected_track_index).selected_device_index
+        last_track_ref = self.data.get_track(self.last_selected_track_index)
+        idx = None if last_track_ref is None else 0 if not liveobj_valid(last_track_ref.track) else last_track_ref.selected_device_index
+        return idx
 
     @last_selected_device_index.setter
     def last_selected_device_index(self, device_index):
-        self.data.get_track(self.last_selected_track_index).selected_device_index = device_index
+        if isinstance(self.data.get_track(self.last_selected_track_index), ActiveTrack):
+            self.data.get_track(self.last_selected_track_index).selected_device_index = device_index
 
     @property
     def selected_device_bank_count(self):
-        return self.data.get_track(self.last_selected_track_index).device_bank_count
+        if self.data.get_track(self.last_selected_track_index) is not None:
+            return self.data.get_track(self.last_selected_track_index).required_device_banks
+        else:
+            return -1
 
-    @selected_device_bank_count.setter
-    def selected_device_bank_count(self, selected_device_bank_count):
-        self.data.get_track(self.last_selected_track_index).device_bank_count = selected_device_bank_count
+    # @selected_device_bank_count.setter
+    # def selected_device_bank_count(self, selected_device_bank_count):
+    #     self.data.get_track(self.last_selected_track_index).required_device_banks = selected_device_bank_count
 
     @property
     def selected_device_bank_index(self):
-        return self.data.get_track(self.last_selected_track_index).device_bank_index_of_selected_device
+        if self.data.get_track(self.last_selected_track_index) is not None:
+            return self.data.get_track(self.last_selected_track_index).device_bank_index_of_selected_device
+        else:
+            return -1
 
     @property
     def max_device_count(self):
-        return self.data.get_track(self.last_selected_track_index).device_count
+        if self.data.get_track(self.last_selected_track_index) is not None:
+            return self.data.get_track(self.last_selected_track_index).device_count
+        else:
+            return -1
 
-    @max_device_count.setter
-    def max_device_count(self, max_device_count):
-        self.data.get_track(self.last_selected_track_index).device_count = max_device_count
+    # @max_device_count.setter
+    # def max_device_count(self, max_device_count):
+    #     self.data.get_track(self.last_selected_track_index).device_count = max_device_count
 
     @property
     def max_last_selected_track_device_parameter_bank_nbr(self, t_d_idx=None):
@@ -1366,7 +1382,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         if device_ref is not None:
             return device_ref.required_parameter_banks
         else:
-            return 0
+            return -1
 
     @property
     def last_selected_track_device_parameter_bank_nbr(self, t_d_idx=None):
