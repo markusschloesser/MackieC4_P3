@@ -119,8 +119,13 @@ class ActiveDevice:
     def __init__(self, dev_obj, dev_index=0, parameter_count=0, selected_parameter_index=0, song_track_index=0, callback_type_index=0):
         self.device = dev_obj
         self.index = dev_index
+        """device's index-key in its device map"""
         self.track_index = song_track_index
+        """song track index of track holding device's device map"""
         self.track_index_by_type = callback_type_index
+        """callback type index of track holding device's map"""
+        # self.type = 0  <---- needed here?
+        # can't find device's track by callback type without using "song index" and "plain track count" to calculate (return or master types)
         self._parameter_count = parameter_count
         self._selected_parameter_index = selected_parameter_index
         """ index of this device's selected parameter in the device's parameter list """
@@ -245,7 +250,7 @@ class ActiveDeviceParameter:
         nm = "None"
         if not liveobj_valid(self.param):
             nm = "Invalidobj"
-        elif self.device.name is not None:
+        elif self.param.name is not None:
             nm = self.param.name
         return nm
 
