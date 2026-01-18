@@ -215,28 +215,77 @@ banks without changing selected parameters. """
     def device_parameter_bank_view_index(self, next_bank_index):
         self._device_view_parameter_bank_index = next_bank_index
 
+class ActiveDeviceParameter:
+    """This class is strictly for storing the enabled status of track 'sends' which are (a list of) 'device parameters' of the track's 'mixer device' """ \
+    """Return track 'sends' are disabled by default but can be enabled (by right-clicking the send and choosing enable)"""
+    def __init__(self, param_obj, param_index=0, song_track_index=0, callback_track_type=0, callback_type_index=0):
+        self.param = param_obj
+        self.index = param_index
+        self.track_index = song_track_index
+        self.track_callback_type = callback_track_type
+        self.track_index_by_type = callback_type_index
+
+    @property
+    def is_enabled(self):
+        rtn = True
+        if self.track_callback_type == 1:
+            rtn = liveobj_valid(self.param) and self.param.is_enabled
+        return rtn
+
+    @property
+    def live_obj(self):
+        return self.param
+
+    @property
+    def common_name(self):
+        return self.param_name
+
+    @property
+    def param_name(self):
+        nm = "None"
+        if not liveobj_valid(self.param):
+            nm = "Invalidobj"
+        elif self.device.name is not None:
+            nm = self.param.name
+        return nm
 
 class ActiveTrackDetails:
 
-    def __init__(self, active_track_ref: ActiveTrack, devices=None):
+    def __init__(self, active_track_ref: ActiveTrack, devices=None, sends=None):
 
         self.active_track = active_track_ref
         self.devices = dict[int, ActiveDevice]({})
+        self.sends = dict[int, ActiveDeviceParameter]({})
         if devices is not None:
             self.build_device_map(devices)
+        if sends is not None:
+            self.build_sends_map(sends)
 
     def new_copy(self, new_song_index, new_type_index):
         track_ref = self.active_track.new_copy(new_song_index, new_type_index)
         copy = ActiveTrackDetails(track_ref)
         copy.devices = self.devices
+        copy.sends = self.sends
         return copy
 
     def build_device_map(self, new_devices=None):
         if new_devices is not None and len(new_devices) > 0:
             self.devices.clear()
+            new_map = {}
             for i, d in enumerate(new_devices):
                 d_ref = ActiveDevice(d, i, len(d.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
-                self.devices[i] = d_ref
+                new_map[i] = d_ref
+            self.set_track_device_map(new_map, 0)
+
+    def build_sends_map(self, new_sends):
+        if new_sends is not None and len(new_sends) > 0:
+            self.sends.clear()
+            new_map = {}
+            for i, p in enumerate(new_sends):
+                dp_ref = ActiveDeviceParameter(p, i, song_track_index=self.song_track_index,
+                                              callback_track_type=self.callback_type_key, callback_type_index=self.track_index_by_type)
+                new_map[i] = dp_ref
+            self.set_track_sends_map(new_map)
 
     @property
     def song_track_index(self):
@@ -294,6 +343,14 @@ class ActiveTrackDetails:
         # else:
         #     pass
         self.devices = device_map
+
+    def set_track_sends_map(self, sends_map: dict[int,ActiveDeviceParameter]):
+        self.sends = sends_map
+
+    def is_send_enabled(self, send_index):
+        """sends are disabled for example if they are controlled by automation or a macro. This method returns True 'is_enabled' for return track sends """ \
+        """that are greyed out in Live's GUI """
+        return self.sends[send_index].is_enabled
 
     def to_string(self):
         return self.active_track.to_string()
