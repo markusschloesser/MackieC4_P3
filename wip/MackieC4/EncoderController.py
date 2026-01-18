@@ -699,34 +699,40 @@ class EncoderController(MackieC4Component, Component):
         log_id = "EC.device_list_changed: "
         if track == self.selected_track and len(track.devices) == len(self.selected_track.devices):
             # only processing drag&drop movement of the selected device
+            type_key = track_callback_types[track_type]
             extended_device_list = self.get_device_list(self.selected_track.devices)
-            track_ref = self.__eah.data.get_track_by_type_key(track_callback_types[track_type], track_type_index)
+            track_dtls_ref = self.__eah.data.get_active_track_details_reference(type_key, track_type_index)
+            track_ref = track_dtls_ref.active_track  # self.__eah.data.get_track_by_type_key(type_key, track_type_index)
             stored_selected_device_index = track_ref.selected_device_index
-            stored_device_count = len(self.__eah.data.get_track_device_map_by_callback_type(track_callback_types[track_type], track_type_index).keys())
+            stored_device_count = track_dtls_ref.device_count  # len(self.__eah.data.get_track_device_map_by_callback_type(type_key, track_type_index).keys())
             if stored_device_count == track_ref.device_count:
                 if stored_device_count == len(extended_device_list):
                     selected_device_obj = self.selected_track.view.selected_device
-                    last_device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
+                    last_device_ref = track_dtls_ref.selected_device  # self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
                     last_device_ref_obj = None if last_device_ref is None else last_device_ref.device
                     if liveobj_valid(last_device_ref_obj) and selected_device_obj == last_device_ref_obj:
-                        self.__eah.data.rekey_device_list_by_track_callback_type(track_callback_types[track_type], track_type_index, extended_device_list, selected_device_obj)
-                        track_ref = self.__eah.data.get_track_by_type_key(track_callback_types[track_type], track_type_index)
-                        dtls = f"changed from {stored_selected_device_index} to {track_ref.selected_device_index}"
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}device move event processed successfully selected device index {dtls}")
+                        # once through both collections in one pass to skip rekeying lists that already match
+                        if not track_dtls_ref.has_matching_deviceobj_list(extended_device_list):
+                            # rekeying the data store is an exponentially growing operation
+                            self.__eah.data.rekey_device_list_by_track_callback_type(type_key, track_type_index, extended_device_list, selected_device_obj)
+                            track_ref = self.__eah.data.get_track_by_type_key(type_key, track_type_index)
+                            dtls = f"changed from {stored_selected_device_index} to {track_ref.selected_device_index}"
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}device move event processed successfully selected device index {dtls}")
+                        else:
+                            self.main_script().log_message(logging.DEBUG, f"{log_id}pass, no device move detected, next device list order already mapped")
                     else:
                         self.main_script().log_message(logging.DEBUG, f"{log_id}pass, no device move detected, selected device is changing")
                 else:
-                    dtls = f"{log_id}stored device list length {stored_device_count} not equal to changed device list length {len(extended_device_list)}"
-                    self.main_script().log_message(logging.DEBUG, dtls + ", pass, not a device move event")
+                    dtls = f"stored device list length {stored_device_count} not equal to changed device list length {len(extended_device_list)}"
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}pass, device list size is changing " + dtls)
             else:
-                dtls = f"{log_id}number of stored devices {stored_device_count} not equal to stored track ref device count {track_ref.device_count}"
-                self.main_script().log_message(logging.WARNING, dtls + ", defer processing to other event handlers, not a device move event")
-                d_map = self.__eah.data.get_track_device_map_by_callback_type(track_callback_types[track_type], track_type_index)
-                type_key = track_callback_types[track_type]
+                dtls = f"number of track details ref stored devices {stored_device_count} not equal to number of active track ref stored devices {track_ref.device_count}"
+                self.main_script().log_message(logging.WARNING, f"{log_id}pass, logic issue?" + dtls)
+                d_map = self.__eah.data.get_track_device_map_by_callback_type(type_key, track_type_index)
                 dtls = f"{log_id}{type_key} track ref at {type_key} index {track_type_index} has stored devices {[x.device_name for x in d_map.values()]}"
-                self.main_script().log_message(logging.WARNING, dtls)
+                self.main_script().log_message(logging.DEBUG, dtls)
         else:
-            self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue? Live objects don't agree?, pass, not a drag&drop device movement event")
+            self.main_script().log_message(logging.WARNING, f"{log_id}pass, assumption issue? Live objects don't agree? not a drag&drop device movement event")
 
 
     def device_added_deleted_or_changed(self, track, track_index, track_type, track_type_index):

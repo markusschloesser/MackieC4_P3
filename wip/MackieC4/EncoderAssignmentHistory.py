@@ -302,18 +302,29 @@ class ActiveTrackDetails:
         return self.active_track.index_by_type
     @property
     def device_count(self):
-        """ The number of devices on this Track """
+        """ The number of devices in the device map associated with this active track reference"""
+        count = len(self.devices.keys())
+        if self.active_track.device_count != count:
+            self.active_track.device_count = count
         return self.active_track.device_count
     @property
     def selected_device_index(self):
-        """ The index of the selected device in the device list (of size == device_count)"""
+        """ The index-key of the selected device in the active track's device map (of size == device_count)"""
         return self.active_track.selected_device_index
+
+    @property
+    def selected_device(self) -> ActiveDevice|None:
+        """the ActiveDevice reference obj stored at self.selected_device_index or None"""
+        if self.selected_device_index is not None and self.selected_device_index < self.device_count:
+            return self.devices[self.selected_device_index]
+        else:
+            return None
 
     @property
     def is_device_list_empty(self):
         return self.devices is None or len(self.devices.keys()) < 1
 
-    def has_matching_device_list(self, other_devices: dict[int, ActiveDevice]):
+    def has_matching_device_map(self, other_devices: dict[int, ActiveDevice]):
         rtn = True
         for this, that in zip_longest(self.devices.values(), other_devices.values()):
             if liveobj_valid(this.live_obj) and not liveobj_valid(that.live_obj):
@@ -326,7 +337,25 @@ class ActiveTrackDetails:
                 # both items are "not valid", this is a match that should only happen if both dict value lists contain 
                 # a "deleted device" reference at the same index at the time of comparison?
                 pass
-            elif liveobj_changed(this, that):
+            elif liveobj_changed(this.live_obj, that.live_obj):
+                rtn = False
+                break
+        return rtn
+
+    def has_matching_deviceobj_list(self, other_devices: list):
+        rtn = True
+        for this, that in zip_longest(self.devices.values(), other_devices):
+            if liveobj_valid(this.live_obj) and not liveobj_valid(that):
+                rtn = False
+                break
+            elif not liveobj_valid(this.live_obj) and liveobj_valid(that):
+                rtn = False
+                break
+            elif not (liveobj_valid(this.live_obj) or liveobj_valid(that)):  # !x and !y == !(x or y)
+                # both items are "not valid", this is a match that should only happen if both dict value lists contain
+                # a "deleted device" reference at the same index at the time of comparison?
+                pass
+            elif liveobj_changed(this.live_obj, that):
                 rtn = False
                 break
         return rtn
