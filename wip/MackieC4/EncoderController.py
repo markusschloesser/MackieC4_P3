@@ -1970,19 +1970,22 @@ class EncoderController(MackieC4Component, Component):
 
                 elif s_index < encoder_27_index:
                     if self.__filter_mst_trk_allow_audio:
-                        if not self.__eah.is_return_track_selected:
-                            send_param = self.__send_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE * 2)
-                            vpot_param = (send_param[0], VPOT_DISPLAY_WRAP)
+
+                        send_param = self.__send_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE * 2)
+                        param_obj = send_param[0]
+                        if liveobj_valid(param_obj) and param_obj.is_enabled:  # selected_track.mixer_device.sends[index].is_enabled
+                            vpot_param = (param_obj, VPOT_DISPLAY_WRAP)
+                            # encoder 17 index is (16 % 8) = send 0
+                            # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
+                            # if liveobj_valid(param_obj):
+                            #     vpot_display_text.set_text(param_obj, send_param[1])
+                            vpot_display_text.set_text(param_obj, send_param[1])
+                        else:
                             format_nbr = s_index % NUM_ENCODERS_ONE_ROW
                             if s_index in row_03_encoders:
                                 format_nbr += NUM_ENCODERS_ONE_ROW
-                            # encoder 17 index is (16 % 8) = send 0
-                            # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
-                            if liveobj_valid(send_param[0]):
-                                vpot_display_text.set_text(send_param[0], send_param[1])
-                        else:
-                            # return tracks don't have "sends" (can't send to themselves)
-                            pass  # vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+                            vpot_display_text.set_text(" ---- ", f"send{format_nbr}")
+
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
 
