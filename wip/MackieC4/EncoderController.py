@@ -48,6 +48,7 @@ class EncoderController(MackieC4Component, Component):
         Component.__init__(self, register_component=self.register_component, song=self.song())
         
         self.log_levels = main_script.script_log_levels
+        self.current_log_level = main_script.current_script_log_level
         # definition of modes, for refactoring various code to separate functions
         # this HAS TO BE up here. If further down in init, it will produce an error during initialization
         self.mode_functions = {
@@ -1987,10 +1988,11 @@ class EncoderController(MackieC4Component, Component):
                             #     vpot_display_text.set_text(param_obj, send_param[1])
                             vpot_display_text.set_text(param_obj, send_param[1])
                         else:
-                            format_nbr = s_index % NUM_ENCODERS_ONE_ROW
-                            if s_index in row_03_encoders:
-                                format_nbr += NUM_ENCODERS_ONE_ROW
-                            vpot_display_text.set_text(" ---- ", f"send{format_nbr}")
+                            if self.current_log_level < self.log_levels["INFO"]:
+                                format_nbr = s_index % NUM_ENCODERS_ONE_ROW
+                                if s_index in row_03_encoders:
+                                    format_nbr += NUM_ENCODERS_ONE_ROW
+                                vpot_display_text.set_text(" ---- ", f"send{format_nbr}")
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
