@@ -548,15 +548,15 @@ class SongData(object):
         self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: AFTER: master ref {track_device_list.active_track} at index {song_index}")
         # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
-    def update_master_track_index(self, master_device_list_ref):
+    def update_master_track_index(self, master_track_details_ref):
         if len(self.device_list_table[track_callback_types[2]]) > 0:
             self.clear_tracks_by_type_key(track_callback_types[2]) # remove master_device_list_ref with key == old master index
-        master_ref = master_device_list_ref.active_track
+        master_ref = master_track_details_ref.active_track
         master_ref.index = self.master_track_index
         master_ref.index_by_type = self.master_track_index
-        master_device_list_ref.active_track = master_ref
+        master_track_details_ref.active_track = master_ref
         # add master_ref back with new key == self.master_track_index
-        self.device_list_table[track_callback_types[2]][self.master_track_index] = master_device_list_ref
+        self.device_list_table[track_callback_types[2]][self.master_track_index] = master_track_details_ref
         # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
     # NOTE: no functions to update any other "internal stored object indexes" to match their associated track or device "slot index" (map key)"

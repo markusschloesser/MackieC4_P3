@@ -404,7 +404,7 @@ class EncoderController(MackieC4Component, Component):
         return
 
     def master_track_index(self):
-        return self.__eah.master_track_index()
+        return self.__eah.master_track_index
 
 
     def on_param_state_change(self, param, callback_track_type_index, device_index, parameter_index, callback_track_type):
