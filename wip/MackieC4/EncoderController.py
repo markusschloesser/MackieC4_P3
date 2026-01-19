@@ -408,7 +408,7 @@ class EncoderController(MackieC4Component, Component):
 
 
     def on_param_state_change(self, param, callback_track_type_index, device_index, parameter_index, callback_track_type):
-        # reorder method inputs
+        # reordered method inputs
         self.__eah.on_param_state_change(callback_track_type, callback_track_type_index, device_index, parameter_index, param)
 
     def track_moved(self, callback_track_type, next_song_index):
@@ -702,7 +702,7 @@ class EncoderController(MackieC4Component, Component):
             # only processing drag&drop movement of the selected device
             type_key = track_callback_types[track_type]
             extended_device_list = self.get_device_list(self.selected_track.devices)
-            track_dtls_ref = self.__eah.data.get_active_track_details_reference(type_key, track_type_index)
+            track_dtls_ref = self.__eah.data.get_active_track_details_ref_by_type_key(type_key, track_type_index)
             track_ref = track_dtls_ref.active_track  # self.__eah.data.get_track_by_type_key(type_key, track_type_index)
             stored_selected_device_index = track_ref.selected_device_index
             stored_device_count = track_dtls_ref.device_count  # len(self.__eah.data.get_track_device_map_by_callback_type(type_key, track_type_index).keys())
@@ -1982,10 +1982,8 @@ class EncoderController(MackieC4Component, Component):
                         param_obj = send_param[0]
                         if liveobj_valid(param_obj) and param_obj.is_enabled:  # selected_track.mixer_device.sends[index].is_enabled
                             vpot_param = (param_obj, VPOT_DISPLAY_WRAP)
-                            # encoder 17 index is (16 % 8) = send 0
-                            # encoder 25 index is (24 % 8) = send 8 (8 == 0 when modulo is 8)
-                            # if liveobj_valid(param_obj):
-                            #     vpot_display_text.set_text(param_obj, send_param[1])
+                            # encoder 17 index is (16 % 8) = index 0 ('send bank' 0) <-- 'sends index' 0
+                            # encoder 25 index is (24 % 8) = index 0 ('send bank' 1) <-- 'sends index' 8 (if any)
                             vpot_display_text.set_text(param_obj, send_param[1])
                         else:
                             if self.current_log_level < self.log_levels["INFO"]:
