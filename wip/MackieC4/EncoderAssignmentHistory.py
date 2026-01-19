@@ -1774,6 +1774,8 @@ class EncoderAssignmentHistory(MackieC4Component):
         at_index = 0
         tracks_of_type_index = 0
         table_size = len(changed_track_type_table.keys())
+        nbr_tracks_removed = table_size - callback_type_track_count
+        selected_callback_type_before = self.last_selected_track_callback_type
         self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         while len(changed_track_type_table.keys()) > callback_type_track_count and at_index < table_size:
             track_obj = None if not tracks_of_type_index < len(tracks_of_type) else tracks_of_type[tracks_of_type_index]
@@ -1812,11 +1814,38 @@ class EncoderAssignmentHistory(MackieC4Component):
                     type_index_before_deleted_track = 0 if at_index < 1 else at_index - 1
                     self.data.remove_track_by_callback_type(track_callback_types[found_changed_track_callback_type], type_index_before_deleted_track)
                     # self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
-                    # self.track_deleted(index_before_deleted_track, is_selected=False)
+                    # self.track_deleted(index_before_deleted_track, is_selected=False)at_index += 1
+
             tracks_of_type_index += 1
         table_size = len(self.data.get_all_tracks_by_type_key(t_type_key).keys())
         self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
+        next_selected_index = self.last_selected_track_index - nbr_tracks_removed
+        if found_changed_track_callback_type == 0 and selected_callback_type_before > 0:
+            # given: 1 (expanded) Group of 2 and 3 others makes 6 plain tracks, add 2 returns plus master makes 9 total tracks
+            # if the last selected index was 7 (last return track) before the two type 0 "unselected tracks" were removed because the group collapsed
+            # the "last selected callback type index" doesn't change, but the "last selected song index" does
+
+            msg = f"{log_id}shifting local stored last selected (song) index from {self.last_selected_track_index} to {next_selected_index}"
+            self.main_script().log_message(logging.DEBUG, msg)
+            self.last_selected_track_index = next_selected_index
+        elif found_changed_track_callback_type == 1 and selected_callback_type_before > 0:
+            if selected_callback_type_before == 2:
+                # return track(s) removed from view while master was selected  (can happen by undo/redo while master selected)
+                msg = f"{log_id}shifting local stored (master) last selected (song) index from {self.last_selected_track_index} to {next_selected_index}"
+                self.main_script().log_message(logging.DEBUG, msg)
+                self.last_selected_track_index = next_selected_index
+            else:  # selected_callback_type_before == 1
+                # if unselected return track left of selected return track was deleted (by undo/redo), decrement selected index
+                # else don't decrement selected index. Ambiguous conditions - find song selected index directly
+                # self.find_track_index() returns a tuple (selected_index, callback_track_type_of_selected_index, callback_type_index, nbr_song_tracks)
+                track_info = self.find_track_index(self.song().view.selected_track)
+                self.last_selected_track_index = track_info[0]
+
+        else:
+            msg = f"{log_id}last selected index remains {self.last_selected_track_index} because last selected cb type was {selected_callback_type_before}"
+            self.main_script().log_message(logging.DEBUG, msg)
+
 
     def track_deleted(self, track_index_before_delete_index, is_selected=True):
         """input track_index value should be 'before' (one less than) the index to be deleted"""
