@@ -367,7 +367,7 @@ class MackieC4ListenerMixin(object):
     def do_add_parameters_listeners(self, track, tid=0, type=0):
         # log_id = "LM.do_add_parameters_listeners: "
         track_devices = track.devices
-        extended_device_list = self.__my_ec_ref.get_device_list(track_devices)
+        extended_device_list = self.get_device_list(track_devices)
         # self.log_message(logging.DEBUG, f"{log_id}standard device count {len(track_devices)} extended device count <{len(extended_device_list)}>")
         self.do_add_track_devices_listeners(extended_device_list, tid, type, track.name)
 
@@ -401,7 +401,7 @@ class MackieC4ListenerMixin(object):
         # if self.has_track_device_listener(track):
         #     self.remove_track_device_listener(track)
         cb = lambda: self.selected_device_change_state(track, tid, type)
-        self.log_message(logging.DEBUG, "LM.add_track_device_listener: input" + dtls)
+        self.log_message(logging.DEBUG, "LM.add_track_device_listener: input " + dtls)
         # if track.devices_has_listener(cb):
         #     track.remove_devices_listener(cb)
         if track.view.selected_device_has_listener(cb):
