@@ -576,7 +576,8 @@ class EncoderController(MackieC4Component, Component):
 
         # do we really need to refresh the whole control surface?
         # couldn't we just "add listeners" for this one new track?
-        MackieC4Component.refresh_state(self)
+        # MackieC4Component.refresh_state(self)  <-- drops and re-adds all "Mixin Listeners"
+        self.refresh_state()  # <-- clears any Modifier button "is pressed" status
         device = None
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
