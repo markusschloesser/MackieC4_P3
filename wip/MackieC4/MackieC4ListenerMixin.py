@@ -309,7 +309,8 @@ class MackieC4ListenerMixin(object):
     def add_device_listeners(self):
         self.remove_device_listeners()
         # self.log_message(logging.DEBUG, "C4.add_device_listeners: removed any existing device_listeners")
-        self.do_add_device_listeners(self.song().tracks, 0)
+        # self.do_add_device_listeners(self.song().tracks, 0)
+        self.do_add_device_listeners(self.song().visible_tracks, 0)
         self.do_add_device_listeners(self.song().return_tracks, 1)
         self.do_add_device_listeners([self.song().master_track], 2)
         # self.log_message(logging.DEBUG, "LM.add_device_listeners: added all track device_listeners types 0, 1, 2")
