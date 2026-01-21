@@ -1689,10 +1689,11 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         if song_track_index == self.data.plain_track_count and found_changed_track_callback_type < 1:
             # new added track is "last" type 0 track, not "first" type 1 track, override normal add_track() logic
-            self.data.add_track_by_callback_type(track_callback_types[0], song_track_index, self.data.plain_track_count, track_obj, selected_device_index=0)
+            self.data.add_track_by_callback_type(track_callback_types[0], 0, song_track_index, track_obj, selected_device_index=0)
         elif song_track_index == self.data.total_track_count - 1 and found_changed_track_callback_type == 1: # total count minus master
             # new added track is "last" type 1 track, not a "new" master track, override normal add_track() logic
-            self.data.add_track_by_callback_type(track_callback_types[1], song_track_index, self.data.return_track_count, track_obj, selected_device_index=0)
+            rtns_index = song_track_index - self.data.plain_track_count
+            self.data.add_track_by_callback_type(track_callback_types[1], self.data.plain_track_count, rtns_index, track_obj, selected_device_index=0)
         else: # not a "callback type boundary" case
             cb_type = self.data.get_callback_type_for_song_index(song_track_index)
             msg = f"EAH.track_added: get_cb_type {cb_type} for input index {song_track_index} and "
