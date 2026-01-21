@@ -222,7 +222,7 @@ class EncoderController(MackieC4Component, Component):
                 track = self.song().view.selected_track
                 if track != self.__locked_device_track:
                     msg = f"{log_id}listener popped, {d.name} is valid, but local selected_track is not song view selected track, "
-                    msg += "deferring device change processing until track change callback pops"
+                    msg += "setting pending device change flag for later processing when track change callback pops"
                     self.main_script().log_message(logging.INFO, msg)
                     self.__pending_device_change = True
                     self.__eah.next_selected_device = d

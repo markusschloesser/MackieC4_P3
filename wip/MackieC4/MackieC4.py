@@ -219,9 +219,11 @@ class MackieC4(MackieC4ListenerMixin, object):
         # forward every incoming midi Note or CC message with an id value between 0 and 63 to the script for processing, some of these CC forwarding requests
         # will be second requests for encoder ids above that don't get mapped to a valid "live object" at any given time, but you can ask as many times as
         # you want Live doesn't forward the same message twice. Even for encoders mapped above (handled by Live directly), forward the midi messages they emit
+        # Split button has 3 feedback addresses + 19 control buttons + 10 (unused spacers) + 32 encoder buttons == 64 midi note message forwarding requests
         for i in range(C4SID_FIRST, C4SID_LAST + 1):
             Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
-            Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)
+            if i < NUM_ENCODERS:
+                Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)  # 32 encoders
 
 
     def receive_midi(self, midi_bytes):
