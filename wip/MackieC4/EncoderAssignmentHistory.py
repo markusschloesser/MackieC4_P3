@@ -406,7 +406,7 @@ class SongData(object):
         self.extend_device_list = get_device_list
         # enable "class logging" to see debug logging mostly from __shift_keys_right() and __shift_keys_left() methods
         # uncomment logging messages in other class methods to see more verbose debug logging from earlier in the class method call stack
-        self.__class_logging = True # False #
+        self.__class_logging = False # True #
         self.device_list_table = dict[str, dict[int, ActiveTrackDetails]]({
             track_callback_types[0]: {},
             track_callback_types[1]: {},

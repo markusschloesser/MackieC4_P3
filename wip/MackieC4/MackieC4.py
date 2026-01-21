@@ -61,6 +61,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     track_count = 0
     
     script_log_levels = {"ALWAYS": 0, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NEVER": 99}
+    # trace level debug log messages can be enabled for the (EncoderAssignmentHistory module) SongData class using self.__class_logging = True
     current_script_log_level = script_log_levels["DEBUG"]
 
     def __init__(self, c_instance):
