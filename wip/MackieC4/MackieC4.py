@@ -92,20 +92,43 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__encoder_controller.clear_all_leds()
         self.send_midi((NOTE_ON_STATUS, C4SID_CHANNEL_STRIP, BUTTON_STATE_ON)) # turn ON default mode LED
 
-        tracks = self.song().visible_tracks + self.song().return_tracks
-        index = 0
+        nbr_visible_tracks = len(self.song().visible_tracks)
+        nbr_return_tracks = len(self.song().return_tracks)
+        nbr_tracks = nbr_visible_tracks + nbr_return_tracks
 
-        # assign track to the local index of the matching selected track in Live
-        for track in tracks:
+        # assign the local selected index reference information identifying the selected track in Live
+        found = False
+        for i, track in enumerate(self.song().visible_tracks):
             if track == self.song().view.selected_track:
-                self.last_selected_track_index = index
-            index = index + 1
+                self.last_selected_track_index = i
+                self.last_selected_track_callback_type = 0
+                self.last_selected_callback_type_index = i
+                found = True
+                break
+        if not found:
+            for i, track in enumerate(self.song().return_tracks):
+                if track == self.song().view.selected_track:
+                    self.last_selected_track_index = i + nbr_visible_tracks
+                    self.last_selected_track_callback_type = 1
+                    self.last_selected_callback_type_index = i
+                    found = True
+                    break
+        if not found:
+            if self.song().master_track == self.song().view.selected_track:
+                self.last_selected_track_index = nbr_tracks
+                self.last_selected_track_callback_type = 2
+                self.last_selected_callback_type_index = nbr_tracks
+                found = True
+        if not found:
+            pass
 
-        self.track_count = len(tracks)
-        self.callback_type_track_counts = {0: int(len(self.song().visible_tracks)), 1: int(len(self.song().return_tracks)), 2: 1}
+        self.track_count = nbr_tracks
+        self.callback_type_track_counts = {0: int(nbr_visible_tracks), 1: int(nbr_return_tracks), 2: 1}
 
-        # if refresh_state is not already listening for visible tracks view changes
-        if self.song().visible_tracks_has_listener(self.tracks_change) != 1:
+        # 'tracks' and 'visible tracks' events hit the same self.tracks_change callback (self.song().add_tracks_listener(self.tracks_change))
+        # all 'visible tracks' are also contained in 'tracks', identified by every track's is_visible property value
+        # 'return tracks' are either visible or not as a group, so no 'visible return tracks' convenience property
+        if not self.song().visible_tracks_has_listener(self.tracks_change):
             self.song().add_visible_tracks_listener(self.tracks_change)
 
         self.__encoder_controller.build_setup_database() # self.song() reference needed
