@@ -128,8 +128,8 @@ class MackieC4(MackieC4ListenerMixin, object):
         # 'tracks' and 'visible tracks' events hit the same self.tracks_change callback (self.song().add_tracks_listener(self.tracks_change))
         # all 'visible tracks' are also contained in 'tracks', identified by every track's is_visible property value
         # 'return tracks' are either visible or not as a group, so no 'visible return tracks' convenience property
-        if not self.song().visible_tracks_has_listener(self.tracks_change):
-            self.song().add_visible_tracks_listener(self.tracks_change)
+        if not self.song().visible_tracks_has_listener(self.visible_tracks_change):
+            self.song().add_visible_tracks_listener(self.visible_tracks_change)
 
         self.__encoder_controller.build_setup_database() # self.song() reference needed
 
@@ -644,9 +644,10 @@ class MackieC4(MackieC4ListenerMixin, object):
             pass
 
     def track_change(self):
+        """This is the "selected track listener" callback"""
         log_id = "C4.track_change: "
         selected_track_index, selected_track_callback_type, callback_type_index = self.find_and_assign_selected_track_index()
-        self.log_message(logging.DEBUG, f"{log_id}calling track_changed passing index {selected_track_index} only")
+        # self.log_message(logging.DEBUG, f"{log_id}calling EC.track_changed passing {selected_track_index}, {selected_track_callback_type}, and {callback_type_index}")
         self.__encoder_controller.track_changed(selected_track_index, selected_track_callback_type, callback_type_index)
         # self.request_rebuild_midi_map()  <--- called by EC
 
@@ -851,11 +852,18 @@ class MackieC4(MackieC4ListenerMixin, object):
         except RuntimeError:
             pass
 
+    def visible_tracks_change(self):
+        """This is the Visible Tracks listener callback"""
+        log_id = "C4.visible_tracks_change: "
+        self.log_message(self.script_log_levels["TRACE"], f"{log_id}deferring to tracks_change...")
+        self.tracks_change()
+
     def tracks_change(self):
+        """This is the Tracks listener callback"""
         self.__processing_track_state_change = True
         log_id = "C4.tracks_change: "
 
-        # selected_index, callback_track_type_of_selected_index = self.find_and_assign_selected_track_index()
+        # selected_index
         selected_index, callback_track_type_of_selected_index, callback_type_index, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
         found_changed_track_callback_type, found_callback_type_track_count = self.find_changed_track_callback_type()
         # dtls = f"(selected_index={selected_index}, callback_track_type_of_selected_index={callback_track_type_of_selected_index}, "
