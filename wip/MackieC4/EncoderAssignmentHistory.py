@@ -382,7 +382,7 @@ class SongData(object):
         self.extend_device_list = get_device_list
         # enable "class logging" to see debug logging mostly from __shift_keys_right() and __shift_keys_left() methods
         # uncomment logging messages in other class methods to see more verbose debug logging from earlier in the class method call stack
-        self.__class_logging = False # True #
+        self.class_logging = False # True #
         self.device_list_table = dict[str, dict[int, ActiveTrackDetails]]({
             track_callback_types[0]: {},
             track_callback_types[1]: {},
@@ -396,7 +396,7 @@ class SongData(object):
         self.__rekey_map_algorithm_swap_limit = 50  # use fallback alg if 50+ devices on track or 50+ plain or return tracks in song
 
     def log_msg(self, level, msg):
-        if self.__class_logging:
+        if self.class_logging:
             self.logger(level, msg)
 
     def log_dump(self):
@@ -1642,8 +1642,9 @@ class EncoderAssignmentHistory(MackieC4Component):
                 # self.main_script().log_message(logging.DEBUG, msg)
                 pass
             else:
-                msg = f"{log_id}{t_type} tracks added, and cb type index {at_index} track_ref doesn't equal {track_obj.name}, "
-                # extended_device_list = self.get_device_list(track_obj.devices)
+                msg = f"{log_id}"
+                if self.main_script().current_script_log_level < logging.DEBUG:
+                    msg += f"{t_type} tracks added, and cb type index {at_index} track_ref doesn't equal {track_obj.name}, "
                 if found_changed_track_callback_type == 1:
                     self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at returns offset track index {rtns_offset + at_index}")
                     self.track_added(rtns_offset + at_index, track_obj, is_selected=False, found_changed_track_callback_type=1)
@@ -1738,6 +1739,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         tracks_of_type = self.main_script().song().visible_tracks
         rtns_offset = len(tracks_of_type)
         t_type_key = track_callback_types[found_changed_track_callback_type]
+        trace_level = self.log_levels["TRACE"]
 
         if found_changed_track_callback_type == 1:
             tracks_of_type = self.main_script().song().return_tracks
@@ -1748,21 +1750,24 @@ class EncoderAssignmentHistory(MackieC4Component):
         table_size = len(changed_track_type_table.keys())
         nbr_tracks_removed = table_size - callback_type_track_count
         selected_callback_type_before = self.last_selected_track_callback_type
-        self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
+        self.main_script().log_message(trace_level, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         while len(changed_track_type_table.keys()) > callback_type_track_count and at_index < table_size:
             track_obj = None if not tracks_of_type_index < len(tracks_of_type) else tracks_of_type[tracks_of_type_index]
             track_ref_obj = changed_track_type_table[at_index].active_track.track
             if liveobj_valid(track_ref_obj):
-                msg = f"{log_id}{t_type_key} tracks deleted, and cb type index {at_index} track_ref is liveobj valid {track_ref_obj.name}, "
+                msg = f"{log_id}"
+                if self.main_script().current_script_log_level < logging.DEBUG:
+                    msg += f"{t_type_key} tracks deleted, and cb type index {at_index} track_ref is liveobj valid {track_ref_obj.name}, "
                 if track_obj is None or liveobj_changed(track_ref_obj, track_obj):
-                    msg += f"but changed to {'None' if track_obj is None else track_obj.name} "
+                    if self.main_script().current_script_log_level < logging.DEBUG:
+                        msg += f"but changed to {'None' if track_obj is None else track_obj.name} "
                     if found_changed_track_callback_type == 1:
                         # since you can't Group return tracks, you can't expand or collapse the grouped tracks into or out of view, this condition code is unreachable?
                         self.main_script().log_message(logging.WARNING, msg + f"deleting track ref at returns offset track index {rtns_offset + at_index}")
                         index_before_deleted_track = 0 if rtns_offset + at_index < 1 else rtns_offset + at_index - 1
                         self.track_deleted(index_before_deleted_track, is_selected=False)
                     else:
-                        # self.main_script().log_message(logging.DEBUG, msg + f"deleting track ref at plains track index {at_index}")
+                        self.main_script().log_message(logging.DEBUG, msg + f"deleting track ref at plains track index {at_index}")
                         index_before_deleted_track = 0 if at_index < 1 else at_index - 1
                         self.track_deleted(index_before_deleted_track, is_selected=False)
                 else:
@@ -1771,33 +1776,32 @@ class EncoderAssignmentHistory(MackieC4Component):
             else:
                 if found_changed_track_callback_type == 1: # return tracks
                     # execution lands here if the selected track is the only return track and is deleted
-                    msg = f"{log_id}only {t_type_key} track deleted, cb type index {at_index} track_ref is not liveobj valid "
+                    msg = f"{log_id}"
+                    if self.main_script().current_script_log_level < logging.DEBUG:
+                        msg += f"only {t_type_key} track deleted, cb type index {at_index} track_ref is not liveobj valid "
                     self.main_script().log_message(logging.WARNING, msg + f"deleting track ref from {t_type_key} offset track index {rtns_offset + at_index}")
                     type_index_before_deleted_track = 0 if at_index < 1 else at_index - 1
                     self.data.remove_track_by_callback_type(track_callback_types[found_changed_track_callback_type], type_index_before_deleted_track)
                     # all we need to do here is remove the stored last return track reference, since the last return track was the selected track before it was deleted
-                    # the normal track_changed(i) handler for the next selected track will update self.last_selected_track_index (temp selection becomes main)
-                    # self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
-                    # self.last_selected_track_index = self.data.plain_track_count - 1
+                    # the normal track_changed(i) handler for the next selected track will update self.last_selected_track_index (selection temporarily becomes main)
                 else:
                     # execution might also land here if 2 or more unselected tracks were (not just removed from view but) deleted at the same time (likely not possible?)
-                    msg = f"{log_id}unselected {t_type_key} tracks deleted, but selected cb type index {at_index} track is not liveobj valid "
-                    self.main_script().log_message(logging.WARNING, msg + f"deleting track ref from {t_type_key} track index {at_index}")
+                    msg = f"{log_id}"
+                    if self.main_script().current_script_log_level < logging.DEBUG:
+                        msg += f"unselected {t_type_key} tracks deleted, but selected cb type index {at_index} track is not liveobj valid "
+                    self.main_script().log_message(logging.WARNING, msg + f"deleting stored track ref from {t_type_key} track index {at_index}")
                     type_index_before_deleted_track = 0 if at_index < 1 else at_index - 1
                     self.data.remove_track_by_callback_type(track_callback_types[found_changed_track_callback_type], type_index_before_deleted_track)
-                    # self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index - 1
-                    # self.track_deleted(index_before_deleted_track, is_selected=False)at_index += 1
 
             tracks_of_type_index += 1
         table_size = len(self.data.get_all_tracks_by_type_key(t_type_key).keys())
-        self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
+        self.main_script().log_message(trace_level, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
         next_selected_index = self.last_selected_track_index - nbr_tracks_removed
         if found_changed_track_callback_type == 0 and selected_callback_type_before > 0:
             # given: 1 (expanded) Group of 2 and 3 others makes 6 plain tracks, add 2 returns plus master makes 9 total tracks
             # if the last selected index was 7 (last return track) before the two type 0 "unselected tracks" were removed because the group collapsed
-            # the "last selected callback type index" doesn't change, but the "last selected song index" does
-
+            # the stored "last selected callback type index" doesn't change, but the stored "last selected song index" does
             msg = f"{log_id}shifting local stored last selected (song) index from {self.last_selected_track_index} to {next_selected_index}"
             self.main_script().log_message(logging.DEBUG, msg)
             self.last_selected_track_index = next_selected_index

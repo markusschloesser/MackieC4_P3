@@ -91,6 +91,7 @@ class EncoderController(MackieC4Component, Component):
             s.set_encoder_controller(self)
 
         self.__eah = EncoderAssignmentHistory(main_script, self)
+        self.__eah.data.class_logging = self.current_log_level < logging.DEBUG
         self.__time_display = TimeDisplay(self)
         self.__display_update_lag_upper_bounds = [20, 10, 5, 0]
         self.__display_update_lag_upper_bounds_index = 0
@@ -527,14 +528,16 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.tracks_added(track_index, tracks_of_type, callback_track_type_of_selected_index)
         # (using same update selected track code as from self.track_deleted() instead of same update logic in track_added())
         self.__update_selected_track(track_index)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
+        if self.__eah.data.class_logging:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[callback_track_type_of_selected_index])
 
     def unselected_tracks_added(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_added: "
         self.__eah.unselected_tracks_added(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        if self.__eah.data.class_logging:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
 
     def track_added(self, track_index, found_changed_track_callback_type):
@@ -567,7 +570,8 @@ class EncoderController(MackieC4Component, Component):
             else:
                 self.__update_chosen_plugin_device(device)  # device == None
 
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        if self.__eah.data.class_logging:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
         return
 
@@ -577,21 +581,24 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.tracks_deleted(track_index, tracks_of_type, track_type)
         self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}updating selected track info at index: {track_index}")
         self.__update_selected_track(track_index)
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[track_type]} tracks:")
+        if self.__eah.data.class_logging:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[track_type]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[track_type])
 
     def unselected_tracks_deleted(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_deleted: "
         self.__eah.unselected_tracks_deleted(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        if self.__eah.data.class_logging:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
 
     def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_changed: "
         self.__eah.unselected_tracks_changed(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        if self.__eah.data.class_logging:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
 
     def track_deleted(self, next_selected_track_index, callback_track_type_of_selected_index, callback_type_index):
@@ -606,7 +613,8 @@ class EncoderController(MackieC4Component, Component):
         msg = f"{log_id}shifted stored ref at song index {next_selected_track_index} is now {next_ref.active_track.track_name}"
         self.main_script().log_message(self.log_levels["TRACE"], msg)
         self.__update_selected_track(next_selected_track_index)
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
+        if self.__eah.data.class_logging:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[callback_track_type_of_selected_index])
 
     def __update_selected_track(self, track_index):
@@ -627,7 +635,7 @@ class EncoderController(MackieC4Component, Component):
                 self.__eah.track_changed(track_index)
                 insert = "is now"
             else:
-                msg += f"is not stored at song index {track_index}, None atdl_ref returned, no stored 'last selected' updates based on None"
+                msg += f"is not stored at song index {track_index}, None atd_ref returned, no stored 'last selected' updates based on None"
                 self.main_script().log_message(logging.DEBUG, msg)
                 insert = "remains"
 
@@ -697,7 +705,9 @@ class EncoderController(MackieC4Component, Component):
                     else:
                         self.main_script().log_message(logging.DEBUG, f"{log_id}pass, no device move detected, selected device is changing")
                 else:
-                    dtls = f"stored device list length {stored_device_count} not equal to changed device list length {len(extended_device_list)}"
+                    dtls = ""
+                    if self.main_script().current_script_log_level < logging.DEBUG:
+                        dtls = f"stored device list length {stored_device_count} not equal to changed device list length {len(extended_device_list)}"
                     self.main_script().log_message(logging.DEBUG, f"{log_id}pass, device list size is changing " + dtls)
             else:
                 dtls = f"number of track details ref stored devices {stored_device_count} not equal to number of active track ref stored devices {track_ref.device_count}"
