@@ -793,7 +793,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     @last_selected_callback_type_index.setter
     def last_selected_callback_type_index(self, index):
-        self._last_selected_callback_type_index = index
+        self._selected_callback_type_index = index
 
     def scene_change(self): 
         selected_scene = self.song().view.selected_scene
