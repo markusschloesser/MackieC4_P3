@@ -214,39 +214,39 @@ class MackieC4ListenerMixin(object):
             self.add_master_listener(0, type, self.song().master_track)
 
         tracks = self.song().visible_tracks
-        for track in range(len(tracks)):
-            tr = tracks[track]
-            self.add_trname_listener(track, tr, 0)
+        for track_index in range(len(tracks)):
+            track_obj = tracks[track_index]
+            self.add_trname_listener(track_index, track_obj, 0)
             for type in self._mixer_normal_track_keys_in_use:
                 if type == 'is_frozen':
-                    if tr.can_be_frozen:
-                        if tr.is_frozen_has_listener(self.on_is_frozen_changed):
-                            tr.remove_is_frozen_listener(self.on_is_frozen_changed)
-                        tr.add_is_frozen_listener(self.on_is_frozen_changed)
+                    if track_obj.can_be_frozen:
+                        if track_obj.is_frozen_has_listener(self.on_is_frozen_changed):
+                            track_obj.remove_is_frozen_listener(self.on_is_frozen_changed)
+                        track_obj.add_is_frozen_listener(self.on_is_frozen_changed)
                 if type == 'arm':
-                    if tr.can_be_armed:
-                        self.add_mixert_listener(track, type, tr)
+                    if track_obj.can_be_armed:
+                        self.add_mixert_listener(track_index, type, track_obj)
                 else:
-                    self.add_mixert_listener(track, type, tr)
+                    self.add_mixert_listener(track_index, type, track_obj)
 
             for type in self._mixer_normal_strip_keys_in_use:
-                self.add_mixerv_listener(track, type, tr)
+                self.add_mixerv_listener(track_index, type, track_obj)
 
-            for sid in range(len(tr.mixer_device.sends)):
-                self.add_send_listener(track, tr, sid, tr.mixer_device.sends[sid])
+            for sid in range(len(track_obj.mixer_device.sends)):
+                self.add_send_listener(track_index, track_obj, sid, track_obj.mixer_device.sends[sid])
 
         tracks = self.song().return_tracks
-        for track in range(len(tracks)):
-            tr = tracks[track]
-            self.add_trname_listener(track, tr, 1)
+        for track_index in range(len(tracks)):
+            track_obj = tracks[track_index]
+            self.add_trname_listener(track_index, track_obj, 1)
             for type in self._mixer_return_track_keys_in_use:
-                self.add_retmixert_listener(track, type, tr)
+                self.add_retmixert_listener(track_index, type, track_obj)
 
             for type in self._mixer_return_strip_keys_in_use:
-                self.add_retmixerv_listener(track, type, tr)
+                self.add_retmixerv_listener(track_index, type, track_obj)
 
-            for sid in range(len(tr.mixer_device.sends)):
-                self.add_retsend_listener(track, tr, sid, tr.mixer_device.sends[sid])
+            for sid in range(len(track_obj.mixer_device.sends)):
+                self.add_retsend_listener(track_index, track_obj, sid, track_obj.mixer_device.sends[sid])
                 
 
     def add_send_listener(self, tid, track, sid, send):

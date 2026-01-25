@@ -124,8 +124,7 @@ class ActiveDevice:
         """ song track index of track holding device's device map """
         self.track_index_by_type = callback_type_index
         """callback type index of track holding device's map"""
-        # self.type = 0  <---- needed here?
-        # can't find device's track by callback type without using "song index" and "plain track count" to calculate (return or master types)
+        # self.type = 0  <---- we never need to 'back find' the track this device "belongs to" based only on info stored with this class
         self._parameter_count = parameter_count
         self._selected_parameter_index = selected_parameter_index
         """ index of this device's selected parameter in the device's parameter list """
@@ -135,14 +134,14 @@ class ActiveDevice:
         """ the index of the parameter bank where the selected parameter would fall (0 - 23 unless SETUP_DB_PARAM_BANK_SIZE changes) """        
 
         self._device_view_parameter_bank_index = self._selected_parameters_bank_index
-        """ device bank index currently "on display" on the C4 (and selected in Live) of this device's parameter-bank list (indexes 0 - 9 if the device parameter list 
-        has 240 parameters) """
+        """ device bank index currently "on display" on the C4 (and selected in Live) of this device's parameter-bank list (indexes 0 - 9 if the device """ \
+        """parameter list has 240 parameters) """
         
         if self.required_parameter_banks < 1:
             self._bank_index_of_selected_parameter = 0
-            """ parameter bank index of this device's selected parameter in the device's parameter-bank list (0 unless the device has more than 8 parameters), 
-automatically calculated when selected parameter changes. This value can differ from the parameter bank index currently "on display". You can 'browse' parameter 
-banks without changing selected parameters. """  
+            """parameter bank index of this device's selected parameter in the device's parameter-bank list (0 unless the device has more than 8 parameters), """ \
+            """automatically calculated when selected parameter changes. This value can differ from the parameter bank index currently "on display". You can """ \
+            """'browse' parameter banks without changing selected parameters. """
         else:
             self._bank_index_of_selected_parameter = int(math.floor(selected_parameter_index % self.required_parameter_banks))
 
@@ -154,7 +153,6 @@ banks without changing selected parameters. """
             return "None"
         else:
             return self.to_string()
-
 
     def to_string(self):
         return f"device {self.device_name} d_index {self.index} t_index {self.track_index} tt_index {self.track_index_by_type} p_index {self._selected_parameter_index}"
@@ -184,12 +182,6 @@ banks without changing selected parameters. """
     def required_parameter_banks(self):
         """ the calculated number of banks of (24) parameters required to support all parameters in parameter list """
         return self._parameter_bank_count
-    
-    # @parameter_count.setter
-    # def parameter_count(self, new_count):
-    #     """ parameter count is automatically set by devices and constant """
-    #     self._parameter_count = new_count
-    #     self._parameter_bank_count = math.ceil(self._parameter_count // SETUP_DB_PARAM_BANK_SIZE)
 
     @property
     def selected_parameter_index(self):
@@ -332,22 +324,6 @@ class ActiveTrackDetails:
 
     def has_matching_device_map(self, other_devices: dict[int, ActiveDevice]):
         return self.has_matching_deviceobj_list([other_devices.values()])
-        # rtn = True
-        # for this, that in zip_longest(self.devices.values(), other_devices.values()):
-        #     if liveobj_valid(this.live_obj) and not liveobj_valid(that.live_obj):
-        #         rtn = False
-        #         break
-        #     elif not liveobj_valid(this.live_obj) and liveobj_valid(that.live_obj):
-        #         rtn = False
-        #         break
-        #     elif not (liveobj_valid(this.live_obj) or liveobj_valid(that.live_obj)):  # !x and !y == !(x or y)
-        #         # both items are "not valid", this is a match that should only happen if both dict value lists contain
-        #         # a "deleted device" reference at the same index at the time of comparison?
-        #         pass
-        #     elif liveobj_changed(this.live_obj, that.live_obj):
-        #         rtn = False
-        #         break
-        # return rtn
 
     def has_matching_deviceobj_list(self, other_devices: list):
         rtn = True
@@ -560,10 +536,10 @@ class SongData(object):
         # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
     # NOTE: no functions to update any other "internal stored object indexes" to match their associated track or device "slot index" (map key)"
-    #       See get_track() and get_device() below, the ActiveTrack and ActiveDevice object internal property index values are updated automatically
-    #       before ActiveTrack or ActiveDevice objects return from get_track() and get_device() (so they can "set themselves" back, see set_device() for example)
+    #       See get_track() and get_device() below, the ActiveTrackDetails and ActiveDevice object internal property index values are updated automatically
+    #       before ActiveTrackDetails or ActiveDevice objects return from get_track() and get_device() (so they can "set themselves" back, see set_device() for example)
     # The stored internal property index values fall out of sync with their actual associated "map key index" values every time tracks are added to or removed from the Song
-    # I.E. This class.  (Except for Master Track index, ) The internal indexes are not resynchronized / updated until "fetched" by get_track() or get_device()
+    # I.E. This class.  (Except for Master Track index, ) The internal ref-obj indexes are not resynchronized / updated until "fetched" by get_track() or get_device()
 
     def clear_all_tracks(self):
         self.clear_tracks_by_type_key(track_callback_types[0])
@@ -952,7 +928,7 @@ class SongData(object):
         # uses two algorithms first traverses "all tracks of type" input once and "old tracks of type" once for every track in "all tracks of type" until it finds the
         # matching track.  The inner loop gets smaller after each match, but it's still an expensive big-O algorithm.  The second algorithm does a swap, removing the
         # "track that moved" from its old stored index location, and re-inserting an updated copy at its new stored index location (matching Live).
-        # This second algorithm is least efficient when a song has many tracks and tracks with low index numbers move
+        # This second algorithm is at its least efficient when a song has many tracks and tracks with low index numbers move
         # (meaning lots of tracks to the right of the moving track also move (twice)), its performance decline is less exponential than the first algorithm,
         # closer to constant time but still not great
         log_id = "EAH.SD.rekey_track_list_of_callback_type: "
@@ -1052,7 +1028,7 @@ class SongData(object):
         old_keyed_map = self.get_track_device_map_by_callback_type(track_callback_type_key, callback_type_index)
         new_keyed_map = {}
         track_ref = self.get_track_by_type_key(track_callback_type_key, callback_type_index)
-        self.log_msg(logging.WARNING, f"EAH.SD.rekey_device_list_by_track_callback_type: track {track_ref.track_name} has {track_ref.device_count} active devices")
+        self.log_msg(logging.DEBUG, f"EAH.SD.rekey_device_list_by_track_callback_type: track {track_ref.track_name} has {track_ref.device_count} active devices")
         if len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count:
             if track_ref.device_count < self.__rekey_map_algorithm_swap_limit:
                 shallow_copy = old_keyed_map.copy()
@@ -1462,10 +1438,6 @@ class EncoderAssignmentHistory(MackieC4Component):
         else:
             return -1
 
-    # @selected_device_bank_count.setter
-    # def selected_device_bank_count(self, selected_device_bank_count):
-    #     self.data.get_track(self.last_selected_track_index).required_device_banks = selected_device_bank_count
-
     @property
     def selected_device_bank_index(self):
         if self.data.get_track(self.last_selected_track_index) is not None:
@@ -1479,10 +1451,6 @@ class EncoderAssignmentHistory(MackieC4Component):
             return self.data.get_track(self.last_selected_track_index).device_count
         else:
             return -1
-
-    # @max_device_count.setter
-    # def max_device_count(self, max_device_count):
-    #     self.data.get_track(self.last_selected_track_index).device_count = max_device_count
 
     @property
     def max_last_selected_track_device_parameter_bank_nbr(self, t_d_idx=None):
@@ -1698,8 +1666,8 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.data.add_track_by_callback_type(track_callback_types[1], self.data.plain_track_count, rtns_index, track_obj, selected_device_index=0)
         else: # not a "callback type boundary" case
             cb_type = self.data.get_callback_type_for_song_index(song_track_index)
-            msg = f"EAH.track_added: get_cb_type {cb_type} for input index {song_track_index} and "
-            self.main_script().log_message(logging.DEBUG, msg + f"input found type {found_changed_track_callback_type}")
+            # msg = f"EAH.track_added: get_cb_type {cb_type} for input index {song_track_index} and "
+            # self.main_script().log_message(logging.DEBUG, msg + f"input found type {found_changed_track_callback_type}")
             self.data.add_track(track_obj, cb_type, song_track_index)
 
         if is_selected:
@@ -1845,10 +1813,9 @@ class EncoderAssignmentHistory(MackieC4Component):
                 # self.find_track_index() returns a tuple (selected_index, callback_track_type_of_selected_index, callback_type_index, nbr_song_tracks)
                 track_info = self.find_track_index(self.song().view.selected_track)
                 self.last_selected_track_index = track_info[0]
-
-        else:
-            msg = f"{log_id}last selected index remains {self.last_selected_track_index} because last selected cb type was {selected_callback_type_before}"
-            self.main_script().log_message(logging.DEBUG, msg)
+        # else:
+        #     msg = f"{log_id}last selected index remains {self.last_selected_track_index} because last selected cb type was {selected_callback_type_before}"
+        #     self.main_script().log_message(logging.DEBUG, msg)
 
 
     def track_deleted(self, track_index_before_delete_index, is_selected=True):
@@ -1975,22 +1942,10 @@ class EncoderAssignmentHistory(MackieC4Component):
         log_id = "EAH.update_device_counts_on_removal: "
         # self.main_script().log_message(logging.DEBUG, f"{log_id}deletion index {deleted_device_index}")
 
-        last_device_in_chain = deleted_device_index == old_device_count_track - 1  # 0 != -1 here
-        empty_chain = old_device_count_track == 0 and not found_input_device_index
+        # last_device_in_chain = deleted_device_index == old_device_count_track - 1  # 0 != -1 here
+        # empty_chain = old_device_count_track == 0 and not found_input_device_index
         
         last_track_ref = self.data.get_track(self.last_selected_track_index)
-        # if last_device_in_chain or empty_chain:
-        #     # only decrement "device count" if deleted device wasn't the only device
-        #     if deleted_device_index > 0:
-        #           last_track_ref.device_count -= rack_devices_deleted  # self.t_d_count[self.t_current] -= rack_devices_deleted
-        #     else:
-        #         last_track_ref.device_count = 0  # self.t_d_count[self.t_current] = 0
-        # else: # device chain is not empty and "current device" isn't the only device
-        #     last_track_ref.device_count -= rack_devices_deleted  # self.t_d_count[self.t_current] -= rack_devices_deleted
-        #
-        # assert new_device_count_track == last_track_ref.device_count  # self.t_d_count[self.t_current]  # self.t_d_count[self.t_current]
-        # last_track_ref.selected_device_index = deleted_device_index  # self.t_d_current[self.t_current] = deleted_device_index
-        # self.data.set_track(last_track_ref)
         # last_track_ref counts updated automatically by remove_device()
         self.data.remove_device(last_track_ref.index, deleted_device_index - 1)
         # msg = f"{log_id}updated track {last_track_ref.track_name}, removed device at index {deleted_device_index} new device count is {last_track_ref.device_count}"
