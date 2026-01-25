@@ -60,7 +60,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     track_index = 0
     track_count = 0
     
-    script_log_levels = {"ALWAYS": 0, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NEVER": 99}
+    script_log_levels = {"ALWAYS": 0, "TRACE": 5, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NEVER": 99}
     # trace level debug log messages can be enabled for the (EncoderAssignmentHistory module) SongData class using self.__class_logging = True
     current_script_log_level = script_log_levels["DEBUG"]
 
@@ -699,80 +699,76 @@ class MackieC4(MackieC4ListenerMixin, object):
         # - assign the last_selected_track_index property the determined 'selected Track Index' value
         # - return the new 'song index' value and the 'callback type' of the (visible_tracks or return_tracks) list containing the selected track
         selected_index, selected_callback_type, callback_type_index, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
+        self.log_message(self.script_log_levels["TRACE"], f"{log_id}found {selected_index}, {selected_callback_type}, {callback_type_index}, {nbr_song_tracks}")
         return self.set_selected_track_index(selected_index, selected_callback_type, callback_type_index)
 
 
     def set_selected_track_index(self, next_selected_track_index, selected_callback_type, selected_callback_type_index, nbr_song_tracks=1):
         log_id = "C4.set_selected_track_index: "
-        if next_selected_track_index != self.last_selected_track_index:
-            msg = f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to next index {next_selected_track_index}"
-            self.log_message(logging.DEBUG,msg)
-            self.last_selected_track_index = next_selected_track_index # "song index" is ambiguous at first return track index
-            if selected_callback_type != self.last_selected_track_callback_type:
-                msg = f"{log_id}setting self.last_selected_track_callback_type {self.last_selected_track_callback_type} to next type {selected_callback_type}"
-                self.log_message(logging.DEBUG, msg)
-                self.last_selected_track_callback_type = selected_callback_type
-                if selected_callback_type_index != self.last_selected_callback_type_index:
-                    msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
-                    self.log_message(logging.DEBUG, msg)
-                    self.last_selected_callback_type_index = selected_callback_type_index
-                else:
-                    msg = f"{log_id}type index of next selected track remains {selected_callback_type_index} "
-                    self.log_message(logging.DEBUG, msg)
-            else: # track index changed but callback type didn't, type index must have changed too
-                msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
-                self.log_message(logging.DEBUG, msg)
-                self.last_selected_callback_type_index = selected_callback_type_index
-        else:
-            self.log_message(logging.DEBUG, f"{log_id}self.last_selected_track_index {self.last_selected_track_index} is already {next_selected_track_index}")
+        self.last_selected_track_index = next_selected_track_index  # "song index" is ambiguous at first return track index
+        self.last_selected_track_callback_type = selected_callback_type
+        self.last_selected_callback_type_index = selected_callback_type_index
+        # trace_level = self.script_log_levels["TRACE"]
+        # if next_selected_track_index != self.last_selected_track_index:
+        #     msg = f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to next index {next_selected_track_index}"
+        #     self.log_message(trace_level,msg)
+        #     self.last_selected_track_index = next_selected_track_index # "song index" is ambiguous at first return track index
+        #     if selected_callback_type != self.last_selected_track_callback_type:
+        #         msg = f"{log_id}setting self.last_selected_track_callback_type {self.last_selected_track_callback_type} to next type {selected_callback_type}"
+        #         self.log_message(trace_level, msg)
+        #         self.last_selected_track_callback_type = selected_callback_type
+        #         if selected_callback_type_index != self.last_selected_callback_type_index:
+        #             msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
+        #             self.log_message(trace_level, msg)
+        #             self.last_selected_callback_type_index = selected_callback_type_index
+        #         else:
+        #             msg = f"{log_id}type index of next selected track remains {selected_callback_type_index} "
+        #             self.log_message(trace_level, msg)
+        #     else: # track index changed but callback type didn't, type index must have changed too
+        #         msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
+        #         self.log_message(trace_level, msg)
+        #         self.last_selected_callback_type_index = selected_callback_type_index
+        # else:
+        #     self.log_message(trace_level, f"{log_id}self.last_selected_track_index {self.last_selected_track_index} is already {next_selected_track_index}")
         return self.last_selected_track_index, self.last_selected_track_callback_type, self.last_selected_callback_type_index
 
-    def find_track_index(self, track_obj):
+    def find_track_index(self, target_track):
         log_id = "C4.find_track_index: "
-        target_track = track_obj
-        song_tracks = self.song().visible_tracks + self.song().return_tracks
-        nbr_song_tracks = len(song_tracks)
-
-        selected_song_index = 0
-        found = target_track in song_tracks
-
-        if found:
-            for i, track in enumerate(song_tracks):
+        selected_song_index = -1
+        nbr_song_tracks = len(self.song().visible_tracks) + len(self.song().return_tracks)
+        if liveobj_valid(target_track):
+            found = False
+            for i, track in enumerate(self.song().visible_tracks):
                 if track == target_track:
                     selected_song_index = i
+                    found = True
                     break
-        else:
-            if target_track == self.song().master_track:
-                # tracks = self.song().visible_tracks + self.song().return_tracks
-                # this script stores master track info "one past" the tracks above
-                selected_song_index = nbr_song_tracks
-            else:
-                # signal that something bad happened - selected track
-                self.log_message(logging.ERROR,f"{log_id}setting selected index to a bad value {selected_song_index}")
-                selected_song_index = 555
+            if not found:
+                for i, track in enumerate(self.song().return_tracks):
+                    if track == target_track:
+                        selected_song_index = len(self.song().visible_tracks) + i
+                        found = True
+                        break
+            if not found:
+                if self.song().master_track == target_track:
+                    selected_song_index = nbr_song_tracks
+                    found = True
 
         track_callback_type = 555
         callback_type_index = 555
-        if selected_song_index < len(self.song().visible_tracks):
+        if 0 <= selected_song_index < len(self.song().visible_tracks):
             track_callback_type = 0
             callback_type_index = selected_song_index
-        elif selected_song_index < nbr_song_tracks:
+        elif len(self.song().visible_tracks) <= selected_song_index < nbr_song_tracks:
             track_callback_type = 1
             callback_type_index = selected_song_index - len(self.song().visible_tracks)
         elif selected_song_index == nbr_song_tracks:
             track_callback_type = 2
             callback_type_index = nbr_song_tracks
+        else:
+            self.log_message(logging.ERROR, f"{log_id}found selected index {selected_song_index} for track {target_track.name} doesn't match any track callback type")
 
         return selected_song_index, track_callback_type, callback_type_index, nbr_song_tracks
-        # if selected_index != self.last_selected_track_index:
-        #     self.log_message(logging.DEBUG,f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to found index {selected_index}")
-        #     self.last_selected_track_index = selected_index
-        #     self.last_selected_track_callback_type = 2
-        #     if selected_index < len(self.song().visible_tracks):
-        #         self.last_selected_track_callback_type = 0
-        #     elif selected_index < nbr_song_tracks:
-        #         self.last_selected_track_callback_type = 1
-        # return self.last_selected_track_index, self.last_selected_track_callback_type
 
     @property
     def last_selected_track_index(self):
@@ -966,16 +962,16 @@ class MackieC4(MackieC4ListenerMixin, object):
         # something else about the selected device changes, specifically when its position (index) changes in the selected track's device list
         # note that the tid input index here can include non-visible track indices (tid is 3 for track 2 if track 1 is a collapsed Group holding 2 tracks)
         log_id = "C4.selected_device_change_state: "
-        self.log_message(logging.DEBUG, f"{log_id}callback event for {track.name} with callback type {type} at input index {tid}")
+        # self.log_message(logging.DEBUG, f"{log_id}callback event for {track.name} with callback type {type} at input index {tid}")
         selected_index, callback_track_type_of_selected_index, cbtt_index_of_selected_index, track_count = self.find_track_index(track)
-        type_key = "visible" if type == 0 else "return" if type == 1 else "master"
-        type_index = cbtt_index_of_selected_index
-        msg = f"{log_id}found {type_key} track {track.name} with callback type {type} at type {type_index} and song {selected_index} indexes"
-        self.log_message(logging.DEBUG, msg)
+        # type_key = "visible" if type == 0 else "return" if type == 1 else "master"
+        # type_index = cbtt_index_of_selected_index
+        # msg = f"{log_id}found {type_key} track {track.name} with callback type {type} at type {type_index} and song {selected_index} indexes"
+        # self.log_message(logging.DEBUG, msg)
 
 
         if self.last_selected_track_index == selected_index:
-            self.log_message(logging.DEBUG, f"{log_id}processing device change on script's selected track")
+            self.log_message(self.script_log_levels["TRACE"], f"{log_id}processing device change on script's selected track")
             # if type == 1:
             #     selected_index  = type_index
             self.__processing_track_device_state_change = True
@@ -1018,7 +1014,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def devpm_change(self, device):
         log_id = "C4.devpm_change: "
-        self.log_message(logging.DEBUG, f"{log_id}parameters listener for {device.name} popped, passing")
+        self.log_message(self.script_log_levels["TRACE"], f"{log_id}parameters listener for {device.name} popped, passing")
         # self.__encoder_controller.on_selected_device_movement(device)
 
     def mixerv_changestate(self, type, tid, track, r=0):

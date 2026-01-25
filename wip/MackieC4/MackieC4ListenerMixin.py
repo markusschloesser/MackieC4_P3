@@ -401,9 +401,7 @@ class MackieC4ListenerMixin(object):
         # if self.has_track_device_listener(track):
         #     self.remove_track_device_listener(track)
         cb = lambda: self.selected_device_change_state(track, tid, type)
-        self.log_message(logging.DEBUG, "LM.add_track_device_listener: input " + dtls)
-        # if track.devices_has_listener(cb):
-        #     track.remove_devices_listener(cb)
+        self.log_message(self.script_log_levels["TRACE"], "LM.add_track_device_listener: input " + dtls)
         if track.view.selected_device_has_listener(cb):
             track.view.remove_selected_device_listener(cb)
 

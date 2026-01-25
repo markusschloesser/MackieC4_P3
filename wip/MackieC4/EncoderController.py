@@ -214,6 +214,7 @@ class EncoderController(MackieC4Component, Component):
     @listens("device")
     def __on_device_changed(self):
         log_id = "EC.__on_device_changed: "
+        trace_level = self.log_levels["TRACE"]
         d = self.__device_provider.provided_device
         self.__eah.next_selected_device = d
         if self.__chosen_plugin != d:
@@ -221,21 +222,18 @@ class EncoderController(MackieC4Component, Component):
             if liveobj_valid(d):
                 track = self.song().view.selected_track
                 if track != self.__locked_device_track:
-                    msg = f"{log_id}listener popped, {d.name} is valid, but local selected_track is not song view selected track, "
-                    msg += "setting pending device change flag for later processing when track change callback pops"
-                    self.main_script().log_message(logging.INFO, msg)
+                    msg = f"{log_id}listener popped, {d.name} is valid, but local selected_track is not song view selected track, pending device change flag now set"
+                    self.main_script().log_message(logging.DEBUG, msg)
                     self.__pending_device_change = True
                     self.__eah.next_selected_device = d
                     return
 
                 msg = f"{log_id}listener popped, {d.name} is valid, and local selected_track is the song view selected track, processing device change"
-                self.main_script().log_message(logging.INFO, msg)
-                # index = self.__eah.last_selected_track_index
-                # cb_type = self.__eah.last_selected_track_callback_type
+                self.main_script().log_message(logging.DEBUG, msg)
                 extended_device_list = self.get_device_list(self.selected_track.devices)
                 device_index = self.find_device_index_in_list(extended_device_list, d)
                 self.__eah.device_added_deleted_or_changed(extended_device_list, d, device_index)
-                self.main_script().log_message(logging.DEBUG, f"{log_id} local data updated on device change, updating special param listeners")
+                self.main_script().log_message(trace_level, f"{log_id} local data updated on device change, updating special param listeners")
                 self.add_special_parameter_listeners(track, d)
                 if self.__chosen_plugin is None:
                     last_name = "None"
@@ -244,7 +242,7 @@ class EncoderController(MackieC4Component, Component):
                 else:
                     last_name = self.__chosen_plugin.name
 
-                self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {d.name}, updating chosen plugin from {last_name}")
+                self.main_script().log_message(trace_level, f"{log_id}device changed to {d.name}, updating chosen plugin from {last_name}")
                 self.__update_chosen_plugin_device(d)
             # else:
             #     # can land here when folding a group track and new selected (group) track doesn't have any devices
@@ -256,12 +254,12 @@ class EncoderController(MackieC4Component, Component):
             if d is None and not liveobj_valid(self.__chosen_plugin):
                 # selected track did not change and selected device (the only device) was deleted
                 self.main_script().log_message(logging.DEBUG, f"{log_id}device changed to {provided_name}, updating chosen plugin from {chosen_name}")
-                self.main_script().log_message(logging.DEBUG, f"{log_id}clearing devices for track at song index {self.__eah.last_selected_track_index}")
+                self.main_script().log_message(trace_level, f"{log_id}clearing devices for track at song index {self.__eah.last_selected_track_index}")
                 self.__eah.data.clear_track_devices(self.__eah.last_selected_track_index)
                 self.__update_chosen_plugin_device(d)
             else:
                 msg = f"{log_id}listener popped, but provided device {provided_name} is already self.__chosen_plugin {chosen_name}, pass"
-                self.main_script().log_message(logging.DEBUG, msg)
+                self.main_script().log_message(trace_level, msg)
 
 
     def add_special_parameter_listeners(self, selected_track, selected_device):
@@ -289,6 +287,7 @@ class EncoderController(MackieC4Component, Component):
     def find_devices_track(self, device):
         log_id = "EC.find_devices_track: "
         selected_track = self.song().view.selected_track
+        trace_level = self.log_levels["TRACE"]
         if liveobj_valid(selected_track):
             tracks = self.song().visible_tracks + self.song().return_tracks
             selected_index = 0 # this track index should be the "local EAH database" index associated with the selected_track
@@ -299,7 +298,7 @@ class EncoderController(MackieC4Component, Component):
                 found = device in devices
                 msg = f"{log_id}self.song().view.selected_track is master (i=={selected_index}) and {device.name} device was "
                 if found:
-                    self.main_script().log_message(logging.DEBUG, f"{msg}found")
+                    self.main_script().log_message(trace_level, f"{msg}found")
                     return selected_track, selected_index
                 else:
                     self.main_script().log_message(logging.DEBUG, f"{msg}NOT found, None returned")
@@ -314,7 +313,7 @@ class EncoderController(MackieC4Component, Component):
                     found = device in devices
                     msg = f"{log_id}self.song().view.selected_track is {selected_track.name} (i=={selected_index}) and {device.name} device was "
                     if found:
-                        self.main_script().log_message(logging.DEBUG, f"{msg}found")
+                        self.main_script().log_message(trace_level, f"{msg}found")
                         return selected_track, selected_index
                     else:
                         self.main_script().log_message(logging.WARNING, f"{msg}NOT found, None returned")
@@ -329,6 +328,7 @@ class EncoderController(MackieC4Component, Component):
 
     def __update_chosen_plugin_device(self, device):
         log_id = "EC.__update_chosen_plugin_device: "
+        trace_level = self.log_levels["TRACE"]
         self.__chosen_plugin = device  # in cases like a new midi track selected; device will == None here
         if not liveobj_valid(self.selected_track):
             if liveobj_valid(device):
@@ -344,13 +344,13 @@ class EncoderController(MackieC4Component, Component):
             else:
                 self.main_script().log_message(logging.INFO, f"{log_id} device is not valid and current selected_track is not valid, not rebuilding midi map")
                 return
-        else:
+        else:  # liveobj_valid(self.selected_track)
             if liveobj_valid(device):
                 msg = f"{log_id}device is {device.name} and selected track is {self.selected_track.name}, rebuilding midi map after normal device change"
-                self.main_script().log_message(logging.INFO, msg)
+                self.main_script().log_message(trace_level, msg)
             else:
                 msg = f"{log_id}selected track is {self.selected_track.name} but device is not valid, rebuilding midi map for NoneType device"
-                self.main_script().log_message(logging.DEBUG, msg)
+                self.main_script().log_message(trace_level, msg)
         self.__reorder_parameters()
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
@@ -417,21 +417,20 @@ class EncoderController(MackieC4Component, Component):
     def track_changed(self, track_index, selected_track_callback_type, callback_type_index):
         log_id = "EC.track_changed: "
         self.selected_track = self.song().view.selected_track
+        trace_level = self.log_levels["TRACE"]
 
         if liveobj_valid(self.selected_track):
-            self.main_script().log_message(logging.DEBUG, f"{log_id}track_index input is {track_index}, selected_track is {self.selected_track.name}")
+            self.main_script().log_message(trace_level, f"{log_id}track_index input is {track_index}, selected_track is {self.selected_track.name}")
         else:
-            self.main_script().log_message(logging.WARNING, f"{log_id}track_index input is {track_index}, but selected_track is not liveobj valid")
+            self.main_script().log_message(trace_level, f"{log_id}track_index input is {track_index}, but selected_track is not liveobj valid")
 
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
 
-        # selected_device_index would return from self.__eah.track_changed(track_index), except don't update EAH.last_selected_track_index yet
-        # self.__eah.track_changed(track_index) is called as needed below
         next_active_track_ref = self.__eah.data.get_track(track_index)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}track_index input is {track_index}, stored active_track is {next_active_track_ref.track_name}")
+        self.main_script().log_message(trace_level, f"{log_id}track_index input is {track_index}, stored active_track is {next_active_track_ref.track_name}")
         if liveobj_valid(next_active_track_ref.track) and self.selected_track != next_active_track_ref.track:
-            self.main_script().log_message(logging.DEBUG, f"{log_id}live obj at index differs from stored ref at same index, track moved")
+            self.main_script().log_message(trace_level, f"{log_id}live obj at index differs from stored ref at same index, track moved")
             self.track_moved(next_active_track_ref.type, track_index)
         else:
             if not liveobj_valid(next_active_track_ref.track) and liveobj_valid(self.selected_track):
@@ -444,7 +443,7 @@ class EncoderController(MackieC4Component, Component):
             else:
                 selected_device_index = next_active_track_ref.selected_device_index # next_active_track_ref.device_count
                 msg = f"{log_id}stored active_track {next_active_track_ref.track_name} has {next_active_track_ref.device_count} devices and "
-                self.main_script().log_message(logging.DEBUG, msg + f"selected_device_index {selected_device_index}")
+                self.main_script().log_message(trace_level, msg + f"selected_device_index {selected_device_index}")
                 extended_device_list = self.get_device_list(self.selected_track.devices)
                 nbr_devices = len(extended_device_list)
                 next_device = None
@@ -455,25 +454,23 @@ class EncoderController(MackieC4Component, Component):
                         selected_device_index = self.__eah.last_selected_device_index
                         self.__pending_device_change = False
                         self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {next_device.name} cancelled, ")
-                        # self.__update_chosen_plugin_device(next_device)
-                        # self.__eah.next_selected_device = None
                     elif nbr_devices > next_active_track_ref.device_count:
                         selected_device_index = nbr_devices - 1
-                        msg = f"{log_id}pending device change, device added, selected index is last device {selected_device_index}"
+                        msg = f"{log_id}pending device change, device added, selected index is last device in chain {selected_device_index}"
                     else:
                         msg = f"{log_id}pending device change, device changed because track changed and selected index is {selected_device_index} here too"
-                    self.main_script().log_message(logging.DEBUG, msg)
+                    self.main_script().log_message(trace_level, msg)
                 else: # selected_device_index is None or this track change is not a self.__pending_device_change case
                     log_idx = "None" if selected_device_index is None else selected_device_index
                     if nbr_devices > 0 and (selected_device_index is None or not (0 <= selected_device_index < nbr_devices)):
                         msg = f"{log_id}selected device index is {log_idx} but there are {nbr_devices} devices, setting selected device index to {nbr_devices - 1}"
-                        self.main_script().log_message(logging.DEBUG, msg)
+                        self.main_script().log_message(trace_level, msg)
                         next_active_track_ref.selected_device_index = nbr_devices - 1
                         self.__eah.data.set_track(next_active_track_ref)
                         selected_device_index = next_active_track_ref.selected_device_index
 
                 if nbr_devices == 0:
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}no devices found on track {self.selected_track.name}")
+                    self.main_script().log_message(trace_level, f"{log_id}no devices found on track {self.selected_track.name}")
                     self.__eah.track_changed(track_index)
                     self.__eah.update_device_counter(track_index, 0)
                 else:
@@ -482,26 +479,27 @@ class EncoderController(MackieC4Component, Component):
                             if next_device is None:
                                 next_device = extended_device_list[selected_device_index]
                             if liveobj_valid(next_device):
-                                self.main_script().log_message(logging.DEBUG, f"{log_id}{next_device.name} found at index {selected_device_index}")
+                                self.main_script().log_message(trace_level, f"{log_id}{next_device.name} found at index {selected_device_index}")
                             self.__eah.track_changed(track_index)
                             self.__eah.update_device_counter(track_index, nbr_devices)
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}called __eah.update_device_counter({track_index}, {nbr_devices})")
+                            self.main_script().log_message(trace_level, f"{log_id}called __eah.update_device_counter({track_index}, {nbr_devices})")
                         # else something didn't get updated correctly at startup and/or when devices deleted?
                         elif nbr_devices > 0: # punt if we can
                             next_device = extended_device_list[nbr_devices - 1]
                             msg = f"{log_id}Because there are only {nbr_devices} devices in device list for track {self.selected_track.name}, index "
                             if liveobj_valid(next_device):
-                                msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {next_device.name} found at index {nbr_devices - 1} instead."
-                                self.main_script().log_message(logging.INFO, msg)
+                                msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {next_device.name} found at index {nbr_devices - 1} "
+                                self.main_script().log_message(trace_level, msg + "instead.")
                             else:
                                 nbr_devices = 0
                                 msg += f"{selected_device_index} returned by EAH is OOB, and "
                                 self.main_script().log_message(logging.ERROR, msg + f"invalid device found at index 0 of track's device list. assumption issue?")
                             self.__eah.track_changed(track_index)
                             self.__eah.update_device_counter(track_index, nbr_devices)
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}called __eah.update_device_counter(track_index={track_index}, nbr_of_devices={nbr_devices})")
+                            self.main_script().log_message(trace_level, f"{log_id}called __eah.update_device_counter(track_index={track_index}, nbr_of_devices={nbr_devices})")
                         else:
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}len(extended_device_list) {nbr_devices} < {selected_device_index} selected_device_index, no update")
+                            msg = f"{log_id}len(extended_device_list) {nbr_devices} < {selected_device_index} selected_device_index, no update"
+                            self.main_script().log_message(logging.DEBUG, msg)
                     # else:
                     # selected_device_index is None or selected_device_index < 0
 
@@ -516,17 +514,17 @@ class EncoderController(MackieC4Component, Component):
                                 self.song().view.select_device(next_device) # this device selection could cause cascading listener callbacks in Live
                                 # don't update chosen plugin here, defer to device change listener callback
                             else:
-                                self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but song selected device is already {next_device.name}")
+                                self.main_script().log_message(trace_level, f"{msg_prefix}but song selected device is already {next_device.name}")
                                 if self.__chosen_plugin == next_device:
-                                    self.main_script().log_message(logging.DEBUG, f"{log_id}and script chosen plugin is already {next_device.name}")
+                                    self.main_script().log_message(trace_level, f"{log_id}and script chosen plugin is already {next_device.name}")
                                     self.__update_chosen_plugin_device(next_device)
                                 else:
                                     if self.__pending_device_change:
                                         msg_prefix = f"{log_id}and a local device change is pending, "
                                     nm = "None" if self.__chosen_plugin is None else "Invalid" if not liveobj_valid(self.__chosen_plugin) else self.__chosen_plugin.name
-                                    self.main_script().log_message(logging.DEBUG, f"{msg_prefix}processing local device change with index {selected_device_index}")
+                                    self.main_script().log_message(trace_level, f"{msg_prefix}processing local device change with index {selected_device_index}")
                                     self.__eah.device_added_deleted_or_changed(extended_device_list, next_device, selected_device_index)
-                                    self.main_script().log_message(logging.DEBUG, f"{msg_prefix}updating script chosen plugin from {nm} to {next_device.name}")
+                                    self.main_script().log_message(trace_level, f"{msg_prefix}updating script chosen plugin from {nm} to {next_device.name}")
                                     self.__update_chosen_plugin_device(next_device)
                                     self.__pending_device_change = False
                                     name = "None" if self.__eah.next_selected_device is None else "Invalid" if not liveobj_valid(self.__eah.next_selected_device) \
@@ -604,23 +602,23 @@ class EncoderController(MackieC4Component, Component):
         log_id = "EC.tracks_deleted: "
         self.main_script().log_message(logging.DEBUG, f"{log_id}deleting tracks of type {track_type} from index: {track_index}")
         self.__eah.tracks_deleted(track_index, tracks_of_type, track_type)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}updating selected track info at index: {track_index}")
+        self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}updating selected track info at index: {track_index}")
         self.__update_selected_track(track_index)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[track_type]} tracks:")
+        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[track_type]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[track_type])
 
     def unselected_tracks_deleted(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_deleted: "
         self.__eah.unselected_tracks_deleted(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
 
     def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_changed: "
         self.__eah.unselected_tracks_changed(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
+        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[found_changed_track_callback_type]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
 
     def track_deleted(self, next_selected_track_index, callback_track_type_of_selected_index, callback_type_index):
@@ -632,9 +630,10 @@ class EncoderController(MackieC4Component, Component):
             self.__eah.track_deleted(0 if next_selected_track_index < 1 else next_selected_track_index - 1)
 
         next_ref = self.__eah.data.get_active_track_details_at_song_index(next_selected_track_index)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}shifted stored ref at song index {next_selected_track_index} is now {next_ref.active_track.track_name}")
+        msg = f"{log_id}shifted stored ref at song index {next_selected_track_index} is now {next_ref.active_track.track_name}"
+        self.main_script().log_message(self.log_levels["TRACE"], msg)
         self.__update_selected_track(next_selected_track_index)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
+        # self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[callback_track_type_of_selected_index])
 
     def __update_selected_track(self, track_index):
@@ -660,7 +659,7 @@ class EncoderController(MackieC4Component, Component):
                 insert = "remains"
 
             log_list = [self.__eah.last_selected_track_index, self.__eah.last_selected_track_callback_type, self.__eah.last_selected_track_callback_type_index]
-            self.main_script().log_message(logging.DEBUG, f"{log_id}song index {track_index} {insert} last selected [song index, cb_type, type_index] {log_list}")
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}song index {track_index} {insert} last selected [song index, cb_type, type_index] {log_list}")
 
         self.refresh_state()  # class local refresh, resets "modifier is pressed" states to "released"
 

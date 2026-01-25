@@ -1337,6 +1337,7 @@ class EncoderAssignmentHistory(MackieC4Component):
     def __init__(self, main_script, encoder_controller):
         MackieC4Component.__init__(self, main_script)
 
+        self.log_levels = main_script.script_log_levels
         self.data = SongData(logger=self.main_script().log_message, get_device_list=self.get_device_list)
 
         self.__my_controlling_encoder = encoder_controller
@@ -1627,7 +1628,8 @@ class EncoderAssignmentHistory(MackieC4Component):
             update_selected_track_index_after = False
 
         final_callback_type_track_count = 0  # minimum == no return tracks (always 1 master and 1 visible for 2 total minimum)
-        self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        trace_level = self.log_levels["TRACE"]
+        self.main_script().log_message(trace_level, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         if callback_type == 0:
             final_callback_type_track_count = len(tracks_of_type_after)
             self.unselected_tracks_added(callback_type, final_callback_type_track_count)
@@ -1642,7 +1644,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         if update_selected_track_index_after:
             self.last_selected_track_index = selected_song_track_index_after
 
-        self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        self.main_script().log_message(trace_level, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         assert final_callback_type_track_count == self.data.total_track_count - 1  # not counting master here
 
 
@@ -1719,8 +1721,9 @@ class EncoderAssignmentHistory(MackieC4Component):
             # tracks were removed to the right of the selected track
             update_selected_track_index_after = False
         final_callback_type_track_count = 0 # minimum == no return tracks (total minimum is 2 == 1 plain + 1 master)
-            
-        self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+
+        trace_level = self.log_levels["TRACE"]
+        self.main_script().log_message(trace_level, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         if callback_type == 0:
             nbr_to_remove = self.data.plain_track_count - len(tracks_of_type_after)
             final_callback_type_track_count = self.data.plain_track_count - nbr_to_remove
@@ -1758,7 +1761,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         if update_selected_track_index_after:
             self.last_selected_track_index = selected_song_track_index_after
 
-        self.main_script().log_message(logging.DEBUG, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        self.main_script().log_message(trace_level, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         assert final_callback_type_track_count == self.data.total_track_count - 1 # not counting master here
 
     def unselected_tracks_deleted(self, found_changed_track_callback_type, callback_type_track_count):
@@ -1869,29 +1872,29 @@ class EncoderAssignmentHistory(MackieC4Component):
     def device_added_deleted_or_changed(self, all_track_devices, selected_device, selected_device_idx):
         log_id = "EAH.device_added_deleted_or_changed: "
         new_device_count_track = len(all_track_devices)
-        idx = 0
-        log_msg = f"{log_id}device in input device list at index<{idx}> is "
-        for device in all_track_devices:
-            if liveobj_valid(device):
-                # pass
-                self.main_script().log_message(logging.DEBUG, f"{log_msg}a valid Live object named <{device.name}>")
-            else:
-                self.main_script().log_message(logging.WARNING, f"{log_msg}<None> or a lost weakref")
-            idx += 1
-            log_msg = "{0}device in input device list at index<{1}> is ".format(log_id, idx)
-        if not new_device_count_track == idx:
-            self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue, collection size {new_device_count_track} doesn't match iterator {idx}")
+        trace_level = self.log_levels["TRACE"]
+        # idx = 0
+        # log_msg = f"{log_id}device in input device list at index<{idx}> is "
+        # for device in all_track_devices:
+        #     if liveobj_valid(device):
+        #         # pass
+        #         self.main_script().log_message(logging.DEBUG, f"{log_msg}a valid Live object named <{device.name}>")
+        #     else:
+        #         self.main_script().log_message(logging.WARNING, f"{log_msg}<None> or a lost weakref")
+        #     idx += 1
+        #     log_msg = "{0}device in input device list at index<{1}> is ".format(log_id, idx)
+        # if not new_device_count_track == idx:
+        #     self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue, collection size {new_device_count_track} doesn't match iterator {idx}")
         # if liveobj_valid(selected_device):
         #     self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device is a valid Live object named<{selected_device.name}>")
         # if selected_device_idx > -1:
         #     self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device_idx<{selected_device_idx}> points to a non-negative index")
         active_device_list_ref = self.data.get_active_track_details_at_song_index(self.last_selected_track_index)
         last_track_ref = active_device_list_ref.active_track
-        # last_track_ref = self.data.get_track(self.last_selected_track_index)
         old_device_count_track = last_track_ref.device_count
         old_selected_device_index = last_track_ref.selected_device_index # could be None
         msg = f"{log_id}track index ref {last_track_ref.index} has name {last_track_ref.track_name} and old device count {old_device_count_track}"
-        self.main_script().log_message(logging.DEBUG, msg)
+        self.main_script().log_message(trace_level, msg)
 
         device_was_added = new_device_count_track > old_device_count_track
         device_was_removed = new_device_count_track < old_device_count_track
