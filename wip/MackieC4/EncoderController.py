@@ -96,6 +96,7 @@ class EncoderController(MackieC4Component, Component):
         self.__display_update_lag_upper_bounds = [0, 5, 10, 20]
         self.__display_update_lag_upper_bounds_index = 0
         self.__display_update_lag_counter = 0
+        self.__spot_erase_state = 0
         self.__assignment_mode = C4M_CHANNEL_STRIP
 
         self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
@@ -903,6 +904,7 @@ class EncoderController(MackieC4Component, Component):
             self.one_display_update()
         elif switch_id == C4SID_SPLIT_ERASE:
             out_value = led_dict[C4SID_SPLIT_ERASE]["led_value"][switch_dict["press_count"] % 2]
+            self.__spot_erase_state = out_value
         else:
             self.main_script().log_message(logging.ERROR, f"EC.handle_system_switch_ids: unknown system switch id {switch_id}, no feedback generated")
             send_feedback = False
@@ -2358,9 +2360,11 @@ class EncoderController(MackieC4Component, Component):
                     upper_string1 += ''.join([adjust_string(u_alt_text, 6), ' '])
                     lower_string1 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
                 elif t in row_01_encoders:
-                    l_alt2_text = self.get_scrolling_display_text(l_alt_text, t)
-                    lower_string2 += adjust_string(l_alt2_text, 6) + ' '
-
+                    if self.__spot_erase_state > 0:
+                        l_alt2_text = self.get_scrolling_display_text(l_alt_text, t)
+                        lower_string2 += adjust_string(l_alt2_text, 6) + ' '
+                    else:
+                        lower_string2 += adjust_string(l_alt_text, 6) + ' '
                 elif t in row_02_encoders:
                     upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])
                     lower_string3 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
@@ -2518,8 +2522,12 @@ class EncoderController(MackieC4Component, Component):
                     l_raw_text = text_for_display.get_lower_text()
 
                     # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scrolling and just switch between 123456 and 789101112
-                    u_alt_text = self.get_scrolling_display_text(u_raw_text, t)
-                    l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
+                    if self.__spot_erase_state > 0:
+                        u_alt_text = self.get_scrolling_display_text(u_raw_text, t)
+                        l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
+                    else:
+                        u_alt_text = u_raw_text
+                        l_alt_text = l_raw_text
 
                     if t in range(6, NUM_ENCODERS_ONE_ROW):
                         lower_string1 += adjust_string(str(l_alt_text), 6) + ' '
@@ -2571,8 +2579,11 @@ class EncoderController(MackieC4Component, Component):
                     if e.vpot_index() == encoder_09_index:
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
                         # NEW: lower row = last undo label (from redo), scroll if available
-                        if time.time() - self._last_undo_label_time < 15.0 and self._last_undo_label:
-                            lower_string2 += self.get_scrolling_display_text(self._last_undo_label, e.vpot_index()) + ' '
+                        if self.__spot_erase_state > 0:
+                            if time.time() - self._last_undo_label_time < 15.0 and self._last_undo_label:
+                                lower_string2 += self.get_scrolling_display_text(self._last_undo_label, e.vpot_index()) + ' '
+                            else:
+                                lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                         else:
                             lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                         if self.song().can_undo:
@@ -2583,8 +2594,11 @@ class EncoderController(MackieC4Component, Component):
                     elif e.vpot_index() == encoder_10_index:
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
                         # NEW: lower row = last redo label (from undo), scroll if available
-                        if time.time() - self._last_redo_label_time < 15.0 and self._last_redo_label:
-                            lower_string2 += self.get_scrolling_display_text(self._last_redo_label, e.vpot_index()) + ' '
+                        if self.__spot_erase_state > 0:
+                            if time.time() - self._last_redo_label_time < 15.0 and self._last_redo_label:
+                                lower_string2 += self.get_scrolling_display_text(self._last_redo_label, e.vpot_index()) + ' '
+                            else:
+                                lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                         else:
                             lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
                         if self.song().can_redo:
@@ -2609,13 +2623,19 @@ class EncoderController(MackieC4Component, Component):
                     # show loop length
                     elif e.vpot_index() == encoder_14_index:
                         upper, lower = self.loop_length("on_update_display_timer", e.vpot_index())
-                        upper_string2 += self.get_scrolling_display_text(upper, e.vpot_index()) + ' '
+                        if self.__spot_erase_state > 0:
+                            upper_string2 += self.get_scrolling_display_text(upper, e.vpot_index()) + ' '
+                        else:
+                            upper_string2 += upper
                         lower_string2 += lower
 
                     # show loop start
                     elif e.vpot_index() == encoder_15_index:
                         get_loop_start = str(self.song().loop_start / 4)
-                        upper_string2 += self.get_scrolling_display_text('LoopStart', e.vpot_index()) + ' '
+                        if self.__spot_erase_state > 0:
+                            upper_string2 += self.get_scrolling_display_text('LoopStart', e.vpot_index()) + ' '
+                        else:
+                            upper_string2 += 'LoopStart'
                         lower_string2 += adjust_string(get_loop_start, 6) + ' '
 
                         # vpot ring light
@@ -2633,7 +2653,10 @@ class EncoderController(MackieC4Component, Component):
                         # show if we are in Session or Arrange view in upper row and selected track name in lower row
                         upper_string2 += ('Scroll' if self.application().view.is_view_visible('Session') else 'Zoom  ')
                         if liveobj_valid(selected_track):
-                            lower_string2 += self.get_scrolling_display_text(selected_track.name, e.vpot_index())
+                            if self.__spot_erase_state > 0:
+                                lower_string2 += self.get_scrolling_display_text(selected_track.name, e.vpot_index())
+                            else:
+                                lower_string2 += selected_track.name
                         else:
                             lower_string2 += '      '
 
