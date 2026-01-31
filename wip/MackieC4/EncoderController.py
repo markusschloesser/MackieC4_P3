@@ -93,7 +93,7 @@ class EncoderController(MackieC4Component, Component):
         self.__eah = EncoderAssignmentHistory(main_script, self)
         self.__eah.data.class_logging = self.current_log_level < logging.DEBUG
         self.__time_display = TimeDisplay(self)
-        self.__display_update_lag_upper_bounds = [20, 10, 5, 0]
+        self.__display_update_lag_upper_bounds = [0, 5, 10, 20]
         self.__display_update_lag_upper_bounds_index = 0
         self.__display_update_lag_counter = 0
         self.__assignment_mode = C4M_CHANNEL_STRIP
