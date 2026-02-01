@@ -2268,12 +2268,14 @@ class EncoderController(MackieC4Component, Component):
     def __display_lag_timer_bang(self):
         # (when song is NOT playing) count to _upper_bounds[bounds_index] before returning True and resetting the count
         max_lag = self.__display_update_lag_upper_bounds[self.__display_update_lag_upper_bounds_index]
-        if self.__display_update_lag_counter < max_lag:
+        if self.__display_update_lag_upper_bounds_index == len(self.__display_update_lag_upper_bounds) - 1:
+            return False  # never bang at last lag setting
+        elif self.__display_update_lag_counter < max_lag:
             self.__display_update_lag_counter += 1
-            return False
+            return False  # increment countdown to bang
         else:
             self.__display_update_lag_counter = 0
-            return True
+            return True  # reset count and bang
 
     def __do_display_update(self, force=False):
         """force means send the generated LCD screen display update messages even if they match the previous update messages sent"""
