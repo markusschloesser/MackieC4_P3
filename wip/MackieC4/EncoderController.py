@@ -408,7 +408,7 @@ class EncoderController(MackieC4Component, Component):
             self.track_moved(next_active_track_ref.type, track_index)
         else:
             if not liveobj_valid(next_active_track_ref.track) and liveobj_valid(self.selected_track):
-                msg = f"{log_id}stored active_track {next_active_track_ref.track_name} is not valid and selected track is valid {self.selected_track.name} "
+                msg = f"{log_id}VISIBILTY!! stored active_track {next_active_track_ref.track_name} is not valid and selected track is valid {self.selected_track.name} "
                 self.main_script().log_message(logging.WARNING, msg + "updating invalid stored reference and re-entering")
                 self.__eah.data.remove_track(0 if track_index < 1 else track_index - 1) # pass the "index before" the track to be removed
                 self.__eah.data.add_track(self.selected_track, selected_track_callback_type, track_index)
@@ -736,7 +736,7 @@ class EncoderController(MackieC4Component, Component):
             # self.main_script().log_message(logging.DEBUG, log_msg)
             if liveobj_changed(self.selected_track, track):
                 sel_trk_nm = self.selected_track.name if liveobj_valid(self.selected_track) else "None"
-                log_msg = f"{log_id}because input track <{track.name}> is not self.selected_track, "
+                log_msg = f"{log_id}because VISIBILTY!! input track <{track.name}> is not self.selected_track, "
                 log_msg += f"updating self.selected_track from <{sel_trk_nm}> to <{track.name}> and calling self.track_changed({track_index}) "
                 self.main_script().log_message(logging.DEBUG, log_msg + f"to update self.__eah before calling self.__eah.device_added_deleted_or_changed() below")
                 self.selected_track = track
