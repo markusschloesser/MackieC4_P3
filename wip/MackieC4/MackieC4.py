@@ -23,6 +23,7 @@ This is the second file that is loaded, by way of being instantiated through __i
 from __future__ import absolute_import, print_function, unicode_literals
 import logging
 import time
+from functools import partial, wraps
 
 import Live
 from ableton.v2.base import liveobj_valid, clamp
@@ -43,6 +44,34 @@ if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
 
 logger = logging.getLogger(__name__)
 
+class TooSoon(Exception):
+  """Can't be called so soon"""
+  pass
+
+class CoolDownDecorator(object):
+  def __init__(self,func,interval):
+    self.func = func
+    self.interval = interval
+    self.last_run = 0
+  def __get__(self,obj,objtype=None):
+    if obj is None:
+      return self.func
+    return partial(self,obj)
+  def __call__(self,*args,**kwargs):
+    now_nanos = time.process_time_ns()
+    now_ms = now_nanos / 1e6
+    if now_ms - self.last_run < self.interval:
+        to_go = self.last_run + self.interval - now_ms
+        raise TooSoon(f"Call after {to_go} milliseconds")
+    else:
+      self.last_run = now_ms
+      return self.func(*args,**kwargs)
+
+def CoolDown(interval):
+  def applyDecorator(func):
+    decorator = CoolDownDecorator(func=func,interval=interval)
+    return wraps(func)(decorator)
+  return applyDecorator
 
 
 class MackieC4(MackieC4ListenerMixin, object):
@@ -71,6 +100,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__components = []
         self.__surface_is_locked = False
         self.__device_provider = C4DeviceProvider(self.song())
+        self.__scroll_buffer_time = 0
         self.__handling_assignment_switch = False
         self.__processing_track_device_state_change = False
         self.__processing_track_state_change = False
@@ -437,6 +467,28 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def zoom_or_scroll(self, cc_value):
         """ Scroll in Session view or Zoom in Arrange view with vpot_rotation encoder rotation"""
+        current_view_name = self.application().view.focused_document_view
+        if current_view_name == 'Arranger':
+            self.__zoom_view(cc_value)
+        else:
+            try:
+                self.__scroll_buffer_time = time.process_time_ns() / 1e6
+                self.__throttled_scroll_view(cc_value)
+            except TooSoon as exception:
+                # self.__scroll_governor(cc_value)
+                self.log_message(logging.DEBUG, f"C4.zoom_or_scroll: Too Soon {exception}")
+
+    def __scroll_governor(self, cc_value):
+        millis_now = time.process_time_ns() / 1e6
+        if self.__scroll_buffer_time + 100 < millis_now:
+            self.__zoom_view(cc_value)
+        self.__scroll_buffer_time = millis_now
+
+    @CoolDown(40) # milliseconds
+    def __throttled_scroll_view(self, cc_value):
+        self.__zoom_view(cc_value)
+
+    def __zoom_view(self, cc_value):
         nav = Live.Application.Application.View.NavDirection
         if cc_value >= 64:
             self.application().view.zoom_view(nav.left, '', self.alt_is_pressed())
