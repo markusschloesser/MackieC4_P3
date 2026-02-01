@@ -74,6 +74,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__handling_assignment_switch = False
         self.__processing_track_device_state_change = False
         self.__processing_track_state_change = False
+        self.__changing_track = False
         self._selected_track_index = 0
         self._selected_track_callback_type = 0
         self._selected_callback_type_index = 0
@@ -647,10 +648,15 @@ class MackieC4(MackieC4ListenerMixin, object):
     def track_change(self):
         """This is the "selected track listener" callback"""
         log_id = "C4.track_change: "
-        selected_track_index, selected_track_callback_type, callback_type_index = self.find_and_assign_selected_track_index()
-        # self.log_message(logging.DEBUG, f"{log_id}calling EC.track_changed passing {selected_track_index}, {selected_track_callback_type}, and {callback_type_index}")
-        self.__encoder_controller.track_changed(selected_track_index, selected_track_callback_type, callback_type_index)
-        # self.request_rebuild_midi_map()  <--- called by EC
+        if not self.__changing_track:
+            self.__changing_track = True
+            selected_track_index, selected_track_callback_type, callback_type_index = self.find_and_assign_selected_track_index()
+            msg = f"{log_id}calling EC.track_changed passing {selected_track_index}, {selected_track_callback_type}, and {callback_type_index}"
+            self.log_message(self.script_log_levels["TRACE"], msg)
+            self.__encoder_controller.track_changed(selected_track_index, selected_track_callback_type, callback_type_index)
+            self.__changing_track = False
+        else:
+            self.log_message(logging.DEBUG, f"{log_id}not calling EC.track_changed, passing")
 
     def find_changed_track_callback_type(self):
         log_id = "C4.find_changed_track_callback_type: "
