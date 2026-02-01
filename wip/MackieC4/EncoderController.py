@@ -2448,7 +2448,9 @@ class EncoderController(MackieC4Component, Component):
             else:  # not locked or valid
                 upper_string1 +=  "------ Track ------- --No--Device----------"
             if add_tail:
-                if t_d_idx > 99:
+                if t_d_idx is None:
+                    upper_string1 += ' ----- '
+                elif t_d_idx > 99:
                     upper_string1 += ' --- '
                 else:
                     upper_string1 += ' ---- ' if t_d_idx > 9 else ' ----- '
@@ -2483,7 +2485,7 @@ class EncoderController(MackieC4Component, Component):
                 device_name = '  '
                 if self.is_locked_to_device:
                     device_name = self.__chosen_plugin.name
-                elif t_d_idx > -1:
+                elif t_d_idx is not None and t_d_idx > -1:
                     extended_device_list = self.get_device_list(selected_track.devices)
                     if liveobj_valid(selected_track) and len(extended_device_list) > t_d_idx:
                         if liveobj_valid(extended_device_list[t_d_idx]):
