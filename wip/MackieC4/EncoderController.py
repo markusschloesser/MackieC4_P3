@@ -216,18 +216,18 @@ class EncoderController(MackieC4Component, Component):
             if liveobj_valid(d):
                 track = self.song().view.selected_track
                 if track != self.__locked_device_track:
-                    msg = f"{log_id}listener popped, {d.name} is valid, but local selected_track is not song view selected track, pending device change flag now set"
+                    msg = f"{log_id}listener popped, {d.name} is valid, but not local selected_track, pending device change flag set"
                     self.main_script().log_message(logging.DEBUG, msg)
                     self.__pending_device_change = True
                     self.__eah.next_selected_device = d
                     return
 
-                msg = f"{log_id}listener popped, {d.name} is valid, and local selected_track is the song view selected track, processing device change"
+                msg = f"{log_id}listener popped, {d.name} is valid, and local selected_track, processing device change now"
                 self.main_script().log_message(logging.DEBUG, msg)
                 extended_device_list = self.get_device_list(self.selected_track.devices)
                 device_index = self.find_device_index_in_list(extended_device_list, d)
                 self.__eah.device_added_deleted_or_changed(extended_device_list, d, device_index)
-                self.main_script().log_message(trace_level, f"{log_id} local data updated on device change, updating special param listeners")
+                self.main_script().log_message(trace_level, f"{log_id} local data updated, updating special param listeners")
                 self.add_special_parameter_listeners(track, d)
                 if self.__chosen_plugin is None:
                     last_name = "None"
@@ -236,7 +236,7 @@ class EncoderController(MackieC4Component, Component):
                 else:
                     last_name = self.__chosen_plugin.name
 
-                self.main_script().log_message(trace_level, f"{log_id}device changed to {d.name}, updating chosen plugin from {last_name}")
+                self.main_script().log_message(trace_level, f"{log_id}device changed, updating chosen plugin from {last_name} to {d.name}")
                 self.__update_chosen_plugin_device(d)
             # else:
             #     # can land here when folding a group track and new selected (group) track doesn't have any devices
