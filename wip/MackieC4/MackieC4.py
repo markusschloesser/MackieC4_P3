@@ -468,6 +468,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     def zoom_or_scroll(self, cc_value):
         """ Scroll in Session view or Zoom in Arrange view with vpot_rotation encoder rotation"""
         current_view_name = self.application().view.focused_document_view
+        self.__encoder_controller.view_is_changing = True
         if current_view_name == 'Arranger':
             self.__zoom_view(cc_value)
         else:
@@ -477,6 +478,7 @@ class MackieC4(MackieC4ListenerMixin, object):
             except TooSoon as exception:
                 # self.__scroll_governor(cc_value)
                 self.log_message(logging.DEBUG, f"C4.zoom_or_scroll: Too Soon {exception}")
+        self.__encoder_controller.view_is_changing = False
 
         # def __scroll_governor(self, cc_value):
     #     millis_now = time.process_time_ns() / 1e6
@@ -484,7 +486,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     #         self.__zoom_view(cc_value)
     #     self.__scroll_buffer_time = millis_now
 
-    @CoolDown(40) # milliseconds
+    @CoolDown(85) # milliseconds
     def __throttled_scroll_view(self, cc_value):
         self.__zoom_view(cc_value)
 

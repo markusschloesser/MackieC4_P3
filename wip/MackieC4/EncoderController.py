@@ -97,8 +97,9 @@ class EncoderController(MackieC4Component, Component):
         self.__display_update_lag_upper_bounds_index = 0
         self.__display_update_lag_counter = 0
         self.__spot_erase_state = 0
-        self.__assignment_mode = C4M_CHANNEL_STRIP
+        self.__view_is_changing = False
 
+        self.__assignment_mode = C4M_CHANNEL_STRIP
         self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
         self.__current_track_name = ''  # Live's Track Name of selected track
         self.selected_track = None  # Live's selected-Track Object
@@ -194,6 +195,15 @@ class EncoderController(MackieC4Component, Component):
     def get_encoders(self):
         return self.__encoders
 
+    @property
+    def view_is_changing(self):
+        """returns True when C4.zoom_or_scroll() callback method is running, False otherwise"""
+        return self.__view_is_changing
+
+    @view_is_changing.setter
+    def view_is_changing(self, is_changing):
+        """set True when C4.zoom_or_scroll() callback method starts, set False when C4.zoom_or_scroll() callback method  ends"""
+        self.__view_is_changing = is_changing
 
     @listens("device")
     def __on_device_changed(self):
@@ -2263,7 +2273,11 @@ class EncoderController(MackieC4Component, Component):
         self.one_display_update(force=force)
 
     def one_display_update(self, force=False):
-        self.__do_display_update(force=force)
+        """If the (Session or Arranger) view is (scrolling or zooming), only allow forced display updates. If not, do every display update, passing force as needed"""
+        if not self.view_is_changing:
+            self.__do_display_update(force=force)
+        elif force:
+            self.__do_display_update(force=force)
 
     def __display_lag_timer_bang(self):
         # (when song is NOT playing) count to _upper_bounds[bounds_index] before returning True and resetting the count
