@@ -98,6 +98,7 @@ class EncoderController(MackieC4Component, Component):
         self.__display_update_lag_counter = 0
         self.__spot_erase_state = 0
         self.__view_is_changing = False
+        self.add_special_parameter_listeners_pending = False
 
         self.__assignment_mode = C4M_CHANNEL_STRIP
         self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
@@ -228,7 +229,16 @@ class EncoderController(MackieC4Component, Component):
                 device_index = self.find_device_index_in_list(extended_device_list, d)
                 self.__eah.device_added_deleted_or_changed(extended_device_list, d, device_index)
                 self.main_script().log_message(trace_level, f"{log_id} local data updated, updating special param listeners")
-                self.add_special_parameter_listeners(track, d)
+                if not self.view_is_changing:
+                    self.add_special_parameter_listeners(track, d)
+                    self.add_special_parameter_listeners_pending = False
+                else:
+                    # 'view is changing' - encoder 16 is turning - selected track is changing quickly - we only 'need' these listeners added to the last selected track
+                    # the "decrement/increment last parameter" (Parameter - Single L and Single R buttons) functionality doesn't work if we don't add these listeners
+                    # here or later. But is that a problem?
+                    # do we actually need to add these listeners later, say when an encoder rotates check if param has special listener, add if not
+                    self.add_special_parameter_listeners_pending = True
+
                 if self.__chosen_plugin is None:
                     last_name = "None"
                 elif not liveobj_valid(self.__chosen_plugin):

@@ -486,7 +486,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     #         self.__zoom_view(cc_value)
     #     self.__scroll_buffer_time = millis_now
 
-    @CoolDown(85) # milliseconds
+    @CoolDown(80) # milliseconds
     def __throttled_scroll_view(self, cc_value):
         self.__zoom_view(cc_value)
 
