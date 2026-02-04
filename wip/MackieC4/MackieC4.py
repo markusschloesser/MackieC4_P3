@@ -642,8 +642,10 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.rem_tracks_listener()
         self.remove_device_listeners()  # rem_device_listeners()
         self.rem_transport_listener()
-        if self.song().visible_tracks_has_listener(self.tracks_change):
-            self.song().remove_visible_tracks_listener(self.tracks_change)
+        # if self.song().visible_tracks_has_listener(self.tracks_change):
+        #     self.song().remove_visible_tracks_listener(self.tracks_change)
+        if self.song().visible_tracks_has_listener(self.visible_tracks_change):
+            self.song().remove_visible_tracks_listener(self.visible_tracks_change)
         for c in self.__components:
             c.destroy()
 
@@ -917,11 +919,16 @@ class MackieC4(MackieC4ListenerMixin, object):
         """This is the Visible Tracks listener callback"""
         log_id = "C4.visible_tracks_change: "
         self.log_message(self.script_log_levels["TRACE"], f"{log_id}deferring to tracks_change...")
-        self.tracks_change()
+        self.tracks_change(log_id)
 
-    def tracks_change(self):
+    def tracks_change(self, caller=None):
         """This is the Tracks listener callback"""
         log_id = "C4.tracks_change: "
+        if caller is None:
+            self.log_message(logging.DEBUG, f"{log_id}direct callback")
+        else:
+            self.log_message(logging.DEBUG, f"{log_id}deferred callback from {caller}")
+
         if not self.__encoder_controller.view_is_changing:
             self.__processing_track_state_change = True
 
