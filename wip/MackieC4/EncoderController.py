@@ -1647,7 +1647,7 @@ class EncoderController(MackieC4Component):
                     lower_string2 += adjust_string(l_alt2_text, 6) + ' '
 
                 elif t in row_02_encoders:
-                    upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                    upper_string3 += ''.join([self.get_scrolling_display_text(u_alt_text, t), ' '])
                     lower_string3 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
                 elif t in row_03_encoders:
                     if t < encoder_27_index:
