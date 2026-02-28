@@ -2392,12 +2392,18 @@ class EncoderController(MackieC4Component, Component):
                     else:
                         lower_string2 += adjust_string(l_alt_text, 6) + ' '
                 elif t in row_02_encoders:
-                    upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                    if self.__spot_erase_state > 0:
+                        upper_string3 += ''.join([self.get_scrolling_display_text(u_alt_text, t), ' '])
+                    else:
+                        upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])
                     lower_string3 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
                 elif t in row_03_encoders:
                     if t < encoder_27_index:
+                        if self.__spot_erase_state > 0:
+                            upper_string4 += ''.join([self.get_scrolling_display_text(u_alt_text, t), ' '])
+                        else:
+                            upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
                         lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
 
                     if t == encoder_27_index:
                         upper, lower = self.xfade("on_update_display_timer", t, u_alt_text, l_alt_text)
