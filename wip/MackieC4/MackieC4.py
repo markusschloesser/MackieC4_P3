@@ -244,22 +244,21 @@ class MackieC4(MackieC4ListenerMixin, object):
         """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
         explicitly to our receive_midi_functions. Which means that when you are not forwarding MIDI, nor mapping parameters, you will
         never get any MIDI messages at all. """
-        if self.is_hardware_responding:
-            # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
-            for s in self.__encoders:
-                # this s.build_midi_map() will ask to forward midi CC messages from any encoder that is currently "mapped to" None (instead of a liveobj_valid(param))
-                s.build_midi_map(midi_map_handle)
+        # if self.is_hardware_responding:
+        # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
+        for s in self.__encoders:
+            # this s.build_midi_map() will ask to forward midi CC messages from any encoder that is currently "mapped to" None (instead of a liveobj_valid(param))
+            s.build_midi_map(midi_map_handle)
 
-            # ask Live to forward all midi note messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
-            # forward every incoming midi Note or CC message with an id value between 0 and 63 to the script for processing, some of these CC forwarding requests
-            # will be second requests for encoder ids above that don't get mapped to a valid "live object" at any given time, but you can ask as many times as
-            # you want Live doesn't forward the same message twice. Even for encoders mapped above (handled by Live directly), forward the midi messages they emit
-            # Split button has 3 feedback addresses + 19 control buttons + 10 (unused spacers) + 32 encoder buttons == 64 midi note message forwarding requests
-            for i in range(C4SID_FIRST, C4SID_LAST + 1):
-                Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
-                if i < NUM_ENCODERS:
-                    Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)  # 32 encoders
-
+        # ask Live to forward all midi note messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
+        # forward every incoming midi Note or CC message with an id value between 0 and 63 to the script for processing, some of these CC forwarding requests
+        # will be second requests for encoder ids above that don't get mapped to a valid "live object" at any given time, but you can ask as many times as
+        # you want Live doesn't forward the same message twice. Even for encoders mapped above (handled by Live directly), forward the midi messages they emit
+        # Split button has 3 feedback addresses + 19 control buttons + 10 (unused spacers) + 32 encoder buttons == 64 midi note message forwarding requests
+        for i in range(C4SID_FIRST, C4SID_LAST + 1):
+            Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
+            if i < NUM_ENCODERS:
+                Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)  # 32 encoders
 
     def request_firmware_version(self):
 
@@ -711,15 +710,15 @@ class MackieC4(MackieC4ListenerMixin, object):
         Send out MIDI to completely update the attached MIDI controller. Will be called when requested by the user,
         after for example having reconnecting the MIDI cables or when exiting MIDI map mode
         """
-        if self.is_hardware_responding:
-            self.set_mixer_listeners()  # add_mixer_listeners()
-            self.add_overdub_listener()
-            self.add_tracks_listener()
-            self.add_device_listeners()
-            self.add_transport_listener()
-            self.add_scene_listeners()
+        # if self.is_hardware_responding: #
+        self.set_mixer_listeners()  # add_mixer_listeners()
+        self.add_overdub_listener()
+        self.add_tracks_listener()
+        self.add_device_listeners()
+        self.add_transport_listener()
+        self.add_scene_listeners()
 
-            self.trBlock(0, len(self.song().visible_tracks))
+        self.trBlock(0, len(self.song().visible_tracks))
 
     def add_scene_listeners(self):
         # try-except blocks handle the cases when the song-view-listener callback method self.scene_change, for example, is already present. This reduces 
