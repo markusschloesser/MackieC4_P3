@@ -96,6 +96,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
+        self._received_hardware_response = False
 
         self.__components = []
         self.__surface_is_locked = False
@@ -108,7 +109,6 @@ class MackieC4(MackieC4ListenerMixin, object):
         self._selected_track_index = 0
         self._selected_track_callback_type = 0
         self._selected_callback_type_index = 0
-        self._received_serial_number_response = False
 
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
@@ -869,7 +869,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     @property
     def is_hardware_responding(self):
-        return self._received_serial_number_response
+        return self._received_hardware_response
 
     def scene_change(self): 
         selected_scene = self.song().view.selected_scene
