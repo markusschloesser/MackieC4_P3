@@ -97,6 +97,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     def __init__(self, c_instance):
         self.__c_instance = c_instance
         self._received_hardware_response = False
+        self.request_firmware_version()
 
         self.__components = []
         self.__surface_is_locked = False
@@ -260,6 +261,21 @@ class MackieC4(MackieC4ListenerMixin, object):
                     Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)  # 32 encoders
 
 
+    def request_firmware_version(self):
+
+        sysex = SYSEX_HEADER + (SYSEX_MACKIE_CONTROL_FIRMWARE_REQUEST, 0, SYSEX_FOOTER)
+        self.__c_instance.send_midi(sysex)
+
+        foot_part = (0, SYSEX_FOOTER)
+        for i in LCD_DISPLAY_INDEX:
+            for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
+                # this "id message" should clear any "firmware garbage" off the screens
+                # before the screens get "refreshed/cleared"
+                head_part = tuple(SYSEX_HEADER + (i, j))
+                sysex = head_part + lcd_display_id_message[i][j] + foot_part
+                # self.schedule_message(1, self._send_midi, sysex)
+                self.__c_instance.send_midi(sysex)
+
     def receive_midi(self, midi_bytes):
         log_id = "C4.receive_midi: "
         """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
@@ -417,45 +433,68 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.set_marker_is_pressed(False)
                     pass
                 elif midi_bytes[0] == 0xF0:
-                    # this sysex is from the C4, it is the unit serial number in response to a sysex request (reset from Live?)
-                    #                                          Z   T   1   0   4   7   3   A   3  ACK  <-- (specifically C4Pro serials start with ZT)
-                    #                  240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51,   6, 0, 247
-                    #                                          Z   T   1   0   4   7   3    y DLE ACK
-                    c4InitWelcome = [240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16, 6, 0, 247]
-                    c4WelcomeHeader = [240, 0, 0, 102, 23, 1]
-                    c4WelcomeTail = [6, 0, 247]
-                    lgth = len(c4InitWelcome)
-                    hdr_lgth = len(c4WelcomeHeader)
-                    trl_lgth = len(c4WelcomeTail)
-                    if lgth == len(midi_bytes):
-                        match = True
-                        for i in range(hdr_lgth):  # first chunk always the same, middle chunk varies with serial numbers
-                            if c4InitWelcome[i] != midi_bytes[i]:
-                                match = False
-                        for j in range(lgth - trl_lgth, lgth):  # last chunk always the same
-                            if c4InitWelcome[j] != midi_bytes[j]:
-                                match = False
-                        if match:
-                            # the C4 just blanked its displays (except the hello message on the top screen?)
-                            # or powered on,
-                            self._received_serial_number_response = True
-                            if not self.has_scene_listeners:
-                                # if C4 just powered on this script needs(?) a listener refresh
-                                self.refresh_state()
-                                self.request_rebuild_midi_map()
-                            # assignment mode is never USER here, msg was passed above in USER mode
-                            self.log_message(logging.INFO,f"{log_id}attempting to update display after receiving C4 serial number sysex message {midi_bytes}")
-                            self.__encoder_controller.one_delayed_display_update(0.49, force=True)  # how about now?
-                            self.__encoder_controller.update_assignment_mode_leds()
-                            self.__encoder_controller.update_system_switch_leds()
-                        else:
-                            self.log_message(logging.WARNING,f"{log_id}unhandled matching length - sysex event dropped {midi_bytes}")
-                    else:
-                        self.log_message(logging.WARNING,f"{log_id}unhandled non-matching length - sysex event dropped {midi_bytes}")
+                    self.handle_sysex_msg(midi_bytes)
                 else:
                     self.log_message(logging.WARNING,f"{log_id}unhandled - sysex event dropped {midi_bytes}")
         else:
             self.log_message(self.script_log_levels["TRACE"], f"{log_id}unhandled - sysex serial number response not yet received from C4. Is it powered on?")
+
+
+    def handle_sysex_msg(self, midi_bytes):
+        log_id = "C4.handle_sysex_msg: "
+        # this example sysex is from the C4, it contains the unit serial number at power on or in response to an unknown sysex request (reset from Live?)
+        #                                          Z   T   1   0   4   7   3   A   3  ACK  <-- (specifically C4Pro serials start with ZT)
+        #                  240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51,   6, 0, 247
+        #                                          Z   T   1   0   4   7   3    y DLE ACK
+
+        #                  0, 1, 2,   3,  4, 5,  6,  7,  8,  9,  A,  B,  C,   D,  E, F, 10, 11
+        c4InitWelcome = [240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16, 6, 0, 247]
+        c4WelcomeHeader = [240, 0, 0, 102, 23, 1]
+        c4WelcomeTail = [6, 0, 247]
+        lgth = len(c4InitWelcome)
+        hdr_lgth = len(c4WelcomeHeader)
+        trl_lgth = len(c4WelcomeTail)
+
+        msg_payload = midi_bytes[6:13]
+        show_msg = "Mackie C4 remote script connected to C4 hardware with "
+        # serial nbr msg length is 18, firmware version msg length is 13
+        if len(midi_bytes) > 13:  # len(midi_bytes) == 18:
+            # serial number payload is lgth 7
+            sysex_ints_as_ascii_text = [chr(c) for c in msg_payload]
+            log_msg = show_msg + f"serial number {sysex_ints_as_ascii_text}"
+        else:
+            lgth = 13  # because midi_bytes[6:13] and not len(midi_bytes) > 13
+            # firmware payload is lgth 5, for example, '3.0.0'
+            sysex_ints_as_ascii_text = [chr(c) for c in msg_payload[0:4]]
+            log_msg = show_msg + f"firmware version {sysex_ints_as_ascii_text}"
+        self.show_message(log_msg)
+        self.log_message(logging.INFO, log_msg)
+
+        if lgth == len(midi_bytes):
+            match = True
+            for i in range(hdr_lgth):  # first chunk always the same, middle chunk varies with serial numbers
+                if c4InitWelcome[i] != midi_bytes[i]:
+                    match = False
+            for j in range(lgth - trl_lgth, lgth):  # last chunk always the same
+                if c4InitWelcome[j] != midi_bytes[j]:
+                    match = False
+            if match:
+                # the C4 just blanked its displays (except the hello message on the top screen?)
+                # or powered on,
+                self._received_hardware_response = True
+                # if not self.has_scene_listeners:
+                # if C4 just powered on this script needs(?) a listener refresh
+                self.refresh_state()
+                self.request_rebuild_midi_map()
+                # assignment mode is never USER here, msg was passed above in USER mode
+                self.log_message(logging.INFO, f"{log_id}attempting to update C4 display")
+                self.__encoder_controller.one_delayed_display_update(0.49, force=True)  # how about now?
+                self.__encoder_controller.update_assignment_mode_leds()
+                self.__encoder_controller.update_system_switch_leds()
+            else:
+                self.log_message(logging.WARNING, f"{log_id}unhandled matching length - sysex event dropped {midi_bytes}")
+        else:
+            self.log_message(logging.WARNING, f"{log_id}unhandled non-matching length - sysex event dropped {midi_bytes}")
 
     def handle_jog_wheel_rotation(self, cc_value):  # aka beat_pointer
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """

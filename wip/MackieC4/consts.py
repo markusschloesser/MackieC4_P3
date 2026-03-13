@@ -82,7 +82,11 @@ ALL SYSEX values IN HEX NOTATION (BASE 16)
  SYSEX_HEADER + LCD_MDL_FLAT_ADDRESS + LCD_BOTTOM_ROW_OFFSET + 55 ASCII text bytes + SYSEX_FOOTER
 
 """
-SYSEX_HEADER = (0xF0, 0, 0, 0x66, 0x17)  # (240, 0, 0, 102, 23)
+SYSEX_MACKIE_CONTROL_DEVICE_TYPE_MC = 0x14  # 20
+SYSEX_MACKIE_CONTROL_DEVICE_TYPE_XT = 0x15  # 21
+SYSEX_MACKIE_CONTROL_DEVICE_TYPE_C4 = 0x17  # 23
+SYSEX_MACKIE_CONTROL_FIRMWARE_REQUEST = 0x13  # 19
+SYSEX_HEADER = (0xF0, 0, 0, 0x66, SYSEX_MACKIE_CONTROL_DEVICE_TYPE_C4)  # (240, 0, 0, 102, 23)
 SYSEX_FOOTER = 0xF7  # 247
 LCD_DISPLAY_INDEX = (0x30, 0x31, 0x32, 0x33)  # (48, 49, 50, 51)
 LCD_ANGLED_ADDRESS = 0x30  # 48
@@ -100,6 +104,22 @@ ASCII_SPACE = 0x20  # 32
 ASCII_DASH = 0x2D  # 45
 ASCII_PIPE = 0x7C  # 124
 ASCII_HASH = 0x23  # 35
+ASCII_ZERO = 0x30  # 48
+
+"""provides fill data as numbers, 0 - 7, identifying the line for all 55 text cells per LCD line"""
+lcd_display_id_message = {
+        LCD_ANGLED_ADDRESS:  # 0x38 == 0x30 + 0x08 == 48 + 8 == 56
+            {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO for x in range(LCD_BOTTOM_ROW_OFFSET)]),
+             LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 1 for x in range(LCD_BOTTOM_ROW_OFFSET)])},
+        LCD_TOP_FLAT_ADDRESS:
+            {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO + 2 for x in range(LCD_BOTTOM_ROW_OFFSET)]),
+             LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 3 for x in range(LCD_BOTTOM_ROW_OFFSET)])},
+        LCD_MDL_FLAT_ADDRESS:
+            {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO + 4 for x in range(LCD_BOTTOM_ROW_OFFSET)]),
+             LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 5 for x in range(LCD_BOTTOM_ROW_OFFSET)])},
+        LCD_BTM_FLAT_ADDRESS:
+            {LCD_TOP_ROW_OFFSET: tuple([ASCII_ZERO + 6 for x in range(LCD_BOTTOM_ROW_OFFSET)]),
+             LCD_BOTTOM_ROW_OFFSET: tuple([ASCII_ZERO + 7 for x in range(LCD_BOTTOM_ROW_OFFSET)])}}
 
 BUTTON_STATE_OFF = 0
 BUTTON_STATE_ON = 0x7F  # 127
