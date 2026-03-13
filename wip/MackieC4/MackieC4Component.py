@@ -89,6 +89,9 @@ class MackieC4Component(object):
     def refresh_state(self):
         self.__main_script.refresh_state()
 
+    def has_script_received_power_on_msg(self):
+        return self.__main_script.is_hardware_responding
+
     def is_processing_track_state_change(self):
         return self.__main_script.processing_track_state_change()
 

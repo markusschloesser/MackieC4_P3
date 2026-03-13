@@ -108,6 +108,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         self._selected_track_index = 0
         self._selected_track_callback_type = 0
         self._selected_callback_type_index = 0
+        self._received_serial_number_response = False
 
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
@@ -215,14 +216,15 @@ class MackieC4(MackieC4ListenerMixin, object):
         """
         Aka on_timer. Called every 100 ms and should be used to update display relevant parts of the controller.
         """
-        if self.__encoder_controller.assignment_mode() != C4M_USER:
-            # self.log_message(logging.DEBUG, "C4.update_display: firing")  # verbose log message
-            for c in self.__components:
-                c.on_update_display_timer()
-        # else:
-        #      the script is in USER mode (or not initialized yet)
-        #      and should NOT be sending display updates
-        #      self.log_message(logging.DEBUG, "C4.update_display: NOT firing")  # also verbose
+        if self.is_hardware_responding:
+            if self.__encoder_controller.assignment_mode() != C4M_USER:
+                # self.log_message(logging.DEBUG, "C4.update_display: firing")  # verbose log message
+                for c in self.__components:
+                    c.on_update_display_timer()
+            # else:
+            #      the script is in USER mode (or not initialized yet)
+            #      and should NOT be sending display updates
+            #      self.log_message(logging.DEBUG, "C4.update_display: NOT firing")  # also verbose
 
     def send_midi(self, midi_event_bytes):
         """
@@ -241,208 +243,219 @@ class MackieC4(MackieC4ListenerMixin, object):
         """Live -> Script        Build DeviceParameter mappings, that are processed in Audio time, or forward MIDI messages
         explicitly to our receive_midi_functions. Which means that when you are not forwarding MIDI, nor mapping parameters, you will
         never get any MIDI messages at all. """
+        if self.is_hardware_responding:
+            # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
+            for s in self.__encoders:
+                # this s.build_midi_map() will ask to forward midi CC messages from any encoder that is currently "mapped to" None (instead of a liveobj_valid(param))
+                s.build_midi_map(midi_map_handle)
 
-        # build the relationships between info in Live and each __encoder, this is the MAPPING part (Parameters handled by Live directly)
-        for s in self.__encoders:
-            # this s.build_midi_map() will ask to forward midi CC messages from any encoder that is currently "mapped to" None (instead of a liveobj_valid(param))
-            s.build_midi_map(midi_map_handle)
-
-        # ask Live to forward all midi note messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
-        # forward every incoming midi Note or CC message with an id value between 0 and 63 to the script for processing, some of these CC forwarding requests
-        # will be second requests for encoder ids above that don't get mapped to a valid "live object" at any given time, but you can ask as many times as
-        # you want Live doesn't forward the same message twice. Even for encoders mapped above (handled by Live directly), forward the midi messages they emit
-        # Split button has 3 feedback addresses + 19 control buttons + 10 (unused spacers) + 32 encoder buttons == 64 midi note message forwarding requests
-        for i in range(C4SID_FIRST, C4SID_LAST + 1):
-            Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
-            if i < NUM_ENCODERS:
-                Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)  # 32 encoders
+            # ask Live to forward all midi note messages here. This is the FORWARDING part  (Parameters handled by this script, for example for Function mode)
+            # forward every incoming midi Note or CC message with an id value between 0 and 63 to the script for processing, some of these CC forwarding requests
+            # will be second requests for encoder ids above that don't get mapped to a valid "live object" at any given time, but you can ask as many times as
+            # you want Live doesn't forward the same message twice. Even for encoders mapped above (handled by Live directly), forward the midi messages they emit
+            # Split button has 3 feedback addresses + 19 control buttons + 10 (unused spacers) + 32 encoder buttons == 64 midi note message forwarding requests
+            for i in range(C4SID_FIRST, C4SID_LAST + 1):
+                Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
+                if i < NUM_ENCODERS:
+                    Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)  # 32 encoders
 
 
     def receive_midi(self, midi_bytes):
         log_id = "C4.receive_midi: "
         """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
-        # coming from C4 midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
+        # coming from C4 (button and knob actions) midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
         # C4 always sends and receives on channel 1
+        # C4 always sends a SYSEX serial number 'response' message at power on
         is_note_on_msg = midi_bytes[0] & 0xF0 == NOTE_ON_STATUS  # (& F0 strips off any channel related bits)
         is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
+        # Technically any midi message received indicates the C4 is powered on and sending midi (responding)
+        # the SYSEX "serial number" message is always first thing sent when a C4 powers ON.
+        if self.is_hardware_responding or midi_bytes[0] == 0xF0:
+            if self.__encoder_controller.assignment_mode() == C4M_USER:
+                # already in USER mode, check for exit status
+                marker_on_event = is_note_on_msg and midi_bytes[1] == C4SID_MARKER
+                lock_on_event = is_note_on_msg and midi_bytes[1] == C4SID_LOCK
+                is_marker_on_press = marker_on_event and midi_bytes[2] == BUTTON_STATE_ON
+                is_lock_on_press = lock_on_event and midi_bytes[2] == BUTTON_STATE_ON
+                # a true c4 release never happens, Live always converts Note ON messages with velocity 0 to Note OFF messages
+                is_c4_marker_release = marker_on_event and midi_bytes[2] == BUTTON_STATE_OFF
+                is_marker_off_release = is_note_off_msg and midi_bytes[1] == C4SID_MARKER and midi_bytes[2] == BUTTON_STATE_OFF
+                previous_mode_switch_id = assignment_mode_switch_ids[self.__encoder_controller.last_assignment_mode()]
+                self.__user_mode_exit = False  # might be about to exit
 
-        if self.__encoder_controller.assignment_mode() == C4M_USER:
-            # already in USER mode, check for exit status
-            marker_on_event = is_note_on_msg and midi_bytes[1] == C4SID_MARKER
-            lock_on_event = is_note_on_msg and midi_bytes[1] == C4SID_LOCK
-            is_marker_on_press = marker_on_event and midi_bytes[2] == BUTTON_STATE_ON
-            is_lock_on_press = lock_on_event and midi_bytes[2] == BUTTON_STATE_ON
-            # a true c4 release never happens, Live always converts Note ON messages with velocity 0 to Note OFF messages
-            is_c4_marker_release = marker_on_event and midi_bytes[2] == BUTTON_STATE_OFF
-            is_marker_off_release = is_note_off_msg and midi_bytes[1] == C4SID_MARKER and midi_bytes[2] == BUTTON_STATE_OFF
-            previous_mode_switch_id = assignment_mode_switch_ids[self.__encoder_controller.last_assignment_mode()]
-            self.__user_mode_exit = False  # might be about to exit
+                if is_marker_on_press:
+                    self.set_marker_is_pressed(True)
+                    # self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is pressed")
+                elif is_c4_marker_release or is_marker_off_release:
+                    self.set_marker_is_pressed(False)
+                    # if is_c4_marker_release:
+                    #    self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is released, unexpected NOTE ON event")
+                    # else:
+                    #     self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is released")
+                elif is_lock_on_press and self.__marker_is_pressed:
+                    # self.log_message(logging.DEBUG, f"{log_id}USER mode LOCK press event while MARKER is pressed")
+                    # conditions here do NOT need to guard against processing this button combo when NOT already in user mode
+                    #  events for patch to process before sending STOP signal
+                    # no LOCK Press event forwarded to the patch
+                    # the USER mode patch's MARKER button status is "pressed",
+                    # send a "release" event to the patch that completes one press/release cycle
+                    self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
+                    # Now "restore" the USER mode patch's MARKER button LED ON/OFF status
+                    # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events means the LED ON/OFF state "doesn't change"
+                    self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
+                    self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
+                    # STOP signal for patch to process
+                    self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF))  # for this signal: velocity 0 means STOP processing
+                    # self.log_message(logging.DEBUG, f"{log_id}sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
+                    self.__user_mode_exit = True  # flag needs to stay set until first method re-entry after USER mode only
+                    self.__encoder_controller.handle_assignment_switch_ids(previous_mode_switch_id)
+                    # self.log_message(logging.DEBUG, f"{log_id}USER mode exit!  script is no longer in USER mode")
+                    self.set_marker_is_pressed(False)  # technically not released yet but don't need the signal any longer
 
-            if is_marker_on_press:
-                self.set_marker_is_pressed(True)
-                # self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is pressed")
-            elif is_c4_marker_release or is_marker_off_release:
-                self.set_marker_is_pressed(False)
-                # if is_c4_marker_release:
-                #    self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is released, unexpected NOTE ON event")
-                # else:
-                #     self.log_message(logging.DEBUG, f"{log_id}USER mode MARKER is released")
-            elif is_lock_on_press and self.__marker_is_pressed:
-                # self.log_message(logging.DEBUG, f"{log_id}USER mode LOCK press event while MARKER is pressed")
-                # conditions here do NOT need to guard against processing this button combo when NOT already in user mode
-                #  events for patch to process before sending STOP signal
-                # no LOCK Press event forwarded to the patch
-                # the USER mode patch's MARKER button status is "pressed",
-                # send a "release" event to the patch that completes one press/release cycle
-                self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
-                # Now "restore" the USER mode patch's MARKER button LED ON/OFF status
-                # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events means the LED ON/OFF state "doesn't change"
-                self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
-                self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
-                # STOP signal for patch to process
-                self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF))  # for this signal: velocity 0 means STOP processing
-                # self.log_message(logging.DEBUG, f"{log_id}sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
-                self.__user_mode_exit = True  # flag needs to stay set until first method re-entry after USER mode only
-                self.__encoder_controller.handle_assignment_switch_ids(previous_mode_switch_id)
-                # self.log_message(logging.DEBUG, f"{log_id}USER mode exit!  script is no longer in USER mode")
-                self.set_marker_is_pressed(False)  # technically not released yet but don't need the signal any longer
+                if not self.__user_mode_exit:
+                    # C4M_USER mode normal forwarding to Max patch for processing
+                    # (or spurious feedback to C4 if patch is not running or patch processing is manually bypassed?)
+                    # when the sequencer patch is not connected AND we're in USER mode but not exiting, for example,
+                    # a user can only turn ON every "control button" LED (7 total LEDs SPLIT 1/3 through FUNCTION)
+                    # but every button PRESS and encoder TURN message received that reaches here becomes spurious feedback "forwarded" to the C4
+                    # whenever the Max Sequencer patch is not in use.  If the script is running solo, it's probably "never" in USER mode anyway.
+                    # no way to stop forwarding such spurious feedback messages programmatically without "knowing" whether the patch "exists" or not?
+                    # self.log_message(logging.DEBUG, f"{log_id}normal USER mode forwarding msg <{midi_bytes}>")
+                    self.__c_instance.send_midi(midi_bytes)  # all midi (Note and CC event messages)
+            elif self.__user_mode_exit and self.__encoder_controller.last_assignment_mode() == C4M_USER:
+                # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) note message: ({midi_bytes})")
 
-            if not self.__user_mode_exit:
-                # C4M_USER mode normal forwarding to Max patch for processing
-                # (or spurious feedback to C4 if patch is not running or patch processing is manually bypassed?)
-                # when the sequencer patch is not connected AND we're in USER mode but not exiting, for example,
-                # a user can only turn ON every "control button" LED (7 total LEDs SPLIT 1/3 through FUNCTION)
-                # but every button PRESS and encoder TURN message received that reaches here becomes spurious feedback "forwarded" to the C4
-                # whenever the Max Sequencer patch is not in use.  If the script is running solo, it's probably "never" in USER mode anyway.
-                # no way to stop forwarding such spurious feedback messages programmatically without "knowing" whether the patch "exists" or not?
-                # self.log_message(logging.DEBUG, f"{log_id}normal USER mode forwarding msg <{midi_bytes}>")
-                self.__c_instance.send_midi(midi_bytes)  # all midi (Note and CC event messages)
-        elif self.__user_mode_exit and self.__encoder_controller.last_assignment_mode() == C4M_USER:
-            # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) note message: ({midi_bytes})")
-
-            if is_note_on_msg and midi_bytes[1] == C4SID_LOCK and midi_bytes[2] == BUTTON_STATE_ON:
-                # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event passed - investigating LOCK button pressed event")
-                pass
-            elif is_note_off_msg and midi_bytes[1] == C4SID_LOCK:
-                # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event passed - eating LOCK Note OFF event")
-                pass
-            elif is_note_off_msg and midi_bytes[1] == C4SID_MARKER:
-                # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event handled - setting MARKER is released Note OFF event")
-                self.set_marker_is_pressed(False)
-            else:
-                self.log_message(logging.WARNING, f"{log_id}(first user mode exit) event unhandled - dropping event message {midi_bytes}")
-            # these button LEDs should be restored to "remote script" status display
-            self.__encoder_controller.update_system_switch_leds()
-            self.__user_mode_exit = False
-            # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) Split, Lock, SpotErase LEDs OFF")
-        else:
-            # self.log_message(logging.DEBUG, f"{log_id}mode != C4M_USER")
-            # in cases when the first midi_msg event after leaving USER mode is NOT a LOCK button event, clear the USER mode exit flag so this script
-            # will handle LOCK button events normally.
-            self.__user_mode_exit = False #
-            is_cc_msg = midi_bytes[0] & 0xF0 == CC_STATUS
-            # self.log_message(logging.DEBUG, f"{log_id}noteON<{is_note_on_msg}> noteOFF<{is_note_off_msg}> cc<{is_cc_msg}>")
-            if is_note_on_msg:
-                channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
-                note = midi_bytes[1]  # data1
-                velocity = midi_bytes[2]  # data2
-                # self.log_message(logging.DEBUG, f"{log_id}NOTE ON for note<{note}> velo<{velocity}>")
-                # ignore Note ON events without 127 velocity
-                handle_this_event = velocity == BUTTON_STATE_ON
-                """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
-                if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
-                    if note in modifier_switch_ids:  # Shift, Option, Alt, Control
-                        self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
-                    elif handle_this_event:
-                        # NOT in USER mode here and velocity == 127
-                        if note in self.note_handling_dict:
-                            if note in assignment_mode_switch_ids:
-                                # True here: NOT in USER mode AND changing modes AND this script is still in control of USER mode display
-                                # need to display something when Max sequencer patch is NOT connected and going into USER mode
-                                # "this" display will get overwritten after the sequencer patch takes over (if connected)
-                                self.__handling_assignment_switch = True
-                            self.note_handling_dict[note](note)
-                            self.__handling_assignment_switch = False
-                        else:
-                            if note == 4:  # Spot/Erase buttons is not mapped to any remote script behavior
-                                # self.log_message(logging.INFO, f"{log_id}Spot/Erase button is not mapped to any handling behavior")
-                                pass
-                            else:
-                                self.log_message(logging.ERROR, f"{log_id}unhandled note value: {note}")
-
-                    if note == C4SID_MARKER:
-                        # This "note ON event" entered receive_midi() while the script was NOT in USER mode, because this line is under else:
-                        # now the script IS in USER mode, because self.__note_handling_dict[note](note) and note == C4SID_MARKER:
-                        # but the Max patch is still NOT-processing yet, forward this midi event to the C4 display
-                        # self.log_message(logging.DEBUG, f"{log_id}before leaving script control, turning MARKER led OFF <{(NOTE_ON_STATUS, note, BUTTON_STATE_OFF)}>")
-                        self.__c_instance.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
-                        # (just-before-going-into-user-mode) MARKER LED is now OFF (would normally be ON indicating USER mode)
-                        # send START signal for patch to process
-                        # self.log_message(logging.DEBUG, f"{log_id}sending 'button 22' signal toggling Max bypass mode, START processing STOP bypassing")
-                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON))
-                        self.set_marker_is_pressed(False)  # in case LOCK button is pressed by itself in USER mode, don't exit USER mode
-
-                        # self.log_message(logging.DEBUG, f"{log_id}script now in USER mode, Max patch is in control")
-                        # MARKER Press+Release events created for the patch to "restore" the USER mode patch's MARKER button LED ON/OFF status
-                        # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events mean the LED ON/OFF state "doesn't change"
-                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
-                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
-                        # (when the human physically releases the C4 MARKER button after switching to USER mode, the event is processed by the patch instead of this script)
-                        # MARKER Press event created for the patch to prepare for the (spurious) "first MARKER release" event the patch will see and process in USER mode
-                        # The "human release" always happens going into user mode, always need to "pre press" here
-                        self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
-            elif is_cc_msg:
-                """The only CC messages arriving here we care about are from some "unmapped" encoders, which is why this code doesn't check for "C4M_PLUGIN" mode.
-                   All "C4M_PLUGIN" (Track-Device) mode encoders could be mapped, so their midi messages are not handled by the remote script, (those messages 
-                   are either already handled automatically by Live or from (temporarily) unmapped encoders"""
-                cc_no = midi_bytes[1]
-                cc_value = midi_bytes[2]
-
-                if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
-                    self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
-                elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
-                    self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
-
-            elif is_note_off_msg:  # an actual Note Off event: is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
-                # self.log_message(logging.DEBUG, f"{log_id}unhandled - passing (ignoring) note off event {midi_bytes}")
-                # this pass is expected, the C4 sends Note ON with velocity 0 for Note OFF.
-                # Live generates Note Offs the script can ignore here (not USER mode) because USER Mode has already processed above as needed
-                # self.log_message(logging.DEBUG, f"{log_id}NOT in USER mode MARKER is released, passing (NOTE OFF event)")
-                self.set_marker_is_pressed(False)
-                pass
-            elif midi_bytes[0] == 0xF0:
-                # this sysex is from the C4, it is the unit serial number in response to a sysex request (reset from Live?)
-                #                                          Z   T   1   0   4   7   3   A   3  ACK  <-- (specifically C4Pro serials start with ZT)
-                #                  240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51,   6, 0, 247
-                #                                          Z   T   1   0   4   7   3    y DLE ACK
-                c4InitWelcome = [240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16, 6, 0, 247]
-                c4WelcomeHeader = [240, 0, 0, 102, 23, 1]
-                c4WelcomeTail = [6, 0, 247]
-                lgth = len(c4InitWelcome)
-                hdr_lgth = len(c4WelcomeHeader)
-                trl_lgth = len(c4WelcomeTail)
-                if lgth == len(midi_bytes):
-                    match = True
-                    for i in range(hdr_lgth):  # first chunk always the same, middle chunk varies with serial numbers
-                        if c4InitWelcome[i] != midi_bytes[i]:
-                            match = False
-                    for j in range(lgth - trl_lgth, lgth):  # last chunk always the same
-                        if c4InitWelcome[j] != midi_bytes[j]:
-                            match = False
-                    if match:
-                        # the C4 just blanked its displays (except the hello message on the top screen?)
-                        # assignment mode is never USER here, msg was passed above in USER mode
-                        self.log_message(logging.INFO,f"{log_id}attempting to update display after receiving C4 serial number sysex message {midi_bytes}")
-                        self.__encoder_controller.one_delayed_display_update(0.49, force=True)  # how about now?
-                        self.__encoder_controller.update_assignment_mode_leds()
-                        self.__encoder_controller.update_system_switch_leds()
-                    else:
-                        self.log_message(logging.WARNING,f"{log_id}unhandled matching length - sysex event dropped {midi_bytes}")
+                if is_note_on_msg and midi_bytes[1] == C4SID_LOCK and midi_bytes[2] == BUTTON_STATE_ON:
+                    # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event passed - investigating LOCK button pressed event")
+                    pass
+                elif is_note_off_msg and midi_bytes[1] == C4SID_LOCK:
+                    # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event passed - eating LOCK Note OFF event")
+                    pass
+                elif is_note_off_msg and midi_bytes[1] == C4SID_MARKER:
+                    # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) event handled - setting MARKER is released Note OFF event")
+                    self.set_marker_is_pressed(False)
                 else:
-                    self.log_message(logging.WARNING,f"{log_id}unhandled non-matching length - sysex event dropped {midi_bytes}")
+                    self.log_message(logging.WARNING, f"{log_id}(first user mode exit) event unhandled - dropping event message {midi_bytes}")
+                # these button LEDs should be restored to "remote script" status display
+                self.__encoder_controller.update_system_switch_leds()
+                self.__user_mode_exit = False
+                # self.log_message(logging.DEBUG, f"{log_id}(first user mode exit) Split, Lock, SpotErase LEDs OFF")
             else:
-                self.log_message(logging.WARNING,f"{log_id}unhandled - sysex event dropped {midi_bytes}")
+                # self.log_message(logging.DEBUG, f"{log_id}mode != C4M_USER")
+                # in cases when the first midi_msg event after leaving USER mode is NOT a LOCK button event, clear the USER mode exit flag so this script
+                # will handle LOCK button events normally.
+                self.__user_mode_exit = False #
+                is_cc_msg = midi_bytes[0] & 0xF0 == CC_STATUS
+                # self.log_message(logging.DEBUG, f"{log_id}noteON<{is_note_on_msg}> noteOFF<{is_note_off_msg}> cc<{is_cc_msg}>")
+                if is_note_on_msg:
+                    channel = midi_bytes[0] & 0x0F  # (& 0F preserves only channel related bits)
+                    note = midi_bytes[1]  # data1
+                    velocity = midi_bytes[2]  # data2
+                    # self.log_message(logging.DEBUG, f"{log_id}NOTE ON for note<{note}> velo<{velocity}>")
+                    # ignore Note ON events without 127 velocity
+                    handle_this_event = velocity == BUTTON_STATE_ON
+                    """   Any button on the C4 falls into this range G#-1 up to Eb 4 [00 - 3F] """
+                    if note in set(range(C4SID_FIRST, C4SID_LAST + 1)):
+                        if note in modifier_switch_ids:  # Shift, Option, Alt, Control
+                            self.__encoder_controller.handle_modifier_switch_ids(note, velocity)
+                        elif handle_this_event:
+                            # NOT in USER mode here and velocity == 127
+                            if note in self.note_handling_dict:
+                                if note in assignment_mode_switch_ids:
+                                    # True here: NOT in USER mode AND changing modes AND this script is still in control of USER mode display
+                                    # need to display something when Max sequencer patch is NOT connected and going into USER mode
+                                    # "this" display will get overwritten after the sequencer patch takes over (if connected)
+                                    self.__handling_assignment_switch = True
+                                self.note_handling_dict[note](note)
+                                self.__handling_assignment_switch = False
+                            else:
+                                if note == 4:  # Spot/Erase buttons is not mapped to any remote script behavior
+                                    # self.log_message(logging.INFO, f"{log_id}Spot/Erase button is not mapped to any handling behavior")
+                                    pass
+                                else:
+                                    self.log_message(logging.ERROR, f"{log_id}unhandled note value: {note}")
+
+                        if note == C4SID_MARKER:
+                            # This "note ON event" entered receive_midi() while the script was NOT in USER mode, because this line is under else:
+                            # now the script IS in USER mode, because self.__note_handling_dict[note](note) and note == C4SID_MARKER:
+                            # but the Max patch is still NOT-processing yet, forward this midi event to the C4 display
+                            # self.log_message(logging.DEBUG, f"{log_id}before leaving script control, turning MARKER led OFF <{(NOTE_ON_STATUS, note, BUTTON_STATE_OFF)}>")
+                            self.__c_instance.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
+                            # (just-before-going-into-user-mode) MARKER LED is now OFF (would normally be ON indicating USER mode)
+                            # send START signal for patch to process
+                            # self.log_message(logging.DEBUG, f"{log_id}sending 'button 22' signal toggling Max bypass mode, START processing STOP bypassing")
+                            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON))
+                            self.set_marker_is_pressed(False)  # in case LOCK button is pressed by itself in USER mode, don't exit USER mode
+
+                            # self.log_message(logging.DEBUG, f"{log_id}script now in USER mode, Max patch is in control")
+                            # MARKER Press+Release events created for the patch to "restore" the USER mode patch's MARKER button LED ON/OFF status
+                            # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events mean the LED ON/OFF state "doesn't change"
+                            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
+                            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
+                            # (when the human physically releases the C4 MARKER button after switching to USER mode, the event is processed by the patch instead of this script)
+                            # MARKER Press event created for the patch to prepare for the (spurious) "first MARKER release" event the patch will see and process in USER mode
+                            # The "human release" always happens going into user mode, always need to "pre press" here
+                            self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
+                elif is_cc_msg:
+                    """The only CC messages arriving here we care about are from some "unmapped" encoders, which is why this code doesn't check for "C4M_PLUGIN" mode.
+                       All "C4M_PLUGIN" (Track-Device) mode encoders could be mapped, so their midi messages are not handled by the remote script, (those messages 
+                       are either already handled automatically by Live or from (temporarily) unmapped encoders"""
+                    cc_no = midi_bytes[1]
+                    cc_value = midi_bytes[2]
+
+                    if self.__encoder_controller.assignment_mode() == C4M_FUNCTION:
+                        self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
+                    elif self.__encoder_controller.assignment_mode() == C4M_CHANNEL_STRIP:
+                        self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
+
+                elif is_note_off_msg:  # an actual Note Off event: is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
+                    # self.log_message(logging.DEBUG, f"{log_id}unhandled - passing (ignoring) note off event {midi_bytes}")
+                    # this pass is expected, the C4 sends Note ON with velocity 0 for Note OFF.
+                    # Live generates Note Offs the script can ignore here (not USER mode) because USER Mode has already processed above as needed
+                    # self.log_message(logging.DEBUG, f"{log_id}NOT in USER mode MARKER is released, passing (NOTE OFF event)")
+                    self.set_marker_is_pressed(False)
+                    pass
+                elif midi_bytes[0] == 0xF0:
+                    # this sysex is from the C4, it is the unit serial number in response to a sysex request (reset from Live?)
+                    #                                          Z   T   1   0   4   7   3   A   3  ACK  <-- (specifically C4Pro serials start with ZT)
+                    #                  240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51,   6, 0, 247
+                    #                                          Z   T   1   0   4   7   3    y DLE ACK
+                    c4InitWelcome = [240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16, 6, 0, 247]
+                    c4WelcomeHeader = [240, 0, 0, 102, 23, 1]
+                    c4WelcomeTail = [6, 0, 247]
+                    lgth = len(c4InitWelcome)
+                    hdr_lgth = len(c4WelcomeHeader)
+                    trl_lgth = len(c4WelcomeTail)
+                    if lgth == len(midi_bytes):
+                        match = True
+                        for i in range(hdr_lgth):  # first chunk always the same, middle chunk varies with serial numbers
+                            if c4InitWelcome[i] != midi_bytes[i]:
+                                match = False
+                        for j in range(lgth - trl_lgth, lgth):  # last chunk always the same
+                            if c4InitWelcome[j] != midi_bytes[j]:
+                                match = False
+                        if match:
+                            # the C4 just blanked its displays (except the hello message on the top screen?)
+                            # or powered on,
+                            self._received_serial_number_response = True
+                            if not self.has_scene_listeners:
+                                # if C4 just powered on this script needs(?) a listener refresh
+                                self.refresh_state()
+                                self.request_rebuild_midi_map()
+                            # assignment mode is never USER here, msg was passed above in USER mode
+                            self.log_message(logging.INFO,f"{log_id}attempting to update display after receiving C4 serial number sysex message {midi_bytes}")
+                            self.__encoder_controller.one_delayed_display_update(0.49, force=True)  # how about now?
+                            self.__encoder_controller.update_assignment_mode_leds()
+                            self.__encoder_controller.update_system_switch_leds()
+                        else:
+                            self.log_message(logging.WARNING,f"{log_id}unhandled matching length - sysex event dropped {midi_bytes}")
+                    else:
+                        self.log_message(logging.WARNING,f"{log_id}unhandled non-matching length - sysex event dropped {midi_bytes}")
+                else:
+                    self.log_message(logging.WARNING,f"{log_id}unhandled - sysex event dropped {midi_bytes}")
+        else:
+            self.log_message(self.script_log_levels["TRACE"], f"{log_id}unhandled - sysex serial number response not yet received from C4. Is it powered on?")
 
     def handle_jog_wheel_rotation(self, cc_value):  # aka beat_pointer
         """use one vpot encoder to simulate a jog wheel rotation, with acceleration """
@@ -667,14 +680,15 @@ class MackieC4(MackieC4ListenerMixin, object):
         Send out MIDI to completely update the attached MIDI controller. Will be called when requested by the user,
         after for example having reconnecting the MIDI cables or when exiting MIDI map mode
         """
-        self.set_mixer_listeners()  # add_mixer_listeners()
-        self.add_overdub_listener()
-        self.add_tracks_listener()
-        self.add_device_listeners()
-        self.add_transport_listener()
-        self.add_scene_listeners()
+        if self.is_hardware_responding:
+            self.set_mixer_listeners()  # add_mixer_listeners()
+            self.add_overdub_listener()
+            self.add_tracks_listener()
+            self.add_device_listeners()
+            self.add_transport_listener()
+            self.add_scene_listeners()
 
-        self.trBlock(0, len(self.song().visible_tracks))
+            self.trBlock(0, len(self.song().visible_tracks))
 
     def add_scene_listeners(self):
         # try-except blocks handle the cases when the song-view-listener callback method self.scene_change, for example, is already present. This reduces 
@@ -688,6 +702,9 @@ class MackieC4(MackieC4ListenerMixin, object):
             self.song().view.add_selected_track_listener(self.track_change)
         except RuntimeError:
             pass
+
+    def has_scene_listeners(self):
+        return self.song().view.has_selected_scene_listener(self.scene_change) and self.song().view.has_selected_track_listener(self.track_change)
 
     def rem_scene_listeners(self):
         # try-except blocks handle the cases when the song-view-listener (callback method self.scene_change, for example) is already not present. 
@@ -857,6 +874,10 @@ class MackieC4(MackieC4ListenerMixin, object):
     @last_selected_callback_type_index.setter
     def last_selected_callback_type_index(self, index):
         self._selected_callback_type_index = index
+
+    @property
+    def is_hardware_responding(self):
+        return self._received_serial_number_response
 
     def scene_change(self): 
         selected_scene = self.song().view.selected_scene
