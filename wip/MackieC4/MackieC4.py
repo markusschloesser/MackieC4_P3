@@ -519,7 +519,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     def zoom_or_scroll(self, cc_value):
         """ Scroll in Session view or Zoom in Arrange view with vpot_rotation encoder rotation"""
         current_view_name = self.application().view.focused_document_view
-        self.__encoder_controller.view_is_changing = True
+        # self.__encoder_controller.view_is_changing = True
         if current_view_name == 'Arranger':
             self.__zoom_view(cc_value)
         else:
