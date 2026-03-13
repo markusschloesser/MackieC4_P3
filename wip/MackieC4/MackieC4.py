@@ -486,18 +486,10 @@ class MackieC4(MackieC4ListenerMixin, object):
             self.__zoom_view(cc_value)
         else:
             try:
-                # self.__scroll_buffer_time = time.process_time_ns() / 1e6
                 self.__throttled_scroll_view(cc_value)
             except TooSoon as exception:
-                # self.__scroll_governor(cc_value)
                 self.log_message(logging.DEBUG, f"C4.zoom_or_scroll: Too Soon {exception}")
         self.__encoder_controller.view_is_changing = False
-
-        # def __scroll_governor(self, cc_value):
-    #     millis_now = time.process_time_ns() / 1e6
-    #     if self.__scroll_buffer_time + 100 < millis_now:
-    #         self.__zoom_view(cc_value)
-    #     self.__scroll_buffer_time = millis_now
 
     @CoolDown(80) # milliseconds
     def __throttled_scroll_view(self, cc_value):
