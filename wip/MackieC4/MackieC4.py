@@ -446,36 +446,45 @@ class MackieC4(MackieC4ListenerMixin, object):
         #                  240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 65, 51,   6, 0, 247
         #                                          Z   T   1   0   4   7   3    y DLE ACK
 
-        #                  0, 1, 2,   3,  4, 5,  6,  7,  8,  9,  A,  B,  C,   D,  E, F, 10, 11
-        c4InitWelcome = [240, 0, 0, 102, 23, 1, 90, 84, 49, 48, 52, 55, 51, 121, 16, 6, 0, 247]
-        c4WelcomeHeader = [240, 0, 0, 102, 23, 1]
+        #                       0, 1, 2,   3,  4,  5,  6,  7,  8,  9,  A,  B,  C,   D,  E, F, 10, 11
+        c4InitWelcome =      [240, 0, 0, 102, 23,  1, 90, 84, 49, 48, 52, 55, 51, 121, 16, 6, 0, 247]
+        c4FirmwareResponse = [240, 0, 0, 102, 23, 20, 86, 49, 46, 48, 50, 247] # payload 86, 49, 46, 48, 50 == v1.02
+        c4WelcomeHeader =    [240, 0, 0, 102, 23,  1]
+        expected_input = c4InitWelcome
         c4WelcomeTail = [6, 0, 247]
         lgth = len(c4InitWelcome)
         hdr_lgth = len(c4WelcomeHeader)
         trl_lgth = len(c4WelcomeTail)
 
-        msg_payload = midi_bytes[6:13]
-        show_msg = "Mackie C4 remote script connected to C4 hardware with "
-        # serial nbr msg length is 18, firmware version msg length is 13
-        if len(midi_bytes) > 13:  # len(midi_bytes) == 18:
-            # serial number payload is lgth 7
+
+        show_msg = "connected to C4 hardware with "
+        # serial nbr msg length is 18, firmware version msg length is 11
+        if len(midi_bytes) == lgth:
+            # serial number payload is lgth 7, for example, 'HU10182' or 'ZT10473'
+            msg_payload = midi_bytes[6:13]
             sysex_ints_as_ascii_text = [chr(c) for c in msg_payload]
             log_msg = show_msg + f"serial number {sysex_ints_as_ascii_text}"
         else:
-            lgth = 13  # because midi_bytes[6:13] and not len(midi_bytes) > 13
-            # firmware payload is lgth 5, for example, '3.0.0'
-            sysex_ints_as_ascii_text = [chr(c) for c in msg_payload[0:4]]
+            lgth = len(c4FirmwareResponse)
+            # firmware payload is lgth 5, for example, 'v3.00' or 'v1.02'
+            msg_payload = midi_bytes[6:11]
+            c4WelcomeHeader[-1] = 20
+            c4WelcomeTail = [247]
+            hdr_lgth = len(c4WelcomeHeader)
+            trl_lgth = len(c4WelcomeTail)
+            expected_input = c4FirmwareResponse
+            sysex_ints_as_ascii_text = [chr(c) for c in msg_payload]
             log_msg = show_msg + f"firmware version {sysex_ints_as_ascii_text}"
         self.show_message(log_msg)
-        self.log_message(logging.INFO, log_msg)
+        self.log_message(logging.INFO, f"{log_id}Script is " + log_msg)
 
         if lgth == len(midi_bytes):
             match = True
             for i in range(hdr_lgth):  # first chunk always the same, middle chunk varies with serial numbers
-                if c4InitWelcome[i] != midi_bytes[i]:
+                if expected_input[i] != midi_bytes[i]:
                     match = False
             for j in range(lgth - trl_lgth, lgth):  # last chunk always the same
-                if c4InitWelcome[j] != midi_bytes[j]:
+                if expected_input[j] != midi_bytes[j]:
                     match = False
             if match:
                 # the C4 just blanked its displays (except the hello message on the top screen?)
