@@ -1567,9 +1567,12 @@ class EncoderAssignmentHistory(MackieC4Component):
         if callback_track_type == 1:
             all_track_objs_of_type = self.song().return_tracks
             next_callback_type_index = next_song_index - self.data.plain_track_count
-
-        if len(self.data.get_all_tracks_by_type_key(track_callback_types[callback_track_type]).keys()) == len(all_track_objs_of_type):
-            self.main_script().log_message(logging.ERROR, f"{log_id}moving {track_obj_that_moved.name} to new stored cb type index {next_callback_type_index}")
+        stored_track_refs_of_type = self.data.get_all_tracks_by_type_key(track_callback_types[callback_track_type])
+        if len(stored_track_refs_of_type.keys()) == len(all_track_objs_of_type):
+            if stored_track_refs_of_type[next_callback_type_index].active_track.track == track_obj_that_moved:
+                self.main_script().log_message(logging.WARNING, f"{log_id}no move {track_obj_that_moved.name} ref already stored at cb type index {next_callback_type_index}")
+                return
+            self.main_script().log_message(logging.INFO, f"{log_id}moving {track_obj_that_moved.name} to new stored cb type index {next_callback_type_index}")
             self.data.rekey_track_list_of_callback_type(callback_track_type, next_callback_type_index, all_track_objs_of_type, track_obj_that_moved)
             self.track_changed(next_song_index)
         # else:

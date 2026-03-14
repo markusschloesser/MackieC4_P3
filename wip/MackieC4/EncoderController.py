@@ -651,10 +651,11 @@ class EncoderController(MackieC4Component, Component):
             if track_ref is not None:
                 if liveobj_changed(self.selected_track, track_ref.active_track.track):
                     self.main_script().log_message(logging.DEBUG, msg + f"changed versus stored track {track_ref.active_track.track_name}")
+                    self.__eah.track_changed(track_index)
+                    insert = "is now"
                 else:
                     self.main_script().log_message(logging.DEBUG, msg + f"already matches stored track {track_ref.active_track.track_name}")
-                self.__eah.track_changed(track_index)
-                insert = "is now"
+                    insert = "is unchanged"
             else:
                 msg += f"is not stored at song index {track_index}, None atd_ref returned, no stored 'last selected' updates based on None"
                 self.main_script().log_message(logging.DEBUG, msg)
