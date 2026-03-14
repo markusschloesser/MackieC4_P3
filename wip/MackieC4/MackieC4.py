@@ -92,7 +92,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     script_log_levels = {"ALWAYS": 0, "TRACE": 5, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NEVER": 99}
     # trace log level automatically enables the (EncoderAssignmentHistory module) SongData class property self.class_logging = True
     # trace log level is a very verbose and detailed debug level
-    current_script_log_level = script_log_levels["DEBUG"]
+    current_script_log_level = script_log_levels["TRACE"]
 
     def __init__(self, c_instance):
         self.__c_instance = c_instance
