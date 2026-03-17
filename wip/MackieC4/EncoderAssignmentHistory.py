@@ -1814,14 +1814,16 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.main_script().log_message(trace_level, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
         oopsie = False
-        for t_obj, t_ref in zip_longest(tracks_of_type, changed_track_type_table.values()):
-            if liveobj_changed(t_obj, t_ref):
-                msg = f"{log_id}after deletes, stored reference {t_ref.active_track.track_name} doesn't equal Live object {t_obj.name} at same index"
-                self.main_script().log_message(logging.WARNING, msg)
-                oopsie = True
-        if not oopsie:
-            msg = f"{log_id}after deletes, all stored references equal the Live objects at same indexes"
-            self.main_script().log_message(logging.INFO, msg)
+        # iterating through the remaining track list "again" is an expensive validation if everything is working as expected
+        if self.main_script().current_script_log_level < logging.DEBUG:
+            for t_obj, t_ref in zip_longest(tracks_of_type, changed_track_type_table.values()):
+                if liveobj_changed(t_obj, t_ref.active_track.track):
+                    msg = f"{log_id}after deletes, stored reference {t_ref.active_track.track_name} doesn't equal Live object {t_obj.name} at same index"
+                    self.main_script().log_message(logging.WARNING, msg)
+                    oopsie = True
+            if not oopsie:
+                msg = f"{log_id}after deletes, all stored references equal the Live objects at same indexes"
+                self.main_script().log_message(logging.INFO, msg)
 
         next_selected_index = self.last_selected_track_index - nbr_tracks_removed
         if found_changed_track_callback_type == 0 and selected_callback_type_before > 0:
