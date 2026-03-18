@@ -1810,22 +1810,24 @@ class EncoderAssignmentHistory(MackieC4Component):
         log_id = "EAH.device_added_deleted_or_changed: "
         new_device_count_track = len(all_track_devices)
         trace_level = self.log_levels["TRACE"]
-        # idx = 0
-        # log_msg = f"{log_id}device in input device list at index<{idx}> is "
-        # for device in all_track_devices:
-        #     if liveobj_valid(device):
-        #         # pass
-        #         self.main_script().log_message(logging.DEBUG, f"{log_msg}a valid Live object named <{device.name}>")
-        #     else:
-        #         self.main_script().log_message(logging.WARNING, f"{log_msg}<None> or a lost weakref")
-        #     idx += 1
-        #     log_msg = "{0}device in input device list at index<{1}> is ".format(log_id, idx)
-        # if not new_device_count_track == idx:
-        #     self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue, collection size {new_device_count_track} doesn't match iterator {idx}")
-        # if liveobj_valid(selected_device):
-        #     self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device is a valid Live object named<{selected_device.name}>")
-        # if selected_device_idx > -1:
-        #     self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device_idx<{selected_device_idx}> points to a non-negative index")
+        if self.main_script().current_log_level < trace_level:
+            idx = 0
+            log_msg = f"{log_id}device in input device list at index<{idx}> is "
+            for device in all_track_devices:
+                if liveobj_valid(device):
+                    # pass
+                    self.main_script().log_message(logging.DEBUG, f"{log_msg}a valid Live object named <{device.name}>")
+                else:
+                    self.main_script().log_message(logging.WARNING, f"{log_msg}<None> or a lost weakref")
+                idx += 1
+                log_msg = "{0}device in input device list at index<{1}> is ".format(log_id, idx)
+            if not new_device_count_track == idx:
+                self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue, collection size {new_device_count_track} doesn't match iterator {idx}")
+            if liveobj_valid(selected_device):
+                self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device is a valid Live object named<{selected_device.name}>")
+            if selected_device_idx > -1:
+                self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device_idx<{selected_device_idx}> points to a non-negative index")
+
         active_device_list_ref = self.data.get_active_track_details_at_song_index(self.last_selected_track_index)
         last_track_ref = active_device_list_ref.active_track
         old_device_count_track = last_track_ref.device_count
