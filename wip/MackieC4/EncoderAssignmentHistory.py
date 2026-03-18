@@ -1315,7 +1315,7 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         self.log_levels = main_script.script_log_levels
         self.data = SongData(logger=self.main_script().log_message, get_device_list=self.get_device_list)
-        self.data.class_logging = main_script.current_log_level < self.log_levels["TRACE"] # or True
+        self.data.class_logging = main_script.current_script_log_level < self.log_levels["TRACE"] # or True
 
         self.__my_controlling_encoder = encoder_controller
         self.__selected_track = self.main_script().song().view.selected_track
@@ -1810,7 +1810,7 @@ class EncoderAssignmentHistory(MackieC4Component):
         log_id = "EAH.device_added_deleted_or_changed: "
         new_device_count_track = len(all_track_devices)
         trace_level = self.log_levels["TRACE"]
-        if self.main_script().current_log_level < trace_level:
+        if self.main_script().current_script_log_level < trace_level:
             idx = 0
             log_msg = f"{log_id}device in input device list at index<{idx}> is "
             for device in all_track_devices:
