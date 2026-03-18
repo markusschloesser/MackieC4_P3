@@ -1315,6 +1315,7 @@ class EncoderAssignmentHistory(MackieC4Component):
 
         self.log_levels = main_script.script_log_levels
         self.data = SongData(logger=self.main_script().log_message, get_device_list=self.get_device_list)
+        self.data.class_logging = main_script.current_log_level < self.log_levels["TRACE"] # or True
 
         self.__my_controlling_encoder = encoder_controller
         self.__selected_track = self.main_script().song().view.selected_track
