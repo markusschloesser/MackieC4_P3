@@ -998,7 +998,9 @@ class EncoderController(MackieC4Component, Component):
                 self.lock_to_device(self.__device_provider.provided_device)
             else:
                 self.unlock_from_device()
-            self.one_display_update()
+            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                # ONLY do callback based display updates when one or more C4SID_SPLIT leds are ON
+                self.one_display_update()
         elif switch_id == C4SID_SPLIT_ERASE:
             self.__spot_erase_state = self.__btn_ctlr.split_erase_led_state
         else:
@@ -1070,6 +1072,11 @@ class EncoderController(MackieC4Component, Component):
             self.update_assignment_mode_leds()
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
+            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                # need to wipe USER mode LCD screen displays when we leave USER mode, but not too soon, wait 20 ms
+                self.one_delayed_display_update(.020)
+        # else don't update self because self is already in this mode
+
    # no wrap around: stop moving left at track 0, stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
@@ -1136,6 +1143,8 @@ class EncoderController(MackieC4Component, Component):
             self.__eah.last_selected_device_index = (current_bank_nbr * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.last_selected_device_index
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
+            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                self.one_display_update()
 
     def handle_slot_nav_switch_ids(self, switch_id):
         """ "slot navigation" (arrow up 🔼/down 🔽) switches between Devices in all modes except User """
@@ -1299,8 +1308,8 @@ class EncoderController(MackieC4Component, Component):
             if vpot_index in row_01_encoders:
                 self.toggle_devices(vpot_index, cc_value)
             # else: address of midi mapped or unused encoder in C4M_CHANNEL_STRIP mode
-
-        self.one_display_update()
+        if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            self.one_display_update()
 
     def unsolo_all_functionality(self, mode_name, vpot_index):
         mode_function = self.mode_functions.get(mode_name)
@@ -1395,7 +1404,8 @@ class EncoderController(MackieC4Component, Component):
                     else:
                         param = self.__encoders[vpot_index].v_pot_parameter()
                         param.value = param.default_value  # button press == jump to default value for Crossfader on Master track
-                    self.one_display_update(force=True)
+                    if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                        self.one_display_update(force=True)
 
             elif mode_name == "reassign_encoder_parameters":
                 vpot_display_text = EncoderDisplaySegment(self, vpot_index)
@@ -1489,7 +1499,8 @@ class EncoderController(MackieC4Component, Component):
                     # self.main_script().log_message(logging.DEBUG, log_msg)
                     self.__eah.last_selected_track_device_bank_view_index = current_device_bank_index
                     self.__reassign_encoder_parameters()
-                    self.one_display_update()
+                    if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                        self.one_display_update()
 
             elif encoder_index in row_01_encoders:
                 # (row 2 "index" is 01) these encoders represent devices 1 - 8 in the device chain on the selected track in C4M_CHANNEL_STRIP mode
@@ -1586,7 +1597,8 @@ class EncoderController(MackieC4Component, Component):
                     #  encoder 32 is "Volume"
                     param = self.__encoders[encoder_index].v_pot_parameter()
                     param.value = param.default_value  # button press == jump to default value of Pan or Vol
-            self.one_display_update(force=True)
+            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                self.one_display_update(force=True)
         elif self.__assignment_mode == C4M_PLUGINS:
             encoder_04_index = 3
             encoder_07_index = 6
@@ -1670,8 +1682,8 @@ class EncoderController(MackieC4Component, Component):
 
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
-
-            self.one_display_update()
+            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                self.one_display_update()
 
         elif self.__assignment_mode == C4M_FUNCTION:
             encoder_01_index = 0  # follow
@@ -1806,7 +1818,8 @@ class EncoderController(MackieC4Component, Component):
                     s.show_full_enlighted_poti()
                 self.song().overdub = not self.song().overdub
 
-            self.one_display_update()
+            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                self.one_display_update()
 
     def __send_parameter(self, vpot_index):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
@@ -2222,8 +2235,8 @@ class EncoderController(MackieC4Component, Component):
             bottom_line = 'to exit USER mode'.center(NUM_CHARS_PER_DISPLAY_LINE)
             self.send_display_string(LCD_BTM_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
             self.send_display_string(LCD_BTM_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-
-        self.one_display_update(force=True)
+        if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            self.one_display_update(force=True)
         return
 
     def _update_vpot_leds_for_device_toggle(self):
@@ -2316,19 +2329,20 @@ class EncoderController(MackieC4Component, Component):
 
     def on_update_display_timer(self):
         """Called by Live every 100 ms. This is the original "real time" device-display update callback method"""
-
-        if self.song().is_playing:
-            self.__do_display_update()
-        elif self.__display_lag_timer_bang():
-            self.__do_display_update()
-
+        if self.__btn_ctlr.nbr_split_leds_on < 3: # when 3 split leds are ON, don't do any timer based display updates
+            if self.song().is_playing:
+                self.__do_display_update()
+            elif self.__display_lag_timer_bang():
+                self.__do_display_update()
 
     def one_delayed_display_update(self, delay_secs=.050, force=False): # 50 ms
         time.sleep(delay_secs)
-        self.one_display_update(force=force)
+        if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            self.one_display_update(force=force)
 
     def one_display_update(self, force=False):
         """If the (Session or Arranger) view is (scrolling or zooming), only allow forced display updates. If not, do every display update, passing force as needed"""
+
         if not self.view_is_changing:
             self.__do_display_update(force=force)
         elif force:
