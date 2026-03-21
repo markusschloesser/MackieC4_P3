@@ -536,7 +536,7 @@ class MackieC4(MackieC4ListenerMixin, object):
             except TooSoon as exception:
                 self.log_message(logging.DEBUG, f"C4.zoom_or_scroll: Too Soon {exception}")
 
-    @CoolDown(80) # milliseconds
+    # @CoolDown(80) # milliseconds
     def __throttled_scroll_view(self, cc_value):
         self.__zoom_view(cc_value)
 
