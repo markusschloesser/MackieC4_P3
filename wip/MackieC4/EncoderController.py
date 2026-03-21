@@ -183,6 +183,7 @@ class EncoderController(MackieC4Component, Component):
         }
 
         self.__btn_ctlr = ButtonController()
+        self.__btn_ctlr.handle_function_button_press(C4SID_SPLIT_ERASE) # LCD text scrolling ON by default
         self.__own_encoders = encoders  # why separate references? This reference is only used here in __init__
         self.__encoders = encoders  # why these __encoders too? This reference is used everywhere else
         # suspect the reason is because, at runtime, while this __init__ is running; the main_script here,
@@ -243,6 +244,7 @@ class EncoderController(MackieC4Component, Component):
         self.returns_switch = 0
 
         self.update_assignment_mode_leds()
+        self.update_system_switch_leds()
 
         self.__shift_state = False
         self.__option_state = False
