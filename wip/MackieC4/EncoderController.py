@@ -149,7 +149,11 @@ class ButtonController(object):
             if self.split_erase_led_state > 0:
                 # if the "spot erase" led is ON, turn it OFF by "virtually pressing" the button
                 self._split_erase_led_state()
-
+        elif self.nbr_split_leds_on == 0:
+            # 0 SPLIT leds ON means turn ON "LCD text scrolling" (scrolling text by default)
+            if self.split_erase_led_state == 0:
+                # if the "spot erase" led is OFF, turn it ON by "virtually pressing" the button
+                self._split_erase_led_state()
 
 
 class EncoderController(MackieC4Component, Component):
