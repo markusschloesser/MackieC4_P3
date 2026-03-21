@@ -30,6 +30,127 @@ from .MackieC4Component import *
 from _Generic.Devices import *
 from .TimeDisplay import TimeDisplay
 
+class ButtonController(object):
+    """tracks the LED state of all seven C4 "control buttons" with associated LEDs (nine LEDs)"""
+
+    def __init__(self):
+
+        self.function_group_buttons = {
+            C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
+                                     C4SID_SPLIT + 1: {"virtual_press_count": 0, "led_value": [0, 127]},
+                                     C4SID_SPLIT + 2: {"virtual_press_count": 0, "led_value": [0, 127]}},  "press_count": 0},
+            C4SID_LOCK: {"led_id": {C4SID_LOCK: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_SPLIT_ERASE: {"led_id": {C4SID_SPLIT_ERASE: {"led_value": [0, 127]}}, "press_count": 0}
+        }
+        self.assignment_group_buttons = {
+            C4SID_MARKER: {"led_id": {C4SID_MARKER: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_TRACK: {"led_id": {C4SID_TRACK: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_CHANNEL_STRIP: {"led_id": {C4SID_CHANNEL_STRIP: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_FUNCTION: {"led_id": {C4SID_FUNCTION: {"led_value": [0, 127]}}, "press_count": 0}
+        }
+
+        self.__split_led_ids = [0, 1, 2, 3]
+        self.__split_led_cycle_index = 0
+
+    @property
+    def split_led_cycle_index(self):
+        return self.__split_led_cycle_index
+    @property
+    def nbr_split_leds_on(self):
+        return self.split_led_cycle_index
+
+    @property
+    def split_led_states(self):
+        btn_ref = self.function_group_buttons[C4SID_SPLIT]
+        btn_led_ref = btn_ref["led_id"]
+
+        toggle = btn_led_ref[C4SID_SPLIT]["virtual_press_count"] % 2
+        out_value_00 = btn_led_ref[C4SID_SPLIT]["led_value"][toggle]
+        toggle = btn_led_ref[C4SID_SPLIT + 1]["virtual_press_count"] % 2
+        out_value_01 = btn_led_ref[C4SID_SPLIT + 1]["led_value"][toggle]
+        toggle = btn_led_ref[C4SID_SPLIT + 2]["virtual_press_count"] % 2
+        out_value_02 = btn_led_ref[C4SID_SPLIT + 2]["led_value"][toggle]
+        return out_value_00, out_value_01, out_value_02
+    @property
+    def lock_led_state(self):
+        return self.get_function_btn_led_state(C4SID_LOCK)
+    @property
+    def split_erase_led_state(self):
+        return self.get_function_btn_led_state(C4SID_SPLIT_ERASE)
+
+    @property
+    def marker_led_state(self):
+        return self.get_assignment_btn_led_state(C4SID_MARKER)
+    @property
+    def track_led_state(self):
+        return self.get_assignment_btn_led_state(C4SID_TRACK)
+    @property
+    def chan_strip_led_state(self):
+        return self.get_assignment_btn_led_state(C4SID_CHANNEL_STRIP)
+    @property
+    def function_led_state(self):
+        return self.get_assignment_btn_led_state(C4SID_FUNCTION)
+
+    def handle_function_button_press(self, button_id):
+        if button_id == C4SID_SPLIT:
+            self._split_led_states()
+        else:
+            self._update_function_button_state(button_id)
+
+    def handle_assignment_button_press(self, button_id):
+        self._update_assignment_button_state(button_id)
+
+    def get_function_btn_led_state(self, button_id):
+        btn_ref = self.function_group_buttons[button_id]
+        btn_led_ref = btn_ref["led_id"]
+        toggle = btn_ref["press_count"] % 2
+        led_value = btn_led_ref[button_id]["led_value"][toggle]
+        return led_value
+
+    def get_assignment_btn_led_state(self, button_id):
+        btn_ref = self.assignment_group_buttons[button_id]
+        btn_led_ref = btn_ref["led_id"]
+        toggle = btn_ref["press_count"] % 2
+        led_value = btn_led_ref[button_id]["led_value"][toggle]
+        return led_value
+
+    def _split_erase_led_state(self, value=C4SID_SPLIT_ERASE):
+        self._update_function_button_state(value)
+
+    def _update_function_button_state(self, btn_id):
+        button_ref = self.function_group_buttons[btn_id]
+        button_ref["press_count"] += 1
+        return button_ref
+
+    def _update_assignment_button_state(self, btn_id):
+        button_ref = self.assignment_group_buttons[btn_id]
+        button_ref["press_count"] += 1
+        return button_ref
+
+    def _split_led_states(self, value=C4SID_SPLIT):
+        button_ref = self._update_function_button_state(value)
+        btn_led_ref = button_ref["led_id"]
+
+        self.__split_led_cycle_index = button_ref["press_count"] % len(self.__split_led_ids)
+        # 4 states repeat == 1, 2, 3 leds ON, and "all leds OFF"
+        if self.__split_led_cycle_index > 0:
+            inner_offset = self.__split_led_cycle_index - 1
+            btn_led_ref[inner_offset]["virtual_press_count"] += 1
+        else:
+            if btn_led_ref[C4SID_SPLIT]["virtual_press_count"] % 2 > 0:
+                btn_led_ref[C4SID_SPLIT]["virtual_press_count"] += 1
+            if btn_led_ref[C4SID_SPLIT + 1]["virtual_press_count"] % 2 > 0:
+                btn_led_ref[C4SID_SPLIT + 1]["virtual_press_count"] += 1
+            if btn_led_ref[C4SID_SPLIT + 2]["virtual_press_count"] % 2 > 0:
+                btn_led_ref[C4SID_SPLIT + 2]["virtual_press_count"] += 1
+
+        if self.nbr_split_leds_on == 3:
+            # 3 SPLIT leds ON means turn OFF "LCD text scrolling" (displays don't update often enough for scrolling)
+            if self.split_erase_led_state > 0:
+                # if the "spot erase" led is ON, turn it OFF by "virtually pressing" the button
+                self._split_erase_led_state()
+
+
 
 class EncoderController(MackieC4Component, Component):
     """
@@ -57,29 +178,7 @@ class EncoderController(MackieC4Component, Component):
             "on_update_display_timer": self.on_update_display_timer
         }
 
-        # C4SID_SPLIT_ERASE is the only system switch (button) with no associated behavior mapped
-        # C4SID_SPLIT behavior only affects "display updates" (feedback to leds and led rings)...
-        #    when the song is NOT playing:
-        #    C4SID_SPLIT controls the amount of intentional lag applied between "on display update timer" calls and actual C4 display updates
-        #    all split button leds OFF means full lag amount (send display update midi messages once every 20 times "on display update timer" is called)
-        #    all split button leds ON means no lag applied (send display update midi messages every time "on display update timer" is called, 1 for 1)
-        #    Note: comments below about self.__display_repeat_timer impacting C4 "screen saver" sleep also apply here, the LCD backlights
-        #    will not turn off because the song is NOT playing for example.  "Full lag" means about 2 seconds of lag, not minutes of inactivity.
-        # C4SID_LOCK is mapped to Live's (Python) LOM API "Lock control surface to device" behavior.
-        self.system_switch_functions = {
-            C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
-                                     C4SID_SPLIT + 1: {"virtual_press_count": 0, "led_value": [0, 127]},
-                                     C4SID_SPLIT + 2: {"virtual_press_count": 0, "led_value": [0, 127]}},  "press_count": 0},
-            C4SID_LOCK: {"led_id": {C4SID_LOCK: {"led_value": [0, 127]}}, "press_count": 0},
-            C4SID_SPLIT_ERASE: {"led_id": {C4SID_SPLIT_ERASE: {"led_value": [0, 127]}}, "press_count": 0}
-        }
-        self.system_switch_assignments = {
-            C4SID_MARKER: {"led_id": {C4SID_MARKER: {"led_value": [0, 127]}}, "press_count": 0},
-            C4SID_TRACK: {"led_id": {C4SID_TRACK: {"led_value": [0, 127]}}, "press_count": 0},
-            C4SID_CHANNEL_STRIP: {"led_id": {C4SID_CHANNEL_STRIP: {"led_value": [0, 127]}}, "press_count": 0},
-            C4SID_FUNCTION: {"led_id": {C4SID_FUNCTION: {"led_value": [0, 127]}}, "press_count": 0}
-        }
-
+        self.__btn_ctlr = ButtonController()
         self.__own_encoders = encoders  # why separate references? This reference is only used here in __init__
         self.__encoders = encoders  # why these __encoders too? This reference is used everywhere else
         # suspect the reason is because, at runtime, while this __init__ is running; the main_script here,
@@ -873,100 +972,104 @@ class EncoderController(MackieC4Component, Component):
     def last_assignment_mode(self):
         return self.__last_assignment_mode
 
-    # self.system_switch_functions = {
-    #     C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
-    #                              1: {"virtual_press_count": 0, "led_value": [0, 127]},
-    #                              2: {"virtual_press_count": 0, "led_value": [0, 127]}},
-    #                   "press_count": 0},
-    #     C4SID_LOCK: {"led_id": {C4SID_LOCK: {"led_value": [0, 127]}},
-    #                  "press_count": 0},
-    #     C4SID_SPLIT_ERASE: {"led_id": {C4SID_SPLIT_ERASE: {"led_value": [0, 127]}},
-    #                         "press_count": 0}
-    # }
-    # Currently,
-    # C4SID_SPLIT_ERASE is the only system switch (button) with no associated behavior mapped
-    # C4SID_SPLIT behavior only affects the "display update" refresh rate (feedback to leds and led rings)...
-    #    when the song is NOT playing:
-    #    C4SID_SPLIT controls the amount of intentional lag applied between "on display update timer" calls and actual C4 display updates
-    #    all split button leds OFF means full lag amount (send display update midi messages once every 20 times "on display update timer" is called)
-    #    all split button leds ON means no lag applied (send display update midi messages every time "on display update timer" is called, 1 for 1)
+    # This method is never called from USER mode
+    #
+    # C4SID_SPLIT behavior only affects the "display update" refresh RATE (feedback to lcds, leds, and led rings) when the song IS NOT playing,
+    #    display refresh RATE is always full speed when song IS playing (full speed is 10 full display updates per second)
+    # C4SID_SPLIT controls the amount of intentional lag applied between "on display update timer" calls and actual C4 display updates which "slows down" the
+    #    apparent LCD text scrolling rate (for "long" display strings)
+    #    all split button leds OFF means no lag applied (send display update midi messages every time "on display update timer" is called, 1 for 1)
+    #      when 0 C4SID_SPLIT leds are ON - ONLY do timer based display updates (ignore callback events, the next timer based update is soon enough)
+    #    all split button leds ON means infinite lag amount (never send display update midi messages, ignore "on display update timer" calls)
+    #      when 3 C4SID_SPLIT leds are ON - ONLY do callback based display updates (ignore C4SID_SPLIT_ERASE led state - set text scrolling disabled)
+    #
     # C4SID_LOCK is mapped to Live's (Python) LOM API "Lock control surface to device" behavior.
+    #
+    # C4SID_SPLIT_ERASE (dependent on SPLIT state) enables or disables the "LCD screen text scrolling" (when LESS THAN 3 C4SID_SPLIT leds are ON)
+    #   dependency is if all 3 C4SID_SPLIT leds are ON - set "LCD screen text scrolling", C4SID_SPLIT_ERASE led state to off, disabled)
     def handle_system_switch_ids(self, switch_id):
-        switch_dict = self.system_switch_functions[switch_id]
-        switch_dict["press_count"] += 1
-        led_dict = switch_dict["led_id"]
-        out_value = 0
-        send_feedback = True
-        if switch_id == C4SID_SPLIT:
-            offset = switch_dict["press_count"] % len(self.__display_update_lag_upper_bounds)  #  4 states repeat == 1, 2, 3 leds ON, and "all leds OFF"
-            if offset > 0: # self.__display_update_lag_upper_bounds_index
-                inner_offset = offset - 1
-                led_dict[inner_offset]["virtual_press_count"] += 1
-            else:
-                if led_dict[C4SID_SPLIT]["virtual_press_count"] % 2 > 0:
-                    led_dict[C4SID_SPLIT]["virtual_press_count"] += 1
-                if led_dict[C4SID_SPLIT + 1]["virtual_press_count"] % 2 > 0:
-                    led_dict[C4SID_SPLIT + 1]["virtual_press_count"] += 1
-                if led_dict[C4SID_SPLIT + 2]["virtual_press_count"] % 2 > 0:
-                    led_dict[C4SID_SPLIT + 2]["virtual_press_count"] += 1
-            self.update_system_switch_leds() # also sends Lock and Erase led "updates"
-            send_feedback = False
-            # else out_value = 0
-            # as the press count cycles up here, the amount of lag cycles down
-            # all Split leds OFF is max lag, and all 3 Split leds ON is zero lag (full speed of "on display update timer" (every 100 ms))
-            self.__display_update_lag_upper_bounds_index = offset
 
+        self.__btn_ctlr.handle_function_button_press(switch_id)
+
+        if switch_id == C4SID_SPLIT:
+            self.__display_update_lag_upper_bounds_index = self.__btn_ctlr.split_led_cycle_index
         elif switch_id == C4SID_LOCK:
-            out_value = led_dict[C4SID_LOCK]["led_value"][switch_dict["press_count"] % 2]
-            if out_value > 0:
+            if self.__btn_ctlr.lock_led_state > 0:
                 self.lock_to_device(self.__device_provider.provided_device)
             else:
                 self.unlock_from_device()
             self.one_display_update()
         elif switch_id == C4SID_SPLIT_ERASE:
-            out_value = led_dict[C4SID_SPLIT_ERASE]["led_value"][switch_dict["press_count"] % 2]
-            self.__spot_erase_state = out_value
+            self.__spot_erase_state = self.__btn_ctlr.split_erase_led_state
         else:
-            self.main_script().log_message(logging.ERROR, f"EC.handle_system_switch_ids: unknown system switch id {switch_id}, no feedback generated")
-            send_feedback = False
+            self.main_script().log_message(logging.ERROR, f"EC.handle_system_switch_ids: unknown system switch id {switch_id}, no change in generated feedback")
 
-        if send_feedback:
-            self.send_midi((NOTE_ON_STATUS, switch_id, out_value))
+        self.update_system_switch_leds()
 
     def update_system_switch_leds(self):
         if self.__assignment_mode != C4M_USER:
-            switch_dict = self.system_switch_functions[C4SID_SPLIT]
-            led_dict = switch_dict["led_id"]
-
-            toggle = led_dict[C4SID_SPLIT]["virtual_press_count"] % 2
-            out_value_00 = led_dict[C4SID_SPLIT]["led_value"][toggle]
-            toggle = led_dict[C4SID_SPLIT + 1]["virtual_press_count"] % 2
-            out_value_01 = led_dict[C4SID_SPLIT + 1]["led_value"][toggle]
-            toggle = led_dict[C4SID_SPLIT + 2]["virtual_press_count"] % 2
-            out_value_02 = led_dict[C4SID_SPLIT + 2]["led_value"][toggle]
+            out_value_00, out_value_01, out_value_02 = self.__btn_ctlr.split_led_states
             self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT, out_value_00))
             self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT + 1, out_value_01))
             self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT + 2, out_value_02))
 
-            switch_dict = self.system_switch_functions[C4SID_LOCK]
-            led_dict = switch_dict["led_id"]
-            toggle = switch_dict["press_count"] % 2
-            lock_value = led_dict[C4SID_LOCK]["led_value"][toggle]
-            self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, lock_value))
+            self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, self.__btn_ctlr.lock_led_state))
+            self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, self.__btn_ctlr.split_erase_led_state))
 
-            switch_dict = self.system_switch_functions[C4SID_SPLIT_ERASE]
-            led_dict = switch_dict["led_id"]
-            toggle = switch_dict["press_count"] % 2
-            erase_value = led_dict[C4SID_SPLIT_ERASE]["led_value"][toggle]
-            self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, erase_value))
+    def handle_assignment_switch_ids(self, switch_id):
+        """the 4 Assignment buttons on the C4, which handle the mode switching"""
+        # C4 assignment.marker button == C4M_USER mode
+        update_self = False
+        if switch_id == C4SID_MARKER:
+            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_MARKER]:  # C4M_USER:
+                self.__last_assignment_mode = self.__assignment_mode
+                self.__assignment_mode = button_id_to_assignment_mode[C4SID_MARKER]  # C4M_USER
+                update_self = True
 
-            # for btn_id in self.system_switch_assignments:
-            #     switch_dict = self.system_switch_assignments[btn_id]
-            #     led_dict = switch_dict["led_id"]
-            #     toggle = switch_dict["press_count"] % 2
-            #     assignment_value = led_dict[btn_id]["led_value"][toggle]
-            #     self.send_midi((NOTE_ON_STATUS, btn_id, assignment_value))
+        # C4 assignment.track button == C4M_PLUGINS mode
+        elif switch_id == C4SID_TRACK:
+            # only switch mode and set "last mode" when the mode actually changes
+            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
+                self.__last_assignment_mode = self.__assignment_mode
+                self.__assignment_mode = button_id_to_assignment_mode[C4SID_TRACK]  # C4M_PLUGINS
 
+                # if self.__eah.selected_device_bank_index == 0 and self.__eah.selected_device_bank_count > 0:
+                # if self.__eah.last_selected_track_device_bank_view_index == 0 and self.__eah.selected_device_bank_count > 0:
+                # ??? why select device at index 0 when changing to Track-Devices mode
+                # if the selected device-bank is index 0 and the track has more than 8 devices?
+                #     self.song().view.select_device(self.get_device_list(self.selected_track.devices)[0])
+                update_self = True
+
+        # C4 assignment.chan_strip button == C4M_CHANNEL_STRIP mode
+        elif switch_id == C4SID_CHANNEL_STRIP:
+            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]:
+                self.__last_assignment_mode = self.__assignment_mode
+                self.__assignment_mode = button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]
+                update_self = True
+
+        # C4 assignment.function button == C4M_FUNCTION mode
+        elif switch_id == C4SID_FUNCTION:
+            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_FUNCTION]:
+                self.__last_assignment_mode = self.__assignment_mode
+                self.__assignment_mode = button_id_to_assignment_mode[C4SID_FUNCTION]
+                update_self = True
+
+        if update_self:
+            self.__btn_ctlr.handle_assignment_button_press(switch_id)
+            # for button_id in self.system_switch_assignments.keys():
+            #     button_dict = self.system_switch_assignments[button_id]
+            #     if switch_id == button_id:
+            #         if button_dict["press_count"] % 2 == 0:
+            #             button_dict["press_count"] += 1
+            #     else:
+            #         if button_dict["press_count"] % 2 > 0:
+            #             button_dict["press_count"] += 1
+
+            if not self.__assignment_mode == C4M_USER:
+                self.update_system_switch_leds()
+            self.update_assignment_mode_leds()
+            self.__reassign_encoder_parameters()
+            self.request_rebuild_midi_map()
    # no wrap around: stop moving left at track 0, stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
@@ -1033,65 +1136,6 @@ class EncoderController(MackieC4Component, Component):
             self.__eah.last_selected_device_index = (current_bank_nbr * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.last_selected_device_index
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
-            self.one_display_update()
-
-    def handle_assignment_switch_ids(self, switch_id):
-        """the 4 Assignment buttons on the C4, which handle the mode switching"""
-        # C4 assignment.marker button == C4M_USER mode
-        update_self = False
-        led_dict = self.system_switch_assignments[switch_id]
-        if switch_id == C4SID_MARKER:
-            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_MARKER]:  # C4M_USER:
-                self.__last_assignment_mode = self.__assignment_mode
-                self.__assignment_mode = button_id_to_assignment_mode[C4SID_MARKER]  # C4M_USER
-                update_self = True
-
-        # C4 assignment.track button == C4M_PLUGINS mode
-        elif switch_id == C4SID_TRACK:
-            # only switch mode and set "last mode" when the mode actually changes
-            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
-                self.__last_assignment_mode = self.__assignment_mode
-                self.__assignment_mode = button_id_to_assignment_mode[C4SID_TRACK]  # C4M_PLUGINS
-
-                # if self.__eah.selected_device_bank_index == 0 and self.__eah.selected_device_bank_count > 0:
-                # if self.__eah.last_selected_track_device_bank_view_index == 0 and self.__eah.selected_device_bank_count > 0:
-                # ??? why select device at index 0 when changing to Track-Devices mode
-                # if the selected device-bank is index 0 and the track has more than 8 devices?
-                #     self.song().view.select_device(self.get_device_list(self.selected_track.devices)[0])
-                update_self = True
-
-        # C4 assignment.chan_strip button == C4M_CHANNEL_STRIP mode
-        elif switch_id == C4SID_CHANNEL_STRIP:
-            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]:
-                self.__last_assignment_mode = self.__assignment_mode
-                self.__assignment_mode = button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]
-                update_self = True
-
-        # C4 assignment.function button == C4M_FUNCTION mode
-        elif switch_id == C4SID_FUNCTION:
-            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_FUNCTION]:
-                self.__last_assignment_mode = self.__assignment_mode
-                self.__assignment_mode = button_id_to_assignment_mode[C4SID_FUNCTION]
-                update_self = True
-
-        if update_self:
-            for button_id in self.system_switch_assignments.keys():
-                button_dict = self.system_switch_assignments[button_id]
-                if switch_id == button_id:
-                    if button_dict["press_count"] % 2 == 0:
-                        button_dict["press_count"] += 1
-                else:
-                    if button_dict["press_count"] % 2 > 0:
-                        button_dict["press_count"] += 1
-
-            if not self.__assignment_mode == C4M_USER:
-                self.update_system_switch_leds()
-            self.update_assignment_mode_leds()
-            self.__reassign_encoder_parameters()
-            self.request_rebuild_midi_map()
-            # need to wipe USER mode LCD screen displays when we leave USER mode, but not too soon, wait 20 ms
-            self.one_delayed_display_update(.020)
-        # else don't update self because self is already in this mode
 
     def handle_slot_nav_switch_ids(self, switch_id):
         """ "slot navigation" (arrow up 🔼/down 🔽) switches between Devices in all modes except User """
