@@ -200,7 +200,7 @@ class EncoderController(MackieC4Component, Component):
         self.__display_update_lag_upper_bounds = [0, 5, 10, 20]
         self.__display_update_lag_upper_bounds_index = 0
         self.__display_update_lag_counter = 0
-        self.__spot_erase_state = 0
+        self.__spot_erase_state = self.__btn_ctlr.split_erase_led_state
         self.__view_is_changing = False
         self.add_special_parameter_listeners_pending = False
 
