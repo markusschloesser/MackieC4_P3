@@ -528,7 +528,6 @@ class MackieC4(MackieC4ListenerMixin, object):
     def zoom_or_scroll(self, cc_value):
         """ Scroll in Session view or Zoom in Arrange view with vpot_rotation encoder rotation"""
         current_view_name = self.application().view.focused_document_view
-        # self.__encoder_controller.view_is_changing = True
         if current_view_name == 'Arranger':
             self.__zoom_view(cc_value)
         else:
@@ -536,7 +535,6 @@ class MackieC4(MackieC4ListenerMixin, object):
                 self.__throttled_scroll_view(cc_value)
             except TooSoon as exception:
                 self.log_message(logging.DEBUG, f"C4.zoom_or_scroll: Too Soon {exception}")
-        self.__encoder_controller.view_is_changing = False
 
     @CoolDown(80) # milliseconds
     def __throttled_scroll_view(self, cc_value):
@@ -989,107 +987,104 @@ class MackieC4(MackieC4ListenerMixin, object):
         else:
             self.log_message(logging.DEBUG, f"{log_id}deferred callback from {caller}")
 
-        if not self.__encoder_controller.view_is_changing:
-            self.__processing_track_state_change = True
 
-            # selected_index
-            selected_index, callback_track_type_of_selected_index, callback_type_index, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
-            found_changed_track_callback_type, found_callback_type_track_count = self.find_changed_track_callback_type()
+        self.__processing_track_state_change = True
 
-            selected_index_changed = self.last_selected_track_index != selected_index
-            new_track_count = nbr_song_tracks
+        # selected_index
+        selected_index, callback_track_type_of_selected_index, callback_type_index, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
+        found_changed_track_callback_type, found_callback_type_track_count = self.find_changed_track_callback_type()
 
-            if callback_track_type_of_selected_index == found_changed_track_callback_type:
-                tracks_of_type = self.song().visible_tracks
-                if self.track_count > new_track_count:
-                    if self.track_count - new_track_count > 1:
-                        nbr_tracks_removed = self.track_count - new_track_count
+        selected_index_changed = self.last_selected_track_index != selected_index
+        new_track_count = nbr_song_tracks
+
+        if callback_track_type_of_selected_index == found_changed_track_callback_type:
+            tracks_of_type = self.song().visible_tracks
+            if self.track_count > new_track_count:
+                if self.track_count - new_track_count > 1:
+                    nbr_tracks_removed = self.track_count - new_track_count
+                    if callback_track_type_of_selected_index == 1:
+                        tracks_of_type = self.song().return_tracks
+                    # (index={selected_index}, cbt_track_count({len(tracks_of_type)}), track_type={callback_track_type_of_selected_index}"
+                    msg = f"{log_id}calling ec.tracks_deleted"
+                    self.log_message(logging.DEBUG, msg)
+                    self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
+                else:
+                    if selected_index_changed and selected_index < self.last_selected_track_index:
                         if callback_track_type_of_selected_index == 1:
                             tracks_of_type = self.song().return_tracks
-                        # (index={selected_index}, cbt_track_count({len(tracks_of_type)}), track_type={callback_track_type_of_selected_index}"
-                        msg = f"{log_id}calling ec.tracks_deleted"
-                        self.log_message(logging.DEBUG, msg)
+                        self.log_message(logging.DEBUG, f"{log_id}calling tracks_deleted, last track of type was deleted, selected index moved left {selected_index}")
                         self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                     else:
-                        if selected_index_changed and selected_index < self.last_selected_track_index:
-                            if callback_track_type_of_selected_index == 1:
-                                tracks_of_type = self.song().return_tracks
-                            self.log_message(logging.DEBUG, f"{log_id}calling tracks_deleted, last track of type was deleted, selected index moved left {selected_index}")
-                            self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
-                        else:
-                            self.log_message(logging.DEBUG, f"{log_id}calling track_deleted at index {selected_index}")
-                            self.__encoder_controller.track_deleted(selected_index, callback_track_type_of_selected_index, callback_type_index)
-                    #self.request_rebuild_midi_map()   <-- called by EC
-                elif self.track_count < new_track_count:
-                    tracks_of_type = self.song().visible_tracks
-                    if new_track_count - self.track_count > 1:
-                        if callback_track_type_of_selected_index == 1:
-                            tracks_of_type = self.song().return_tracks
-                        msg = f"{log_id}calling ec.tracks_added"#(index={selected_index}, cbt_tracks=({len(tracks_of_type)} tracks), cb_type={callback_track_type_of_selected_index}"
-                        self.log_message(logging.DEBUG, msg)
-                        self.__encoder_controller.tracks_added(selected_index, tracks_of_type, callback_track_type_of_selected_index)
-                    else:
-                        self.log_message(logging.DEBUG,f"{log_id}calling track_added ")#passing index {selected_index} only")
-                        self.__encoder_controller.track_added(selected_index, found_changed_track_callback_type)
-                    #self.request_rebuild_midi_map() <-- called by EC
+                        self.log_message(logging.DEBUG, f"{log_id}calling track_deleted at index {selected_index}")
+                        self.__encoder_controller.track_deleted(selected_index, callback_track_type_of_selected_index, callback_type_index)
+                #self.request_rebuild_midi_map()   <-- called by EC
+            elif self.track_count < new_track_count:
+                tracks_of_type = self.song().visible_tracks
+                if new_track_count - self.track_count > 1:
+                    if callback_track_type_of_selected_index == 1:
+                        tracks_of_type = self.song().return_tracks
+                    msg = f"{log_id}calling ec.tracks_added"#(index={selected_index}, cbt_tracks=({len(tracks_of_type)} tracks), cb_type={callback_track_type_of_selected_index}"
+                    self.log_message(logging.DEBUG, msg)
+                    self.__encoder_controller.tracks_added(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                 else:
-                    self.log_message(logging.DEBUG,f"{log_id}calling EC.track_moved")# passing cb type {callback_track_type_of_selected_index} and song index {selected_index}")
-                    # since track counts match, something else in the callback_track_type collection of the selected_index's Track changed
-                    self.__encoder_controller.track_moved(callback_track_type_of_selected_index, selected_index)
+                    self.log_message(logging.DEBUG,f"{log_id}calling track_added ")#passing index {selected_index} only")
+                    self.__encoder_controller.track_added(selected_index, found_changed_track_callback_type)
+                #self.request_rebuild_midi_map() <-- called by EC
             else:
-                # still need to add or remove from correct track collection in EAH.SongData, but the current Song selected index points to the wrong
-                # track collection in SongData, so special handling for this situation
-                dtls = ""
-                if self.current_script_log_level < logging.DEBUG:
-                    dtls = f"(selected_index={selected_index}, callback_track_type_of_selected_index={callback_track_type_of_selected_index}, "
-                    found_type = '2 (master)'
-                    if found_changed_track_callback_type == 1:
-                        found_type = "1 (return)"
-                    elif found_changed_track_callback_type == 0:
-                        found_type = "0 (visible)"
-                    dtls += f"found_cb_type={found_type}, found_cb_type_track_count={found_callback_type_track_count})"
-                type0_added = found_changed_track_callback_type == 0 and found_callback_type_track_count > self.callback_type_track_counts[0]
-                type0_removed = found_changed_track_callback_type == 0 and found_callback_type_track_count < self.callback_type_track_counts[0]
-                type1_added = found_changed_track_callback_type == 1 and found_callback_type_track_count > self.callback_type_track_counts[1]
-                type1_removed = found_changed_track_callback_type == 1 and found_callback_type_track_count < self.callback_type_track_counts[1]
-                if type0_added:
-                    msg = f"{log_id}calling ec.unselected_tracks_added " + dtls
-                    self.log_message(logging.DEBUG, msg)
-                    self.__encoder_controller.unselected_tracks_added(found_changed_track_callback_type, found_callback_type_track_count)
-                elif type0_removed:
-                    msg = f"{log_id}calling ec.unselected_tracks_deleted " + dtls
-                    self.log_message(logging.DEBUG, msg)
-                    self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)
-                elif type1_added:
-                    msg = f"{log_id}calling ec.unselected_tracks_added " + dtls
-                    self.log_message(logging.DEBUG, msg)
-                    self.__encoder_controller.unselected_tracks_added(found_changed_track_callback_type, found_callback_type_track_count)
-                elif type1_removed:
-                    msg = f"{log_id}calling ec.unselected_tracks_deleted " + dtls
-                    self.log_message(logging.DEBUG, msg)
-                    self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)
-                # elif found_changed_track_callback_type == 0 or found_changed_track_callback_type == 1: # callback_type_track_count didn't change (an unselected track moved?)
-                else: # different 'selected index' and 'event index' callback track types were detected, but no telltale track-type count differences
-                    # landed here when two tracks were selected at the same time (shift + left-click) then Ctrl-G grouped (Group Track was added, processed above)
-                    # future new-track(s)-in-group events should be ignored here in tracks_changed()
-                    # in favor of new-track-added-and-selected event processing by track_changed(index)
-                    # also landed here when a track was added (Ctrl+Shift+T) "next to" the selected track inside a Group because (I think)
-                    # the first event was "new track added in visible tracks" (processed above) and the second event was new-track-in-group (landed here)
-                    # also safe to ignore here in tracks_changed()
-                    # also landed here when a new track was (drag&drop an Instrument) added and this method was called twice, once (I think) for the "track add" change
-                    # (handled above) and again for the "selected track" change which landed here - and this case should defer in favor of track_change() handling
-                    # also safe to ignore here in tracks_changed()
-                    # continuing to log in case of other triggers that shouldn't be ignored
-                    msg = f"{log_id}passing on this event " + dtls
-                    self.log_message(logging.ERROR, msg)
-
-            self.set_selected_track_index(selected_index, callback_track_type_of_selected_index, callback_type_index)
-            self.update_callback_type_track_counts()
-            self.track_count = new_track_count
-            self.__processing_track_state_change = False
+                self.log_message(logging.DEBUG,f"{log_id}calling EC.track_moved")# passing cb type {callback_track_type_of_selected_index} and song index {selected_index}")
+                # since track counts match, something else in the callback_track_type collection of the selected_index's Track changed
+                self.__encoder_controller.track_moved(callback_track_type_of_selected_index, selected_index)
         else:
-            msg = f"{log_id}pass, session view is scrolling"
-            self.log_message(logging.DEBUG, msg)
+            # still need to add or remove from correct track collection in EAH.SongData, but the current Song selected index points to the wrong
+            # track collection in SongData, so special handling for this situation
+            dtls = ""
+            if self.current_script_log_level < logging.DEBUG:
+                dtls = f"(selected_index={selected_index}, callback_track_type_of_selected_index={callback_track_type_of_selected_index}, "
+                found_type = '2 (master)'
+                if found_changed_track_callback_type == 1:
+                    found_type = "1 (return)"
+                elif found_changed_track_callback_type == 0:
+                    found_type = "0 (visible)"
+                dtls += f"found_cb_type={found_type}, found_cb_type_track_count={found_callback_type_track_count})"
+            type0_added = found_changed_track_callback_type == 0 and found_callback_type_track_count > self.callback_type_track_counts[0]
+            type0_removed = found_changed_track_callback_type == 0 and found_callback_type_track_count < self.callback_type_track_counts[0]
+            type1_added = found_changed_track_callback_type == 1 and found_callback_type_track_count > self.callback_type_track_counts[1]
+            type1_removed = found_changed_track_callback_type == 1 and found_callback_type_track_count < self.callback_type_track_counts[1]
+            if type0_added:
+                msg = f"{log_id}calling ec.unselected_tracks_added " + dtls
+                self.log_message(logging.DEBUG, msg)
+                self.__encoder_controller.unselected_tracks_added(found_changed_track_callback_type, found_callback_type_track_count)
+            elif type0_removed:
+                msg = f"{log_id}calling ec.unselected_tracks_deleted " + dtls
+                self.log_message(logging.DEBUG, msg)
+                self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)
+            elif type1_added:
+                msg = f"{log_id}calling ec.unselected_tracks_added " + dtls
+                self.log_message(logging.DEBUG, msg)
+                self.__encoder_controller.unselected_tracks_added(found_changed_track_callback_type, found_callback_type_track_count)
+            elif type1_removed:
+                msg = f"{log_id}calling ec.unselected_tracks_deleted " + dtls
+                self.log_message(logging.DEBUG, msg)
+                self.__encoder_controller.unselected_tracks_deleted(found_changed_track_callback_type, found_callback_type_track_count)
+            # elif found_changed_track_callback_type == 0 or found_changed_track_callback_type == 1: # callback_type_track_count didn't change (an unselected track moved?)
+            else: # different 'selected index' and 'event index' callback track types were detected, but no telltale track-type count differences
+                # landed here when two tracks were selected at the same time (shift + left-click) then Ctrl-G grouped (Group Track was added, processed above)
+                # future new-track(s)-in-group events should be ignored here in tracks_changed()
+                # in favor of new-track-added-and-selected event processing by track_changed(index)
+                # also landed here when a track was added (Ctrl+Shift+T) "next to" the selected track inside a Group because (I think)
+                # the first event was "new track added in visible tracks" (processed above) and the second event was new-track-in-group (landed here)
+                # also safe to ignore here in tracks_changed()
+                # also landed here when a new track was (drag&drop an Instrument) added and this method was called twice, once (I think) for the "track add" change
+                # (handled above) and again for the "selected track" change which landed here - and this case should defer in favor of track_change() handling
+                # also safe to ignore here in tracks_changed()
+                # continuing to log in case of other triggers that shouldn't be ignored
+                msg = f"{log_id}passing on this event " + dtls
+                self.log_message(logging.ERROR, msg)
+
+        self.set_selected_track_index(selected_index, callback_track_type_of_selected_index, callback_type_index)
+        self.update_callback_type_track_counts()
+        self.track_count = new_track_count
+        self.__processing_track_state_change = False
 
     def processing_track_state_change(self):
         return self.__processing_track_state_change

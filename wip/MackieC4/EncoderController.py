@@ -301,15 +301,6 @@ class EncoderController(MackieC4Component, Component):
     def get_encoders(self):
         return self.__encoders
 
-    @property
-    def view_is_changing(self):
-        """returns True when C4.zoom_or_scroll() callback method is running, False otherwise"""
-        return self.__view_is_changing
-
-    @view_is_changing.setter
-    def view_is_changing(self, is_changing):
-        """set True when C4.zoom_or_scroll() callback method starts, set False when C4.zoom_or_scroll() callback method  ends"""
-        self.__view_is_changing = is_changing
 
     @listens("device")
     def __on_device_changed(self):
@@ -334,15 +325,7 @@ class EncoderController(MackieC4Component, Component):
                 device_index = self.find_device_index_in_list(extended_device_list, d)
                 self.__eah.device_added_deleted_or_changed(extended_device_list, d, device_index)
                 self.main_script().log_message(trace_level, f"{log_id} local data updated, updating special param listeners")
-                if not self.view_is_changing:
-                    self.add_special_parameter_listeners(track, d)
-                    self.add_special_parameter_listeners_pending = False
-                else:
-                    # 'view is changing' - encoder 16 is turning - selected track is changing quickly - we only 'need' these listeners added to the last selected track
-                    # the "decrement/increment last parameter" (Parameter - Single L and Single R buttons) functionality doesn't work if we don't add these listeners
-                    # here or later. But is that a problem?
-                    # do we actually need to add these listeners later, say when an encoder rotates check if param has special listener, add if not
-                    self.add_special_parameter_listeners_pending = True
+                self.add_special_parameter_listeners(track, d)
 
                 if self.__chosen_plugin is None:
                     last_name = "None"
@@ -2347,12 +2330,8 @@ class EncoderController(MackieC4Component, Component):
             self.one_display_update(force=force)
 
     def one_display_update(self, force=False):
-        """If the (Session or Arranger) view is (scrolling or zooming), only allow forced display updates. If not, do every display update, passing force as needed"""
-
-        if not self.view_is_changing:
-            self.__do_display_update(force=force)
-        elif force:
-            self.__do_display_update(force=force)
+        """do a display update passing force as needed"""
+        self.__do_display_update(force=force)
 
     def __display_lag_timer_bang(self):
         # (when song is NOT playing) count to _upper_bounds[bounds_index] before returning True and resetting the count
