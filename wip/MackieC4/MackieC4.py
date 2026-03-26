@@ -97,7 +97,6 @@ class MackieC4(MackieC4ListenerMixin, object):
     def __init__(self, c_instance):
         self.__c_instance = c_instance
         self._received_hardware_response = False
-        self.request_firmware_version()
 
         self.__components = []
         self.__surface_is_locked = False
@@ -122,6 +121,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         MackieC4ListenerMixin.__init__(self, encoder_controller=self.__encoder_controller)
 
         # if the goodbye message is displaying on the C4 after Live shutdown, and Live restarts, clear the display asap
+        self.request_firmware_version()
         self.__encoder_controller.clear_all_lcds()
         self.__encoder_controller.clear_all_leds()
         self.send_midi((NOTE_ON_STATUS, C4SID_CHANNEL_STRIP, BUTTON_STATE_ON)) # turn ON default mode LED
@@ -437,6 +437,8 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.log_message(logging.WARNING,f"{log_id}unhandled - sysex event dropped {midi_bytes}")
         else:
             self.log_message(self.script_log_levels["TRACE"], f"{log_id}unhandled - sysex serial number response not yet received from C4. Is it powered on?")
+            self.request_firmware_version()
+
 
 
     def handle_sysex_msg(self, midi_bytes):
