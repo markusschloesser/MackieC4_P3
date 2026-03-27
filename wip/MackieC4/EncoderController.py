@@ -295,6 +295,21 @@ class EncoderController(MackieC4Component, Component):
         self.send_display_string(LCD_MDL_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET, force=force)
         self.send_display_string(LCD_BTM_FLAT_ADDRESS, so_many_spaces, LCD_BOTTOM_ROW_OFFSET, force=force)
 
+    def display_message_all_lcd(self, top_line="", bottom_line="", force=False):
+        so_many_spaces = "".join([" " for i in range(NUM_TEXT_BYTES_PER_SYSEX_MSG)])
+        if len(top_line) < 1:
+            top_line = so_many_spaces
+        if len(bottom_line) < 1:
+            bottom_line = so_many_spaces
+        self.send_display_string(LCD_ANGLED_ADDRESS, top_line, LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_ANGLED_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET, force=force)
+
     def request_rebuild_midi_map(self):
         MackieC4Component.request_rebuild_midi_map(self)
 

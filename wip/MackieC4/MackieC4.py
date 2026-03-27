@@ -498,6 +498,8 @@ class MackieC4(MackieC4ListenerMixin, object):
                 self.request_rebuild_midi_map()
                 # assignment mode is never USER here, msg was passed above in USER mode
                 self.log_message(logging.INFO, f"{log_id}attempting to update C4 display")
+                if lgth == len(c4FirmwareResponse):
+                    self.__encoder_controller.clear_all_lcds() # clear the "lcd row id" numbers written by self.request_firmware_version() method
                 self.__encoder_controller.one_delayed_display_update(0.49, force=True)  # how about now?
                 self.__encoder_controller.update_assignment_mode_leds()
                 self.__encoder_controller.update_system_switch_leds()
@@ -722,6 +724,10 @@ class MackieC4(MackieC4ListenerMixin, object):
         # __init__() doesn't run when (new) Live sets (re)load after Live has started, but refreshState() does
         if not self.is_hardware_responding:
             self.request_firmware_version()
+        else:
+            self.__encoder_controller.display_message_all_lcd("Ableton Live is refreshing script".center(56), "please stand by...".center(56), force=True)
+
+
         self.set_mixer_listeners()  # add_mixer_listeners()
         self.add_overdub_listener()
         self.add_tracks_listener()
