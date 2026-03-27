@@ -719,7 +719,9 @@ class MackieC4(MackieC4ListenerMixin, object):
         Send out MIDI to completely update the attached MIDI controller. Will be called when requested by the user,
         after for example having reconnecting the MIDI cables or when exiting MIDI map mode
         """
-        # if self.is_hardware_responding: #
+        # __init__() doesn't run when (new) Live sets (re)load after Live has started, but refreshState() does
+        if not self.is_hardware_responding:
+            self.request_firmware_version()
         self.set_mixer_listeners()  # add_mixer_listeners()
         self.add_overdub_listener()
         self.add_tracks_listener()
