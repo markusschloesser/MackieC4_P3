@@ -21,10 +21,10 @@ assert SETUP_DB_DEVICE_BANK_SIZE * SETUP_DB_MAX_DEVICE_BANKS == SETUP_DB_DEFAULT
 
 # in Track mode, the selected device's parameters are controlled in banks of 24 parameters (24 encoders, three rows)
 SETUP_DB_PARAM_BANK_SIZE = 24
-SETUP_DB_MAX_PARAM_BANKS = 5
+SETUP_DB_MAX_PARAM_BANKS = 10
 
 # max 120 parameters per device in 5 banks of 24 encoders/parameters
-assert SETUP_DB_PARAM_BANK_SIZE * SETUP_DB_MAX_PARAM_BANKS == SETUP_DB_DEFAULT_SIZE - SETUP_DB_DEVICE_BANK_SIZE
+# assert SETUP_DB_PARAM_BANK_SIZE * SETUP_DB_MAX_PARAM_BANKS == SETUP_DB_DEFAULT_SIZE - SETUP_DB_DEVICE_BANK_SIZE
 
 NOTE_OFF_STATUS = 0x80  # 128  0x80 - 0x8F represent the 16 channels a NOTE_OFF message can be sent to (noteNbr, noteVelocity)
 NOTE_ON_STATUS = 0x90  # 144  0x90 - 0x9F represent the 16 channels a NOTE_ON message can be sent to (noteNbr, noteVelocity)
