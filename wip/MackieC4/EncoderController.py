@@ -1087,31 +1087,31 @@ class EncoderController(MackieC4Component, Component):
                 self.one_delayed_display_update(.020)
         # else don't update self because self is already in this mode
 
-   # no wrap around: stop moving left at track 0, stop moving right at master track
     def handle_bank_switch_ids(self, switch_id):
-        """ works in all modes """
+        """ Parameter Group Buttons: Bank Left, Bank Right, Single Left, Single Right are only mapped to behavior in the two 'track modes', channel-strip and devices """
+        # no wrap around: stop moving left at track 0, stop moving right at master track
         log_id = "EC.handle_bank_switch_ids: "
-        # is_assignment_mode = "True" if self.__assignment_mode == C4M_CHANNEL_STRIP else "False"
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}the current assignment mode is C4M_CHANNEL_STRIP: <{is_assignment_mode}>")
-        current_bank_nbr = self.__eah.last_selected_track_device_bank_view_index  # .selected_device_bank_index
         update_self = False
         if switch_id == C4SID_BANK_LEFT:
-            if current_bank_nbr > 0:
-                current_bank_nbr -= 1
-                update_self = True
+            bank_left_index = 6
+            if self.__assignment_mode == C4M_CHANNEL_STRIP:
+                update_self = self.handle_track_device_bank_view_update(bank_left_index)
+            elif self.__assignment_mode == C4M_PLUGINS:
+                update_self = self.handle_selected_device_parameter_bank_view_update(bank_left_index)
         elif switch_id == C4SID_BANK_RIGHT:
-            max_bank_nbr = self.__eah.selected_device_bank_count - 1
-            if current_bank_nbr < max_bank_nbr:
-                current_bank_nbr += 1
-                update_self = True
+            bank_right_index = 7
+            if self.__assignment_mode == C4M_CHANNEL_STRIP:
+                update_self = self.handle_track_device_bank_view_update(bank_right_index)
+            elif self.__assignment_mode == C4M_PLUGINS:
+                update_self = self.handle_selected_device_parameter_bank_view_update(bank_right_index)
         elif self.__assignment_mode == C4M_CHANNEL_STRIP or self.__assignment_mode == C4M_PLUGINS:
             if liveobj_valid(self.__chosen_plugin):
                 last_param_name = self.__device_provider.get_last_param_value_change_name()
                 if liveobj_valid(self.__chosen_plugin.parameters):
-                    # self.main_script().log_message(logging.DEBUG, f"{log_id}looking for original param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}looking for original param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
                     cp = v3_util.get_parameter_by_name(last_param_name, self.__chosen_plugin)  # checks for match with p.original_name
                     if not liveobj_valid(cp):
-                        # self.main_script().log_message(logging.DEBUG, f"{log_id}looking for param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
+                        self.main_script().log_message(logging.DEBUG, f"{log_id}looking for param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
                         chosen_param = song_util.get_parameter_by_name(last_param_name, self.__chosen_plugin) # checks for match with p.name
                     else:
                         chosen_param = cp
@@ -1150,7 +1150,7 @@ class EncoderController(MackieC4Component, Component):
 
         if update_self:
             # selected device index assignments automatically update the selected device bank number
-            self.__eah.last_selected_device_index = (current_bank_nbr * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.last_selected_device_index
+            # self.__eah.last_selected_device_index = (current_bank_nbr * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.last_selected_device_index
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
             if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
@@ -1467,47 +1467,79 @@ class EncoderController(MackieC4Component, Component):
             raise ValueError(f"Invalid mode name: {mode_name}")
         return upper_string4, lower_string4
 
+    def handle_track_device_bank_view_update(self, control_index):
+        current_device_bank_index = self.__eah.last_selected_track_device_bank_view_index
+        max_device_bank_index = self.__eah.selected_device_bank_count - 1
+        bank_left_index = 6
+        bank_right_index = 7
+        update_self = False
+        if control_index == bank_left_index:
+            if current_device_bank_index > 0:
+                current_device_bank_index -= 1
+                update_self = True
+        elif control_index == bank_right_index:
+            if current_device_bank_index < max_device_bank_index:
+                current_device_bank_index += 1
+                update_self = True
+
+        if update_self:
+            self.__eah.last_selected_track_device_bank_view_index = current_device_bank_index
+        return update_self
+
+    def handle_selected_device_parameter_bank_view_update(self, control_index):
+        log_id = "EC.handle_selected_device_parameter_bank_view_update: "
+        current_parameter_bank_track = self.__eah.last_selected_device_parameter_bank_view_index
+        bank_left_index = 6
+        bank_right_index = 7
+        update_self = False
+        current_track_device_parameter_bank_nbr_changed = False
+        if control_index == bank_left_index:
+            if current_parameter_bank_track > 0:
+                current_parameter_bank_track -= 1
+                # self.main_script().log_message(logging.DEBUG, f"{log_id}self.t_d_p_bank_current[self.t_current]: {self.__eah.last_selected_device_index})
+                update_self = True
+                current_track_device_parameter_bank_nbr_changed = True
+        elif control_index == bank_right_index:
+            current_track_device_preset_bank = current_parameter_bank_track
+            # self.main_script().log_message(logging.DEBUG, f"{log_id}current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
+            track_device_preset_bank_count = self.__eah.max_last_selected_track_device_parameter_bank_nbr
+            # self.main_script().log_message(logging.DEBUG, f"{log_id}track_device_preset_bank_count: {0}".format(track_device_preset_bank_count))
+            if current_track_device_preset_bank < track_device_preset_bank_count - 1:
+                current_parameter_bank_track += 1
+                update_self = True
+                current_track_device_parameter_bank_nbr_changed = True
+        if update_self and current_track_device_parameter_bank_nbr_changed:
+            self.__eah.last_selected_device_parameter_bank_view_index = current_parameter_bank_track
+            # msg = f"{log_id}device parameter-bank in view {current_parameter_bank_track} after pressed-vpot event handling, "
+            # if device_ref.parameter_bank_index_of_selected_parameter == current_parameter_bank_track:
+            #     self.main_script().log_message(logging.DEBUG, msg + "contains selected parameter")
+            # else:
+            #     # execution lands here whenever a device's "selected parameter" (normally, the last parameter that changed)
+            #     # is not one of the 24 parameters in the "parameter bank" currently mapped to the 24 associated C4 encoders
+            #     # in this self.__assignment_mode == C4M_PLUGINS state. (Track - Devices mode)
+            #     idx = device_ref.parameter_bank_index_of_selected_parameter
+            #     self.main_script().log_message(logging.DEBUG, msg + f"doesn't match device_ref value {idx}")
+        return update_self
+
     def handle_pressed_v_pot(self, vpot_index):
         log_id = "EC.handle_pressed_v_pot: "
         """ 'encoder button' /vpot push clicks"""
         encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
-        # selected_device_bank_index = 0 if self.__eah.selected_device_bank_index is None else self.__eah.selected_device_bank_index
-        # current_device_bank_index = 0 if active_track_ref.device_bank_index_of_selected_device is None else active_track_ref.device_bank_index_of_selected_device
         current_device_bank_index = self.__eah.last_selected_track_device_bank_view_index
-        old_selected_bank = current_device_bank_index
-        max_device_bank_index = self.__eah.selected_device_bank_count - 1
         if self.__assignment_mode == C4M_CHANNEL_STRIP:
             is_armable_track_selected = track_util.can_be_armed(self.selected_track)
 
             if encoder_index in row_00_encoders:
                 encoder_04_index = 3
-                encoder_05_index = 4
-                encoder_06_index = 5
-                encoder_07_index = 6
-                encoder_08_index = 7
                 update_self = False
 
                 # group track fold toggle, also groups from within
                 if encoder_index == encoder_04_index:
                     track_util.toggle_fold(self.selected_track)  # <-- triggers track_changed() callback, maybe selected_track_changed() also
-
-                if encoder_index == encoder_07_index:
-                    if current_device_bank_index > 0:
-                        current_device_bank_index -= 1
-                        update_self = True
-                    # else:
-                    #     self.main_script().log_message(logging.DEBUG, f"{log_id}selected_device_bank_index is already bank 0")
-                elif encoder_index == encoder_08_index:
-                    if current_device_bank_index < max_device_bank_index:
-                        current_device_bank_index += 1
-                        update_self = True
-                    # else:
-                    #     self.main_script().log_message(logging.DEBUG, f"{log_id}selected_device_bank_index is already on max bank")
+                else:
+                    update_self = self.handle_track_device_bank_view_update(encoder_index)
 
                 if update_self:
-                    # log_msg = f"EC.handle_pressed_v_pot: updating selected device bank index from <{old_selected_bank}> to <{selected_device_bank_index}>"
-                    # self.main_script().log_message(logging.DEBUG, log_msg)
-                    self.__eah.last_selected_track_device_bank_view_index = current_device_bank_index
                     self.__reassign_encoder_parameters()
                     if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                         self.one_display_update()
@@ -1611,21 +1643,10 @@ class EncoderController(MackieC4Component, Component):
                 self.one_display_update(force=True)
         elif self.__assignment_mode == C4M_PLUGINS:
             encoder_04_index = 3
-            encoder_07_index = 6
-            encoder_08_index = 7
 
             last_index = 0 if self.__eah.last_selected_device_index is None else self.__eah.last_selected_device_index
-
             device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, last_index)
-            current_parameter_bank_track = self.__eah.last_selected_device_parameter_bank_view_index
-            # msg = f"{log_id}device parameter-bank in view {current_parameter_bank_track} before pressed-vpot event handling, "
-            # if device_ref.parameter_bank_index_of_selected_parameter == current_parameter_bank_track:
-            #     self.main_script().log_message(logging.DEBUG, msg + "does contain selected parameter")
-            # else:
-            #     self.main_script().log_message(logging.DEBUG, msg + "does NOT contain selected parameter")
 
-            current_track_device_parameter_bank_nbr_changed = False
-            # self.main_script().log_message(logging.DEBUG, f"{log_id}current_parameter_bank_track: {current_parameter_bank_track}")
             stop = len(self.__display_parameters) + SETUP_DB_DEVICE_BANK_SIZE  # always 40?
             display_params_range = range(SETUP_DB_DEVICE_BANK_SIZE, stop)  # display_params_range always 8 - 39?
             # suspect display_params_range is supposed to protect against "short" parameter lists < 24
@@ -1637,27 +1658,8 @@ class EncoderController(MackieC4Component, Component):
             if encoder_index == encoder_04_index:
                 track_util.toggle_fold(self.selected_track)
                 update_self = True
-
-            if encoder_index == encoder_07_index:
-                if current_parameter_bank_track > 0:
-                    current_parameter_bank_track -= 1
-                    # self.main_script().log_message(logging.DEBUG, f"{log_id}self.t_d_p_bank_current[self.t_current]: {self.__eah.last_selected_device_index})
-                    update_self = True
-                    current_track_device_parameter_bank_nbr_changed = True
-                # else:
-                #     self.main_script().log_message(logging.DEBUG, f"{log_id}can't decrement current_parameter_bank_track: already bank 0")
-            elif encoder_index == encoder_08_index:
-                current_track_device_preset_bank = current_parameter_bank_track
-                # self.main_script().log_message(logging.DEBUG, f"{log_id}current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
-                # track_device_preset_bank_count = get_max_current_track_device_parameter_bank_nbr(current_device_track)
-                track_device_preset_bank_count = self.__eah.max_last_selected_track_device_parameter_bank_nbr
-                # self.main_script().log_message(logging.DEBUG, f"{log_id}track_device_preset_bank_count: {0}".format(track_device_preset_bank_count))
-                if current_track_device_preset_bank < track_device_preset_bank_count - 1:
-                    current_parameter_bank_track += 1
-                    update_self = True
-                    current_track_device_parameter_bank_nbr_changed = True
-                # else:
-                #     self.main_script().log_message(logging.DEBUG, f"{log_id}can't increment current_parameter_bank_track: already last bank")
+            elif encoder_index < display_params_range[0]:
+                update_self = self.handle_selected_device_parameter_bank_view_update(encoder_index)
             # should be encoders 9 - 32 (on each param page), but stopping short on last/only (short is < 24) parameter page
             elif encoder_index in display_params_range:
                 # if a device has less than 24 parameters exposed on this page, param will be (None, '    ')
@@ -1678,22 +1680,10 @@ class EncoderController(MackieC4Component, Component):
                         pass
 
             if update_self:
-                if current_track_device_parameter_bank_nbr_changed:
-                    self.__eah.last_selected_device_parameter_bank_view_index = current_parameter_bank_track
-                    # msg = f"{log_id}device parameter-bank in view {current_parameter_bank_track} after pressed-vpot event handling, "
-                    # if device_ref.parameter_bank_index_of_selected_parameter == current_parameter_bank_track:
-                    #     self.main_script().log_message(logging.DEBUG, msg + "contains selected parameter")
-                    # else:
-                    #     # execution lands here whenever a device's "selected parameter" (normally, the last parameter that changed)
-                    #     # is not one of the 24 parameters in the "parameter bank" currently mapped to the 24 associated C4 encoders
-                    #     # in this self.__assignment_mode == C4M_PLUGINS state. (Track - Devices mode)
-                    #     idx = device_ref.parameter_bank_index_of_selected_parameter
-                    #     self.main_script().log_message(logging.DEBUG, msg + f"doesn't match device_ref value {idx}")
-
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
-            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
-                self.one_display_update()
+                if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                    self.one_display_update()
 
         elif self.__assignment_mode == C4M_FUNCTION:
             encoder_01_index = 0  # follow
