@@ -1455,8 +1455,11 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     @property
     def max_last_selected_track_device_parameter_bank_nbr(self, t_d_idx=None):
+        log_id = "EAH.max_last_selected_track_device_parameter_bank_nbr: "
         device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
         if device_ref is not None:
+            msg = f"{log_id}device {device_ref.device_name} occupies {device_ref.required_parameter_banks} banks for {device_ref.parameter_count} parameters"
+            self.main_script().log_message(self.log_levels["TRACE"], msg)
             return device_ref.required_parameter_banks
         else:
             return -1

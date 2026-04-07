@@ -1145,10 +1145,10 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def param_changestate(self, param, tid, did, pid, type):
         # log_id = "C4.param_changestate: "
-        # self.log_message(logging.DEBUG, f"{log_id}parameter change state listener for parameter {param.name} popped")
+        # self.log_message(self.script_log_levels["TRACE"], f"{log_id}parameter change state listener for parameter {param.name} popped")
         #
         # msg = f"{log_id} cb type {type} track index {tid} device at device chain index {did} parameter at parameter list index {pid} "
-        # self.log_message(logging.DEBUG, msg + f"{param.name} changed state to value {param.value} setting last param changed details")
+        # self.log_message(self.script_log_levels["TRACE"], msg + f"{param.name} changed state to value {param.value} setting last param changed details")
         # type, tid, and did values are always 0 when this callback fires!!  Only the param and the pid inputs ever change
         # self.__encoder_controller.on_param_state_change(param, tid, did, pid, type)
         self.__device_provider.set_last_param_value_change_details(param, tid, did, pid)
