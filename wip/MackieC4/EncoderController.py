@@ -495,8 +495,14 @@ class EncoderController(MackieC4Component, Component):
             if len(devices_on_selected_trk) == 0:
                 self.__update_chosen_plugin_device(None)
             else:
-                if not devices_on_selected_trk[0] == song.view.selected_track.view.selected_device:
-                    self.song().view.select_device(devices_on_selected_trk[0])
+                d = devices_on_selected_trk[0]
+                if not d == song.view.selected_track.view.selected_device:
+                    self.song().view.select_device(d)
+                else:
+                    # make sure to initialize a "last selected device"
+                    self.__on_device_changed()
+                    if not self.main_script().has_param_value_listener(d.parameters[0]):
+                        self.add_special_parameter_listeners(selected_track, d)
 
         return
 
@@ -618,15 +624,18 @@ class EncoderController(MackieC4Component, Component):
                                 else:
                                     if self.__pending_device_change:
                                         msg_prefix = f"{log_id}and a local device change is pending, "
-                                    nm = "None" if self.__chosen_plugin is None else "Invalid" if not liveobj_valid(self.__chosen_plugin) else self.__chosen_plugin.name
-                                    self.main_script().log_message(trace_level, f"{msg_prefix}processing local device change with index {selected_device_index}")
-                                    self.__eah.device_added_deleted_or_changed(extended_device_list, next_device, selected_device_index)
-                                    self.main_script().log_message(trace_level, f"{msg_prefix}updating script chosen plugin from {nm} to {next_device.name}")
-                                    self.__update_chosen_plugin_device(next_device)
-                                    self.__pending_device_change = False
-                                    name = "None" if self.__eah.next_selected_device is None else "Invalid" if not liveobj_valid(self.__eah.next_selected_device) \
-                                        else self.__eah.next_selected_device.name
-                                    if self.__eah.next_selected_device == next_device:
+                                        nm = "None" if self.__chosen_plugin is None else "Invalid" if not liveobj_valid(self.__chosen_plugin) else self.__chosen_plugin.name
+                                        self.main_script().log_message(trace_level, f"{msg_prefix}processing local device change with index {selected_device_index}")
+                                        self.__eah.device_added_deleted_or_changed(extended_device_list, next_device, selected_device_index)
+                                        self.main_script().log_message(trace_level, f"{msg_prefix}updating script chosen plugin from {nm} to {next_device.name}")
+                                        self.__update_chosen_plugin_device(next_device)
+                                        if liveobj_valid(next_device):
+                                            self.main_script().log_message(trace_level, f"and updating special parameter listeners for {next_device.name}")
+                                            self.add_special_parameter_listeners(self.selected_track, next_device)
+                                        self.__pending_device_change = False
+                                    nsd = self.__eah.next_selected_device
+                                    name = "None" if nsd is None else "Invalid" if not liveobj_valid(nsd) else nsd.name
+                                    if nsd == next_device:
                                         self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {name} processed successfully")
                                         self.__eah.next_selected_device = None
                                     else:
