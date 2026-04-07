@@ -1006,8 +1006,10 @@ class EncoderController(MackieC4Component, Component):
                     self.__btn_ctlr.handle_function_button_press(switch_id)
             else:
                 self.unlock_from_device()
-            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
-                # ONLY do callback based display updates when one or more C4SID_SPLIT leds are ON
+            if self.__btn_ctlr.nbr_split_leds_on > 0:
+                # ONLY do    timer based display updates when zero C4SID_SPLIT leds are ON
+                # ONLY do callback based display updates when all  C4SID_SPLIT leds are ON
+                # (do both display update styles when 1 or 2 Split leds are on)
                 self.one_display_update()
         elif switch_id == C4SID_SPLIT_ERASE:
             self.__spot_erase_state = self.__btn_ctlr.split_erase_led_state
