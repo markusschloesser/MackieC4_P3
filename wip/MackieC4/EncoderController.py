@@ -999,7 +999,11 @@ class EncoderController(MackieC4Component, Component):
             self.__display_update_lag_upper_bounds_index = self.__btn_ctlr.split_led_cycle_index
         elif switch_id == C4SID_LOCK:
             if self.__btn_ctlr.lock_led_state > 0:
-                self.lock_to_device(self.__device_provider.provided_device)
+                d = self.__device_provider.provided_device
+                if liveobj_valid(d):
+                    self.lock_to_device(d)
+                else: # turn the LOCK LED OFF again because no valid device to lock to
+                    self.__btn_ctlr.handle_function_button_press(switch_id)
             else:
                 self.unlock_from_device()
             if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
