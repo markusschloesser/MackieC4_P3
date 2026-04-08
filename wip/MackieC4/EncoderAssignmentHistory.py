@@ -129,9 +129,9 @@ class ActiveDevice:
         self._selected_parameter_index = selected_parameter_index
         """ index of this device's selected parameter in the device's parameter list """
         self._parameter_bank_count = math.ceil(parameter_count // SETUP_DB_PARAM_BANK_SIZE)
-        if parameter_count % SETUP_DB_PARAM_BANK_SIZE > 0:
+        """ the number of parameter banks worth of parameters in the device's parameter list (1 unless the device has more than 24 parameters) """
+        if self._parameter_bank_count * SETUP_DB_PARAM_BANK_SIZE < parameter_count:
             self._parameter_bank_count += 1
-        """ the number of parameter banks worth of parameters in the device's parameter list (0 unless the device has more than 24 parameters) """
         self._selected_parameters_bank_index = selected_parameter_index % SETUP_DB_PARAM_BANK_SIZE
         """ the index of the parameter bank where the selected parameter would fall (0 - 23 unless SETUP_DB_PARAM_BANK_SIZE changes) """        
 
