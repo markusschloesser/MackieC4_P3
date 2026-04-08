@@ -427,10 +427,12 @@ class MackieC4(MackieC4ListenerMixin, object):
                 elif is_note_off_msg:  # an actual Note Off event: is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
                     # self.log_message(logging.DEBUG, f"{log_id}unhandled - passing (ignoring) note off event {midi_bytes}")
                     # this pass is expected, the C4 sends Note ON with velocity 0 for Note OFF.
-                    # Live generates Note Offs the script can ignore here (not USER mode) because USER Mode has already processed above as needed
+                    # Live generates Note Offs the script can usually ignore here (not USER mode) because USER Mode has already processed above as needed
                     # self.log_message(logging.DEBUG, f"{log_id}NOT in USER mode MARKER is released, passing (NOTE OFF event)")
                     self.set_marker_is_pressed(False)
-                    pass
+                    if midi_bytes[1] in modifier_switch_ids:  # Shift, Option, Control, Alt
+                        # since modifier button 'is pressed' behavior depends on the 'release' event, also need to handle releases
+                        self.__encoder_controller.handle_modifier_switch_ids(midi_bytes[1], 0)
                 elif midi_bytes[0] == 0xF0:
                     self.handle_sysex_msg(midi_bytes)
                 else:

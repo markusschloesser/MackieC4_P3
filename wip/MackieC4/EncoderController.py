@@ -48,6 +48,12 @@ class ButtonController(object):
             C4SID_CHANNEL_STRIP: {"led_id": {C4SID_CHANNEL_STRIP: {"led_value": [0, 127]}}, "press_count": 0},
             C4SID_FUNCTION: {"led_id": {C4SID_FUNCTION: {"led_value": [0, 127]}}, "press_count": 0}
         }
+        self.modifier_group_buttons = {
+            C4SID_SHIFT: {"led_id": {C4SID_SHIFT: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_OPTION: {"led_id": {C4SID_OPTION: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_CONTROL: {"led_id": {C4SID_CONTROL: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_ALT: {"led_id": {C4SID_ALT: {"led_value": [0, 127]}}, "press_count": 0}
+        }
 
         self.__split_led_ids = [0, 1, 2, 3]
         self.__split_led_cycle_index = 0
@@ -91,6 +97,19 @@ class ButtonController(object):
     def function_led_state(self):
         return self.get_assignment_btn_led_state(C4SID_FUNCTION)
 
+    @property
+    def shift_led_state(self):
+        return self.get_modifier_btn_led_state(C4SID_SHIFT)
+    @property
+    def option_led_state(self):
+        return self.get_modifier_btn_led_state(C4SID_OPTION)
+    @property
+    def control_led_state(self):
+        return self.get_modifier_btn_led_state(C4SID_CONTROL)
+    @property
+    def alt_led_state(self):
+        return self.get_modifier_btn_led_state(C4SID_ALT)
+
     def handle_function_button_press(self, button_id):
         if button_id == C4SID_SPLIT:
             self._split_led_states()
@@ -100,7 +119,12 @@ class ButtonController(object):
     def handle_assignment_button_press(self, button_id):
         self._update_assignment_button_state(button_id)
 
+    def handle_modifier_button_press(self, button_id):
+        self._update_modifier_button_state(button_id)
+
     def get_function_btn_led_state(self, button_id):
+        """These buttons have associated physical LEDs. Because this controller only counts function button presses, """ \
+        """the LED value returned here latches and returns state is ON or OFF until the button is pressed again"""
         btn_ref = self.function_group_buttons[button_id]
         btn_led_ref = btn_ref["led_id"]
         toggle = btn_ref["press_count"] % 2
@@ -108,11 +132,28 @@ class ButtonController(object):
         return led_value
 
     def get_assignment_btn_led_state(self, button_id):
+        """These buttons have associated physical LEDs. Because this controller only counts assignment button presses, """ \
+        """the LED value returned here latches and returns state is ON or OFF until the button is pressed again"""
         btn_ref = self.assignment_group_buttons[button_id]
         btn_led_ref = btn_ref["led_id"]
         toggle = btn_ref["press_count"] % 2
         led_value = btn_led_ref[button_id]["led_value"][toggle]
         return led_value
+
+    def get_modifier_btn_led_state(self, button_id):
+        """These buttons don't have associated physical LEDs. Because this controller counts both modifier button presses and releases, """ \
+        """the LED value returned here only returns state is ON while the button is actually pressed (unlike controlled buttons with physical LEDs that latch)"""
+        btn_ref = self.modifier_group_buttons[button_id]
+        btn_led_ref = btn_ref["led_id"]
+        toggle = btn_ref["press_count"] % 2
+        led_value = btn_led_ref[button_id]["led_value"][toggle]
+        return led_value
+
+    def get_modifier_btn_pressed_state(self, button_id):
+        """releases count as presses, for even counts 0, 2, 4, etc. the button is released, otherwise the button is pressed"""
+        btn_ref = self.modifier_group_buttons[button_id]
+        toggle = btn_ref["press_count"] % 2
+        return 0 if not toggle else 127
 
     def _split_erase_led_state(self, value=C4SID_SPLIT_ERASE):
         self._update_function_button_state(value)
@@ -124,6 +165,11 @@ class ButtonController(object):
 
     def _update_assignment_button_state(self, btn_id):
         button_ref = self.assignment_group_buttons[btn_id]
+        button_ref["press_count"] += 1
+        return button_ref
+
+    def _update_modifier_button_state(self, btn_id):
+        button_ref = self.modifier_group_buttons[btn_id]
         button_ref["press_count"] += 1
         return button_ref
 
@@ -1197,20 +1243,27 @@ class EncoderController(MackieC4Component, Component):
                 else:
                     self.__update_chosen_plugin_device(current_selected_device) # current_selected_device == None
 
-
     def handle_modifier_switch_ids(self, switch_id, value):
+        log_id = "EC.handle_modifier_switch_ids: "
+        self.__btn_ctlr.handle_modifier_button_press(switch_id)
+        pressed = self.__btn_ctlr.get_modifier_btn_pressed_state(switch_id)
+        assert pressed == value # 0 or 127 'velocity data value'
         if switch_id == C4SID_SHIFT:
             self.__shift_state = value
             self.main_script().set_shift_is_pressed(value)
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}SHIFT is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_OPTION:
             self.__option_state = value
             self.main_script().set_option_is_pressed(value)
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}OPTION is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_CONTROL:
             self.__ctrl_state = value
             self.main_script().set_ctrl_is_pressed(value)
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}CONTROL is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_ALT:
             self.__alt_state = value
             self.main_script().set_alt_is_pressed(value)
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ALT is {'' if pressed else 'NOT '}pressed")
 
     def _show_assignment_mode_change_message(self):
         new_mode = self.__assignment_mode
