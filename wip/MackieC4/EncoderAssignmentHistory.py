@@ -133,18 +133,21 @@ class ActiveDevice:
         if self._parameter_bank_count * SETUP_DB_PARAM_BANK_SIZE < parameter_count:
             self._parameter_bank_count += 1
         self._selected_parameters_bank_index = selected_parameter_index % SETUP_DB_PARAM_BANK_SIZE
-        """ the index of the parameter bank where the selected parameter would fall (0 - 23 unless SETUP_DB_PARAM_BANK_SIZE changes) """        
+        """ the index of the parameter bank where the selected parameter would fall (0 - 23 unless SETUP_DB_PARAM_BANK_SIZE changes) """
+        if self._selected_parameters_bank_index == 0 and self.required_parameter_banks > 1:
+            # device has a multiple of 24 parameters 48, 72, 96, etc
+            self._selected_parameters_bank_index = selected_parameter_index // SETUP_DB_PARAM_BANK_SIZE
 
-        self._device_view_parameter_bank_index = self._selected_parameters_bank_index
+        self._bank_index_of_device_param_view = self._selected_parameters_bank_index
         """ device bank index currently "on display" on the C4 (and selected in Live) of this device's parameter-bank list (indexes 0 - 9 if the device """ \
         """parameter list has 240 parameters) """
+
+        self._bank_index_of_selected_parameter = 0
+        """parameter bank index of this device's selected parameter in the device's parameter-bank list (0 unless the device has more than 24 parameters), """ \
+        """automatically calculated when selected parameter changes. This value can differ from the parameter bank index currently "on display". You can """ \
+        """'browse' parameter banks without changing selected parameters. """
         
-        if self.required_parameter_banks < 1:
-            self._bank_index_of_selected_parameter = 0
-            """parameter bank index of this device's selected parameter in the device's parameter-bank list (0 unless the device has more than 8 parameters), """ \
-            """automatically calculated when selected parameter changes. This value can differ from the parameter bank index currently "on display". You can """ \
-            """'browse' parameter banks without changing selected parameters. """
-        else:
+        if self.required_parameter_banks > 1:
             self._bank_index_of_selected_parameter = int(math.floor(selected_parameter_index % self.required_parameter_banks))
 
     def new_copy(self, new_device_index):
@@ -209,10 +212,10 @@ class ActiveDevice:
     
     @property
     def device_parameter_bank_view_index(self):
-        return self._device_view_parameter_bank_index
+        return self._bank_index_of_device_param_view
     @device_parameter_bank_view_index.setter
     def device_parameter_bank_view_index(self, next_bank_index):
-        self._device_view_parameter_bank_index = next_bank_index
+        self._bank_index_of_device_param_view = next_bank_index
 
 class ActiveDeviceParameter:
     """This class is strictly for storing the enabled status of track 'sends' which are (a list of) 'device parameters' of the track's 'mixer device' """ \
