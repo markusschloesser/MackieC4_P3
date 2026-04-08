@@ -519,7 +519,7 @@ class SongData(object):
     def init_master_track(self, track, song_index):
         self.clear_tracks_by_type_key(track_callback_types[2])
         nbr_devices = len(track.devices)
-        ext_devices = self.extend_device_list(track.devices)
+        ext_devices = self.extend_device_list(track.devices, expand_chains=False)
         selected_device_index = 0 if nbr_devices > 0 else None
         track_ref = ActiveTrack(track, self.table_keys[track_callback_types[2]], song_index, song_index, nbr_devices, selected_device_index)
         self.log_msg(logging.DEBUG, f"EAH.SD.init_master_track: BEFORE: master track ref {track_ref} at index {song_index}")
@@ -731,7 +731,7 @@ class SongData(object):
         log_id = "EAH.SD.add_track_by_callback_type: "
         master_device_list_ref = self.get_active_track_details_ref_by_type_key(track_callback_types[2], self.master_track_index)
         last_master_track_ref = master_device_list_ref.active_track
-        ext_devices = None if len(track.devices) < 1 else self.extend_device_list(track.devices)
+        ext_devices = None if len(track.devices) < 1 else self.extend_device_list(track.devices, expand_chains=False)
         nbr_devices = 0 if ext_devices is None else len(ext_devices)
         selected_device_index = selected_device_index if nbr_devices > 0 else None
         cumulative_song_index = song_index_type_offset + track_index_by_type

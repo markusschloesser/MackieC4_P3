@@ -98,8 +98,8 @@ class MackieC4Component(object):
     def is_processing_track_device_state_change(self):
         return self.__main_script.processing_track_device_state_change()
 
-    def get_device_list(self, container):
-        return self.__main_script.get_device_list(container) # moved up so C4 class can use
+    def get_device_list(self, container, expand_chains=False):
+        return self.__main_script.get_device_list(container, expand_chains=expand_chains) # moved up so C4 class can use
 
     def find_track_index(self, track_obj):
         return self.__main_script.find_track_index(track_obj)
