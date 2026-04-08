@@ -1271,33 +1271,33 @@ class EncoderController(MackieC4Component, Component):
         new_name = new_mode
         old_name = old_mode
         if new_name == 0:
-            new_name = "SEQUENCER"
+            new_name = "USER SEQUENCER"
             if old_mode == 1:
                 old_name = "DEVICE CHAIN"
             elif old_mode == 2:
                 old_name = "CHANNEL STRIP"
             else:# 3:
-                old_name = "MAIN FUNCTIONS"
+                old_name = "SONG FUNCTIONS"
         if new_name == 1:
             new_name = "DEVICE CHAIN"
             if old_mode == 2:
                 old_name = "CHANNEL STRIP"
             elif old_mode == 3:
-                old_name = "MAIN FUNCTIONS"
+                old_name = "SONG FUNCTIONS"
             else:# 0
-                old_name = "SEQUENCER"
+                old_name = "USER SEQUENCER"
         elif new_name == 2:
             new_name = "CHANNEL STRIP"
             if old_mode == 3:
-                old_name = "MAIN FUNCTIONS"
+                old_name = "SONG FUNCTIONS"
             elif old_mode == 0:
-                old_name = "SEQUENCER"
+                old_name = "USER SEQUENCER"
             else:# 1
                 old_name = "DEVICE CHAIN"
         elif new_name == 3:
-            new_name = "MAIN FUNCTIONS"
+            new_name = "SONG FUNCTIONS"
             if old_mode == 0:
-                old_name = "SEQUENCER"
+                old_name = "USER SEQUENCER"
             elif old_mode == 1:
                 old_name = "DEVICE CHAIN"
             else:# 2
