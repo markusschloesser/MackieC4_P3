@@ -26,6 +26,8 @@ class ActiveTrack:
         self.index_by_type = callback_type_index
         self._device_count = device_count
         self._device_bank_count = int(math.ceil(device_count // SETUP_DB_DEVICE_BANK_SIZE))
+        if self._device_bank_count * SETUP_DB_PARAM_BANK_SIZE < device_count:
+            self._device_bank_count += 1
         self._selected_device_index = selected_device_index
         """ index of this track's selected device in the track's device list, or None """
         self._selected_devices_bank_index = None if selected_device_index is None else selected_device_index % SETUP_DB_DEVICE_BANK_SIZE
@@ -84,6 +86,8 @@ class ActiveTrack:
     def device_count(self, new_count):
         self._device_count = new_count
         self._device_bank_count = math.ceil(self._device_count // SETUP_DB_DEVICE_BANK_SIZE)
+        if self._device_bank_count * SETUP_DB_PARAM_BANK_SIZE < new_count:
+            self._device_bank_count += 1
 
     @property
     def selected_device_index(self):
@@ -125,6 +129,7 @@ class ActiveDevice:
         self.track_index_by_type = callback_type_index
         """callback type index of track holding device's map"""
         # self.type = 0  <---- we never need to 'back find' the track this device "belongs to" based only on info stored with this class
+        assert len(self.device.parameters) == parameter_count
         self._parameter_count = parameter_count
         self._selected_parameter_index = selected_parameter_index
         """ index of this device's selected parameter in the device's parameter list """
