@@ -1849,9 +1849,12 @@ class EncoderAssignmentHistory(MackieC4Component):
         self.main_script().log_message(trace_level, msg)
 
         device_was_added = new_device_count_track > old_device_count_track
+        devices_were_added = True if device_was_added and new_device_count_track - old_device_count_track > 1 else False
         device_was_removed = new_device_count_track < old_device_count_track
+        devices_were_removed = True if device_was_removed and old_device_count_track - new_device_count_track > 1 else False
         selected_device_was_changed = new_device_count_track > 0 and new_device_count_track == old_device_count_track
         no_devices_on_track = new_device_count_track == 0
+        rack_devices_added = new_device_count_track - old_device_count_track if device_was_added else 0
         rack_devices_deleted = old_device_count_track - new_device_count_track if device_was_removed else 0
 
         # log_msg = f"{log_id}input selected_device_idx<{selected_device_idx}> and input device list len<{new_device_count_track}> "
@@ -1909,18 +1912,19 @@ class EncoderAssignmentHistory(MackieC4Component):
 
     def update_device_counts_on_addition(self, new_device_index, all_devices, old_device_count_track, new_device_count_track):
         log_id = f"EAH.update_device_counts_on_addition: "
-        new_device = all_devices[new_device_index]
         last_track_ref = self.data.get_track(self.last_selected_track_index)
         if not last_track_ref.device_count < new_device_count_track:
             self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue: nothing added, what was updated?")
         else:
-            self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, new_device_index, new_device)
+            devices_to_add = new_device_count_track - old_device_count_track
+            for i in range(devices_to_add):
+                new_device = all_devices[new_device_index + i]
+                self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, new_device_index + i, new_device)
             # msg = f"{log_id}updated {last_track_ref.track_name}, device added {new_device.name} at index {new_device_index}, new device count is {last_track_ref.device_count}"
             # self.main_script().log_message(self.log_levels["TRACE"], msg)
 
 
-    def update_device_counts_on_removal(self, deleted_device_index, rack_devices_deleted, found_input_device_index,
-                                        old_device_count_track, new_device_count_track):
+    def update_device_counts_on_removal(self, deleted_device_index, rack_devices_deleted, found_input_device_index, old_device_count_track, new_device_count_track):
         log_id = "EAH.update_device_counts_on_removal: "
         # self.main_script().log_message(logging.DEBUG, f"{log_id}deletion index {deleted_device_index}")
 
@@ -1928,8 +1932,9 @@ class EncoderAssignmentHistory(MackieC4Component):
         # empty_chain = old_device_count_track == 0 and not found_input_device_index
         
         last_track_ref = self.data.get_track(self.last_selected_track_index)
-        # last_track_ref counts updated automatically by remove_device()
-        self.data.remove_device(last_track_ref.index, deleted_device_index - 1)
+        devices_to_remove = old_device_count_track - new_device_count_track
+        for i in range(devices_to_remove):
+            self.data.remove_device(last_track_ref.index, i + deleted_device_index - 1)
         # msg = f"{log_id}updated track {last_track_ref.track_name}, removed device at index {deleted_device_index} new device count is {last_track_ref.device_count}"
         # self.main_script().log_message(logging.DEBUG, msg)
 
