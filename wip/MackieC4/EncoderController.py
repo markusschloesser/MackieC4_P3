@@ -1337,20 +1337,20 @@ class EncoderController(MackieC4Component):
                         # vpot_display_text.set_text('Device', 'EditMe')
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
-                        vpot_display_text.set_text('<<  - ', 'PrvBnk')
+                        vpot_display_text.set_text(f"<< {(current_device_bank_param_track + 1):02d}", "")
                         s.show_full_enlighted_poti()
                     else:
-                        vpot_display_text.set_text(' Bank ', 'NoPrev')
+                        vpot_display_text.set_text(f"   {(current_device_bank_param_track + 1):02d}", "")
                         s.unlight_vpot_leds()
                 elif s_index == encoder_08_index:
                     if self.__chosen_plugin is None:
                         # vpot_display_text.set_text('Device', 'No') # see comment above, looks wrong
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track < max_device_bank_param_track - 1:
-                        vpot_display_text.set_text('  + >>', 'NxtBnk')
+                        vpot_display_text.set_text(f" {max_device_bank_param_track:02d} >>", '')
                         s.show_full_enlighted_poti()
                     else:
-                        vpot_display_text.set_text(' Bank ', 'NoNext')
+                        vpot_display_text.set_text(f" {max_device_bank_param_track:02d}   ", '')
                         s.unlight_vpot_leds()
                 else:
                     # these are the 24 encoders from 9 to 32. Some devices do not have more than 1 or 2 parameters
@@ -1715,6 +1715,8 @@ class EncoderController(MackieC4Component):
         so_many_spaces = '                                                       '
 
         if self.__assignment_mode == C4M_PLUGINS:
+            encoder_07_index = 6
+            encoder_08_index = 7
             t_d_idx = self.__eah.get_selected_device_index()
             upper_string1 += f"------ Track ------- ----- Device {t_d_idx}" if liveobj_valid(self.__chosen_plugin) else f"------ Track ------- --------------"
             # self.main_script().log_message(f"device index is {t_d_idx} ")
@@ -1772,10 +1774,18 @@ class EncoderController(MackieC4Component):
 
                     # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scrolling and just switch between 123456 and 789101112
                     u_alt_text = self.get_scrolling_display_text(u_raw_text, t)
-                    l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
+                    if t in (encoder_07_index, encoder_08_index):
+                        l_alt_text = l_raw_text
+                    else:
+                        l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
 
                     if t in range(6, NUM_ENCODERS_ONE_ROW):
-                        lower_string1 += adjust_string(str(l_alt_text), 6) + ' '
+                        if t == encoder_07_index:
+                            lower_string1 += adjust_string(str(l_alt_text), 6) + '/'
+                        elif t == encoder_08_index:
+                            lower_string1 += adjust_string(str(l_alt_text), 6)
+                        else:
+                            lower_string1 += adjust_string(str(l_alt_text), 6) + ' '
                     elif t in row_01_encoders:
                         upper_string2 += adjust_string(u_alt_text, 6) + ' '
                         lower_string2 += adjust_string(str(l_alt_text), 6) + ' '
