@@ -1196,21 +1196,33 @@ class MackieC4(MackieC4ListenerMixin, object):
             # switch script to Track Channel Strip mode if not already
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
 
-    def get_device_list(self, container, expand_chains=False):
+    def get_device_list(self, container, expand_chains=False, report=True):
         """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively."""
-        # device_list = track_util.get_racks_recursive(track)  # this refers to the method used by Ableton in track_selection
-        # (which didn't work for this script)
+        log_id = "C4.get_device_list: "
         device_list = []
         for device in container:
             if liveobj_valid(device):
                 device_list.append(device)
-                if expand_chains and device.can_have_chains:  # is a rack (and it's open?)
-                    # if device.view.is_showing_chain_devices:  # this makes device list foldable, which wouldn't work with current script.
-                    # So for now, everything is a flattened list - but note the recursive call nested in for-loops - expensive 0^3 operation (at least?)
-                    chain_devices = [d for ch in device.chains for d in self.get_device_list(ch.devices)]
-                    for d in chain_devices:
-                        if liveobj_valid(d):
-                            device_list.append(d)
+                # self.log_message(self.script_log_levels["TRACE"], f"{log_id}{device.name} device appended to list")
+                if expand_chains and device.can_have_chains:
+                    for d in self.get_devices_from_chains(device.chains):
+                        device_list.append(d)
+                    for dd in self.get_devices_from_chains(device.return_chains):
+                        device_list.append(dd)
+        if report:
+            self.log_message(self.script_log_levels["TRACE"], f"{log_id}returning {len(device_list)} devices")
+            for i, d in enumerate(device_list):
+                self.log_message(self.script_log_levels["TRACE"], f"{log_id}<{i}> - {d.name} {d.class_name}")
+        return device_list
+
+    def get_devices_from_chains(self, chains):
+        log_id = "C4.get_device_list_from_chain: "
+        device_list = []
+        chained_devices = [cd for chain_obj in chains for cd in self.get_device_list(chain_obj.devices, False, False)]
+        for dd in chained_devices:
+            if liveobj_valid(dd):  # and not isinstance(dd, Live.Chain.Chain) or DrumChain ??
+                device_list.append(dd)
+                # self.log_message(self.script_log_levels["TRACE"], f"{log_id}chained device {dd.name} appended to list")
         return device_list
 
     def track_inc_dec(self, note):
