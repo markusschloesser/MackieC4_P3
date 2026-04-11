@@ -1205,9 +1205,9 @@ class MackieC4(MackieC4ListenerMixin, object):
                 device_list.append(device)
                 # self.log_message(self.script_log_levels["TRACE"], f"{log_id}{device.name} device appended to list")
                 if expand_chains and device.can_have_chains:
-                    for d in self.get_devices_from_chains(device.chains):
+                    for d in self._get_devices_from_chains(device.chains):
                         device_list.append(d)
-                    for dd in self.get_devices_from_chains(device.return_chains):
+                    for dd in self._get_devices_from_chains(device.return_chains):
                         device_list.append(dd)
         if report:
             self.log_message(self.script_log_levels["TRACE"], f"{log_id}returning {len(device_list)} devices")
@@ -1215,7 +1215,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                 self.log_message(self.script_log_levels["TRACE"], f"{log_id}<{i}> - {d.name} {d.class_name}")
         return device_list
 
-    def get_devices_from_chains(self, chains):
+    def _get_devices_from_chains(self, chains):
         log_id = "C4.get_device_list_from_chain: "
         device_list = []
         chained_devices = [cd for chain_obj in chains for cd in self.get_device_list(chain_obj.devices, False, False)]
