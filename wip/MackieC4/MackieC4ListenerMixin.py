@@ -393,10 +393,13 @@ class MackieC4ListenerMixin(object):
                 # self.log_message(logging.DEBUG, f"{log_id}added device parameter {log_dtls} parameter {par.name} param_changestate")
 
     def add_track_device_listener(self, track, tid=0, type=0):
-        """for each track input, tid value is relative to the type value. 
-           for type 0: tid == self.song().tracks.index
-           for type 1: tid == self.song().return_tracks.index
-           for type 2: tid == self.song().master_track.index (always 0)"""
+        """Although the last 2 optional input values here get populated (have meaning) when this add method is called, see chain of """ \
+        """do_add_track_device_listener methods above, The lambda callback method selected_device_change_state is only ever called back with the one """ \
+        """required input param, never any of the optional parameters"""
+        # """for each track input, tid value is relative to the type value.
+        #    for type 0: tid == self.song().tracks.index
+        #    for type 1: tid == self.song().return_tracks.index
+        #    for type 2: tid == self.song().master_track.index (always 0)"""
         dtls = f"track <{track.name}> tidx <{tid}> type <{type}>"
         # if self.has_track_device_listener(track):
         #     self.remove_track_device_listener(track)
@@ -427,11 +430,14 @@ class MackieC4ListenerMixin(object):
         return True if device in self._lm["plisten"] else False
 
     def add_param_value_listener(self, param, tid=0, did=0, pid=0, type=0):
-        """for each parameter input, tid value is relative to the type value (as above) 
-           for type 0: tid == self.song().tracks.index
-           for type 1: tid == self.song().return_tracks.index
-           for type 2: tid == self.song().master_track.index (always 0)
-           the did value is relative to the tid, and pid is relative to did"""
+        """Although the last 4 optional input values here get populated (have meaning) when this add method is called, see chain of """ \
+        """do_add_param_value_listener methods above, The lambda callback method param_changestate is only ever called back with the one """ \
+        """required input param, never any of the optional parameters"""
+        # for each parameter input, tid value is relative to the type value (as above)
+        #    for type 0: tid == self.song().tracks.index
+        #    for type 1: tid == self.song().return_tracks.index
+        #    for type 2: tid == self.song().master_track.index (always 0)
+        #    the did value is relative to the tid, and pid is relative to did
         if self.has_param_value_listener(param):
             self.remove_param_value_listener(param)
         cb = lambda: self.param_changestate(param, tid, did, pid, type)

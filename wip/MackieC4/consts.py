@@ -96,7 +96,7 @@ LCD_BTM_FLAT_ADDRESS = 0x33
 LCD_TOP_ROW_OFFSET = 0
 LCD_BOTTOM_ROW_OFFSET = 0x38  # 56
 NUM_CHARS_PER_DISPLAY_LINE = 54  # 54 is divisible by more divisors than 55 like 2, 3, 6, and 9
-NUM_TEXT_BYTES_PER_SYSEX_MSG = 55
+NUM_TEXT_BYTES_PER_SYSEX_MSG = 55 # but 8 * 7 = 56, so the 7th char over the 8th encoder top line is also the 1st char over the first encoder bottom line
 NUM_TOTAL_BYTES_PER_SYSEX_MSG = 63  # 0X3F (but this is not a SYSEX value)
 LCD_DISPLAY_UPDATE_REPEAT_MULTIPLIER = 10
 
