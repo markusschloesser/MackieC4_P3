@@ -54,6 +54,9 @@ class ButtonController(object):
             C4SID_CONTROL: {"led_id": {C4SID_CONTROL: {"led_value": [0, 127]}}, "press_count": 0},
             C4SID_ALT: {"led_id": {C4SID_ALT: {"led_value": [0, 127]}}, "press_count": 0}
         }
+        self.modifier_group_multi_press_definitions = {
+            "expand_chains": 12  # Control + Alt == 8 + 4
+        }
 
         self.__split_led_ids = [0, 1, 2, 3]
         self.__split_led_cycle_index = 0
@@ -64,6 +67,22 @@ class ButtonController(object):
     @property
     def nbr_split_leds_on(self):
         return self.split_led_cycle_index
+    @property
+    def nbr_modifier_btns_pressed(self):
+        rtn = self.modifier_button_bit_field()
+        if rtn in [1, 2, 4, 8]:
+            rtn = 1
+        elif rtn in [3, 5, 6, 9, 10, 12]:
+            rtn = 2
+        elif rtn in [7, 11, 13, 14]:
+            rtn = 3
+        elif rtn == 15:
+            rtn = 4
+        return rtn
+
+    @property
+    def is_expand_chains_modifier_press_combo(self):
+        return self.modifier_button_bit_field() == self.modifier_group_multi_press_definitions["expand_chains"]
 
     @property
     def split_led_states(self):
@@ -110,6 +129,19 @@ class ButtonController(object):
     def alt_led_state(self):
         return self.get_modifier_btn_led_state(C4SID_ALT)
 
+    @property
+    def shift_pressed_state(self):
+        return self.get_modifier_btn_pressed_state(C4SID_SHIFT)
+    @property
+    def option_pressed_state(self):
+        return self.get_modifier_btn_pressed_state(C4SID_OPTION)
+    @property
+    def control_pressed_state(self):
+        return self.get_modifier_btn_pressed_state(C4SID_CONTROL)
+    @property
+    def alt_pressed_state(self):
+        return self.get_modifier_btn_pressed_state(C4SID_ALT)
+
     def handle_function_button_press(self, button_id):
         if button_id == C4SID_SPLIT:
             self._split_led_states()
@@ -154,6 +186,21 @@ class ButtonController(object):
         btn_ref = self.modifier_group_buttons[button_id]
         toggle = btn_ref["press_count"] % 2
         return 0 if not toggle else 127
+
+    def modifier_button_bit_field(self):
+        """Shift=2^0, Option=2^1, Control=2^2, Alt=2^3, no modifiers pressed = 0. """ \
+        """Returns an int value 0 - 15 depending on which modifiers are currently pressed"""
+        rtn = 0
+        if self.alt_pressed_state:
+            rtn =+ 8
+        if self.control_pressed_state:
+            rtn += 4
+        if self.option_pressed_state:
+            rtn += 2
+        if self.shift_pressed_state:
+            rtn += 1
+
+        return rtn
 
     def _split_erase_led_state(self, value=C4SID_SPLIT_ERASE):
         self._update_function_button_state(value)
@@ -1298,8 +1345,8 @@ class EncoderController(MackieC4Component, Component):
             self.main_script().set_alt_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ALT is {'' if pressed else 'NOT '}pressed")
 
-        if switch_id == C4SID_CONTROL or switch_id == C4SID_ALT:
-            # expansion behavior only actually changes if both Control and Alt are currently pressed
+        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+            # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)  
 
 
