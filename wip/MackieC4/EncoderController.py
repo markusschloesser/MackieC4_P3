@@ -31,7 +31,8 @@ from _Generic.Devices import *
 from .TimeDisplay import TimeDisplay
 
 class ButtonController(object):
-    """tracks the LED state of all seven C4 "control buttons" with associated LEDs (nine LEDs)"""
+    """tracks the LED state of all seven C4 "control buttons" with associated LEDs (nine LEDs) and the pressed state of """ \
+    """Modifier Group buttons (Shift, Option, Control, Alt) """
 
     def __init__(self):
 
@@ -55,6 +56,11 @@ class ButtonController(object):
             C4SID_ALT: {"led_id": {C4SID_ALT: {"led_value": [0, 127]}}, "press_count": 0}
         }
         self.modifier_group_multi_press_definitions = {
+            "none": 0,
+            "shift_only": 1,
+            "option_only": 2,
+            "control_only": 4,
+            "alt_only": 8,
             "expand_chains": 12  # Control + Alt == 8 + 4
         }
 
@@ -133,14 +139,26 @@ class ButtonController(object):
     def shift_pressed_state(self):
         return self.get_modifier_btn_pressed_state(C4SID_SHIFT)
     @property
+    def only_shift_is_pressed(self):
+        return self.modifier_button_bit_field() == self.modifier_group_multi_press_definitions["shift_only"]
+    @property
     def option_pressed_state(self):
         return self.get_modifier_btn_pressed_state(C4SID_OPTION)
+    @property
+    def only_option_is_pressed(self):
+        return self.modifier_button_bit_field() == self.modifier_group_multi_press_definitions["option_only"]
     @property
     def control_pressed_state(self):
         return self.get_modifier_btn_pressed_state(C4SID_CONTROL)
     @property
+    def only_control_is_pressed(self):
+        return self.modifier_button_bit_field() == self.modifier_group_multi_press_definitions["control_only"]
+    @property
     def alt_pressed_state(self):
         return self.get_modifier_btn_pressed_state(C4SID_ALT)
+    @property
+    def only_alt_is_pressed(self):
+        return self.modifier_button_bit_field() == self.modifier_group_multi_press_definitions["alt_only"]
 
     def handle_function_button_press(self, button_id):
         if button_id == C4SID_SPLIT:
@@ -191,15 +209,30 @@ class ButtonController(object):
         """Shift=2^0, Option=2^1, Control=2^2, Alt=2^3, no modifiers pressed = 0. """ \
         """Returns an int value 0 - 15 depending on which modifiers are currently pressed"""
         rtn = 0
-        if self.alt_pressed_state:
+        if self.alt_pressed_state > 0:
             rtn =+ 8
-        if self.control_pressed_state:
+        if self.control_pressed_state > 0:
             rtn += 4
-        if self.option_pressed_state:
+        if self.option_pressed_state > 0:
             rtn += 2
-        if self.shift_pressed_state:
+        if self.shift_pressed_state > 0:
             rtn += 1
 
+        return rtn
+
+    def split_button_led_bit_field(self):
+        """led0=2^0, led1=2^1, led2=2^2, no Split LEDs lit = 0. Returns an int value 0 - 7 depending on which Split LEDs are currently lit. """ \
+        """The current split button LED repeat cycle (0, 1, 2, 3) lit in turn means this method only (currently) returns values from the 'bit field' cycle """ \
+        """(0, 1, 3, 7), half of the 8 possible three bit combinations, where (the bit field value) 3 specificaly means led0 and led1 are ON while led2 is OFF and """ \
+        """(the bit field value) 7 means all three split LEDs are ON. """
+        led0, led1, led2 = self.split_led_states
+        rtn = 0
+        if led0 > 0:
+            rtn += 1
+        if led1 > 0:
+            rtn += 2
+        if led2 > 0:
+            rtn += 4
         return rtn
 
     def _split_erase_led_state(self, value=C4SID_SPLIT_ERASE):
