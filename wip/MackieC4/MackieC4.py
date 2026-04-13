@@ -270,15 +270,16 @@ class MackieC4(MackieC4ListenerMixin, object):
         for i in LCD_DISPLAY_INDEX:
             for j in (LCD_TOP_ROW_OFFSET, LCD_BOTTOM_ROW_OFFSET):
                 # this "id message" should clear any "firmware garbage" off the screens
-                # before the screens get "refreshed/cleared"
+                # before the screens get "refreshed/cleared.  All the line id numbers are a visual indicator the firmware version has been requested"
                 head_part = tuple(SYSEX_HEADER + (i, j))
                 sysex = head_part + lcd_display_id_message[i][j] + foot_part
                 # self.schedule_message(1, self._send_midi, sysex)
                 self.__c_instance.send_midi(sysex)
 
     def receive_midi(self, midi_bytes):
-        log_id = "C4.receive_midi: "
         """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
+        log_id = "C4.receive_midi: "
+        self.log_message(self.script_log_levels["TRACE"], f"{log_id}input is {midi_bytes}")
         # coming from C4 (button and knob actions) midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
         # C4 always sends and receives on channel 1
