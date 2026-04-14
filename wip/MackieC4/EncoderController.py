@@ -34,7 +34,7 @@ class ButtonController(object):
     """tracks the LED state of all seven C4 "control buttons" with associated LEDs (nine LEDs) and the pressed state of """ \
     """Modifier Group buttons (Shift, Option, Control, Alt) """
 
-    def __init__(self):
+    def __init__(self, last_assignment=C4SID_FUNCTION, init_assignment=C4SID_CHANNEL_STRIP):
 
         self.function_group_buttons = {
             C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
@@ -66,6 +66,9 @@ class ButtonController(object):
 
         self.__split_led_ids = [0, 1, 2, 3]
         self.__split_led_cycle_index = 0
+
+        self._update_assignment_button_state(last_assignment)
+        self._update_assignment_button_state(init_assignment)
 
     @property
     def split_led_cycle_index(self):
@@ -183,7 +186,8 @@ class ButtonController(object):
 
     def get_assignment_btn_led_state(self, button_id):
         """These buttons have associated physical LEDs. Because this controller only counts assignment button presses, """ \
-        """the LED value returned here latches and returns state is ON or OFF until the button is pressed again"""
+        """the LED value returned here latches and returns state is ON or OFF until the button is pressed again. """ \
+        """However, buttons in this group represent mutually exclusive 'script operation modes'.  """
         btn_ref = self.assignment_group_buttons[button_id]
         btn_led_ref = btn_ref["led_id"]
         toggle = btn_ref["press_count"] % 2
@@ -220,6 +224,21 @@ class ButtonController(object):
 
         return rtn
 
+    def assignment_button_led_bit_field(self):
+        """Marker=2^0, Track=2^1, ChanStrip=2^2, Function=2^3, no assignment button leds ON = 0. """ \
+        """Returns an int value 0 - 15 depending on which assignment button leds are currently ON (currently, one LED in this group is always exclusively ON)"""
+        rtn = 0
+        if self.function_led_state > 0:
+            rtn = + 8
+        if self.chan_strip_led_state > 0:
+            rtn += 4
+        if self.track_led_state > 0:
+            rtn += 2
+        if self.marker_led_state > 0:
+            rtn += 1
+
+        return rtn
+
     def split_button_led_bit_field(self):
         """led0=2^0, led1=2^1, led2=2^2, no Split LEDs lit = 0. Returns an int value 0 - 7 depending on which Split LEDs are currently lit. """ \
         """The current split button LED repeat cycle (0, 1, 2, 3) lit in turn means this method only (currently) returns values from the 'bit field' cycle """ \
@@ -244,9 +263,23 @@ class ButtonController(object):
         return button_ref
 
     def _update_assignment_button_state(self, btn_id):
-        button_ref = self.assignment_group_buttons[btn_id]
-        button_ref["press_count"] += 1
-        return button_ref
+        """(script mode) assignment group button LED ON states are mutually exclusive, and one assignment LED is always ON. You can only turn OFF a given """ \
+        """assignment LED by pressing a different assignment button (turning its LED ON instead). The exception to this 'rule' is User-Sequencer mode, when """ \
+        """enabled and connected, which takes control of all midi feedback to C4 LEDs and LCDs. This controller doesn't handle User-Sequencer mode, """ \
+        """only the 'normal' script modes """
+        if self.get_assignment_btn_led_state(btn_id) < 1:
+            # new assignment mode is not already active (LED is OFF)
+            button_ref = self.assignment_group_buttons[btn_id]
+            button_ref["press_count"] += 1  # new assignment mode LED is now ON
+            for key in self.assignment_group_buttons.keys():
+                btn = self.assignment_group_buttons[key]
+                if not btn["led_id"] == btn_id:
+                    state = btn["press_count"] % 2
+                    if state > 0:
+                        btn["press_count"] += 1 # old assignment mode LED is now OFF
+            return button_ref
+        else: # this assignment mode is already active (LED is already ON)
+            return self.assignment_group_buttons[btn_id]
 
     def _update_modifier_button_state(self, btn_id):
         button_ref = self.modifier_group_buttons[btn_id]
