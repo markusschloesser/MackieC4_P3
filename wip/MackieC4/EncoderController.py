@@ -703,6 +703,10 @@ class EncoderController(MackieC4Component, Component):
         self.selected_track = self.song().view.selected_track
         trace_level = self.log_levels["TRACE"]
 
+        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+            # chain expansion behavior changes when both Control and Alt are pressed
+            self._set_expand_chains(not self.expand_chains)
+
         if liveobj_valid(self.selected_track):
             self.main_script().log_message(trace_level, f"{log_id}track_index input is {track_index}, selected_track is {self.selected_track.name}")
         else:
@@ -1410,10 +1414,6 @@ class EncoderController(MackieC4Component, Component):
             self.__alt_state = value
             self.main_script().set_alt_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ALT is {'' if pressed else 'NOT '}pressed")
-
-        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
-            # chain expansion behavior changes when both Control and Alt are pressed
-            self._set_expand_chains(not self.expand_chains)  
 
 
     def _show_assignment_mode_change_message(self):
