@@ -2805,16 +2805,19 @@ class EncoderController(MackieC4Component, Component):
                 if self.is_locked_to_device:
                     device_name = self.__chosen_plugin.name
                 elif t_d_idx is not None and t_d_idx > -1:
+                    device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, t_d_idx)
+                    device_name = device_ref.device_name
+                    # test: we don't need to dive down this rabbit hole fetching the Live device list every display update (if not locked to a device) do we?
                     # self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
-                    extended_device_list = self.get_device_list(selected_track.devices, expand_chains=self.expand_chains)
-                    if liveobj_valid(selected_track) and len(extended_device_list) > t_d_idx:
-                        if liveobj_valid(extended_device_list[t_d_idx]):
-                            device_name = extended_device_list[t_d_idx].name
-                        else:
-                            device_name = f"trk{t_d_idx}: " + selected_track.name  # is "blanks" better?
-                    else:
-                        # is "blanks" better? ("new" group track with no devices just two grouped tracks landed here)
-                        device_name = "trk: " + selected_track.name
+                    # extended_device_list = self.get_device_list(selected_track.devices, expand_chains=self.expand_chains)
+                    # if liveobj_valid(selected_track) and len(extended_device_list) > t_d_idx:
+                    #     if liveobj_valid(extended_device_list[t_d_idx]):
+                    #         device_name = extended_device_list[t_d_idx].name
+                    #     else:
+                    #         device_name = f"trk{t_d_idx}: " + selected_track.name  # is "blanks" better?
+                    # else:
+                    #     # is "blanks" better? ("new" group track with no devices just two grouped tracks landed here)
+                    #     device_name = "trk: " + selected_track.name
                 # else:
                 #     self.main_script().log_message(logging.DEBUG, f"Current Track Device List length too short for index: name display blank over device index {t_d_idx}")
 
