@@ -844,8 +844,13 @@ class EncoderController(MackieC4Component, Component):
                         self.__pending_device_change = False
                 return
 
+    # a Group track expanded and the selected track index is changing (Group expanded 'left of' selected track of this track type)
     def tracks_added(self, track_index, tracks_of_type, callback_track_type_of_selected_index):
         log_id = "EC.tracks_added: "
+        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+            # chain expansion behavior changes when both Control and Alt are pressed
+            self._set_expand_chains(not self.expand_chains)
+
         self.__eah.tracks_added(track_index, tracks_of_type, callback_track_type_of_selected_index)
         # (using same update selected track code as from self.track_deleted() instead of same update logic in track_added())
         self.__update_selected_track(track_index)
@@ -853,8 +858,14 @@ class EncoderController(MackieC4Component, Component):
             self.main_script().log_message(logging.DEBUG, f"{log_id}dump of stored {track_callback_types[callback_track_type_of_selected_index]} tracks:")
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[callback_track_type_of_selected_index])
 
+    # a Group track expanded and the selected track index is NOT changing (Group expanded 'right of' selected track of this type or selected track is return or main type
+    # return tracks can not be Grouped
     def unselected_tracks_added(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_added: "
+        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+            # chain expansion behavior changes when both Control and Alt are pressed
+            self._set_expand_chains(not self.expand_chains)
+
         self.__eah.unselected_tracks_added(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
         if self.__eah.data.class_logging:
@@ -897,6 +908,7 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
         return
 
+    # when tracks get deleted (or disappear from visible_tracks) their stored device lists go away too, expanded chains or not
     def tracks_deleted(self, track_index, tracks_of_type, track_type=-1):
         log_id = "EC.tracks_deleted: "
         self.main_script().log_message(logging.DEBUG, f"{log_id}deleting tracks of type {track_type} from index: {track_index}")
@@ -917,6 +929,9 @@ class EncoderController(MackieC4Component, Component):
 
     def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_changed: "
+        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+            # chain expansion behavior changes when tracks change and both Control and Alt are pressed
+            self._set_expand_chains(not self.expand_chains)
         self.__eah.unselected_tracks_changed(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
         if self.__eah.data.class_logging:
