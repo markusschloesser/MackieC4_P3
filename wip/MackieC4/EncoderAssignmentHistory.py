@@ -1902,48 +1902,162 @@ class EncoderAssignmentHistory(MackieC4Component):
             self.update_device_counts_on_addition(new_device_index, all_track_devices, old_device_count_track, new_device_count_track)
 
         elif device_was_removed:
-            self.update_device_counts_on_removal(deleted_device_index, rack_devices_deleted, found_input_device_index,
-                                                 old_device_count_track, new_device_count_track)
+            self.update_device_counts_on_removal(deleted_device_index, all_track_devices, old_device_count_track, new_device_count_track)
 
         elif selected_device_was_changed:
             self.update_device_counts_on_change(all_track_devices, selected_device, old_selected_device_index, changed_device_index, new_device_count_track)
 
         return rtn_device_index
 
-    def update_device_counts_on_addition(self, new_device_index, all_devices, old_device_count_track, new_device_count_track):
+    def update_device_counts_on_addition(self, new_device_index, all_track_devices, old_device_count_track, new_device_count_track):
         log_id = f"EAH.update_device_counts_on_addition: "
         last_track_ref = self.data.get_track(self.last_selected_track_index)
         if not last_track_ref.device_count < new_device_count_track:
             self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue: nothing added, what was updated?")
         else:
             devices_to_add = new_device_count_track - old_device_count_track
-            for i in range(devices_to_add):
-                new_device = all_devices[new_device_index + i]
-                self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, new_device_index + i, new_device)
-            # msg = f"{log_id}updated {last_track_ref.track_name}, device added {new_device.name} at index {new_device_index}, new device count is {last_track_ref.device_count}"
-            # self.main_script().log_message(self.log_levels["TRACE"], msg)
+            expando = False
+            if not self.__my_controlling_encoder.expand_chains:
+                if new_device_index + devices_to_add < len(all_track_devices):
+                    for i in range(devices_to_add):
+                        new_device = all_track_devices[new_device_index + i]
+                        self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, new_device_index + i, new_device)
+                    # msg = f"{log_id}updated {last_track_ref.track_name}, device added {new_device.name} at index {new_device_index}, "
+                    # self.main_script().log_message(self.log_levels["TRACE"], msg + f"new device count is {last_track_ref.device_count})
+                else: # new_device_index is "too far right" to add all new devices by this algorithm
+                    expando = True
+            else: # is expand chains
+                expando = True
 
+            if expando:
+                stored_devices = self.data.get_track_device_map(self.last_selected_track_index)
+                old_device_count = len(stored_devices.keys())
+                key_indexes_added = self.__do_device_addition(stored_devices, all_track_devices, last_track_ref)
+                assert old_device_count + len(key_indexes_added) == len(all_track_devices)
 
-    def update_device_counts_on_removal(self, deleted_device_index, rack_devices_deleted, found_input_device_index, old_device_count_track, new_device_count_track):
+    def __do_device_addition(self, stored_devices, all_track_devices, last_track_ref):
+        log_id = "EAH.__do_device_addition: "
+        key_indexes_added = []
+        insert_index = 0
+        for i, device in enumerate(all_track_devices):
+            current_nbr_devices_stored = len(stored_devices)
+            if i < current_nbr_devices_stored:
+                d_ref = stored_devices[i] # expecting stored_devices table or insert_index to be updated after each iteration
+                if device == d_ref.device:  # this 'track device' is already stored at this index
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}{i} < {current_nbr_devices_stored}, skipping matching stored device at matching insert index")
+                    insert_index = i
+                else: # this 'track device' isn't stored yet
+                    if insert_index < current_nbr_devices_stored:
+                        self.main_script().log_message(logging.DEBUG, f"{log_id}{insert_index} < {current_nbr_devices_stored}, inserting expected new stored device")
+                        self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, insert_index, device)
+                        key_indexes_added.append(i)
+            else: # this 'track device' isn't stored yet because the new device index i is 'too far right'
+                if i == current_nbr_devices_stored:
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}{i} == {current_nbr_devices_stored}, appending expected new last stored device")
+                    self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, i, device)
+                    key_indexes_added.append(i)
+                    insert_index = i
+                else: # i > current_nbr_devices_stored ??
+                    msg = f"{log_id}assumption issue: {i} > {current_nbr_devices_stored} force appending another last stored device"
+                    self.main_script().log_message(logging.WARNING, msg)
+                    self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, current_nbr_devices_stored, device)
+                    key_indexes_added.append(current_nbr_devices_stored)
+                    insert_index = current_nbr_devices_stored
+
+        return key_indexes_added
+
+    def update_device_counts_on_removal(self, deleted_device_index, all_track_devices, old_device_count_track, new_device_count_track):
         log_id = "EAH.update_device_counts_on_removal: "
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}deletion index {deleted_device_index}")
+        self.main_script().log_message(logging.DEBUG, f"{log_id}deletion index {deleted_device_index}")
 
-        # last_device_in_chain = deleted_device_index == old_device_count_track - 1  # 0 != -1 here
-        # empty_chain = old_device_count_track == 0 and not found_input_device_index
-        
-        last_track_ref = self.data.get_track(self.last_selected_track_index)
+        stored_devices = self.data.get_track_device_map(self.last_selected_track_index)
+        key_indexes_removed = self.__do_device_removal(stored_devices, all_track_devices)
+
         devices_to_remove = old_device_count_track - new_device_count_track
-        for i in range(devices_to_remove):
-            self.data.remove_device(last_track_ref.index, i + deleted_device_index - 1)
-        # msg = f"{log_id}updated track {last_track_ref.track_name}, removed device at index {deleted_device_index} new device count is {last_track_ref.device_count}"
-        # self.main_script().log_message(logging.DEBUG, msg)
+        self.main_script().log_message(logging.DEBUG, f"{log_id} number to remove {devices_to_remove}, nbr removed {len(key_indexes_removed)}")
+        if not len(key_indexes_removed) == devices_to_remove:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}remaining after removal")
+            stored_devices = self.data.get_track_device_map(self.last_selected_track_index)
+            for key in stored_devices.keys():
+                d = stored_devices[key].device
+                msg = f"{log_id}name {d.name} class_name {d.class_name} "
+                self.main_script().log_message(logging.DEBUG, msg + f"can chains {d.can_have_chains} can pads {d.can_have_drum_pads}")
+        assert len(key_indexes_removed) == devices_to_remove
+        self.main_script().log_message(logging.DEBUG, f"{log_id} index to remove {deleted_device_index}, removed indexes {key_indexes_removed}")
+        # assert deleted_device_index in key_indexes_removed <-- only True when at least one device gets deleted, not also True when chained devices collapse
 
-        decremented_device_count_track = self.data.get_track(self.last_selected_track_index).device_count
-        max_needed_device_banks = int(math.ceil(decremented_device_count_track // SETUP_DB_DEVICE_BANK_SIZE))
+        last_track_ref = self.data.get_track(self.last_selected_track_index)
+        new_device_count = self.data.get_track(self.last_selected_track_index).device_count
+        max_needed_device_banks = int(math.ceil(new_device_count // SETUP_DB_DEVICE_BANK_SIZE))
+        if max_needed_device_banks * SETUP_DB_DEVICE_BANK_SIZE < new_device_count:
+            max_needed_device_banks += 1
         if max_needed_device_banks != last_track_ref.required_device_banks:
             msg = f"{log_id}assumption issue: {max_needed_device_banks} calculated and required_device_banks {last_track_ref.required_device_banks} not matching"
             self.main_script().log_message(logging.ERROR, msg)
 
+    def __do_device_removal(self, stored_devices, all_track_devices):
+        log_id = "EAH.__do_device_removal: "
+        device_index_offset = 0
+        key_indexes_removed = []
+        copy_of_stored_devices = stored_devices.copy()
+        # ['505 Core Kit', 'Rimshot', 'Snaredrum', 'Handclap', 'Conga Lo', 'Tom Lo', 'Tom Mid', 'Cowbell Lo', 'Hi Cowbell', 'Closed Hi Hat', 'Conga Hi',
+        #  'Open Hi Hat', 'Tom Hi', 'Bassdrum', 'Timbale', 'Crash', 'Ride', 'Audio Effect Rack', '505 Core Kit',
+        # --- above is an expanded_chains drum rack device, book-ended by the '505 Core Kit' items ---
+        # --- below are the rest of the track's devices ---
+        #  'Gate', 'Maximizer', 'EQ Three', 'Multiband Dynamics', 'EQ Three', 'Limiter']
+        found_chain_opener = False
+        opener = None
+        found_chain_closer = False
+        closer = None
+        # since the opener and closer rack device objects that 'book end' a rack's expanded chained devices exhibit identical
+        # name, class_name, can_have_chains, and can_have_drum_pads property values, when chains collapse, keep the opener device and discard the closer device
+        for key in copy_of_stored_devices.keys():
+            d_ref = copy_of_stored_devices[key]
+            if not liveobj_valid(d_ref.device):  # device was deleted (chain expansion behavior only changes when selected track changes and chained devices are valid)
+                remove = True
+                self.main_script().log_message(logging.DEBUG, f"{log_id}key {key} passing index {key - 1} to remove not liveobj_valid device")
+            elif not self.__my_controlling_encoder.expand_chains:
+                if not found_chain_closer:
+                    if not found_chain_opener:
+                        found_chain_opener = d_ref.device.can_have_chains
+                        opener = d_ref.device
+                    else:
+                        found_chain_closer = d_ref.device.can_have_chains and opener.class_name == d_ref.device.class_name
+                        if found_chain_closer:
+                            closer = d_ref.device
+
+                    keeper = True if d_ref.device in all_track_devices else False
+                    if not keeper:
+                        remove = True  # device 'disappeared' from 'expanded' device list
+                    elif found_chain_closer:
+                        remove = True  # device 'disappeared' from 'expanded' device list (even though keeper is True, the closing 'book end' needs to go)
+                    else:
+                        remove = False  # device remains in 'collapsed' device list
+                    if remove:
+                        self.main_script().log_message(logging.DEBUG, f"{log_id}key {key} passing index {key - 1} to remove collapsed chained device {d_ref.device.name}")
+                else:
+                    remove = True  # redundant assignment 'found chain closers' are always removed and both vars are always reset False before next iteration
+            else:  # is valid and expanded chains
+                # with expanded chains, at least one device was deleted, but not this one?
+                remove = False if d_ref.device in all_track_devices else True
+                if remove:
+                    msg = f"{log_id}key {key} passing index {key - 1} removing expanded chained device {d_ref.device.name} not in all track devices"
+                    self.main_script().log_message(logging.WARNING, msg)
+                else:
+                    pass  # expecting to keep storing this valid device found in all track devices
+
+            if remove:
+                key -= device_index_offset  # changed devices table is getting smaller and smaller
+                self.data.remove_device(d_ref.track_index, key - 1)
+                key_indexes_removed.append(key)
+                device_index_offset += 1
+                if found_chain_closer:
+                    assert opener.class_name == closer.class_name
+                    found_chain_opener = False
+                    opener = None
+                    closer = None
+                found_chain_closer = False
+        return key_indexes_removed
 
     def update_device_counts_on_change(self, all_track_devices, selected_device, old_selected_device_index, changed_device_index, new_device_count_track):
         # self.data.rekey_device_list_by_track_callback_type() is called directly from EC.device_list_changed() as needed,
