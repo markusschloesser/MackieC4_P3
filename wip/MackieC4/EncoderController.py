@@ -67,8 +67,12 @@ class ButtonController(object):
         self.__split_led_ids = [0, 1, 2, 3]
         self.__split_led_cycle_index = 0
 
-        self._update_assignment_button_state(last_assignment)
-        self._update_assignment_button_state(init_assignment)
+        # these two assignments just declare the two dunder vars
+        self.__last_assignment_led_on = last_assignment
+        self.__current_assignment_led_on = init_assignment
+        # these two update calls also update the now declared dunder vars (to the same values) using "button press count" semantics
+        self._update_assignment_button_state(last_assignment) # last is now both current (led is ON) and remains last (a contradiction, led is not OFF)
+        self._update_assignment_button_state(init_assignment) # init is now current (led is ON) and last remains last (led is OFF)
 
     @property
     def split_led_cycle_index(self):
@@ -76,6 +80,12 @@ class ButtonController(object):
     @property
     def nbr_split_leds_on(self):
         return self.split_led_cycle_index
+    @property
+    def last_assignment_led_on(self):
+        return self.__last_assignment_led_on
+    @property
+    def current_assignment_led_on(self):
+        return self.__current_assignment_led_on
     @property
     def nbr_modifier_btns_pressed(self):
         rtn = self.modifier_button_bit_field()
@@ -265,18 +275,20 @@ class ButtonController(object):
     def _update_assignment_button_state(self, btn_id):
         """(script mode) assignment group button LED ON states are mutually exclusive, and one assignment LED is always ON. You can only turn OFF a given """ \
         """assignment LED by pressing a different assignment button (turning its LED ON instead). The exception to this 'rule' is User-Sequencer mode, when """ \
-        """enabled and connected, which takes control of all midi feedback to C4 LEDs and LCDs. This controller doesn't handle User-Sequencer mode, """ \
-        """only the 'normal' script modes """
+        """enabled and connected, which takes control of all midi feedback to C4 LEDs and LCDs. This controller doesn't handle User-Sequencer mode events, """ \
+        """only the 'normal' script mode related events """
         if self.get_assignment_btn_led_state(btn_id) < 1:
-            # new assignment mode is not already active (LED is OFF)
+            # new assignment mode is NOT already active (LED is OFF)
             button_ref = self.assignment_group_buttons[btn_id]
-            button_ref["press_count"] += 1  # new assignment mode LED is now ON
+            button_ref["press_count"] += 1  # new assignment mode is active (LED is now ON)
+            self.__current_assignment_led_on = btn_id
             for key in self.assignment_group_buttons.keys():
                 btn = self.assignment_group_buttons[key]
                 if not btn["led_id"] == btn_id:
                     state = btn["press_count"] % 2
                     if state > 0:
-                        btn["press_count"] += 1 # old assignment mode LED is now OFF
+                        self.__last_assignment_led_on = key
+                        btn["press_count"] += 1 # old assignment mode is deactivated (LED is now OFF)
             return button_ref
         else: # this assignment mode is already active (LED is already ON)
             return self.assignment_group_buttons[btn_id]
