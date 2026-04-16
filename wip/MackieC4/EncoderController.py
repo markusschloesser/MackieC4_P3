@@ -908,9 +908,17 @@ class EncoderController(MackieC4Component, Component):
         self.__eah.data.log_dump_with_devices_by_callback_track_type_key(track_callback_types[found_changed_track_callback_type])
         return
 
-    # when tracks get deleted (or disappear from visible_tracks) their stored device lists go away too, expanded chains or not
+    # when stored tracks get deleted (disappear from song().visible_tracks) their stored device lists get deleted too, expanded or collapsed chains.
+    # when Group Tracks collapse, the stored collapsing group-track "loses" all stored group-expanded tracks and their devices no longer "visible" regardless of expanded
+    # chains status, but changing the script's chain expansion behavior when collapsing a Group still globally impacts all the stored tracks and devices in the set.
+    # The script will process the next Track change or Group expand/collapse event using the updated chain expansion setting, unless CTRL+ALT "flips the flag" again.
+    # (In fewer words, Group Track collapse is modeled in script storage by following a single code execution path, no logical branching on the expanded chains flag status)
     def tracks_deleted(self, track_index, tracks_of_type, track_type=-1):
         log_id = "EC.tracks_deleted: "
+        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+            # chain expansion behavior changes when both Control and Alt are pressed
+            self._set_expand_chains(not self.expand_chains)
+
         self.main_script().log_message(logging.DEBUG, f"{log_id}deleting tracks of type {track_type} from index: {track_index}")
         self.__eah.tracks_deleted(track_index, tracks_of_type, track_type)
         self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}updating selected track info at index: {track_index}")
@@ -921,6 +929,10 @@ class EncoderController(MackieC4Component, Component):
 
     def unselected_tracks_deleted(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_deleted: "
+        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+            # chain expansion behavior changes when both Control and Alt are pressed
+            self._set_expand_chains(not self.expand_chains)
+
         self.__eah.unselected_tracks_deleted(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__eah.last_selected_track_index)
         if self.__eah.data.class_logging:
