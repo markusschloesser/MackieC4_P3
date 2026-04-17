@@ -741,33 +741,6 @@ class MackieC4(MackieC4ListenerMixin, object):
 
         self.trBlock(0, len(self.song().visible_tracks))
 
-    def add_scene_listeners(self):
-        # try-except blocks handle the cases when the song-view-listener callback method self.scene_change, for example, is already present. This reduces 
-        # the number of function calls at the expense of using exception handling semantics for relatively normal program event handling.
-        try:
-            self.song().view.add_selected_scene_listener(self.scene_change)
-        except RuntimeError:
-            pass
-
-        try:
-            self.song().view.add_selected_track_listener(self.track_change)
-        except RuntimeError:
-            pass
-
-    def has_scene_listeners(self):
-        return self.song().view.has_selected_scene_listener(self.scene_change) and self.song().view.has_selected_track_listener(self.track_change)
-
-    def rem_scene_listeners(self):
-        # try-except blocks handle the cases when the song-view-listener (callback method self.scene_change, for example) is already not present. 
-        try:
-            self.song().view.remove_selected_scene_listener(self.scene_change)
-        except RuntimeError:
-            pass
-
-        try:
-            self.song().view.remove_selected_track_listener(self.track_change)
-        except RuntimeError:
-            pass
 
     def track_change(self):
         """This is the "selected track listener" callback"""
@@ -926,49 +899,11 @@ class MackieC4(MackieC4ListenerMixin, object):
         if selected_index != self.scene_index:
             self.scene_index = selected_index
 
-    def add_transport_listener(self):
-        # try-except blocks handle the cases when the song.is_playing_listener callback method self.transport_change is already present.
-        try:
-            self.song().add_is_playing_listener(self.transport_change)
-        except RuntimeError:
-            pass
-
-    def rem_transport_listener(self):
-        # try-except blocks handle the cases when the song.is_playing_listener callback method self.transport_change is already not present.
-        try:
-            self.song().remove_is_playing_listener(self.transport_change)
-        except RuntimeError:
-            pass
-
     def transport_change(self):
         pass
 
-    def add_overdub_listener(self):
-        try:
-            self.song().add_overdub_listener(self.overdub_change)
-        except RuntimeError:
-            pass
-
-    def rem_overdub_listener(self):
-        try:
-            self.song().remove_overdub_listener(self.overdub_change)
-        except RuntimeError:
-            pass
-
     def overdub_change(self):
         return Live.Song.Song.overdub
-
-    def add_tracks_listener(self):
-        try:
-            self.song().add_tracks_listener(self.tracks_change)
-        except RuntimeError:
-            pass
-
-    def rem_tracks_listener(self):
-        try:
-            self.song().remove_tracks_listener(self.tracks_change)
-        except RuntimeError:
-            pass
 
     def visible_tracks_change(self):
         """This is the Visible Tracks listener callback"""
