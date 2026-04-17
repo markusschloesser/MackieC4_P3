@@ -236,7 +236,8 @@ class ButtonController(object):
 
     def assignment_button_led_bit_field(self):
         """Marker=2^0, Track=2^1, ChanStrip=2^2, Function=2^3, no assignment button leds ON = 0. """ \
-        """Returns an int value 0 - 15 depending on which assignment button leds are currently ON (currently, one LED in this group is always exclusively ON)"""
+        """Returns an int value 0 - 15 depending on which assignment button leds are currently ON (currently, one LED in this group is always exclusively ON, """ \
+        """so this method only actually returns one of these four 2^x values corresponding to which assignment button led is currently ON), no 'press combos' allowed """
         rtn = 0
         if self.function_led_state > 0:
             rtn = + 8

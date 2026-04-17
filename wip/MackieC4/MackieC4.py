@@ -279,7 +279,9 @@ class MackieC4(MackieC4ListenerMixin, object):
     def receive_midi(self, midi_bytes):
         """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
         log_id = "C4.receive_midi: "
-        self.log_message(self.script_log_levels["TRACE"], f"{log_id}input is {midi_bytes}")
+        # if self.current_script_log_level < self.script_log_levels["TRACE"]: # ALWAYS is the most verbose, deepest log detail level setting
+        # encoder turns can quickly log dozens of CC messages here, for example
+        self.log_message(self.script_log_levels["ALWAYS"], f"{log_id}input is {midi_bytes}")
         # coming from C4 (button and knob actions) midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
         # C4 always sends and receives on channel 1
@@ -387,11 +389,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                                 self.note_handling_dict[note](note)
                                 self.__handling_assignment_switch = False
                             else:
-                                if note == 4:  # Spot/Erase buttons is not mapped to any remote script behavior
-                                    # self.log_message(logging.INFO, f"{log_id}Spot/Erase button is not mapped to any handling behavior")
-                                    pass
-                                else:
-                                    self.log_message(logging.ERROR, f"{log_id}unhandled note value: {note}")
+                                self.log_message(logging.ERROR, f"{log_id}unhandled note value: {note}")
 
                         if note == C4SID_MARKER:
                             # This "note ON event" entered receive_midi() while the script was NOT in USER mode, because this line is under else:
@@ -434,7 +432,9 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.set_marker_is_pressed(False)
                     if midi_bytes[1] in modifier_switch_ids:  # Shift, Option, Control, Alt
                         # since modifier button 'is pressed' behavior depends on the 'release' event, also need to handle releases
-                        self.__encoder_controller.handle_modifier_switch_ids(midi_bytes[1], 0)
+                        # The C4 always sends (144, x, 0) for Note OFF, and Live always converts those messages to (128, x, 0),
+                        # actual Note OFF message input entering receive_midi() for processing
+                        self.__encoder_controller.handle_modifier_switch_ids(midi_bytes[1], midi_bytes[2])
                 elif midi_bytes[0] == 0xF0:
                     self.handle_sysex_msg(midi_bytes)
                 else:
@@ -623,18 +623,20 @@ class MackieC4(MackieC4ListenerMixin, object):
         tempo = max(20, min(999, self.song().tempo + amount))
         self.song().tempo = tempo
 
-    def can_lock_to_devices(self):  # todo: make use of it, locking itself works
-        """Live -> Script
-            Should return True, if the ControlSurface can lock a device.
-            "SimpleControlSurface" does not support controlling devices, so it will always be False."""
+    def can_lock_to_devices(self):
+        """Live -> Script  Should return True, if the ControlSurface can lock a device. """
+        """'SimpleControlSurface' does not natively support locking devices, but since the C4 EncoderController class inherits from v2.Component, it can """ \
+        """defer device provisioning to the C4DeviceProvider class anyway which allows (backdoor?) locking (of this SimpleControlSurface script) to specific devices"""
         return True
 
     def suggest_input_port(self):
         """Live -> Script   Live can ask the script for an input port name to find a suitable one.    """
+        """Since the C4 only has physical MIDI DIN connectors, the actual input port name can't be predicted here like it can for USB midi ports"""
         return 'Mackie C4'
 
     def suggest_output_port(self):
         """Live -> Script        Live can ask the script for an output port name to find a suitable one.        """
+        """Since the C4 only has physical MIDI DIN connectors, the actual output port name can't be predicted here like it can for USB midi ports"""
         return 'Mackie C4'
 
     def shift_is_pressed(self):
@@ -694,14 +696,12 @@ class MackieC4(MackieC4ListenerMixin, object):
         Is called by Live when the script is unloaded. This happens when the script gets unselected from the preferences,
         automatically when the corresponding MIDI ports are gone or Live is shut down. All listeners to the Live API need
         to be removed. Cyclic dependencies should be broken, so the control surface can be garbage collected."""
-        self.destroy_mixer_listeners()  # rem_mixer_listeners()
+        self.destroy_mixer_listeners()
         self.rem_scene_listeners()
         self.rem_overdub_listener()
         self.rem_tracks_listener()
-        self.remove_device_listeners()  # rem_device_listeners()
+        self.remove_device_listeners()  
         self.rem_transport_listener()
-        # if self.song().visible_tracks_has_listener(self.tracks_change):
-        #     self.song().remove_visible_tracks_listener(self.tracks_change)
         if self.song().visible_tracks_has_listener(self.visible_tracks_change):
             self.song().remove_visible_tracks_listener(self.visible_tracks_change)
         for c in self.__components:
@@ -829,10 +829,12 @@ class MackieC4(MackieC4ListenerMixin, object):
         # need to do 3 things:
         # - determine the 'song tracks index' of Live's selected track
         # - assign the last_selected_track_index property the determined 'selected Track Index' value
-        # - return the new 'song index' value and the 'callback type' of the (visible_tracks or return_tracks) list containing the selected track
-        selected_index, selected_callback_type, callback_type_index, nbr_song_tracks = self.find_track_index(self.song().view.selected_track)
-        self.log_message(self.script_log_levels["TRACE"], f"{log_id}found {selected_index}, {selected_callback_type}, {callback_type_index}, {nbr_song_tracks}")
-        return self.set_selected_track_index(selected_index, selected_callback_type, callback_type_index)
+        # - return the new 'song index' value, the 'callback type' of the (visible_tracks or return_tracks) list containing the selected track,
+        #   and the callback track type index within that found 'track type' list
+        rtn_vals = self.find_track_index(self.song().view.selected_track)
+        msg = f"{log_id}found and assigning: (song index, cb_type, cb_type_index, nbr_of_song_tracks) = {rtn_vals}"
+        self.log_message(self.script_log_levels["TRACE"], msg)
+        return self.set_selected_track_index(rtn_vals[0], rtn_vals[1], rtn_vals[2])
 
 
     def set_selected_track_index(self, next_selected_track_index, selected_callback_type, selected_callback_type_index, nbr_song_tracks=1):
@@ -840,29 +842,10 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.last_selected_track_index = next_selected_track_index  # "song index" is ambiguous at first return track index
         self.last_selected_track_callback_type = selected_callback_type
         self.last_selected_callback_type_index = selected_callback_type_index
-        # trace_level = self.script_log_levels["TRACE"]
-        # if next_selected_track_index != self.last_selected_track_index:
-        #     msg = f"{log_id}setting self.last_selected_track_index {self.last_selected_track_index} to next index {next_selected_track_index}"
-        #     self.log_message(trace_level,msg)
-        #     self.last_selected_track_index = next_selected_track_index # "song index" is ambiguous at first return track index
-        #     if selected_callback_type != self.last_selected_track_callback_type:
-        #         msg = f"{log_id}setting self.last_selected_track_callback_type {self.last_selected_track_callback_type} to next type {selected_callback_type}"
-        #         self.log_message(trace_level, msg)
-        #         self.last_selected_track_callback_type = selected_callback_type
-        #         if selected_callback_type_index != self.last_selected_callback_type_index:
-        #             msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
-        #             self.log_message(trace_level, msg)
-        #             self.last_selected_callback_type_index = selected_callback_type_index
-        #         else:
-        #             msg = f"{log_id}type index of next selected track remains {selected_callback_type_index} "
-        #             self.log_message(trace_level, msg)
-        #     else: # track index changed but callback type didn't, type index must have changed too
-        #         msg = f"{log_id}setting self.last_selected_callback_type_index {self.last_selected_callback_type_index} to next type index {selected_callback_type_index}"
-        #         self.log_message(trace_level, msg)
-        #         self.last_selected_callback_type_index = selected_callback_type_index
-        # else:
-        #     self.log_message(trace_level, f"{log_id}self.last_selected_track_index {self.last_selected_track_index} is already {next_selected_track_index}")
-        return self.last_selected_track_index, self.last_selected_track_callback_type, self.last_selected_callback_type_index
+        rtn = self.last_selected_track_index, self.last_selected_track_callback_type, self.last_selected_callback_type_index
+        # most_verbose_level_only = self.script_log_levels["ALWAYS"]
+        # self.log_message(most_verbose_level_only, f"{log_id} values set and returning (song_index, cb_type, cb_type_index) = {rtn}")
+        return rtn
 
     def find_track_index(self, target_track):
         log_id = "C4.find_track_index: "
@@ -1018,34 +1001,38 @@ class MackieC4(MackieC4ListenerMixin, object):
                     nbr_tracks_removed = self.track_count - new_track_count
                     if callback_track_type_of_selected_index == 1:
                         tracks_of_type = self.song().return_tracks
-                    # (index={selected_index}, cbt_track_count({len(tracks_of_type)}), track_type={callback_track_type_of_selected_index}"
-                    msg = f"{log_id}calling ec.tracks_deleted"
+                    # msg = (index={selected_index}, cbt_track_count({len(tracks_of_type)}), track_type={callback_track_type_of_selected_index}"
+                    msg = f"{log_id}calling ec.tracks_deleted" # + msg
                     self.log_message(logging.DEBUG, msg)
                     self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                 else:
                     if selected_index_changed and selected_index < self.last_selected_track_index:
                         if callback_track_type_of_selected_index == 1:
                             tracks_of_type = self.song().return_tracks
-                        self.log_message(logging.DEBUG, f"{log_id}calling tracks_deleted, last track of type was deleted, selected index moved left {selected_index}")
+                        msg = f"{log_id}calling tracks_deleted, last track of type was deleted, selected index moved left {selected_index}"
+                        self.log_message(logging.DEBUG, msg)
                         self.__encoder_controller.tracks_deleted(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                     else:
                         self.log_message(logging.DEBUG, f"{log_id}calling track_deleted at index {selected_index}")
                         self.__encoder_controller.track_deleted(selected_index, callback_track_type_of_selected_index, callback_type_index)
-                #self.request_rebuild_midi_map()   <-- called by EC
+
             elif self.track_count < new_track_count:
                 tracks_of_type = self.song().visible_tracks
                 if new_track_count - self.track_count > 1:
                     if callback_track_type_of_selected_index == 1:
                         tracks_of_type = self.song().return_tracks
-                    msg = f"{log_id}calling ec.tracks_added"#(index={selected_index}, cbt_tracks=({len(tracks_of_type)} tracks), cb_type={callback_track_type_of_selected_index}"
+                    # msg = (index={selected_index}, cbt_tracks=({len(tracks_of_type)} tracks), cb_type={callback_track_type_of_selected_index})"
+                    msg = f"{log_id}calling ec.tracks_added" # + msg
                     self.log_message(logging.DEBUG, msg)
                     self.__encoder_controller.tracks_added(selected_index, tracks_of_type, callback_track_type_of_selected_index)
                 else:
-                    self.log_message(logging.DEBUG,f"{log_id}calling track_added ")#passing index {selected_index} only")
+                    # msg = passing index {selected_index} only")
+                    self.log_message(logging.DEBUG,f"{log_id}calling track_added ") # + msg
                     self.__encoder_controller.track_added(selected_index, found_changed_track_callback_type)
                 #self.request_rebuild_midi_map() <-- called by EC
             else:
-                self.log_message(logging.DEBUG,f"{log_id}calling EC.track_moved")# passing cb type {callback_track_type_of_selected_index} and song index {selected_index}")
+                # msg = passing cb type {callback_track_type_of_selected_index} and song index {selected_index}")
+                self.log_message(logging.DEBUG,f"{log_id}calling EC.track_moved") # + msg
                 # since track counts match, something else in the callback_track_type collection of the selected_index's Track changed
                 self.__encoder_controller.track_moved(callback_track_type_of_selected_index, selected_index)
         else:
@@ -1109,7 +1096,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     def selected_device_change_state(self, track, tid, type):
         # the EC.__on_device_changed() callback listener handles events when the selected-device selection changes, this callback listener handles events when
         # something else about the selected device changes, specifically when its position (index) changes in the selected track's device list
-        # note that the tid input index here can include non-visible track indices (tid is 3 for track 2 if track 1 is a collapsed Group holding 2 tracks)
+        # note that the tid input index here can include non-visible track indices (tid is 3 for track 2 if track 1 is a collapsed Group hiding 2 tracks)
         log_id = "C4.selected_device_change_state: "
         # self.log_message(logging.DEBUG, f"{log_id}callback event for {track.name} with callback type {type} at input index {tid}")
         selected_index, callback_track_type_of_selected_index, cbtt_index_of_selected_index, track_count = self.find_track_index(track)
