@@ -15,26 +15,69 @@ class MackieC4ListenerMixin(object):
     
     __module__ = __name__
 
-    @depends(encoder_controller=None)
-    def __init__(self, encoder_controller=None):
+    @depends(log_levels=None)
+    def __init__(self, log_levels=None):
                 
         self._lm = {}   # lm == listener mappings
-        # needed because self.__encoder_controller resolves here, MackieC4ListenerMixin, not MackieC4 where "public" methods like self.song() resolve
-        self.__my_ec_ref = encoder_controller
+
+        self.__my_log_levels = log_levels
 
         self._mixer_master_keys = ('volume', 'panning', 'crossfader')
         self._mixer_normal_track_keys_all = ('arm', 'solo', 'mute', 'is_frozen', 'current_monitoring_state', 'available_input_routing_channels',
-                                         'available_input_routing_types', 'available_output_routing_channels',
-                                         'available_output_routing_types', 'input_routing_channel', 'input_routing_type',
-                                         'output_routing_channel', 'output_routing_type')
+                                         'available_input_routing_types', 'available_output_routing_channels', 'available_output_routing_types',
+                                         'input_routing_channel', 'input_routing_type', 'output_routing_channel', 'output_routing_type')
         self._mixer_normal_track_keys_in_use = ('arm', 'solo', 'mute', 'is_frozen')
         self._mixer_normal_strip_keys_in_use = ('volume', 'panning')
-        self._mixer_return_track_keys_all = ('solo', 'mute', 'available_output_routing_channels', 'available_output_routing_types', 
+        self._mixer_return_track_keys_all = ('solo', 'mute', 'available_output_routing_channels', 'available_output_routing_types',
                                         'output_routing_channel', 'output_routing_type')
         self._mixer_return_track_keys_in_use = ('solo', 'mute')
         self._mixer_return_strip_keys_in_use = ('volume', 'panning')
         self._initialize_listener_setup()
 
+    # LOM reference to the current song() all remote scripts inherit
+    def song(self):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+
+    # necessary utility methods
+    def get_device_list(self, container, expand_chains=False, report=True):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def log_message(self, level=logging.ERROR, *message):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+
+    # listener callback implementation methods
+    # Note that typically, only one, if any, input parameter is provided by Live when a registered listener receives a call back notification.
+    # Valid input values provided at the time a callback method gets registered as a listener (like r=0 or type below) do NOT
+    # get saved in the LOM and passed back later when listener subjects fire actual event notifications. If Live passes an input value to a
+    # callback method with a notification, it's because that's how Ableton designed Live's "event observer" system, not because of how
+    # this Mixin (and inheritors) implements Live's "event observer" system. (For example, the C4 script is generally only concerned with "visible tracks"
+    # while Live's callbacks are generally associated with "(all) tracks" in a song session, so the 'tid' ((all tracks)track index) passed to a listener
+    # is quite often different from the index of the same track in Live's "visible tracks" collection.)
+    def on_is_frozen_changed(self):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def send_changestate(self, tid, track, sid, send, r=0):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def mixert_changestate(self, type, tid, track):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def mixerv_changestate(self, type, tid, track):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def trname_changestate(self, tid, track, ret):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def selected_device_change_state(self, track, tid, type):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def devpm_change(self, device):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def param_changestate(self, param, tid, did, pid, type):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def scene_change(self):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def track_change(self):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def tracks_change(self, caller=None):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def overdub_change(self):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
+    def transport_change(self):
+        raise NotImplementedError("method must be implemented in classes that inherit from this Mixin class")
 
     def _initialize_listener_setup(self):
         self.setup_device_listener_keys()
@@ -404,7 +447,7 @@ class MackieC4ListenerMixin(object):
         # if self.has_track_device_listener(track):
         #     self.remove_track_device_listener(track)
         cb = lambda: self.selected_device_change_state(track, tid, type)
-        self.log_message(self.script_log_levels["TRACE"], "LM.add_track_device_listener: input " + dtls)
+        self.log_message(self.__my_log_levels["TRACE"], "LM.add_track_device_listener: input " + dtls)
         if track.view.selected_device_has_listener(cb):
             track.view.remove_selected_device_listener(cb)
 

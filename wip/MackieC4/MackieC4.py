@@ -119,7 +119,8 @@ class MackieC4(MackieC4ListenerMixin, object):
             self.register_component(comp)
         self.__init_ready = True
 
-        MackieC4ListenerMixin.__init__(self, encoder_controller=self.__encoder_controller)
+        # self.song().tracks property for example, needs to exist before initializing any track related listeners
+        MackieC4ListenerMixin.__init__(self, log_levels=self.script_log_levels)
 
         # if the goodbye message is displaying on the C4 after Live shutdown, and Live restarts, clear the display asap
         self.request_firmware_version()
