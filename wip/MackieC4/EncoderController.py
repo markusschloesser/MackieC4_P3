@@ -84,8 +84,14 @@ class ButtonController(object):
     def last_assignment_led_on(self):
         return self.__last_assignment_led_on
     @property
+    def last_active_script_mode(self):
+        return button_id_to_assignment_mode(self.last_assignment_led_on)
+    @property
     def current_assignment_led_on(self):
         return self.__current_assignment_led_on
+    @property
+    def current_active_script_mode(self):
+        return button_id_to_assignment_mode(self.current_assignment_led_on)
     @property
     def nbr_modifier_btns_pressed(self):
         rtn = self.modifier_button_bit_field()
