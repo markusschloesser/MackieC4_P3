@@ -2475,20 +2475,20 @@ class EncoderController(MackieC4Component, Component):
             # display these once only here because the Max sequencer handles its own display in C4M_USER mode
             # users see these instructions displayed when the Max sequencer is NOT connected,
             # and when it is connected but MIDI bandwidth is bottle-necked and slow
-            top_line = 'MackieC4Pro remote script User mode'.center(NUM_CHARS_PER_DISPLAY_LINE)
-            bottom_line = 'Switching to Max Sequencer patch control'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            top_line = 'MackieC4Pro remote script User mode'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+            bottom_line = 'Switching to Max Sequencer patch control'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
             self.send_display_string(LCD_ANGLED_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
             self.send_display_string(LCD_ANGLED_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-            top_line = 'Press and Hold the Marker button again'.center(NUM_CHARS_PER_DISPLAY_LINE)
-            bottom_line = 'Then Press the Lock button to Exit USER mode and'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            top_line = 'Press and Hold the Marker button again'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+            bottom_line = 'Then Press the Lock button to Exit USER mode and'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
             self.send_display_string(LCD_TOP_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
             self.send_display_string(LCD_TOP_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-            top_line = 'Return to the previous remote script mode. All other'.center(NUM_CHARS_PER_DISPLAY_LINE)
-            bottom_line = 'button and pot control functions pass to the Max patch'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            top_line = 'Return to the previous remote script mode. All other'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+            bottom_line = 'button and pot control functions pass to the Max patch'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
             self.send_display_string(LCD_MDL_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
             self.send_display_string(LCD_MDL_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-            top_line = 'Press and Hold Marker then Press Lock'.center(NUM_CHARS_PER_DISPLAY_LINE)
-            bottom_line = 'to exit USER mode'.center(NUM_CHARS_PER_DISPLAY_LINE)
+            top_line = 'Press and Hold Marker then Press Lock'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+            bottom_line = 'to exit USER mode'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
             self.send_display_string(LCD_BTM_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
             self.send_display_string(LCD_BTM_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
         if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
@@ -2508,7 +2508,7 @@ class EncoderController(MackieC4Component, Component):
                 row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
                 current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
 
-                if row_index + current_encoder_bank_offset < self.__eah.max_device_count():
+                if row_index + current_encoder_bank_offset < self.__eah.max_device_count:
                     device_index = row_index + current_encoder_bank_offset
                     if device_index < len(extended_device_list):
                         device = extended_device_list[device_index]
