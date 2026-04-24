@@ -55,6 +55,18 @@ class ButtonController(object):
             C4SID_CONTROL: {"led_id": {C4SID_CONTROL: {"led_value": [0, 127]}}, "press_count": 0},
             C4SID_ALT: {"led_id": {C4SID_ALT: {"led_value": [0, 127]}}, "press_count": 0}
         }
+        self.parameter_group_buttons = {
+            C4SID_BANK_LEFT: {"led_id": {C4SID_BANK_LEFT: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_BANK_RIGHT: {"led_id": {C4SID_BANK_RIGHT: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_SINGLE_LEFT: {"led_id": {C4SID_SINGLE_LEFT: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_SINGLE_RIGHT: {"led_id": {C4SID_SINGLE_RIGHT: {"led_value": [0, 127]}}, "press_count": 0}
+        }
+        self.session_group_buttons = {
+            C4SID_TRACK_LEFT: {"led_id": {C4SID_TRACK_LEFT: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_TRACK_RIGHT: {"led_id": {C4SID_TRACK_RIGHT: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_SLOT_UP: {"led_id": {C4SID_SLOT_UP: {"led_value": [0, 127]}}, "press_count": 0},
+            C4SID_SLOT_DOWN: {"led_id": {C4SID_SLOT_DOWN: {"led_value": [0, 127]}}, "press_count": 0}
+        }
         self.modifier_group_multi_press_definitions = {
             "none": 0,
             "shift_only": 1,
@@ -179,6 +191,58 @@ class ButtonController(object):
     def only_alt_is_pressed(self):
         return self.modifier_button_bit_field() == self.modifier_group_multi_press_definitions["alt_only"]
 
+    @property
+    def bank_left_led_state(self):
+        return self.get_parameter_btn_led_state(C4SID_BANK_LEFT)
+    @property
+    def bank_right_led_state(self):
+        return self.get_parameter_btn_led_state(C4SID_BANK_RIGHT)    
+    @property
+    def single_left_led_state(self):
+        return self.get_parameter_btn_led_state(C4SID_SINGLE_LEFT)
+    @property
+    def single_right_led_state(self):
+        return self.get_parameter_btn_led_state(C4SID_SINGLE_RIGHT)
+
+    @property
+    def bank_left_pressed_state(self):
+        return self.get_parameter_btn_pressed_state(C4SID_BANK_LEFT)
+    @property
+    def bank_right_pressed_state(self):
+        return self.get_parameter_btn_pressed_state(C4SID_BANK_RIGHT)    
+    @property
+    def single_left_pressed_state(self):
+        return self.get_parameter_btn_pressed_state(C4SID_SINGLE_LEFT)
+    @property
+    def single_right_pressed_state(self):
+        return self.get_parameter_btn_pressed_state(C4SID_SINGLE_RIGHT)
+
+    @property
+    def track_left_led_state(self):
+        return self.get_session_btn_led_state(C4SID_TRACK_LEFT)
+    @property
+    def track_right_led_state(self):
+        return self.get_session_btn_led_state(C4SID_TRACK_RIGHT)    
+    @property
+    def slot_up_led_state(self):
+        return self.get_session_btn_led_state(C4SID_SLOT_UP)
+    @property
+    def slot_down_led_state(self):
+        return self.get_session_btn_led_state(C4SID_SLOT_DOWN)
+
+    @property
+    def track_left_pressed_state(self):
+        return self.get_session_btn_pressed_state(C4SID_TRACK_LEFT)
+    @property
+    def track_right_pressed_state(self):
+        return self.get_session_btn_pressed_state(C4SID_TRACK_RIGHT)    
+    @property
+    def slot_up_pressed_state(self):
+        return self.get_session_btn_pressed_state(C4SID_SLOT_UP)
+    @property
+    def slot_down_pressed_state(self):
+        return self.get_session_btn_pressed_state(C4SID_SLOT_DOWN)
+
     def handle_function_button_press(self, button_id):
         if button_id == C4SID_SPLIT:
             self._split_led_states()
@@ -190,6 +254,12 @@ class ButtonController(object):
 
     def handle_modifier_button_press(self, button_id):
         self._update_modifier_button_state(button_id)
+
+    def handle_parameter_button_press(self, button_id):
+        self._update_parameter_button_state(button_id)
+
+    def handle_session_button_press(self, button_id):
+        self._update_session_button_state(button_id)
 
     def get_function_btn_led_state(self, button_id):
         """These buttons have associated physical LEDs. Because this controller only counts function button presses, """ \
@@ -222,6 +292,24 @@ class ButtonController(object):
     def _pressed_state(btn_ref):
         toggle = btn_ref["press_count"] % 2
         return 0 if not toggle else 127
+
+    def get_parameter_btn_led_state(self, button_id):
+        """These buttons have associated physical LEDs. Because this controller counts both parameter button presses and releases, """ \
+        """the LED value returned here only returns state is ON while the button is actually pressed (unlike controlled buttons with physical LEDs that latch) """
+        return self._led_state(self.parameter_group_buttons[button_id], button_id)
+
+    def get_parameter_btn_pressed_state(self, button_id):
+        """releases count as presses, for even counts 0, 2, 4, etc. the button is released, otherwise the button is pressed"""
+        return self._pressed_state(self.parameter_group_buttons[button_id])
+
+    def get_session_btn_led_state(self, button_id):
+        """These buttons have associated physical LEDs. Because this controller counts both parameter button presses and releases, """ \
+        """the LED value returned here only returns state is ON while the button is actually pressed (unlike controlled buttons with physical LEDs that latch) """
+        return self._led_state(self.session_group_buttons[button_id], button_id)
+
+    def get_session_btn_pressed_state(self, button_id):
+        """releases count as presses, for even counts 0, 2, 4, etc. the button is released, otherwise the button is pressed"""
+        return self._pressed_state(self.session_group_buttons[button_id])
 
     def modifier_button_bit_field(self):
         """Shift=2^0, Option=2^1, Control=2^2, Alt=2^3, no modifiers pressed = 0. """ \
@@ -298,6 +386,12 @@ class ButtonController(object):
 
     def _update_modifier_button_state(self, btn_id):
         return self._update_button_state(self.modifier_group_buttons[btn_id])
+
+    def _update_parameter_button_state(self, btn_id):
+        return self._update_button_state(self.parameter_group_buttons[btn_id])
+
+    def _update_session_button_state(self, btn_id):
+        return self._update_button_state(self.session_group_buttons[btn_id])
 
     @staticmethod
     def _update_button_state(btn_ref):
