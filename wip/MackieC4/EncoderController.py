@@ -2131,7 +2131,10 @@ class EncoderController(MackieC4Component, Component):
 
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
-        self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}returning {len(result)} params for device with {len(self.__chosen_plugin.parameters)}")
+        if liveobj_valid(self.__chosen_plugin):
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}returning {len(result)} params for device with {len(self.__chosen_plugin.parameters)} params")
+        else:
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}returning {len(result)} params for None device with zero params")
         self.__ordered_plugin_parameters = result
 
 
