@@ -151,12 +151,19 @@ class MackieC4ListenerMixin(object):
         # Master Track
         for type in self._mixer_master_keys:
             for tr in self._lm["masterlisten"][type]:
-                if liveobj_valid(tr):
+                if liveobj_valid(tr) and liveobj_valid(tr.mixer_device):
+                    m_d = tr.mixer_device
                     cb = self._lm["masterlisten"][type][tr]
-                    cmd_pfx = f"tr.mixer_device.{type}"
-                    test = eval(cmd_pfx + '.value_has_listener(cb)')
-                    if test:
-                        eval(cmd_pfx + '.remove_value_listener(cb)')
+                    # ('volume', 'panning', 'crossfader')
+                    if type == "volume":
+                        if m_d.volume.value_has_listener(cb):
+                            m_d.volume.remove_value_listener(cb)
+                    elif type == 'panning':
+                        if m_d.panning.value_has_listener(cb):
+                            m_d.panning.remove_value_listener(cb)
+                    elif type == 'crossfader':
+                        if m_d.crossfader.value_has_listener(cb):
+                            m_d.crossfader.remove_value_listener(cb)
 
         # Normal Tracks
         for type in self._mixer_normal_track_keys_all:
@@ -164,34 +171,63 @@ class MackieC4ListenerMixin(object):
 
                 if liveobj_valid(tr):
                     cb = self._lm["mlisten"][type][tr]
+                    # ('arm', 'solo', 'mute', 'is_frozen', 'current_monitoring_state', 'available_input_routing_channels',
+                    # 'available_input_routing_types', 'available_output_routing_channels', 'available_output_routing_types',
+                    # 'input_routing_channel', 'input_routing_type', 'output_routing_channel', 'output_routing_type')
                     if type == 'arm':
                         if tr.can_be_armed:
                             if tr.arm_has_listener(cb):
                                 tr.remove_arm_listener(cb)
-
                     elif type == 'current_monitoring_state':
                         if tr.can_be_armed:
                             if tr.current_monitoring_state_has_listener(cb):
                                 tr.remove_current_monitoring_state_listener(cb)
-                    else:
-                        cmd_hdr = f"tr.{type}"
-                        cmd_tail = "_has_listener(cb)"
-                        test = eval(cmd_hdr + cmd_tail)
-                        if test:
-                            cmd_hdr = f"tr.remove_{type}"
-                            cmd_tail = "_listener(cb)"
-                            eval(cmd_hdr + cmd_tail)
+                    elif type == 'solo':
+                        if tr.solo_has_listener(cb):
+                            tr.remove_solo_listener(cb)
+                    elif type == 'mute':
+                        if tr.mute_has_listener(cb):
+                            tr.remove_mute_listener(cb)
+                    elif type == 'is_frozen':
+                        if tr.is_frozen_has_listener(cb):
+                            tr.remove_is_frozen_listener(cb)
+                    elif type == 'available_input_routing_channels':
+                        if tr.available_input_routing_channels_has_listener(cb):
+                            tr.remove_available_input_routing_channels_listener(cb)
+                    elif type == 'available_input_routing_types':
+                        if tr.available_input_routing_types_has_listener(cb):
+                            tr.remove_available_input_routing_types_listener(cb)
+                    elif type == 'available_output_routing_channels':
+                        if tr.available_output_routing_channels_has_listener(cb):
+                            tr.remove_available_output_routing_channels_listener(cb)
+                    elif type == 'available_output_routing_types':
+                        if tr.available_output_routing_types_has_listener(cb):
+                            tr.remove_available_output_routing_types_listener(cb)
+                    elif type == 'input_routing_channel':
+                        if tr.input_routing_channel_has_listener(cb):
+                            tr.remove_input_routing_channel_listener(cb)
+                    elif type == 'input_routing_type':
+                        if tr.input_routing_type_has_listener(cb):
+                            tr.remove_input_routing_type_listener(cb)
+                    elif type == 'output_routing_channel':
+                        if tr.output_routing_channel_has_listener(cb):
+                            tr.remove_output_routing_channel_listener(cb)
+                    elif type == 'output_routing_type':
+                        if tr.output_routing_type_has_listener(cb):
+                            tr.remove_output_routing_type_listener(cb)
 
         for type in self._mixer_normal_strip_keys_in_use:
             for tr in self._lm["mlisten"][type]:
-                if liveobj_valid(tr):
+                if liveobj_valid(tr)and liveobj_valid(tr.mixer_device):
+                    m_d = tr.mixer_device
                     cb = self._lm["mlisten"][type][tr]
-                    cmd_hdr = f"tr.mixer_device.{type}"
-                    cmd_tail = ".value_has_listener(cb)"
-                    test = eval(cmd_hdr + cmd_tail)
-                    if test:
-                        cmd_tail = ".remove_value_listener(cb)"
-                        eval(cmd_hdr + cmd_tail)
+                    # ('volume', 'panning')
+                    if type == "volume":
+                        if m_d.volume.value_has_listener(cb):
+                            m_d.volume.remove_value_listener(cb)
+                    elif type == 'panning':
+                        if m_d.panning.value_has_listener(cb):
+                            m_d.panning.remove_value_listener(cb)
 
         for tr in self._lm["mlisten"]['sends']:
             if liveobj_valid(tr):
@@ -212,24 +248,26 @@ class MackieC4ListenerMixin(object):
             for tr in self._lm["rlisten"][type]:
                 if liveobj_valid(tr):
                     cb = self._lm["rlisten"][type][tr]
-                    cmd_hdr = f"tr.{type}"
-                    cmd_tail = "_has_listener(cb)"
-                    test = eval(cmd_hdr + cmd_tail)
-                    if test:
-                        cmd_hdr = f"tr.remove_{type}"
-                        cmd_tail = "_listener(cb)"
-                        eval(cmd_hdr + cmd_tail)
+                    # ('solo', 'mute')
+                    if type == 'solo':
+                        if tr.solo_has_listener(cb):
+                            tr.remove_solo_listener(cb)
+                    elif type == 'mute':
+                        if tr.mute_has_listener(cb):
+                            tr.remove_mute_listener(cb)
 
         for type in self._mixer_return_strip_keys_in_use:
             for tr in self._lm["rlisten"][type]:
-                if liveobj_valid(tr):
+                if liveobj_valid(tr)and liveobj_valid(tr.mixer_device):
+                    m_d = tr.mixer_device
                     cb = self._lm["rlisten"][type][tr]
-                    cmd_hdr = f"tr.mixer_device.{type}"
-                    cmd_tail = ".value_has_listener(cb)"
-                    test = eval(cmd_hdr + cmd_tail)
-                    if test:
-                        cmd_tail = ".remove_value_listener(cb)"
-                        eval(cmd_hdr + cmd_tail)
+                    # ('volume', 'panning')
+                    if type == "volume":
+                        if m_d.volume.value_has_listener(cb):
+                            m_d.volume.remove_value_listener(cb)
+                    elif type == 'panning':
+                        if m_d.panning.value_has_listener(cb):
+                            m_d.panning.remove_value_listener(cb)
 
         for tr in self._lm["rlisten"]['sends']:
             if liveobj_valid(tr):
@@ -304,20 +342,46 @@ class MackieC4ListenerMixin(object):
     def add_mixert_listener(self, tid, type, track):
         if not (track in self._lm["mlisten"][type]):
             cb = lambda: self.mixert_changestate(type, tid, track)
+            # ('arm', 'solo', 'mute', 'is_frozen')
+            # arm case already handled
             self._lm["mlisten"][type][track] = cb
-            eval('track.add_' + type + '_listener(cb)')
+            try:
+                if type == 'solo':
+                    track.add_solo_listener(cb)
+                elif type =='mute':
+                    track.add_mute_listener(cb)
+                elif type == 'is_frozen':
+                    track.add_is_frozen_listener(cb)
+            except AttributeError as e:
+                self.log_message(logging.ERROR, f"MCLM.add_mixert_listener: unable to add track {type} listener {cb}")
 
     def add_mixerv_listener(self, tid, type, track):
         if not (track in self._lm["mlisten"][type]):
             cb = lambda: self.mixerv_changestate(type, tid, track)
+            # ('volume', 'panning')
             self._lm["mlisten"][type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+            try:
+                if type == 'volume':
+                    track.mixer_device.volume.add_value_listener(cb)
+                elif type == 'panning':
+                    track.mixer_device.panning.add_value_listener(cb)
+            except AttributeError as e:
+                self.log_message(logging.ERROR, f"MCLM.add_mixerv_listener: unable to add track mixer {type} listener {cb}")
 
     def add_master_listener(self, tid, type, track):
         if not (track in self._lm["masterlisten"][type]):
             cb = lambda: self.mixerv_changestate(type, tid, track, 2)
+            # ('volume', 'panning', 'crossfader')
             self._lm["masterlisten"][type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+            try:
+                if type == 'volume':
+                    track.mixer_device.volume.add_value_listener(cb)
+                elif type == 'panning':
+                    track.mixer_device.panning.add_value_listener(cb)
+                elif type == 'crossfader':
+                    track.mixer_device.crossfader.add_value_listener(cb)
+            except AttributeError as e:
+                self.log_message(logging.ERROR, f"MCLM.add_master_listener: unable to add track mixer {type} listener {cb}")
 
     def add_retsend_listener(self, tid, track, sid, send):
         if not (track in self._lm["rlisten"]['sends']):
@@ -331,13 +395,27 @@ class MackieC4ListenerMixin(object):
         if not (track in self._lm["rlisten"][type]):
             cb = lambda: self.mixert_changestate(type, tid, track, 1)
             self._lm["rlisten"][type][track] = cb
-            eval('track.add_' + type + '_listener(cb)')
+            # ('solo', 'mute')
+            try:
+                if type == 'solo':
+                    track.add_solo_listener(cb)
+                elif type =='mute':
+                    track.add_mute_listener(cb)
+            except AttributeError as e:
+                self.log_message(logging.ERROR, f"MCLM.add_retmixert_listener: unable to add track {type} listener {cb}")
 
     def add_retmixerv_listener(self, tid, type, track):
         if not (track in self._lm["rlisten"][type]):
             cb = lambda: self.mixerv_changestate(type, tid, track, 1)
             self._lm["rlisten"][type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+            # ('volume', 'panning')
+            try:
+                if type == 'volume':
+                    track.mixer_device.volume.add_value_listener(cb)
+                elif type == 'panning':
+                    track.mixer_device.panning.add_value_listener(cb)
+            except AttributeError as e:
+                self.log_message(logging.ERROR, f"MCLM.add_retmixerv_listener: unable to add track mixer {type} listener {cb}")
 
     # Track name listener
     def add_trname_listener(self, tid, track, ret=0):
