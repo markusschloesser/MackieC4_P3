@@ -2147,11 +2147,20 @@ class EncoderController(MackieC4Component, Component):
         self.__filter_mst_trk_allow_audio = 0
         if not liveobj_valid(self.selected_track):
             self.main_script().log_message(f"EC.__reassign_encoder_parameters: self.selected track is not valid, blowing up soon")
-    #     # execution ends up here after deleting some tracks, bug hunting we are
-    # else:
+
         self.__current_track_name = self.selected_track.name if liveobj_valid(self.selected_track) else "None"
-        self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
-        extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
+        # EXPERIMENT: Can the script rely on the locally stored reference data now instead of fetching the extended device list from the LOM again here?
+        # self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
+        # extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
+        # this list of stored data already contains "expanded chains" or not
+        stored_devices = self.__eah.data.get_track_device_map(self.__eah.last_selected_track_index)
+        extended_device_list = []
+        for i in stored_devices.keys():
+            active_device_ref = stored_devices[i]
+            d = active_device_ref.device
+            if liveobj_valid(d):
+                extended_device_list.append(d)
+
         if self.selected_track != self.song().master_track:
             self.__filter_mst_trk = 1  # a regular track is selected (not master track)
             if self.selected_track.has_audio_output:
