@@ -121,12 +121,18 @@ def toggle_or_cycle_parameter_value(parameter):
         else:
             parameter.value = parameter.max if parameter.value == parameter.min else parameter.min
 
-def update_or_cycle_parameter_value(parameter, increment_amount):
+def update_or_cycle_parameter_value(parameter, increment_amount, option_is_pressed=False):
+    """adds an incremental value to the input prarameter's current value, optionally wrapping around the min and max boundary values"""
     if liveobj_valid(parameter):
         new_value = parameter.value + increment_amount
         if new_value > parameter.max:
-            parameter.value = parameter.min
+            if option_is_pressed:
+                new_value = parameter.min
+            else:
+                new_value = parameter.max
         elif new_value < parameter.min:
-            parameter.value = parameter.max
-        else:
-            parameter.value = new_value
+            if option_is_pressed:
+                new_value = parameter.max
+            else:
+                new_value = parameter.min
+        parameter.value = new_value

@@ -1386,7 +1386,7 @@ class EncoderController(MackieC4Component, Component):
                             else:
                                 inc_amt = None
                             # self.main_script().log_message(logging.DEBUG, f"{log_id}updating value {param.value} by {inc_amt}")
-                            song_util.update_or_cycle_parameter_value(param, inc_amt)
+                            song_util.update_or_cycle_parameter_value(param, inc_amt, self.__btn_ctlr.only_option_is_pressed)
                             update_self = True
                             # self.main_script().log_message(logging.DEBUG, f"{log_id}updated value {param.value}")
                         else:
