@@ -2110,13 +2110,14 @@ class EncoderController(MackieC4Component, Component):
             return None, 'PPppPP'
 
     def __reorder_parameters(self):
+        log_id = "EC.__reorder_parameters: "
         result = []
         if liveobj_valid(self.__chosen_plugin):
             device_class_name = self.__chosen_plugin.class_name
 
             if device_class_name in DEVICE_DICT:
                 device_banks = DEVICE_DICT[device_class_name]
-
+                self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{device_class_name} is in the DEVICE_DICT with {len(device_banks.keys())} banks")
                 for device_bank_index, bank in enumerate(device_banks):
                     for param_bank_index, param_name in enumerate(bank):
                         parameter = get_parameter_by_name(self.__chosen_plugin, param_name)
@@ -2130,7 +2131,7 @@ class EncoderController(MackieC4Component, Component):
 
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
-
+        self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}returning {len(result)} params for device with {len(self.__chosen_plugin.parameters)}")
         self.__ordered_plugin_parameters = result
 
 
