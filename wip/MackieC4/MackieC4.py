@@ -89,9 +89,10 @@ class MackieC4(MackieC4ListenerMixin, object):
     track_index = 0
     track_count = 0
     
-    script_log_levels = {"ALWAYS": 0, "TRACE": 5, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NEVER": 99}
-    # trace log level automatically enables the (EncoderAssignmentHistory module) SongData class property self.class_logging = True
-    # trace log level is a very verbose and detailed debug level
+    script_log_levels = {"EVERYTHING": 0, "TRACE": 5, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NOTHING": 99}
+    # trace or lower log level automatically enables the (EncoderAssignmentHistory module) SongData class property self.class_logging = True
+    # trace log level is a very verbose and detailed debug level, anything log level is so verbose it is nearly useless, it's hard to find the needles in the haystack,
+    # but sometimes digging through all that logging-hay is the only way to find and fix issues.
     current_script_log_level = script_log_levels["TRACE"]
 
     def __init__(self, c_instance):
@@ -280,9 +281,10 @@ class MackieC4(MackieC4ListenerMixin, object):
     def receive_midi(self, midi_bytes):
         """Live -> Script    MIDI messages are only received through this function, when explicitly forwarded in 'build_midi_map'."""
         log_id = "C4.receive_midi: "
-        # if self.current_script_log_level < self.script_log_levels["TRACE"]: # ALWAYS is the most verbose, deepest log detail level setting
-        # encoder turns can quickly log dozens of CC messages here, for example
-        self.log_message(self.script_log_levels["ALWAYS"], f"{log_id}input is {midi_bytes}")
+        # if self.current_script_log_level < self.script_log_levels["TRACE"]:
+        # EVERYTHING is the most verbose, deepest log detail level setting, the only self.current_script_log_level "less than TRACE"
+        # encoder turns can quickly log dozens of CC messages here, for example, so ONLY log every received midi message
+        self.log_message(self.script_log_levels["EVERYTHING"], f"{log_id}input is {midi_bytes}")
         # coming from C4 (button and knob actions) midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
         # C4 always sends and receives on channel 1
@@ -817,7 +819,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.last_selected_track_callback_type = selected_callback_type
         self.last_selected_callback_type_index = selected_callback_type_index
         rtn = self.last_selected_track_index, self.last_selected_track_callback_type, self.last_selected_callback_type_index
-        # most_verbose_level_only = self.script_log_levels["ALWAYS"]
+        # most_verbose_level_only = self.script_log_levels["EVERYTHING"]
         # self.log_message(most_verbose_level_only, f"{log_id} values set and returning (song_index, cb_type, cb_type_index) = {rtn}")
         return rtn
 
