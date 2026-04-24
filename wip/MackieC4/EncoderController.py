@@ -193,35 +193,33 @@ class ButtonController(object):
 
     def get_function_btn_led_state(self, button_id):
         """These buttons have associated physical LEDs. Because this controller only counts function button presses, """ \
-        """the LED value returned here latches and returns state is ON or OFF until the button is pressed again"""
-        btn_ref = self.function_group_buttons[button_id]
-        btn_led_ref = btn_ref["led_id"]
-        toggle = btn_ref["press_count"] % 2
-        led_value = btn_led_ref[button_id]["led_value"][toggle]
-        return led_value
+        """the LED value returned here latches and returns state is ON or OFF until the button is pressed again. """ \
+        """This method does not take multiple LEDs (the Split button) into account."""
+        return self._led_state(self.function_group_buttons[button_id], button_id)
 
     def get_assignment_btn_led_state(self, button_id):
         """These buttons have associated physical LEDs. Because this controller only counts assignment button presses, """ \
         """the LED value returned here latches and returns state is ON or OFF until the button is pressed again. """ \
         """However, buttons in this group represent mutually exclusive 'script operation modes'.  """
-        btn_ref = self.assignment_group_buttons[button_id]
-        btn_led_ref = btn_ref["led_id"]
-        toggle = btn_ref["press_count"] % 2
-        led_value = btn_led_ref[button_id]["led_value"][toggle]
-        return led_value
+        return self._led_state(self.assignment_group_buttons[button_id], button_id)
 
     def get_modifier_btn_led_state(self, button_id):
         """These buttons don't have associated physical LEDs. Because this controller counts both modifier button presses and releases, """ \
         """the LED value returned here only returns state is ON while the button is actually pressed (unlike controlled buttons with physical LEDs that latch)"""
-        btn_ref = self.modifier_group_buttons[button_id]
-        btn_led_ref = btn_ref["led_id"]
-        toggle = btn_ref["press_count"] % 2
-        led_value = btn_led_ref[button_id]["led_value"][toggle]
-        return led_value
+        return self._led_state(self.modifier_group_buttons[button_id], button_id)
 
     def get_modifier_btn_pressed_state(self, button_id):
         """releases count as presses, for even counts 0, 2, 4, etc. the button is released, otherwise the button is pressed"""
-        btn_ref = self.modifier_group_buttons[button_id]
+        return self._pressed_state(self.modifier_group_buttons[button_id])
+
+    @staticmethod
+    def _led_state(btn_ref, btn_id):
+        btn_led_ref = btn_ref["led_id"]
+        toggle = btn_ref["press_count"] % 2
+        return btn_led_ref[btn_id]["led_value"][toggle]
+
+    @staticmethod
+    def _pressed_state(btn_ref):
         toggle = btn_ref["press_count"] % 2
         return 0 if not toggle else 127
 
@@ -244,6 +242,7 @@ class ButtonController(object):
         """Marker=2^0, Track=2^1, ChanStrip=2^2, Function=2^3, no assignment button leds ON = 0. """ \
         """Returns an int value 0 - 15 depending on which assignment button leds are currently ON (currently, one LED in this group is always exclusively ON, """ \
         """so this method only actually returns one of these four 2^x values corresponding to which assignment button led is currently ON), no 'press combos' allowed """
+        # but theoretically, this script could leverage up to all 16 unique four bit values for up to 12 more "assignment modes"
         rtn = 0
         if self.function_led_state > 0:
             rtn = + 8
@@ -275,9 +274,7 @@ class ButtonController(object):
         self._update_function_button_state(value)
 
     def _update_function_button_state(self, btn_id):
-        button_ref = self.function_group_buttons[btn_id]
-        button_ref["press_count"] += 1
-        return button_ref
+        return self._update_button_state(self.function_group_buttons[btn_id])
 
     def _update_assignment_button_state(self, btn_id):
         """(script mode) assignment group button LED ON states are mutually exclusive, and one assignment LED is always ON. You can only turn OFF a given """ \
@@ -286,8 +283,7 @@ class ButtonController(object):
         """only the 'normal' script mode related events """
         if self.get_assignment_btn_led_state(btn_id) < 1:
             # new assignment mode is NOT already active (LED is OFF)
-            button_ref = self.assignment_group_buttons[btn_id]
-            button_ref["press_count"] += 1  # new assignment mode is active (LED is now ON)
+            button_ref = self._update_button_state(self.assignment_group_buttons[btn_id])# new assignment mode is active (LED is now ON)
             self.__current_assignment_led_on = btn_id
             for key in self.assignment_group_buttons.keys():
                 btn = self.assignment_group_buttons[key]
@@ -301,9 +297,12 @@ class ButtonController(object):
             return self.assignment_group_buttons[btn_id]
 
     def _update_modifier_button_state(self, btn_id):
-        button_ref = self.modifier_group_buttons[btn_id]
-        button_ref["press_count"] += 1
-        return button_ref
+        return self._update_button_state(self.modifier_group_buttons[btn_id])
+
+    @staticmethod
+    def _update_button_state(btn_ref):
+        btn_ref["press_count"] += 1
+        return btn_ref
 
     def _split_led_states(self, value=C4SID_SPLIT):
         button_ref = self._update_function_button_state(value)
