@@ -271,7 +271,7 @@ class ButtonController(object):
             rtn += 4
         return rtn
 
-    def _split_erase_led_state(self, value=C4SID_SPLIT_ERASE):
+    def _flip_split_erase_led_state(self, value=C4SID_SPLIT_ERASE):
         self._update_function_button_state(value)
 
     def _update_function_button_state(self, btn_id):
@@ -326,12 +326,12 @@ class ButtonController(object):
             # 3 SPLIT leds ON means turn OFF "LCD text scrolling" (displays don't update often enough for scrolling)
             if self.split_erase_led_state > 0:
                 # if the "spot erase" led is ON, turn it OFF by "virtually pressing" the button
-                self._split_erase_led_state()
+                self._flip_split_erase_led_state()
         elif self.nbr_split_leds_on == 0:
             # 0 SPLIT leds ON means turn ON "LCD text scrolling" (scrolling text by default)
             if self.split_erase_led_state == 0:
                 # if the "spot erase" led is OFF, turn it ON by "virtually pressing" the button
-                self._split_erase_led_state()
+                self._flip_split_erase_led_state()
 
 
 class EncoderController(MackieC4Component, Component):
