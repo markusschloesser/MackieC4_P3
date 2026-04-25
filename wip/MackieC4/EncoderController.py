@@ -2215,27 +2215,28 @@ class EncoderController(MackieC4Component, Component):
         result = []
         if liveobj_valid(self.__chosen_plugin):
             device_class_name = self.__chosen_plugin.class_name
-
+            nbr_params = len(self.__chosen_plugin.parameters)
             if device_class_name in DEVICE_DICT:
                 device_banks = DEVICE_DICT[device_class_name]
-                self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{device_class_name} is in the DEVICE_DICT with {len(device_banks.keys())} banks")
+                bank_count = len(device_banks) # DEVICE_DICT stores tuples
+                self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{device_class_name} is in the DEVICE_DICT with {bank_count} banks")
                 for device_bank_index, bank in enumerate(device_banks):
                     for param_bank_index, param_name in enumerate(bank):
                         parameter = get_parameter_by_name(self.__chosen_plugin, param_name)
 
                         if not parameter:
                             param_index = param_bank_index + (SETUP_DB_DEVICE_BANK_SIZE * device_bank_index)
-                            if len(self.__chosen_plugin.parameters) > param_index:
+                            if nbr_params > param_index:
                                 parameter = self.__chosen_plugin.parameters[param_index]
 
                         result.append((parameter, parameter.name if parameter else None))
 
             else:
                 result = [(p, p.name) for p in self.__chosen_plugin.parameters]
-        if liveobj_valid(self.__chosen_plugin):
-            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}returning {len(result)} params for device with {len(self.__chosen_plugin.parameters)} params")
+
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for {device_class_name} with {nbr_params} params")
         else:
-            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}returning {len(result)} params for None device with zero params")
+            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for None device with zero params")
         self.__ordered_plugin_parameters = result
 
 
