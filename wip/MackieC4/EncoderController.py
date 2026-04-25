@@ -1436,6 +1436,7 @@ class EncoderController(MackieC4Component, Component):
         """ Parameter Group Buttons: Bank Left, Bank Right, Single Left, Single Right are only mapped to behavior in the two 'track modes', channel-strip and devices """
         # no wrap around: stop moving left at track 0, stop moving right at master track
         log_id = "EC.handle_bank_switch_ids: "
+        self.__btn_ctlr.handle_parameter_button_press(switch_id)
         update_self = False
         if switch_id == C4SID_BANK_LEFT:
             bank_left_index = 6
@@ -1508,6 +1509,7 @@ class EncoderController(MackieC4Component, Component):
         """ "slot navigation" (arrow up 🔼/down 🔽) switches between Devices in all modes except User """
         log_id = "EC.handle_slot_nav_switch_ids: "
         if self.__assignment_mode != button_id_to_assignment_mode[C4SID_MARKER]:
+            self.__btn_ctlr.handle_session_button_press(switch_id)
             current_trk_device_index = self.__eah.last_selected_device_index if self.__eah.last_selected_device_index is not None else 0
             max_trk_device_index = self.__eah.max_device_count - 1
             update_self = False
