@@ -296,7 +296,7 @@ class ButtonController(object):
 
     def get_parameter_btn_led_state(self, button_id):
         """These buttons have associated physical LEDs. Because this controller counts both parameter button presses and releases, """ \
-        """the LED value returned here only returns state is ON while the button is actually pressed (unlike controlled buttons with physical LEDs that latch) """
+        """the LED value returned here only returns state is ON while the button is actually pressed (unlike controlled buttons with physical LEDs that latch) """ 
         return self._led_state(self.parameter_group_buttons[button_id], button_id)
 
     def get_parameter_btn_pressed_state(self, button_id):
