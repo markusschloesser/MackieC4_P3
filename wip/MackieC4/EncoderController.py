@@ -1475,10 +1475,10 @@ class EncoderController(MackieC4Component, Component):
                             modifier = 1.0
                             if param.value < 1.0 and param.max == 1.0:
                                 modifier = 0.01
-                                if self.__btn_ctlr.only_shift_is_pressed:
-                                    modifier *= 5
-                                elif self.__btn_ctlr.only_option_is_pressed:
-                                    modifier *= 10
+                            if self.__btn_ctlr.only_shift_is_pressed:
+                                modifier *= 5
+                            elif self.__btn_ctlr.only_option_is_pressed:
+                                modifier *= 10
 
                             if switch_id == C4SID_SINGLE_LEFT:
                                 inc_amt = -1 * modifier
@@ -1496,7 +1496,8 @@ class EncoderController(MackieC4Component, Component):
                         else:
                             self.main_script().log_message(logging.WARNING, f"{log_id}param returned from get_parameter_by_name() was not liveobj_valid?")
                     # else:
-                    #     # after a device change, but before a device parameter value change, execution passes through here
+                    #     # after a device change, but before a device parameter value change: when Single Left or Right buttons are pressed
+                    #     # execution silently passes through here (because the "last param changed" is None until a param changes)
                     #     self.main_script().log_message(logging.DEBUG, f"{log_id}unable to get_parameter_by_name() neither returned parameter was liveobj_valid?")
                 else:
                     self.main_script().log_message(logging.WARNING, f"{log_id}can't get parameters from valid device <{self.__chosen_plugin.name}>?")
