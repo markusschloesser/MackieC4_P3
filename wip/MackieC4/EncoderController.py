@@ -29,6 +29,7 @@ from .EncoderDisplaySegment import EncoderDisplaySegment
 from .MackieC4Component import *
 from _Generic.Devices import *
 from .TimeDisplay import TimeDisplay
+from .C4Decorators import CoolDown, TooSoon
 
 class ButtonController(object):
     """tracks the LED state of all seven C4 "control buttons" with associated LEDs (nine LEDs) and the pressed state of """ \
@@ -453,6 +454,8 @@ class EncoderController(MackieC4Component, Component):
             "on_update_display_timer": self.on_update_display_timer
         }
 
+        self.__parameter_inc_dec_flag = False
+        self.__parameter_inc_dec_args = None
         self.__btn_ctlr = ButtonController()
         self.__btn_ctlr.handle_function_button_press(C4SID_SPLIT_ERASE) # LCD text scrolling ON by default
         self.__own_encoders = encoders  # why separate references? This reference is only used here in __init__
@@ -1480,7 +1483,10 @@ class EncoderController(MackieC4Component, Component):
                                 inc_amt = None
                             # self.main_script().log_message(logging.DEBUG, f"{log_id}updating value {param.value} by {inc_amt}")
                             song_util.update_or_cycle_parameter_value(param, inc_amt, self.__btn_ctlr.only_option_is_pressed)
-                            update_self = True
+                            # btn_id, parameter, increment_amount
+                            self.__parameter_inc_dec_args = {"btn_id": switch_id, "parameter": param, "increment_amount": inc_amt}
+                            self.__parameter_inc_dec_flag = True
+                            update_self = False
                             # self.main_script().log_message(logging.DEBUG, f"{log_id}updated value {param.value}")
                         else:
                             self.main_script().log_message(logging.WARNING, f"{log_id}param returned from get_parameter_by_name() was not liveobj_valid?")
@@ -2697,6 +2703,16 @@ class EncoderController(MackieC4Component, Component):
         window = scroll_text[state["scroll_pos"]:state["scroll_pos"] + width]
         return adjust_string(window, width)
 
+    @CoolDown(300)
+    def repeating_param_inc_dec_moves(self, btn_id, parameter, increment_amount):
+        # See self.handle_bank_switch_ids method above for how the repeating cycle gets started when this button is pressed
+        # The repeating cycle stops here when this button is released.
+        if self.__btn_ctlr.get_parameter_btn_pressed_state(btn_id):
+            song_util.update_or_cycle_parameter_value(parameter, increment_amount)
+        else:
+            self.__parameter_inc_dec_args = None
+            self.__parameter_inc_dec_flag = False
+
     def on_update_display_timer(self):
         """Called by Live every 100 ms. This is the original "real time" device-display update callback method"""
         if self.__btn_ctlr.nbr_split_leds_on < 3: # when 3 split leds are ON, don't do any timer based display updates
@@ -2704,6 +2720,13 @@ class EncoderController(MackieC4Component, Component):
                 self.__do_display_update()
             elif self.__display_lag_timer_bang():
                 self.__do_display_update()
+
+        if self.__parameter_inc_dec_flag and self.__parameter_inc_dec_args is not None:
+            try:
+                self.repeating_param_inc_dec_moves(**self.__parameter_inc_dec_args)
+            except TooSoon:
+                pass
+
 
     def one_delayed_display_update(self, delay_secs=.050, force=False): # 50 ms
         time.sleep(delay_secs)

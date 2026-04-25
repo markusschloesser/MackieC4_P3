@@ -405,11 +405,16 @@ class MackieC4(MackieC4ListenerMixin, object):
                     # Live generates Note Offs the script can usually ignore here (not USER mode) because USER Mode has already processed above as needed
                     # self.log_message(logging.DEBUG, f"{log_id}NOT in USER mode MARKER is released, passing (NOTE OFF event)")
                     self.set_marker_is_pressed(False)
-                    if midi_bytes[1] in modifier_switch_ids:  # Shift, Option, Control, Alt
+                    if midi_bytes[1] in [C4SID_SHIFT, C4SID_OPTION, C4SID_CONTROL, C4SID_ALT]:  # Shift, Option, Control, Alt
                         # since modifier button 'is pressed' behavior depends on the 'release' event, also need to handle releases
                         # The C4 always sends (144, x, 0) for Note OFF, and Live always converts those messages to (128, x, 0),
                         # actual Note OFF message input entering receive_midi() for processing
                         self.__encoder_controller.handle_modifier_switch_ids(midi_bytes[1], midi_bytes[2])
+                    elif midi_bytes[1] in [C4SID_SINGLE_LEFT, C4SID_SINGLE_RIGHT]:
+                        # since the parameter group single buttons map to behavior that depends on the is_pressed status of these buttons
+                        # this "note off press" counts as a release 
+                        # don't count note offs for C4SID_BANK_LEFT, C4SID_BANK_RIGHT
+                        self.__encoder_controller.handle_bank_switch_ids(midi_bytes[1])
                 elif midi_bytes[0] == 0xF0:
                     self.handle_sysex_msg(midi_bytes)
                 else:
