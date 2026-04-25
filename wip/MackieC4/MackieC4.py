@@ -35,6 +35,7 @@ from .Encoders import Encoders
 from .EncoderController import EncoderController
 from .c4_device_provider import C4DeviceProvider
 from .MackieC4ListenerMixin import MackieC4ListenerMixin
+from .C4Decorators import CoolDown, TooSoon
 
 if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
     from builtins import str
@@ -43,35 +44,6 @@ if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
 
 
 logger = logging.getLogger(__name__)
-
-class TooSoon(Exception):
-  """Can't be called so soon"""
-  pass
-
-class CoolDownDecorator(object):
-  def __init__(self,func,interval):
-    self.func = func
-    self.interval = interval
-    self.last_run = 0
-  def __get__(self,obj,objtype=None):
-    if obj is None:
-      return self.func
-    return partial(self,obj)
-  def __call__(self,*args,**kwargs):
-    now_nanos = time.process_time_ns()
-    now_ms = now_nanos / 1e6
-    if now_ms - self.last_run < self.interval:
-        to_go = self.last_run + self.interval - now_ms
-        raise TooSoon(f"Call after {to_go} milliseconds")
-    else:
-      self.last_run = now_ms
-      return self.func(*args,**kwargs)
-
-def CoolDown(interval):
-  def applyDecorator(func):
-    decorator = CoolDownDecorator(func=func,interval=interval)
-    return wraps(func)(decorator)
-  return applyDecorator
 
 
 class MackieC4(MackieC4ListenerMixin, object):
