@@ -1475,6 +1475,10 @@ class EncoderController(MackieC4Component, Component):
                             modifier = 1.0
                             if param.value < 1.0 and param.max == 1.0:
                                 modifier = 0.01
+                                if self.__btn_ctlr.only_shift_is_pressed:
+                                    modifier *= 5
+                                elif self.__btn_ctlr.only_option_is_pressed:
+                                    modifier *= 10
 
                             if switch_id == C4SID_SINGLE_LEFT:
                                 inc_amt = -1 * modifier
