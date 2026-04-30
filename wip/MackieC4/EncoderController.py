@@ -1487,7 +1487,7 @@ class EncoderController(MackieC4Component, Component):
                             else:
                                 inc_amt = None
                             # self.main_script().log_message(logging.DEBUG, f"{log_id}updating value {param.value} by {inc_amt}")
-                            song_util.update_or_cycle_parameter_value(param, inc_amt, self.__btn_ctlr.only_option_is_pressed)
+                            song_util.update_or_cycle_parameter_value(param, inc_amt, self.__btn_ctlr.only_alt_is_pressed)
                             # btn_id, parameter, increment_amount
                             self.__parameter_inc_dec_args = {"btn_id": switch_id, "parameter": param, "increment_amount": inc_amt}
                             self.__parameter_inc_dec_flag = True
