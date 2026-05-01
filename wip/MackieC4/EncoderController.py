@@ -2480,7 +2480,9 @@ class EncoderController(MackieC4Component, Component):
 
         elif self.__assignment_mode == C4M_PLUGINS:
             current_device_bank_param_track = self.__eah.last_selected_track_device_parameter_bank_nbr
+            c_bank_text = f"{(current_device_bank_param_track + 1):02d}"
             max_device_bank_param_track = self.__eah.max_last_selected_track_device_parameter_bank_nbr
+            m_bank_text = f"{max_device_bank_param_track:02d}"
             for s in self.__encoders:
                 s_index = s.vpot_index()
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
@@ -2488,22 +2490,23 @@ class EncoderController(MackieC4Component, Component):
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
                 if s_index == encoder_07_index:
+
                     if self.__chosen_plugin is None:
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track > 0:
-                        vpot_display_text.set_text('<<  - ', 'PrvBnk')
+                        vpot_display_text.set_text("<< " + c_bank_text, "")
                         s.show_full_enlighted_poti()
                     else:
-                        vpot_display_text.set_text(' Bank ', 'NoPrev')
+                        vpot_display_text.set_text("   " + c_bank_text, "")
                         s.unlight_vpot_leds()
                 elif s_index == encoder_08_index:
                     if self.__chosen_plugin is None:
                         s.unlight_vpot_leds()
                     elif current_device_bank_param_track < max_device_bank_param_track - 1:
-                        vpot_display_text.set_text('  + >>', 'NxtBnk')
+                        vpot_display_text.set_text(m_bank_text + ' >>', "")
                         s.show_full_enlighted_poti()
                     else:
-                        vpot_display_text.set_text(' Bank ', 'NoNext')
+                        vpot_display_text.set_text(m_bank_text + "   ", "")
                         s.unlight_vpot_leds()
                 else:
                     # these are the 24 encoders from 9 to 32. Some devices do not have more than 1 or 2 parameters
@@ -2923,7 +2926,8 @@ class EncoderController(MackieC4Component, Component):
         so_many_spaces = '                                                       '
 
         if self.__assignment_mode == C4M_PLUGINS:
-
+            encoder_7_index = 6
+            encoder_8_index = 7
             t_d_idx = self.__eah.last_selected_device_index
             add_tail = False
             if self.is_locked_to_device and liveobj_valid(self.__chosen_plugin):
@@ -3016,7 +3020,8 @@ class EncoderController(MackieC4Component, Component):
                     u_raw_text = text_for_display.get_upper_text()
                     l_raw_text = text_for_display.get_lower_text()
 
-                    # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scrolling and just switch between 123456 and 789101112
+                    # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scrolling
+                    # and start toggling between 'front half' and 'back half' of the display text
                     if self.__spot_erase_state > 0:
                         u_alt_text = self.get_scrolling_display_text(u_raw_text, t)
                         l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
@@ -3024,8 +3029,16 @@ class EncoderController(MackieC4Component, Component):
                         u_alt_text = u_raw_text
                         l_alt_text = l_raw_text
 
-                    if t in range(6, NUM_ENCODERS_ONE_ROW):
-                        lower_string1 += adjust_string(str(l_alt_text), 6) + ' '
+                    # if t in range(6, NUM_ENCODERS_ONE_ROW):
+                    if t in (encoder_7_index, encoder_8_index):
+                        l_alt_text = l_raw_text
+                        lower_string1 += adjust_string((str(l_alt_text)), 6)
+                        if t == encoder_7_index:
+                             lower_string1 +=  "/"
+                        elif t == encoder_8_index:
+                            pass
+                        else:
+                            lower_string1 += " "
                     elif t in row_01_encoders:
                         upper_string2 += adjust_string(u_alt_text, 6) + ' '
                         lower_string2 += adjust_string(str(l_alt_text), 6) + ' '
@@ -3035,6 +3048,11 @@ class EncoderController(MackieC4Component, Component):
                     elif t in row_03_encoders:
                         upper_string4 += adjust_string(u_alt_text, 6) + ' '
                         lower_string4 += adjust_string(str(l_alt_text), 6) + ' '
+                    else:
+                        if t < encoder_7_index:
+                            pass   # valid indexes 0 - 5 get a pass
+                        else:
+                            self.main_script().log_message(logging.ERROR, f"{log_id}oopsie? {t} is NOT a valid encoder index?")
 
         elif self.__assignment_mode == C4M_FUNCTION:
 
