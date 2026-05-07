@@ -98,13 +98,13 @@ class ButtonController(object):
         return self.__last_assignment_led_on
     @property
     def last_active_script_mode(self):
-        return button_id_to_assignment_mode(self.last_assignment_led_on)
+        return button_id_to_assignment_mode[self.last_assignment_led_on]
     @property
     def current_assignment_led_on(self):
         return self.__current_assignment_led_on
     @property
     def current_active_script_mode(self):
-        return button_id_to_assignment_mode(self.current_assignment_led_on)
+        return button_id_to_assignment_mode[self.current_assignment_led_on]
     @property
     def nbr_modifier_btns_pressed(self):
         rtn = self.modifier_button_bit_field()
@@ -685,7 +685,7 @@ class EncoderController(MackieC4Component, Component):
 
                 if full_rebuild: # stored map is None or has no keys
                     lgth = len(new_device_list_order)
-                    self.main_script().log_message(logging.ERROR, f"{log_id}recovering device {nm} by fully restoring device map")
+                    self.main_script().log_message(logging.INFO, f"{log_id}recovering device {nm} by fully restoring device map")
                     for i in range(lgth):
                         self.__eah.update_device_counts_on_addition(i, new_device_list_order, i, i + 1)
                 else: # partial rebuild? stored_device_map has at least one key
@@ -694,7 +694,7 @@ class EncoderController(MackieC4Component, Component):
                         existing_keys_lgth = len(stored_device_map.keys())
                         assert lgth >= existing_keys_lgth
                         assert existing_keys_lgth <= new_device_index < lgth  # new index is 'right of' all existing indexes
-                        self.main_script().log_message(logging.ERROR, f"{log_id}recovering device {nm} by partially restoring device map")
+                        self.main_script().log_message(logging.INFO, f"{log_id}recovering device {nm} by partially restoring device map")
                         short_range = lgth - existing_keys_lgth
                         for i in range(short_range):
                             insert_index = i + existing_keys_lgth
@@ -702,7 +702,7 @@ class EncoderController(MackieC4Component, Component):
                                 self.__eah.update_device_counts_on_addition(i, new_device_list_order, insert_index, insert_index + 1)
                             else:
                                 log_msg = f"{log_id}cannot recover device {nm} as expected, index {insert_index} too large for device list length {lgth}?"
-                                self.main_script().log_message(logging.ERROR, log_msg)
+                                self.main_script().log_message(logging.INFO, log_msg)
                 stored_active_device = self.__eah.data.get_device(self.__eah.last_selected_track_index, new_device_index)
                 log_msg = f"{log_id}recovery attempt completed "
                 if stored_active_device is not None and stored_active_device.device == device_obj:
@@ -710,7 +710,7 @@ class EncoderController(MackieC4Component, Component):
                 else:
                     self.main_script().log_message(logging.DEBUG, log_msg + "unsuccessfully")
         else:
-            self.main_script().log_message(logging.ERROR, f"{log_id}conditions for movement of device {nm} not detected as expected?")
+            self.main_script().log_message(logging.INFO, f"{log_id}conditions for movement of device {nm} not detected as expected?")
 
     def __inner_device_movement(self, new_device_list_order, device_obj, new_device_index, device_name="None"):
         log_id = "EC.__inner_device_movement: "
