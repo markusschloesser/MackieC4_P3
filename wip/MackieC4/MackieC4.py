@@ -1065,8 +1065,8 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def devpm_change(self, device):
         log_id = "C4.devpm_change: "
-        self.log_message(self.script_log_levels["TRACE"], f"{log_id}parameters listener for {device.name} popped, passing")
-        # self.__encoder_controller.on_selected_device_movement(device)
+        self.log_message(self.script_log_levels["TRACE"], f"{log_id}parameters listener for {device.name} popped, drag and drop device move possible")
+        self.__encoder_controller.on_selected_device_movement(device)
 
     def mixerv_changestate(self, type, tid, track, r=0):
         cmd = f"track.mixer_device.{type}.value"

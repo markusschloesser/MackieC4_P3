@@ -660,6 +660,69 @@ class EncoderController(MackieC4Component, Component):
                 msg = f"{log_id}listener popped, but provided device {provided_name} is already self.__chosen_plugin {chosen_name}, pass"
                 self.main_script().log_message(trace_level, msg)
 
+    def on_selected_device_movement(self, device_obj):
+        log_id = "EC.on_selected_device_movement: "
+        nm = "Invalid" if not liveobj_valid(device_obj) else device_obj.name
+        if liveobj_valid(device_obj) and device_obj == self.song().view.selected_track.view.selected_device:
+            stored_active_device = self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
+            new_device_list_order = self.main_script().get_device_list(self.selected_track.devices, self.expand_chains)
+            new_device_index = self.find_device_index_in_list(new_device_list_order, device_obj)
+            if stored_active_device is not None:
+                if stored_active_device.device == device_obj:
+                    # above should nearly always be true? (can't mouse-move an unselected device)
+                    self.__inner_device_movement(new_device_list_order, device_obj, new_device_index)
+                else:
+                    stored_name = "stored-last-Invalid" if not liveobj_valid(stored_active_device) else stored_active_device.name
+                    self.main_script().log_message(logging.WARNING, f"{log_id}input selected device {nm} is NOT already stored device {stored_name}?")
+            else:
+                # a device move was undone, the stored device at the (previously) moved-to index has already been deleted and reinserted (by Live)
+                self.main_script().log_message(logging.DEBUG, f"{log_id}conditions for undo/redo of device {nm} movement detected, attempting to recover")
+                stored_device_map = self.__eah.data.get_track_device_map(self.__eah.last_selected_track_index)
+                full_rebuild = True
+                if stored_device_map is not None:
+                    if  len(stored_device_map.keys()) > 0:
+                        full_rebuild = False
+
+                if full_rebuild: # stored map is None or has no keys
+                    lgth = len(new_device_list_order)
+                    self.main_script().log_message(logging.ERROR, f"{log_id}recovering device {nm} by fully restoring device map")
+                    for i in range(lgth):
+                        self.__eah.update_device_counts_on_addition(i, new_device_list_order, i, i + 1)
+                else: # partial rebuild? stored_device_map has at least one key
+                    lgth = len(new_device_list_order)
+                    if stored_device_map is not None: # redundant, but None type doesn't have function keys()
+                        existing_keys_lgth = len(stored_device_map.keys())
+                        assert lgth >= existing_keys_lgth
+                        assert existing_keys_lgth <= new_device_index < lgth  # new index is 'right of' all existing indexes
+                        self.main_script().log_message(logging.ERROR, f"{log_id}recovering device {nm} by partially restoring device map")
+                        short_range = lgth - existing_keys_lgth
+                        for i in range(short_range):
+                            insert_index = i + existing_keys_lgth
+                            if insert_index < lgth:
+                                self.__eah.update_device_counts_on_addition(i, new_device_list_order, insert_index, insert_index + 1)
+                            else:
+                                log_msg = f"{log_id}cannot recover device {nm} as expected, index {insert_index} too large for device list length {lgth}?"
+                                self.main_script().log_message(logging.ERROR, log_msg)
+                stored_active_device = self.__eah.data.get_device(self.__eah.last_selected_track_index, new_device_index)
+                log_msg = f"{log_id}recovery attempt completed "
+                if stored_active_device is not None and stored_active_device.device == device_obj:
+                    self.main_script().log_message(logging.DEBUG, log_msg + "successfully")
+                else:
+                    self.main_script().log_message(logging.DEBUG, log_msg + "unsuccessfully")
+        else:
+            self.main_script().log_message(logging.ERROR, f"{log_id}conditions for movement of device {nm} not detected as expected?")
+
+    def __inner_device_movement(self, new_device_list_order, device_obj, new_device_index, device_name="None"):
+        log_id = "EC.__inner_device_movement: "
+        if new_device_index > -1:
+            if self.__eah.last_selected_device_index != new_device_index:
+                self.__eah.last_selected_device = device_obj
+                self.__eah.track_device_moved(new_device_list_order, device_obj, new_device_index)
+            else:
+                self.main_script().log_message(logging.ERROR, f"{log_id}new index of selected device {device_name} is not different from stored index as expected?")
+        else:
+            self.main_script().log_message(logging.ERROR, f"{log_id}index of selected device {device_name} not located in selected track device list as expected?")
+
 
     def add_special_parameter_listeners(self, selected_track, selected_device):
         log_id = "EC.add_special_parameter_listeners: "

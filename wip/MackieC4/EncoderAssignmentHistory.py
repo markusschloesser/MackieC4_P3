@@ -1088,6 +1088,17 @@ class SongData(object):
             log_msg = f"EAH.SD.rekey_device_list_by_track_callback_type: counts don't match, stored device list order not changed: "
             self.log_msg(logging.DEBUG, log_msg + f"new {len(all_track_devices)} old {len(old_keyed_map.keys())} old count {track_ref.device_count}")
 
+
+    def track_device_moved(self, active_track_device_map, device_obj, new_device_index, old_device_index):
+        log_id = "EAH.SD.track_device_moved: "
+        if active_track_device_map[old_device_index].device == device_obj:
+            if not old_device_index < new_device_index:
+                self.__swap_two_device_keys(active_track_device_map, new_device_index, old_device_index, right_to_left=True)
+            else:
+                self.__swap_two_device_keys(active_track_device_map, old_device_index, new_device_index, right_to_left=False)
+        else:
+            self.log_msg(logging.DEBUG, f"{log_id}expected condition for device order swap not detected?")
+
     def remove_devices(self, song_track_index, nbr_devices_to_remove, track_device_list_first_remove_index=0):
 
         orig_nbr_keys = len(self.get_track_device_map(song_track_index).keys())
@@ -1231,6 +1242,40 @@ class SongData(object):
             except AssertionError:
                 self.log_msg(logging.DEBUG, f"{log_id}NOT collapsing at negative device index {device_index_left_of_collapse_index}, min collapse index is -1")
 
+    def __swap_two_device_keys(self, local_dict: dict[int, ActiveDevice], left_key: int, right_key: int, right_to_left=True):
+        """swaps the ActiveDevice-values associated with two adjacent int-valued-keys, or collapses the ActiveDevice-value at the move-source int-valued-key """ \
+        """and inserts the ActiveDevice-value at the move-destination int-valued-key.  right_to_left means the device moved from a higher to a lower map index-key. """ \
+        """Short-circuit returns quietly if left_key == right_key, or errors on an assertion failure if left_key > right_key"""
+        log_id = "EAH.SD.__swap_two_device_keys: "
+        log_dtls = [f"({x[1].device_name})"  for x in local_dict.items()]
+        self.log_msg(logging.DEBUG, f"{log_id}BEFORE Swap: {log_dtls}, swapping indexes {left_key} and {right_key}")
+        if left_key == right_key:
+            return # nothing to swap
+        else:
+            assert left_key < right_key
+        shallow_copy = local_dict.copy()
+        if left_key + 1 == right_key:
+            del shallow_copy[left_key]
+            del shallow_copy[right_key]
+            left_ref = local_dict[left_key]
+            right_ref = local_dict[right_key]
+            shallow_copy[left_key] = right_ref
+            shallow_copy[right_key] = left_ref
+        else: # gap is larger than one, can't directly swap
+            if right_to_left:
+                # device moved right_to_left delete at right index, add back at left index
+                temp_copy = self._collapse_track_device_slot(shallow_copy, right_key - 1)
+                temp_copy = self._insert_track_device_slot(temp_copy, left_key, local_dict[right_key])
+            else:
+                temp_copy = self._collapse_track_device_slot(shallow_copy, left_key - 1)
+                temp_copy = self._insert_track_device_slot(temp_copy, right_key, local_dict[left_key])
+            # shallow_copy.update(temp_copy) # type warning updating from the assigned return value object?
+            for i in range(len(shallow_copy)):
+                shallow_copy[i] = temp_copy[i]
+
+        local_dict.update(shallow_copy)
+        log_dtls = [f"({x[1].device_name})"  for x in local_dict.items()]
+        self.log_msg(logging.DEBUG, f"{log_id}AFTER Swap: {log_dtls}, swapped indexes {left_key} and {right_key}")
 
     def __shift_keys_right(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveTrackDetails], key_of_add, value_to_add: ActiveDevice | ActiveTrackDetails) -> dict[int, ActiveDevice] | dict[int,ActiveTrackDetails]:
         log_id = "EAH.SD.__shift_keys_right: "
@@ -1818,6 +1863,20 @@ class EncoderAssignmentHistory(MackieC4Component):
         # track_ref = self.data.get_track(self.last_selected_track_index)
         # self.main_script().log_message(logging.DEBUG, f"{log_id}selected track_ref is now {track_ref.track_name} at index {self.last_selected_track_index}")
 
+    def track_device_moved(self, new_device_list_order, device_obj, new_device_index):
+        log_id = "EAH.track_device_moved: "
+        if self.last_selected_device == device_obj:
+            old_device_map = self.data.get_track_device_map(self.last_selected_track_index)
+            if len(new_device_list_order) == len(old_device_map.keys()):
+                # old_device_map[self.last_selected_device_index].device == new_device_list_order[new_device_index] == device_obj
+                # the current/last stored selected device has moved to a new index in the selected track's stored device map
+                self.next_selected_device_index = new_device_index
+                self.data.track_device_moved(old_device_map, device_obj, new_device_index, self.last_selected_device_index)
+                self.last_selected_device_index = new_device_index
+            else:
+                self.main_script().log_message(logging.DEBUG, f"{log_id}track device list lengths don't match? Can't be a device move?")
+        else:
+            self.main_script().log_message(logging.DEBUG, f"{log_id}stored selected device doesn't match input device? Can't be a device move?")
 
     def device_added_deleted_or_changed(self, all_track_devices, selected_device, selected_device_idx):
         log_id = "EAH.device_added_deleted_or_changed: "
