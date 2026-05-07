@@ -50,7 +50,7 @@ class ActiveTrack:
         if self is None:
             return "None"
         else:
-            return self.to_string()
+            return self.track_name
 
     def to_string(self):
         d_index = "None"
@@ -162,7 +162,7 @@ class ActiveDevice:
         if self is None:  #  :)
             return "None"
         else:
-            return self.to_string()
+            return self.device_name
 
     def to_string(self):
         return f"device {self.device_name} d_index {self.index} t_index {self.track_index} tt_index {self.track_index_by_type} p_index {self._selected_parameter_index}"
