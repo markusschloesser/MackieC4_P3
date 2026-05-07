@@ -1257,7 +1257,7 @@ class SongData(object):
         self.log_msg(logging.DEBUG, f"{log_id}returning updated dict keys {local_dict.keys()} and values {vals}")
         return local_dict
 
-    def __shift_keys_left(self, local_dict: Dict[int, ActiveDevice]|Dict[int,ActiveTrackDetails], key_before_del) -> Dict[int, ActiveDevice] | Dict[int,ActiveTrackDetails]:
+    def __shift_keys_left(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveTrackDetails], key_before_del) -> dict[int, ActiveDevice] | dict[int,ActiveTrackDetails]:
         """special key_before_del input range expected: given a standard local_dict index-key range(0, m), the associated special input is 'shifted left', range(-1, m-1)"""
         log_id = "EAH.SD.__shift_keys_left: "
         key_to_remove = key_before_del + 1
