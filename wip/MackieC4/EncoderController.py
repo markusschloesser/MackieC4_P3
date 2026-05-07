@@ -663,6 +663,7 @@ class EncoderController(MackieC4Component, Component):
     def on_selected_device_movement(self, device_obj):
         log_id = "EC.on_selected_device_movement: "
         nm = "Invalid" if not liveobj_valid(device_obj) else device_obj.name
+        device_moved = True
         if liveobj_valid(device_obj) and device_obj == self.song().view.selected_track.view.selected_device:
             stored_active_device = self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
             new_device_list_order = self.main_script().get_device_list(self.selected_track.devices, self.expand_chains)
@@ -670,12 +671,14 @@ class EncoderController(MackieC4Component, Component):
             if stored_active_device is not None:
                 if stored_active_device.device == device_obj:
                     # above should nearly always be true? (can't mouse-move an unselected device)
-                    self.__inner_device_movement(new_device_list_order, device_obj, new_device_index)
+                    device_moved = self.__inner_device_movement(new_device_list_order, device_obj, new_device_index)
                 else:
                     stored_name = "stored-last-Invalid" if not liveobj_valid(stored_active_device) else stored_active_device.name
                     self.main_script().log_message(logging.WARNING, f"{log_id}input selected device {nm} is NOT already stored device {stored_name}?")
+                    device_moved = False
             else:
                 # a device move was undone, the stored device at the (previously) moved-to index has already been deleted and reinserted (by Live)
+                # back at the moved-from index
                 self.main_script().log_message(logging.DEBUG, f"{log_id}conditions for undo/redo of device {nm} movement detected, attempting to recover")
                 stored_device_map = self.__eah.data.get_track_device_map(self.__eah.last_selected_track_index)
                 full_rebuild = True
@@ -711,17 +714,25 @@ class EncoderController(MackieC4Component, Component):
                     self.main_script().log_message(logging.DEBUG, log_msg + "unsuccessfully")
         else:
             self.main_script().log_message(logging.INFO, f"{log_id}conditions for movement of device {nm} not detected as expected?")
+            device_moved = False
+        if device_moved and self.__btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
+            # the track's visible device bank order has changed, update the LCD device bank display order to match (if the device bank is already showing)
+            self.__reassign_encoder_parameters()
 
     def __inner_device_movement(self, new_device_list_order, device_obj, new_device_index, device_name="None"):
         log_id = "EC.__inner_device_movement: "
+        device_moved = True
         if new_device_index > -1:
             if self.__eah.last_selected_device_index != new_device_index:
                 self.__eah.last_selected_device = device_obj
                 self.__eah.track_device_moved(new_device_list_order, device_obj, new_device_index)
             else:
                 self.main_script().log_message(logging.ERROR, f"{log_id}new index of selected device {device_name} is not different from stored index as expected?")
+                device_moved = False
         else:
             self.main_script().log_message(logging.ERROR, f"{log_id}index of selected device {device_name} not located in selected track device list as expected?")
+            device_moved = False
+        return device_moved
 
 
     def add_special_parameter_listeners(self, selected_track, selected_device):
