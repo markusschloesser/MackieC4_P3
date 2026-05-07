@@ -1247,7 +1247,7 @@ class SongData(object):
         """and inserts the ActiveDevice-value at the move-destination int-valued-key.  right_to_left means the device moved from a higher to a lower map index-key. """ \
         """Short-circuit returns quietly if left_key == right_key, or errors on an assertion failure if left_key > right_key"""
         log_id = "EAH.SD.__swap_two_device_keys: "
-        log_dtls = [f"({x[1].device_name})"  for x in local_dict.items()]
+        log_dtls = [f"{x[1].device_name}" for x in local_dict.items()]
         self.log_msg(logging.DEBUG, f"{log_id}BEFORE Swap: {log_dtls}, swapping indexes {left_key} and {right_key}")
         if left_key == right_key:
             return # nothing to swap
@@ -1274,7 +1274,7 @@ class SongData(object):
                 shallow_copy[i] = temp_copy[i]
 
         local_dict.update(shallow_copy)
-        log_dtls = [f"({x[1].device_name})"  for x in local_dict.items()]
+        log_dtls = [f"{x[1].device_name}" for x in local_dict.items()]
         self.log_msg(logging.DEBUG, f"{log_id}AFTER Swap: {log_dtls}, swapped indexes {left_key} and {right_key}")
 
     def __shift_keys_right(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveTrackDetails], key_of_add, value_to_add: ActiveDevice | ActiveTrackDetails) -> dict[int, ActiveDevice] | dict[int,ActiveTrackDetails]:
