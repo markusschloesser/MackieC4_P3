@@ -138,7 +138,7 @@ class ButtonController(object):
     def lock_led_state(self):
         return self.get_function_btn_led_state(C4SID_LOCK)
     @property
-    def split_erase_led_state(self):
+    def spot_erase_led_state(self):
         return self.get_function_btn_led_state(C4SID_SPLIT_ERASE)
 
     @property
@@ -418,12 +418,12 @@ class ButtonController(object):
 
         if self.nbr_split_leds_on == 3:
             # 3 SPLIT leds ON means turn OFF "LCD text scrolling" (displays don't update often enough for scrolling)
-            if self.split_erase_led_state > 0:
+            if self.spot_erase_led_state > 0:
                 # if the "spot erase" led is ON, turn it OFF by "virtually pressing" the button
                 self._flip_split_erase_led_state()
         elif self.nbr_split_leds_on == 0:
             # 0 SPLIT leds ON means turn ON "LCD text scrolling" (scrolling text by default)
-            if self.split_erase_led_state == 0:
+            if self.spot_erase_led_state == 0:
                 # if the "spot erase" led is OFF, turn it ON by "virtually pressing" the button
                 self._flip_split_erase_led_state()
 
@@ -456,8 +456,8 @@ class EncoderController(MackieC4Component, Component):
 
         self.__parameter_inc_dec_flag = False
         self.__parameter_inc_dec_args = None
-        self.__btn_ctlr = ButtonController()
-        self.__btn_ctlr.handle_function_button_press(C4SID_SPLIT_ERASE) # LCD text scrolling ON by default
+        self.btn_ctlr = ButtonController(last_assignment_mode=C4M_FUNCTION, init_assignment_mode=C4M_CHANNEL_STRIP)
+        self.btn_ctlr.handle_function_button_press(C4SID_SPLIT_ERASE) # LCD text scrolling ON by default
         self.__own_encoders = encoders  # why separate references? This reference is only used here in __init__
         self.__encoders = encoders  # why these __encoders too? This reference is used everywhere else
         # suspect the reason is because, at runtime, while this __init__ is running; the main_script here,
@@ -474,7 +474,7 @@ class EncoderController(MackieC4Component, Component):
         self.__display_update_lag_upper_bounds = [0, 5, 10, 20]
         self.__display_update_lag_upper_bounds_index = 0
         self.__display_update_lag_counter = 0
-        self.__spot_erase_state = self.__btn_ctlr.split_erase_led_state
+        # self.__spot_erase_state = self.btn_ctlr.splot_erase_led_state
         self.__view_is_changing = False
         self.add_special_parameter_listeners_pending = False
 
@@ -507,9 +507,10 @@ class EncoderController(MackieC4Component, Component):
             for _ in range(NUM_ENCODERS)
         ]
 
-        self.__filter_mst_trk = 0
-        self.__filter_mst_trk_allow_audio = 0
-        self.__last_send_messages = {
+        self.subordinate_track_is_selected = False
+        """any track that is not the master track"""
+        self.subordinate_selected_track_allows_audio = False
+        """any track that is not the master track and has audio output (master always has audio output)"""
             LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
@@ -521,10 +522,10 @@ class EncoderController(MackieC4Component, Component):
         self.update_assignment_mode_leds()
         self.update_system_switch_leds()
 
-        self.__shift_state = False
-        self.__option_state = False
-        self.__ctrl_state = False
-        self.__alt_state = False
+        # self.__shift_state = False
+        # self.__option_state = False
+        # self.__ctrl_state = False
+        # self.__alt_state = False
 
         self._last_undo_label = ""
         self._last_undo_label_time = 0
@@ -591,6 +592,9 @@ class EncoderController(MackieC4Component, Component):
     def get_encoders(self):
         return self.__encoders
 
+    @property
+    def current_track_name(self):
+        return 'None' if self.selected_track is None else 'Invalid' if not liveobj_valid(self.selected_track) else self.selected_track.name
 
     @property
     def expand_chains(self):
@@ -599,8 +603,8 @@ class EncoderController(MackieC4Component, Component):
         """only changes chain expansion behavior when you inc/dec tracks and devices using Session Group buttons on the C4 """ \
         """if BOTH Ctrl and Alt Modifier buttons are already pressed, otherwise chain expansion behavior doesn't change"""
         log_id = "EC._set_expand_chains: "
-        is_alt_pressed = True if self.__btn_ctlr.get_modifier_btn_pressed_state(C4SID_ALT) > 0 else False
-        is_ctrl_pressed = True if self.__btn_ctlr.get_modifier_btn_pressed_state(C4SID_CONTROL) > 0 else False
+        is_alt_pressed = True if self.btn_ctlr.get_modifier_btn_pressed_state(C4SID_ALT) > 0 else False
+        is_ctrl_pressed = True if self.btn_ctlr.get_modifier_btn_pressed_state(C4SID_CONTROL) > 0 else False
         allowed = is_alt_pressed and is_ctrl_pressed
         self.main_script().log_message(logging.DEBUG, f"{log_id}{self.expand_chains} currently, input is {expand} and control update is {'' if allowed else 'NOT '}allowed")
         if allowed:
@@ -715,7 +719,7 @@ class EncoderController(MackieC4Component, Component):
         else:
             self.main_script().log_message(logging.INFO, f"{log_id}conditions for movement of device {nm} not detected as expected?")
             device_moved = False
-        if device_moved and self.__btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
+        if device_moved and self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
             # the track's visible device bank order has changed, update the LCD device bank display order to match (if the device bank is already showing)
             self.__reassign_encoder_parameters()
 
@@ -892,7 +896,7 @@ class EncoderController(MackieC4Component, Component):
         self.selected_track = self.song().view.selected_track
         trace_level = self.log_levels["TRACE"]
 
-        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+        if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
 
@@ -1036,7 +1040,7 @@ class EncoderController(MackieC4Component, Component):
     # a Group track expanded and the selected track index is changing (Group expanded 'left of' selected track of this track type)
     def tracks_added(self, track_index, tracks_of_type, callback_track_type_of_selected_index):
         log_id = "EC.tracks_added: "
-        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+        if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
 
@@ -1051,7 +1055,7 @@ class EncoderController(MackieC4Component, Component):
     # return tracks can not be Grouped
     def unselected_tracks_added(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_added: "
-        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+        if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
 
@@ -1104,7 +1108,7 @@ class EncoderController(MackieC4Component, Component):
     # (In fewer words, Group Track collapse is modeled in script storage by following a single code execution path, no logical branching on the expanded chains flag status)
     def tracks_deleted(self, track_index, tracks_of_type, track_type=-1):
         log_id = "EC.tracks_deleted: "
-        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+        if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
 
@@ -1118,7 +1122,7 @@ class EncoderController(MackieC4Component, Component):
 
     def unselected_tracks_deleted(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_deleted: "
-        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+        if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
 
@@ -1130,7 +1134,7 @@ class EncoderController(MackieC4Component, Component):
 
     def unselected_tracks_changed(self, found_changed_track_callback_type, callback_type_track_count):
         log_id = "EC.unselected_tracks_changed: "
-        if self.__btn_ctlr.is_expand_chains_modifier_press_combo:
+        if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when tracks change and both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
         self.__eah.unselected_tracks_changed(found_changed_track_callback_type, callback_type_track_count)
@@ -1349,7 +1353,7 @@ class EncoderController(MackieC4Component, Component):
         # Track - Channel Strip mode is the only mode that shows banks of devices to toggle on and off like this
         # Track - Devices mode shows the "chosen device" parameters, one of which toggles the "chosen device" on and off like this
         log_id = "EC.toggle_devices: "
-        if self.__assignment_mode == C4M_CHANNEL_STRIP:
+        if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
 
             device_list = self.song().view.selected_track.devices
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
@@ -1390,10 +1394,10 @@ class EncoderController(MackieC4Component, Component):
 
 
     def assignment_mode(self):
-        return self.__assignment_mode
+        return self.btn_ctlr.current_active_script_mode
 
     def last_assignment_mode(self):
-        return self.__last_assignment_mode
+        return self.btn_ctlr.last_active_script_mode
 
     # This method is never called from USER mode
     #
@@ -1412,40 +1416,40 @@ class EncoderController(MackieC4Component, Component):
     #   dependency is if all 3 C4SID_SPLIT leds are ON - set "LCD screen text scrolling", C4SID_SPLIT_ERASE led state to off, disabled)
     def handle_system_switch_ids(self, switch_id):
 
-        self.__btn_ctlr.handle_function_button_press(switch_id)
+        self.btn_ctlr.handle_function_button_press(switch_id)
 
         if switch_id == C4SID_SPLIT:
-            self.__display_update_lag_upper_bounds_index = self.__btn_ctlr.split_led_cycle_index
+            self.__display_update_lag_upper_bounds_index = self.btn_ctlr.split_led_cycle_index
         elif switch_id == C4SID_LOCK:
-            if self.__btn_ctlr.lock_led_state > 0:
+            if self.btn_ctlr.lock_led_state > 0:
                 d = self.__device_provider.provided_device
                 if liveobj_valid(d):
                     self.lock_to_device(d)
                 else: # turn the LOCK LED OFF again because no valid device to lock to
-                    self.__btn_ctlr.handle_function_button_press(switch_id)
+                    self.btn_ctlr.handle_function_button_press(switch_id)
             else:
                 self.unlock_from_device()
-            if self.__btn_ctlr.nbr_split_leds_on > 0:
+            if self.btn_ctlr.nbr_split_leds_on > 0:
                 # ONLY do    timer based display updates when zero C4SID_SPLIT leds are ON
                 # ONLY do callback based display updates when all  C4SID_SPLIT leds are ON
                 # (do both display update styles when 1 or 2 Split leds are on)
                 self.one_display_update()
-        elif switch_id == C4SID_SPLIT_ERASE:
-            self.__spot_erase_state = self.__btn_ctlr.split_erase_led_state
+        # elif switch_id == C4SID_SPLIT_ERASE:
+        #     self.__spot_erase_state = self.btn_ctlr.split_erase_led_state
         else:
             self.main_script().log_message(logging.ERROR, f"EC.handle_system_switch_ids: unknown system switch id {switch_id}, no change in generated feedback")
 
         self.update_system_switch_leds()
 
     def update_system_switch_leds(self):
-        if self.__assignment_mode != C4M_USER:
-            out_value_00, out_value_01, out_value_02 = self.__btn_ctlr.split_led_states
+        if self.btn_ctlr.current_active_script_mode != C4M_USER:
+            out_value_00, out_value_01, out_value_02 = self.btn_ctlr.split_led_states
             self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT, out_value_00))
             self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT + 1, out_value_01))
             self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT + 2, out_value_02))
 
-            self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, self.__btn_ctlr.lock_led_state))
-            self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, self.__btn_ctlr.split_erase_led_state))
+            self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, self.btn_ctlr.lock_led_state))
+            self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, self.btn_ctlr.spot_erase_led_state))
 
     def handle_assignment_switch_ids(self, switch_id):
         """the 4 Assignment buttons on the C4, which handle the mode switching"""
@@ -1477,54 +1481,38 @@ class EncoderController(MackieC4Component, Component):
                 self.__last_assignment_mode = self.__assignment_mode
                 self.__assignment_mode = button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]
                 update_self = True
+    def handle_assignment_switch_ids(self, switch_id, leaving_user_mode=False):
+        """the 4 Assignment buttons on the C4, which control script mode switching"""
+        self.btn_ctlr.handle_assignment_button_press(switch_id)
 
-        # C4 assignment.function button == C4M_FUNCTION mode
-        elif switch_id == C4SID_FUNCTION:
-            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_FUNCTION]:
-                self.__last_assignment_mode = self.__assignment_mode
-                self.__assignment_mode = button_id_to_assignment_mode[C4SID_FUNCTION]
-                update_self = True
-
-        if update_self:
-            self.__btn_ctlr.handle_assignment_button_press(switch_id)
-            # for button_id in self.system_switch_assignments.keys():
-            #     button_dict = self.system_switch_assignments[button_id]
-            #     if switch_id == button_id:
-            #         if button_dict["press_count"] % 2 == 0:
-            #             button_dict["press_count"] += 1
-            #     else:
-            #         if button_dict["press_count"] % 2 > 0:
-            #             button_dict["press_count"] += 1
-
-            if not self.__assignment_mode == C4M_USER:
-                self.update_system_switch_leds()
+        if not self.btn_ctlr.current_active_script_mode == C4M_USER or leaving_user_mode:
+            self.update_system_switch_leds()
             self.update_assignment_mode_leds()
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
-            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                 # need to wipe USER mode LCD screen displays when we leave USER mode, but not too soon, wait 20 ms
                 self.one_delayed_display_update(.020)
-        # else don't update self because self is already in this mode
 
     def handle_bank_switch_ids(self, switch_id):
         """ Parameter Group Buttons: Bank Left, Bank Right, Single Left, Single Right are only mapped to behavior in the two 'track modes', channel-strip and devices """
         # no wrap around: stop moving left at track 0, stop moving right at master track
         log_id = "EC.handle_bank_switch_ids: "
-        self.__btn_ctlr.handle_parameter_button_press(switch_id)
+        self.btn_ctlr.handle_parameter_button_press(switch_id)
         update_self = False
         if switch_id == C4SID_BANK_LEFT:
             bank_left_index = 6
-            if self.__assignment_mode == C4M_CHANNEL_STRIP:
+            if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
                 update_self = self.handle_track_device_bank_view_update(bank_left_index)
-            elif self.__assignment_mode == C4M_PLUGINS:
+            elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
                 update_self = self.handle_selected_device_parameter_bank_view_update(bank_left_index)
         elif switch_id == C4SID_BANK_RIGHT:
             bank_right_index = 7
-            if self.__assignment_mode == C4M_CHANNEL_STRIP:
+            if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
                 update_self = self.handle_track_device_bank_view_update(bank_right_index)
-            elif self.__assignment_mode == C4M_PLUGINS:
+            elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
                 update_self = self.handle_selected_device_parameter_bank_view_update(bank_right_index)
-        elif self.__assignment_mode == C4M_CHANNEL_STRIP or self.__assignment_mode == C4M_PLUGINS:
+        elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP or self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
             if liveobj_valid(self.__chosen_plugin):
                 last_param_name = self.__device_provider.get_last_param_value_change_name()
                 if liveobj_valid(self.__chosen_plugin.parameters):
@@ -1549,9 +1537,9 @@ class EncoderController(MackieC4Component, Component):
                             modifier = 1.0
                             if param.value < 1.0 and param.max == 1.0:
                                 modifier = 0.01
-                            if self.__btn_ctlr.only_shift_is_pressed:
+                            if self.btn_ctlr.only_shift_is_pressed:
                                 modifier *= 5
-                            elif self.__btn_ctlr.only_option_is_pressed:
+                            elif self.btn_ctlr.only_option_is_pressed:
                                 modifier *= 10
 
                             if switch_id == C4SID_SINGLE_LEFT:
@@ -1561,7 +1549,7 @@ class EncoderController(MackieC4Component, Component):
                             else:
                                 inc_amt = None
                             # self.main_script().log_message(logging.DEBUG, f"{log_id}updating value {param.value} by {inc_amt}")
-                            song_util.update_or_cycle_parameter_value(param, inc_amt, self.__btn_ctlr.only_alt_is_pressed)
+                            song_util.update_or_cycle_parameter_value(param, inc_amt, self.btn_ctlr.only_alt_is_pressed)
                             # btn_id, parameter, increment_amount
                             self.__parameter_inc_dec_args = {"btn_id": switch_id, "parameter": param, "increment_amount": inc_amt}
                             self.__parameter_inc_dec_flag = True
@@ -1581,14 +1569,14 @@ class EncoderController(MackieC4Component, Component):
             # self.__eah.last_selected_device_index = (current_bank_nbr * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.last_selected_device_index
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
-            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                 self.one_display_update()
 
     def handle_slot_nav_switch_ids(self, switch_id):
         """ "slot navigation" (arrow up 🔼/down 🔽) switches between Devices in all modes except User """
         log_id = "EC.handle_slot_nav_switch_ids: "
-        if self.__assignment_mode != button_id_to_assignment_mode[C4SID_MARKER]:
-            self.__btn_ctlr.handle_session_button_press(switch_id)
+        if self.btn_ctlr.current_active_script_mode != C4M_USER:  # button_id_to_assignment_mode[C4SID_MARKER]:
+            self.btn_ctlr.handle_session_button_press(switch_id)
             current_trk_device_index = self.__eah.last_selected_device_index if self.__eah.last_selected_device_index is not None else 0
             max_trk_device_index = self.__eah.max_device_count - 1
             update_self = False
@@ -1621,30 +1609,30 @@ class EncoderController(MackieC4Component, Component):
 
     def handle_modifier_switch_ids(self, switch_id, value):
         log_id = "EC.handle_modifier_switch_ids: "
-        self.__btn_ctlr.handle_modifier_button_press(switch_id)
-        pressed = self.__btn_ctlr.get_modifier_btn_pressed_state(switch_id)
+        self.btn_ctlr.handle_modifier_button_press(switch_id)
+        pressed = self.btn_ctlr.get_modifier_btn_pressed_state(switch_id)
         assert pressed == value # 0 or 127 'velocity data value'
         if switch_id == C4SID_SHIFT:
-            self.__shift_state = value
-            self.main_script().set_shift_is_pressed(value)
+            # self.__shift_state = value
+            # self.main_script().set_shift_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}SHIFT is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_OPTION:
-            self.__option_state = value
-            self.main_script().set_option_is_pressed(value)
+            # self.__option_state = value
+            # self.main_script().set_option_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}OPTION is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_CONTROL:
-            self.__ctrl_state = value
-            self.main_script().set_ctrl_is_pressed(value)
+            # self.__ctrl_state = value
+            # self.main_script().set_ctrl_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}CONTROL is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_ALT:
-            self.__alt_state = value
-            self.main_script().set_alt_is_pressed(value)
+            # self.__alt_state = value
+            # self.main_script().set_alt_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ALT is {'' if pressed else 'NOT '}pressed")
 
 
     def _show_assignment_mode_change_message(self):
-        new_mode = self.__assignment_mode
-        old_mode = self.__last_assignment_mode
+        new_mode = self.btn_ctlr.current_active_script_mode
+        old_mode = self.btn_ctlr.last_active_script_mode
         new_name = new_mode
         old_name = old_mode
         if new_name == 0:
@@ -1688,13 +1676,13 @@ class EncoderController(MackieC4Component, Component):
         """
         delay_assignment_led_update = False
 
-        if self.__assignment_mode == C4M_USER:
+        if self.btn_ctlr.current_active_script_mode == C4M_USER:
             # going INTO USER mode these feedback messages pass through the Max patch before it starts processing messages
             # self.main_script().log_message(logging.DEBUG, "EC.update_assignment_mode_leds: entering USER mode")
             for i in range(C4SID_MARKER, C4SID_FUNCTION + 1) :
                 self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
 
-        elif self.__last_assignment_mode == C4M_USER:
+        elif self.btn_ctlr.last_active_script_mode == C4M_USER:
             # leaving USER mode, messages from here would be processed by the Max patch
             # which would generate the feedback messages going directly to the C4 (before it receives the "button 22" signal sent below)
             # blindly telling the Max patch to toggle the assignment LED states from here would rarely leave the LEDs
@@ -1734,7 +1722,7 @@ class EncoderController(MackieC4Component, Component):
         """For any encoder that is not midi mapped to some control in Live, and we want to map the CC messages it sends some other function of Live. """ \
         """For any encoder that is midi mapped to some control in Live, the CC messages are handled by the mapped control and should be ignored here """
 
-        if self.__assignment_mode == C4M_FUNCTION:
+        if self.btn_ctlr.current_active_script_mode == C4M_FUNCTION:
             feedback_address = encoder_feedback_cc_ids[vpot_index]
             if feedback_address == C4SID_VPOT_CC_ADDRESS_12:
                 self.main_script().handle_jog_wheel_rotation(cc_value)
@@ -1753,11 +1741,11 @@ class EncoderController(MackieC4Component, Component):
             elif feedback_address == C4SID_VPOT_CC_ADDRESS_22:
                 self.main_script().tempo_change(cc_value)
             # else: address of unused encoder in C4M_FUNCTION mode
-        elif self.__assignment_mode == C4M_CHANNEL_STRIP:
+        elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
             if vpot_index in row_01_encoders:
                 self.toggle_devices(vpot_index, cc_value)
             # else: address of midi mapped or unused encoder in C4M_CHANNEL_STRIP mode
-        if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+        if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
             self.one_display_update()
 
     def unsolo_all_functionality(self, mode_name, vpot_index):
@@ -1840,7 +1828,7 @@ class EncoderController(MackieC4Component, Component):
         if mode_function:
             if mode_name == "handle_pressed_v_pot":
                 if self.selected_track.has_audio_output:
-                    if self.__filter_mst_trk:
+                    if self.subordinate_track_is_selected:
                         state = self.selected_track.mixer_device.crossfade_assign
                         value_to_send = None
                         if state == 0:
@@ -1853,7 +1841,7 @@ class EncoderController(MackieC4Component, Component):
                     else:
                         param = self.__encoders[vpot_index].v_pot_parameter()
                         param.value = param.default_value  # button press == jump to default value for Crossfader on Master track
-                    if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                    if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                         self.one_display_update(force=True)
 
             elif mode_name == "reassign_encoder_parameters":
@@ -1861,7 +1849,7 @@ class EncoderController(MackieC4Component, Component):
                 vpot_display_text.set_encoder_controller(self)
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
                 if self.selected_track.has_audio_output:
-                    if self.__filter_mst_trk != 1:
+                    if self.subordinate_track_is_selected != 1:
                         vpot_display_text.set_text(self.selected_track.mixer_device.crossfader,'X-Fade')  # Crossfader on Master track
                         vpot_param = (self.selected_track.mixer_device.crossfader, VPOT_DISPLAY_BOOST_CUT)
 
@@ -1872,7 +1860,7 @@ class EncoderController(MackieC4Component, Component):
             elif mode_name == "on_update_display_timer":
                 if liveobj_valid(self.selected_track):
                     if self.selected_track.has_audio_output:
-                        if self.__filter_mst_trk:
+                        if self.subordinate_track_is_selected:
                             value_to_display = None
                             try:
                                 state = self.selected_track.mixer_device.crossfade_assign
@@ -1955,7 +1943,7 @@ class EncoderController(MackieC4Component, Component):
             # else:
             #     # execution lands here whenever a device's "selected parameter" (normally, the last parameter that changed)
             #     # is not one of the 24 parameters in the "parameter bank" currently mapped to the 24 associated C4 encoders
-            #     # in this self.__assignment_mode == C4M_PLUGINS state. (Track - Devices mode)
+            #     # in this self.btn_ctlr.current_active_script_mode == C4M_PLUGINS state. (Track - Devices mode)
             #     idx = device_ref.parameter_bank_index_of_selected_parameter
             #     self.main_script().log_message(logging.DEBUG, msg + f"doesn't match device_ref value {idx}")
         return update_self
@@ -1965,7 +1953,7 @@ class EncoderController(MackieC4Component, Component):
         """ 'encoder button' /vpot push clicks"""
         encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
         current_device_bank_index = self.__eah.last_selected_track_device_bank_view_index
-        if self.__assignment_mode == C4M_CHANNEL_STRIP:
+        if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
             is_armable_track_selected = track_util.can_be_armed(self.selected_track)
 
             if encoder_index in row_00_encoders:
@@ -1980,7 +1968,7 @@ class EncoderController(MackieC4Component, Component):
 
                 if update_self:
                     self.__reassign_encoder_parameters()
-                    if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                    if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                         self.one_display_update()
 
             elif encoder_index in row_01_encoders:
@@ -2011,7 +1999,7 @@ class EncoderController(MackieC4Component, Component):
                         self.__update_chosen_plugin_device(None) # ???
             elif encoder_index in row_02_encoders:
                 # these encoders represent Sends 1 - 8 in C4M_CHANNEL_STRIP mode
-                param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
+                param = self.subordinate_selected_track_allows_audio and self.__encoders[encoder_index].v_pot_parameter()
                 if liveobj_valid(param):
                     if isinstance(param, int):  # PyCharm says 'param' is an int based on the
                         #                         self.__encoders[encoder_index].v_pot_parameter() assignment above.
@@ -2031,7 +2019,7 @@ class EncoderController(MackieC4Component, Component):
 
                 if encoder_index < encoder_27_index:
                     # these encoders are the four < encoder_29_index, left half of bottom row, sends 9 - 12
-                    param = self.__filter_mst_trk_allow_audio and self.__encoders[encoder_index].v_pot_parameter()
+                    param = self.subordinate_selected_track_allows_audio and self.__encoders[encoder_index].v_pot_parameter()
                     if liveobj_valid(param):
                         if isinstance(param, int):
                             param.value = 0
@@ -2044,7 +2032,7 @@ class EncoderController(MackieC4Component, Component):
                     self.xfade("handle_pressed_v_pot", encoder_index)
 
                 elif encoder_index == encoder_28_index:
-                    if self.__filter_mst_trk:
+                    if self.subordinate_track_is_selected:
                         if self.selected_track.solo is not True:
                             self.selected_track.solo = True
                         else:
@@ -2054,7 +2042,7 @@ class EncoderController(MackieC4Component, Component):
                         s.unlight_vpot_leds()
 
                 elif encoder_index == encoder_29_index:
-                    if self.__filter_mst_trk:
+                    if self.subordinate_track_is_selected:
                         if is_armable_track_selected:
                             if self.selected_track.arm is not True:
                                 self.selected_track.arm = True
@@ -2065,7 +2053,7 @@ class EncoderController(MackieC4Component, Component):
                             s.unlight_vpot_leds()
 
                 elif encoder_index == encoder_30_index:
-                    if self.__filter_mst_trk:
+                    if self.subordinate_track_is_selected:
                         if self.selected_track.mute:
                             self.selected_track.mute = False
                         else:
@@ -2079,9 +2067,9 @@ class EncoderController(MackieC4Component, Component):
                     #  encoder 32 is "Volume"
                     param = self.__encoders[encoder_index].v_pot_parameter()
                     param.value = param.default_value  # button press == jump to default value of Pan or Vol
-            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                 self.one_display_update(force=True)
-        elif self.__assignment_mode == C4M_PLUGINS:
+        elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
             encoder_04_index = 3
 
             last_index = 0 if self.__eah.last_selected_device_index is None else self.__eah.last_selected_device_index
@@ -2122,10 +2110,10 @@ class EncoderController(MackieC4Component, Component):
             if update_self:
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
-                if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+                if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                     self.one_display_update()
 
-        elif self.__assignment_mode == C4M_FUNCTION:
+        elif self.btn_ctlr.current_active_script_mode == C4M_FUNCTION:
             encoder_01_index = 0  # follow
             encoder_02_index = 1  # loop
             encoder_03_index = 2  # Detail / Clip
@@ -2258,7 +2246,7 @@ class EncoderController(MackieC4Component, Component):
                     s.show_full_enlighted_poti()
                 self.song().overdub = not self.song().overdub
 
-            if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                 self.one_display_update()
 
     def __send_parameter(self, vpot_index):
@@ -2328,12 +2316,12 @@ class EncoderController(MackieC4Component, Component):
     def __reassign_encoder_parameters(self):
         """ Reevaluate all v-pot -> parameter assignments """
         log_id = "EC.__reassign_encoder_parameters: "
-        self.__filter_mst_trk = 0
-        self.__filter_mst_trk_allow_audio = 0
+        self.subordinate_track_is_selected = False
+        self.subordinate_selected_track_allows_audio = False
         if not liveobj_valid(self.selected_track):
             self.main_script().log_message(f"EC.__reassign_encoder_parameters: self.selected track is not valid, blowing up soon")
 
-        self.__current_track_name = self.selected_track.name if liveobj_valid(self.selected_track) else "None"
+        # self.__current_track_name = self.selected_track.name if liveobj_valid(self.selected_track) else "None"
         # EXPERIMENT: Can the script rely on the locally stored reference data now instead of fetching the extended device list from the LOM again here?
         # self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
         # extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
@@ -2347,9 +2335,9 @@ class EncoderController(MackieC4Component, Component):
                 extended_device_list.append(d)
 
         if self.selected_track != self.song().master_track:
-            self.__filter_mst_trk = 1  # a regular track is selected (not master track)
+            self.subordinate_track_is_selected = True  # a regular track is selected (not master track)
             if self.selected_track.has_audio_output:
-                self.__filter_mst_trk_allow_audio = 1  # a regular track with audio is selected (not master)
+                self.subordinate_selected_track_allows_audio = True  # a regular track with audio is selected (not master)
 
         self.__display_parameters = []
         encoder_01_index = 0
@@ -2482,7 +2470,7 @@ class EncoderController(MackieC4Component, Component):
                                 self.__encoders[encoder_index].unlight_vpot_leds()
 
                 elif s_index < encoder_27_index:
-                    if self.__filter_mst_trk_allow_audio:
+                    if self.subordinate_selected_track_allows_audio:
 
                         send_param = self.__send_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE * 2)
                         param_obj = send_param[0]
@@ -2506,17 +2494,17 @@ class EncoderController(MackieC4Component, Component):
 
                 elif s_index == encoder_28_index:
                     self.returns_switch = 0
-                    if self.__filter_mst_trk and not self.selected_track.solo:
+                    if self.subordinate_track_is_selected and not self.selected_track.solo:
                         vpot_display_text.set_text(None, 'Solo')
                     else:
-                        vpot_display_text.set_text(None, 'Solo' if self.__filter_mst_trk else 'Master')
+                        vpot_display_text.set_text(None, 'Solo' if self.subordinate_track_is_selected else 'Master')
 
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
 
                 elif s_index == encoder_29_index:
                     self.returns_switch = 0
-                    if self.__filter_mst_trk:
+                    if self.subordinate_track_is_selected:
                         vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
                         if is_armable_track_selected:
                             is_armed = self.selected_track.arm
@@ -2530,7 +2518,7 @@ class EncoderController(MackieC4Component, Component):
                     self.__display_parameters.append(vpot_display_text)
 
                 elif s_index == encoder_30_index:
-                    if self.__filter_mst_trk:
+                    if self.subordinate_track_is_selected:
                         is_muted = self.selected_track.mute
                         vpot_display_text.set_text(is_muted, 'Mute')
 
@@ -2792,7 +2780,7 @@ class EncoderController(MackieC4Component, Component):
     def repeating_param_inc_dec_moves(self, btn_id, parameter, increment_amount):
         # See self.handle_bank_switch_ids method above for how the repeating cycle gets started when this button is pressed
         # The repeating cycle stops here when this button is released.
-        if self.__btn_ctlr.get_parameter_btn_pressed_state(btn_id):
+        if self.btn_ctlr.get_parameter_btn_pressed_state(btn_id):
             song_util.update_or_cycle_parameter_value(parameter, increment_amount)
         else:
             self.__parameter_inc_dec_args = None
@@ -2800,7 +2788,7 @@ class EncoderController(MackieC4Component, Component):
 
     def on_update_display_timer(self):
         """Called by Live every 100 ms. This is the original "real time" device-display update callback method"""
-        if self.__btn_ctlr.nbr_split_leds_on < 3: # when 3 split leds are ON, don't do any timer based display updates
+        if self.btn_ctlr.nbr_split_leds_on < 3: # when 3 split leds are ON, don't do any timer based display updates
             if self.song().is_playing:
                 self.__do_display_update()
             elif self.__display_lag_timer_bang():
@@ -2815,7 +2803,7 @@ class EncoderController(MackieC4Component, Component):
 
     def one_delayed_display_update(self, delay_secs=.050, force=False): # 50 ms
         time.sleep(delay_secs)
-        if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+        if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
             self.one_display_update(force=force)
 
     def one_display_update(self, force=False):
@@ -2946,7 +2934,7 @@ class EncoderController(MackieC4Component, Component):
 
                     if t == encoder_28_index:
                         if liveobj_valid(selected_track):
-                            if self.__filter_mst_trk:
+                            if self.subordinate_track_is_selected:
                                 if selected_track.solo:
                                     l_alt_text = "ON"
                                     self.__encoders[encoder_28_index].show_full_enlighted_poti()
@@ -3344,10 +3332,10 @@ class EncoderController(MackieC4Component, Component):
             force: sometimes what is stored as the last message got blanked off the LCD by other factors and needs to be resent anyway
         """
         ascii_text_sysex_ints = self.__generate_sysex_body(text_for_display, display_row_offset, cursor_offset)
-        is_update = self.__last_send_messages[display_address][display_row_offset] != ascii_text_sysex_ints
+        is_update = self.last_send_messages[display_address][display_row_offset] != ascii_text_sysex_ints
 
         if force or is_update:
-            self.__last_send_messages[display_address][display_row_offset] = ascii_text_sysex_ints
+            self.last_send_messages[display_address][display_row_offset] = ascii_text_sysex_ints
             sysex_msg = SYSEX_HEADER + (display_address, display_row_offset) + tuple(ascii_text_sysex_ints) + (SYSEX_FOOTER,)
             self.send_midi(sysex_msg)
 
