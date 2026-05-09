@@ -514,6 +514,7 @@ class EncoderController(MackieC4Component, Component):
         """any track that is not the master track"""
         self.subordinate_selected_track_allows_audio = False
         """any track that is not the master track and has audio output (master always has audio output)"""
+        self.last_send_messages = {
             LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_MDL_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
@@ -2639,25 +2640,29 @@ class EncoderController(MackieC4Component, Component):
             # display these once only here because the Max sequencer handles its own display in C4M_USER mode
             # users see these instructions displayed when the Max sequencer is NOT connected,
             # and when it is connected but MIDI bandwidth is bottle-necked and slow
-            top_line = 'MackieC4Pro remote script User mode'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
-            bottom_line = 'Switching to Max Sequencer patch control'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
-            self.send_display_string(LCD_ANGLED_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
-            self.send_display_string(LCD_ANGLED_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-            top_line = 'Press and Hold the Marker button again'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
-            bottom_line = 'Then Press the Lock button to Exit USER mode and'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
-            self.send_display_string(LCD_TOP_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
-            self.send_display_string(LCD_TOP_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-            top_line = 'Return to the previous remote script mode. All other'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
-            bottom_line = 'button and pot control functions pass to the Max patch'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
-            self.send_display_string(LCD_MDL_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
-            self.send_display_string(LCD_MDL_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-            top_line = 'Press and Hold Marker then Press Lock'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
-            bottom_line = 'to exit USER mode'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
-            self.send_display_string(LCD_BTM_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
-            self.send_display_string(LCD_BTM_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
-        if self.__btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            self.send_user_mode_display_strings()
+
+        if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
             self.one_display_update(force=True)
         return
+
+    def send_user_mode_display_strings(self):
+        top_line = 'MackieC4Pro remote script User mode'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+        bottom_line = 'Switching to Max Sequencer patch control'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+        self.send_display_string(LCD_ANGLED_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_ANGLED_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
+        top_line = 'Press and Hold the Marker button again'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+        bottom_line = 'Then Press the Lock button to Exit USER mode and'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
+        top_line = 'Return to the previous remote script mode. All other'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+        bottom_line = 'button and pot control functions pass to the Max patch'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
+        top_line = 'Press and Hold Marker then Press Lock'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+        bottom_line = 'to exit USER mode'.center(NUM_TEXT_BYTES_PER_SYSEX_MSG)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
 
     def _update_vpot_leds_for_device_toggle(self):
         log_id = "EC._update_vpot_leds_for_device_toggle: "
