@@ -496,8 +496,7 @@ class EncoderController(MackieC4Component, Component):
         self.__on_is_locked_to_device_changed.subject = self.__device_provider
 
         self.__display_parameters = []
-
-        # initialize to blank screen segments
+        # initialize to blank LCD segments
         self.__display_parameters = [EncoderDisplaySegment(self, x) for x in range(NUM_ENCODERS)]
 
         self.encoder_name_display_state = [
@@ -2300,6 +2299,7 @@ class EncoderController(MackieC4Component, Component):
         # self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
         # extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
         # this list of stored data already contains "expanded chains" or not
+        assert self.selected_track == self.__eah.data.get_track(self.__eah.last_selected_track_index).track
         stored_devices = self.__eah.data.get_track_device_map(self.__eah.last_selected_track_index)
         extended_device_list = []
         for i in stored_devices.keys():
