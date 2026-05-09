@@ -30,29 +30,29 @@ class MackieC4Component(object):
     def main_script(self):
         return self.__main_script
 
-    def shift_is_pressed(self):
-        return self.__main_script.shift_is_pressed()
-
-    def set_shift_is_pressed(self, pressed):
-        self.__main_script.shift_is_pressed = pressed
-
-    def option_is_pressed(self):
-        return self.__main_script.option_is_pressed()
-
-    def set_option_is_pressed(self, pressed):
-        self.__main_script.option_is_pressed = pressed
-
-    def ctrl_is_pressed(self):
-        return self.__main_script.ctrl_is_pressed()
-
-    def set_ctrl_is_pressed(self, pressed):
-        self.__main_script.set_pressed = pressed
-
-    def alt_is_pressed(self):
-        return self.__main_script.alt_is_pressed()
-
-    def set_alt_is_pressed(self, pressed):
-        self.__main_script.set_pressed = pressed
+    # def shift_is_pressed(self):
+    #     return self.__main_script.shift_is_pressed()
+    #
+    # def set_shift_is_pressed(self, pressed):
+    #     self.__main_script.shift_is_pressed = pressed
+    #
+    # def option_is_pressed(self):
+    #     return self.__main_script.option_is_pressed()
+    #
+    # def set_option_is_pressed(self, pressed):
+    #     self.__main_script.option_is_pressed = pressed
+    #
+    # def ctrl_is_pressed(self):
+    #     return self.__main_script.ctrl_is_pressed()
+    #
+    # def set_ctrl_is_pressed(self, pressed):
+    #     self.__main_script.set_pressed = pressed
+    #
+    # def alt_is_pressed(self):
+    #     return self.__main_script.alt_is_pressed()
+    #
+    # def set_alt_is_pressed(self, pressed):
+    #     self.__main_script.set_pressed = pressed
 
     @property
     def is_locked_to_device(self):

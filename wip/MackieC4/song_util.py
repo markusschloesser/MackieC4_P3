@@ -14,11 +14,11 @@ def toggle_loop(self):
 # toggle arrange/session mode
 def toggle_session_arranger_is_visible(self):
     if self.application().view.is_view_visible('Session'):
-        if self.shift_is_pressed():
+        if self.btn_ctlr.only_shift_is_pressed:
             self.application().view.focus_view('Session')
         else:
             self.application().view.hide_view('Session')
-    elif self.shift_is_pressed():
+    elif self.btn_ctlr.only_shift_is_pressed:
         self.application().view.focus_view('Arranger')
     else:
         self.application().view.hide_view('Arranger')
@@ -31,11 +31,11 @@ def is_arranger_visible(self):
 # toggle clip / Device view
 def toggle_detail_sub_view(self):
     if self.application().view.is_view_visible('Detail/Clip'):
-        if self.shift_is_pressed():
+        if self.btn_ctlr.only_shift_is_pressed:
             self.application().view.focus_view('Detail/Clip')
         else:
             self.application().view.show_view('Detail/DeviceChain')
-    elif self.shift_is_pressed():
+    elif self.btn_ctlr.only_shift_is_pressed:
         self.application().view.focus_view('Detail/DeviceChain')
     else:
         self.application().view.show_view('Detail/Clip')
@@ -43,7 +43,7 @@ def toggle_detail_sub_view(self):
 
 def toggle_browser_is_visible(self):
     if self.application().view.is_view_visible('Browser'):
-        if self.shift_is_pressed():
+        if self.btn_ctlr.only_shift_is_pressed:
             self.application().view.focus_view('Browser')
         else:
             self.application().view.hide_view('Browser')

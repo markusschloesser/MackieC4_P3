@@ -266,8 +266,10 @@ class MackieC4(MackieC4ListenerMixin, object):
         # Technically any midi message received indicates the C4 is powered on and sending midi (responding)
         # the SYSEX "serial number" message is always first thing sent when a C4 powers ON.
         if self.is_hardware_responding or midi_bytes[0] == 0xF0:
-            if self.__encoder_controller.assignment_mode() == C4M_USER:
+            if self.__encoder_controller.btn_ctlr.current_active_script_mode == C4M_USER:
                 # already in USER mode, check for exit status
+                # when in User mode, if Marker is pressed when Lock gets pressed, exit user mode
+                # when not in User mode, if Marker is pressed, enter user mode
                 marker_on_event = is_note_on_msg and midi_bytes[1] == C4SID_MARKER
                 lock_on_event = is_note_on_msg and midi_bytes[1] == C4SID_LOCK
                 is_marker_on_press = marker_on_event and midi_bytes[2] == BUTTON_STATE_ON
@@ -531,9 +533,9 @@ class MackieC4(MackieC4ListenerMixin, object):
     def __zoom_view(self, cc_value):
         nav = Live.Application.Application.View.NavDirection
         if cc_value >= 64:
-            self.application().view.zoom_view(nav.left, '', self.alt_is_pressed())
+            self.application().view.zoom_view(nav.left, '', self.__encoder_controller.btn_ctlr.only_alt_is_pressed)
         if cc_value <= 64:
-            self.application().view.zoom_view(nav.right, '', self.alt_is_pressed())
+            self.application().view.zoom_view(nav.right, '', self.__encoder_controller.btn_ctlr.only_alt_is_pressed)
 
     def scrub_clip(self, cc_value):
         clip = self.song().view.detail_clip
@@ -588,9 +590,9 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def tempo_change(self, cc_value):  # BPM
         """Sets the current song tempo"""
-        if self.ctrl_is_pressed():
+        if self.__encoder_controller.btn_ctlr.only_control_is_pressed:
             multiplier = 16
-        elif self.shift_is_pressed():
+        elif self.__encoder_controller.btn_ctlr.only_shift_is_pressed:
             multiplier = 0.25
         else:
             multiplier = 1
@@ -619,30 +621,36 @@ class MackieC4(MackieC4ListenerMixin, object):
         """Since the C4 only has physical MIDI DIN connectors, the actual output port name can't be predicted here like it can for USB midi ports"""
         return 'Mackie C4'
 
-    def shift_is_pressed(self):
-        return self.__shift_is_pressed
+    # def shift_is_pressed(self):
+    #     return self.__encoder_controller.btn_ctlr.only_shift_is_pressed
 
-    def set_shift_is_pressed(self, pressed):
-        self.__shift_is_pressed = pressed
+    # def set_shift_is_pressed(self, pressed):
+    #     self.__shift_is_pressed = pressed
 
-    def option_is_pressed(self):
-        return self.__option_is_pressed
+    # def option_is_pressed(self):
+    #     return self.__encoder_controller.btn_ctlr.only_option_is_pressed
 
-    def set_option_is_pressed(self, pressed):
-        self.__option_is_pressed = pressed
+    # def set_option_is_pressed(self, pressed):
+    #     self.__option_is_pressed = pressed
 
-    def ctrl_is_pressed(self):
-        return self.__ctrl_is_pressed
+    # def ctrl_is_pressed(self):
+    #     return self.__encoder_controller.btn_ctlr.only_control_is_pressed
 
-    def set_ctrl_is_pressed(self, pressed):
-        self.__ctrl_is_pressed = pressed
+    # def set_ctrl_is_pressed(self, pressed):
+    #     self.__ctrl_is_pressed = pressed
 
-    def alt_is_pressed(self):
-        return self.__alt_is_pressed
+    # def alt_is_pressed(self):
+    #     return self.__encoder_controller.btn_ctlr.only_alt_is_pressed
 
-    def set_alt_is_pressed(self, pressed):
-        self.__alt_is_pressed = pressed
+    # def set_alt_is_pressed(self, pressed):
+    #     self.__alt_is_pressed = pressed
 
+    # this 'is pressed' flag is controlled here in this class only, separate from self.__encoder_controller.btn_ctlr (ButtonController) state modeling
+    # because "that" marker button LED flag is handled like a radio button, it remains 'selected' until another radio button gets 'selected' indicating
+    # which 'mode' the script is currently running. While in 'user mode', to exit user mode, self.receive_midi() here needs to track the actual is_pressed
+    # status of the physical Marker button.
+    # when in User mode, if Marker is pressed when Lock gets pressed, exit user mode
+    # when not in User mode, if Marker is pressed, enter user mode
     def marker_is_pressed(self):
         return self.__marker_is_pressed
 

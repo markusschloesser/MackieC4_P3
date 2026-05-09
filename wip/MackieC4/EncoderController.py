@@ -35,7 +35,7 @@ class ButtonController(object):
     """tracks the LED state of all seven C4 "control buttons" with associated LEDs (nine LEDs) and the pressed state of """ \
     """Modifier Group buttons (Shift, Option, Control, Alt) """
 
-    def __init__(self, last_assignment=C4SID_FUNCTION, init_assignment=C4SID_CHANNEL_STRIP):
+    def __init__(self, last_assignment_mode=C4M_FUNCTION, init_assignment_mode=C4M_CHANNEL_STRIP):
 
         self.function_group_buttons = {
             C4SID_SPLIT: {"led_id": {C4SID_SPLIT: {"virtual_press_count": 0, "led_value": [0, 127]},
@@ -81,11 +81,11 @@ class ButtonController(object):
         self.__split_led_cycle_index = 0
 
         # these two assignments just declare the two dunder vars
-        self.__last_assignment_led_on = last_assignment
-        self.__current_assignment_led_on = init_assignment
+        self.__last_assignment_led_on = assignment_mode_to_button_id[last_assignment_mode]
+        self.__current_assignment_led_on = assignment_mode_to_button_id[init_assignment_mode]
         # these two update calls also update the now declared dunder vars (to the same values) using "button press count" semantics
-        self._update_assignment_button_state(last_assignment) # last is now both current (led is ON) and remains last (a contradiction, led is not OFF)
-        self._update_assignment_button_state(init_assignment) # init is now current (led is ON) and last remains last (led is OFF)
+        self._update_assignment_button_state(self.__last_assignment_led_on) # last is now both current (led is ON) and remains last (a contradiction, led is not OFF)
+        self._update_assignment_button_state(self.__current_assignment_led_on) # init is now current (led is ON) and last remains last (led is OFF)
 
     @property
     def split_led_cycle_index(self):
@@ -368,19 +368,20 @@ class ButtonController(object):
     def _update_assignment_button_state(self, btn_id):
         """(script mode) assignment group button LED ON states are mutually exclusive, and one assignment LED is always ON. You can only turn OFF a given """ \
         """assignment LED by pressing a different assignment button (turning its LED ON instead). The exception to this 'rule' is User-Sequencer mode, when """ \
-        """enabled and connected, which takes control of all midi feedback to C4 LEDs and LCDs. This controller doesn't handle User-Sequencer mode events, """ \
-        """only the 'normal' script mode related events """
+        """enabled and connected, which takes control of all midi feedback to C4 LEDs and LCDs. This controller only handles User-Sequencer mode events """ \
+        """associated with entering or exiting User mode. If the sequencer is NOT connected, all you can do in User mode is exit. """
         if self.get_assignment_btn_led_state(btn_id) < 1:
             # new assignment mode is NOT already active (LED is OFF)
+            last_mode_id = self.__current_assignment_led_on
             button_ref = self._update_button_state(self.assignment_group_buttons[btn_id])# new assignment mode is active (LED is now ON)
             self.__current_assignment_led_on = btn_id
+            self.__last_assignment_led_on = last_mode_id
             for key in self.assignment_group_buttons.keys():
                 btn = self.assignment_group_buttons[key]
                 if not btn["led_id"] == btn_id:
                     state = btn["press_count"] % 2
                     if state > 0:
-                        self.__last_assignment_led_on = key
-                        btn["press_count"] += 1 # old assignment mode is deactivated (LED is now OFF)
+                        btn["press_count"] += 1 # any other assignment mode is now logically deactivated (LED is now OFF)
             return button_ref
         else: # this assignment mode is already active (LED is already ON)
             return self.assignment_group_buttons[btn_id]
@@ -478,11 +479,13 @@ class EncoderController(MackieC4Component, Component):
         self.__view_is_changing = False
         self.add_special_parameter_listeners_pending = False
 
-        self.__assignment_mode = C4M_CHANNEL_STRIP
-        self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
-        self.__current_track_name = ''  # Live's Track Name of selected track
-        self.selected_track = None  # Live's selected-Track Object
-        self.__locked_device_track = None  # if script is not locked to a device, this property holds self.selected_track
+        # self.__assignment_mode = C4M_CHANNEL_STRIP
+        # self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
+        # self.__current_track_name = ''
+        self.selected_track = None
+        """reference to Live's selected-Track Object"""
+        self.__locked_device_track = None
+        """if script is not locked to a device, this property holds self.selected_track"""
 
         self.__ordered_plugin_parameters = []  # Live's DeviceParameters of __chosen_plugin (if exists)
         self.__device_provider = device_provider
@@ -1451,36 +1454,6 @@ class EncoderController(MackieC4Component, Component):
             self.send_midi((NOTE_ON_STATUS, C4SID_LOCK, self.btn_ctlr.lock_led_state))
             self.send_midi((NOTE_ON_STATUS, C4SID_SPLIT_ERASE, self.btn_ctlr.spot_erase_led_state))
 
-    def handle_assignment_switch_ids(self, switch_id):
-        """the 4 Assignment buttons on the C4, which handle the mode switching"""
-        # C4 assignment.marker button == C4M_USER mode
-        update_self = False
-        if switch_id == C4SID_MARKER:
-            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_MARKER]:  # C4M_USER:
-                self.__last_assignment_mode = self.__assignment_mode
-                self.__assignment_mode = button_id_to_assignment_mode[C4SID_MARKER]  # C4M_USER
-                update_self = True
-
-        # C4 assignment.track button == C4M_PLUGINS mode
-        elif switch_id == C4SID_TRACK:
-            # only switch mode and set "last mode" when the mode actually changes
-            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_TRACK]:  # C4M_PLUGINS:
-                self.__last_assignment_mode = self.__assignment_mode
-                self.__assignment_mode = button_id_to_assignment_mode[C4SID_TRACK]  # C4M_PLUGINS
-
-                # if self.__eah.selected_device_bank_index == 0 and self.__eah.selected_device_bank_count > 0:
-                # if self.__eah.last_selected_track_device_bank_view_index == 0 and self.__eah.selected_device_bank_count > 0:
-                # ??? why select device at index 0 when changing to Track-Devices mode
-                # if the selected device-bank is index 0 and the track has more than 8 devices?
-                #     self.song().view.select_device(self.get_device_list(self.selected_track.devices)[0], expand_chains=self.expand_chains)
-                update_self = True
-
-        # C4 assignment.chan_strip button == C4M_CHANNEL_STRIP mode
-        elif switch_id == C4SID_CHANNEL_STRIP:
-            if self.__assignment_mode != button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]:
-                self.__last_assignment_mode = self.__assignment_mode
-                self.__assignment_mode = button_id_to_assignment_mode[C4SID_CHANNEL_STRIP]
-                update_self = True
     def handle_assignment_switch_ids(self, switch_id, leaving_user_mode=False):
         """the 4 Assignment buttons on the C4, which control script mode switching"""
         self.btn_ctlr.handle_assignment_button_press(switch_id)
@@ -1694,24 +1667,24 @@ class EncoderController(MackieC4Component, Component):
             # log_msg = f"EC.update_assignment_mode_leds: changing non USER mode {old_name} ({old_mode}) to {new_name} ({new_mode})"
             # self.main_script().log_message(logging.DEBUG, log_msg)
             # not in USER mode these feedback messages pass through the Max patch
-            current_mode_id = assignment_mode_to_button_id[self.__assignment_mode]
+            current_mode_id = assignment_mode_to_button_id[self.btn_ctlr.current_active_script_mode]
             for i in assignment_mode_switch_ids:
                 if i == current_mode_id:
-                    self.main_script().log_message(logging.INFO, f"EC.update_assignment_mode_leds: led id {i} ON")
+                    self.main_script().log_message(logging.DEBUG, f"EC.update_assignment_mode_leds: led id {i} ON")
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
                 else:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
 
         if delay_assignment_led_update:
             # self.main_script().log_message(logging.DEBUG, "EC.update_assignment_mode_leds: updating assignment LEDs after leaving USER mode")
-            current_mode_id = assignment_mode_to_button_id[self.__assignment_mode]
+            current_mode_id = assignment_mode_to_button_id[self.btn_ctlr.current_active_script_mode]
             done = False
             for i in range(C4SID_SPLIT, C4SID_FUNCTION + 1):
                 if i < C4SID_MARKER and not done:
                     self.update_system_switch_leds()
                     done = True
                 if i == current_mode_id:
-                    self.main_script().log_message(logging.INFO, f"EC.update_assignment_mode_leds: led id {i} ON")
+                    self.main_script().log_message(logging.DEBUG, f"EC.update_assignment_mode_leds: led id {i} ON")
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_ON))
                 else:
                     self.send_midi((NOTE_ON_STATUS, i, BUTTON_STATE_OFF))
@@ -2205,7 +2178,7 @@ class EncoderController(MackieC4Component, Component):
             elif encoder_index == encoder_16_index:
                 nav = Live.Application.Application.View.NavDirection
                 if self.application().view.is_view_visible('Arranger'):
-                    self.application().view.zoom_view(nav.left, '', self.alt_is_pressed())
+                    self.application().view.zoom_view(nav.left, '', self.btn_ctlr.only_alt_is_pressed)
 
             elif encoder_index == encoder_17_index:
                 self.song().metronome = not self.song().metronome
@@ -2226,12 +2199,12 @@ class EncoderController(MackieC4Component, Component):
                 self.__encoders[encoder_26_index].unlight_vpot_leds()
                 self.__encoders[encoder_27_index].unlight_vpot_leds()
             elif encoder_index == encoder_26_index:
-                if self.shift_is_pressed():
+                if self.btn_ctlr.only_shift_is_pressed:
                     if not self.song().is_playing:
                         self.song().continue_playing()
                     else:
                         self.song().stop_playing()
-                elif self.ctrl_is_pressed():
+                elif self.btn_ctlr.only_control_is_pressed:
                     self.song().play_selection()
                 else:
                     self.song().start_playing()
@@ -2369,7 +2342,7 @@ class EncoderController(MackieC4Component, Component):
         encoder_30_index = 29
         encoder_31_index = 30
         encoder_32_index = 31
-        if self.__assignment_mode == C4M_CHANNEL_STRIP:
+        if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
 
             is_armable_track_selected = track_util.can_be_armed(self.selected_track)
 
@@ -2540,7 +2513,7 @@ class EncoderController(MackieC4Component, Component):
                     s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                     self.__display_parameters.append(vpot_display_text)
 
-        elif self.__assignment_mode == C4M_PLUGINS:
+        elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
             current_device_bank_param_track = self.__eah.last_selected_track_device_parameter_bank_nbr
             c_bank_text = f"{(current_device_bank_param_track + 1):02d}"
             max_device_bank_param_track = self.__eah.max_last_selected_track_device_parameter_bank_nbr
@@ -2588,7 +2561,7 @@ class EncoderController(MackieC4Component, Component):
 
                 self.__display_parameters.append(vpot_display_text)
 
-        elif self.__assignment_mode == C4M_FUNCTION:
+        elif self.btn_ctlr.current_active_script_mode == C4M_FUNCTION:
             encoders_to_display_text = {
                 encoder_01_index: ('unfllw', 'follow'),
                 encoder_02_index: ('on/off', 'Loop'),
@@ -2645,7 +2618,7 @@ class EncoderController(MackieC4Component, Component):
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
                 self.__display_parameters.append(vpot_display_text)
 
-        elif self.__assignment_mode == C4M_USER:
+        elif self.btn_ctlr.current_active_script_mode == C4M_USER:
             # need to rebuild the midi map for every encoder (disconnect from all parameters)
             for s in self.__encoders:
                 s.unlight_vpot_leds()
@@ -2843,9 +2816,9 @@ class EncoderController(MackieC4Component, Component):
         encoder_31_index = 30
         encoder_32_index = 31
         selected_track = self.__locked_device_track  # == self.selected_track when not locked
-        if self.__assignment_mode == C4M_USER:
+        if self.btn_ctlr.current_active_script_mode == C4M_USER:
             return  # no display updates in this mode
-        elif self.__assignment_mode == C4M_CHANNEL_STRIP:
+        elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
 
             is_group_track = track_util.is_group_track(selected_track)
             is_grouped = track_util.is_grouped(selected_track)
@@ -2908,20 +2881,20 @@ class EncoderController(MackieC4Component, Component):
                     upper_string1 += ''.join([adjust_string(u_alt_text, 6), ' '])
                     lower_string1 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
                 elif t in row_01_encoders:
-                    if self.__spot_erase_state > 0:
+                    if self.btn_ctlr.spot_erase_led_state > 0:
                         l_alt2_text = self.get_scrolling_display_text(l_alt_text, t)
                         lower_string2 += adjust_string(l_alt2_text, 6) + ' '
                     else:
                         lower_string2 += adjust_string(l_alt_text, 6) + ' '
                 elif t in row_02_encoders:
-                    if self.__spot_erase_state > 0:
+                    if self.btn_ctlr.spot_erase_led_state > 0:
                         upper_string3 += ''.join([self.get_scrolling_display_text(u_alt_text, t), ' '])
                     else:
                         upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])
                     lower_string3 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
                 elif t in row_03_encoders:
                     if t < encoder_27_index:
-                        if self.__spot_erase_state > 0:
+                        if self.btn_ctlr.spot_erase_led_state > 0:
                             upper_string4 += ''.join([self.get_scrolling_display_text(u_alt_text, t), ' '])
                         else:
                             upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
@@ -2987,7 +2960,7 @@ class EncoderController(MackieC4Component, Component):
 
         so_many_spaces = '                                                       '
 
-        if self.__assignment_mode == C4M_PLUGINS:
+        if self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
             encoder_7_index = 6
             encoder_8_index = 7
             t_d_idx = self.__eah.last_selected_device_index
@@ -3084,7 +3057,7 @@ class EncoderController(MackieC4Component, Component):
 
                     # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scrolling
                     # and start toggling between 'front half' and 'back half' of the display text
-                    if self.__spot_erase_state > 0:
+                    if self.btn_ctlr.spot_erase_led_state > 0:
                         u_alt_text = self.get_scrolling_display_text(u_raw_text, t)
                         l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
                     else:
@@ -3116,7 +3089,7 @@ class EncoderController(MackieC4Component, Component):
                         else:
                             self.main_script().log_message(logging.ERROR, f"{log_id}oopsie? {t} is NOT a valid encoder index?")
 
-        elif self.__assignment_mode == C4M_FUNCTION:
+        elif self.btn_ctlr.current_active_script_mode == C4M_FUNCTION:
 
             encoder_06_index = 5  # unsolo all
             encoder_07_index = 6  # unmute all
@@ -3154,7 +3127,7 @@ class EncoderController(MackieC4Component, Component):
                     if e.vpot_index() == encoder_09_index:
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
                         # NEW: lower row = last undo label (from redo), scroll if available
-                        if self.__spot_erase_state > 0:
+                        if self.btn_ctlr.spot_erase_led_state > 0:
                             if time.time() - self._last_undo_label_time < 15.0 and self._last_undo_label:
                                 lower_string2 += self.get_scrolling_display_text(self._last_undo_label, e.vpot_index()) + ' '
                             else:
@@ -3169,7 +3142,7 @@ class EncoderController(MackieC4Component, Component):
                     elif e.vpot_index() == encoder_10_index:
                         upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
                         # NEW: lower row = last redo label (from undo), scroll if available
-                        if self.__spot_erase_state > 0:
+                        if self.btn_ctlr.spot_erase_led_state > 0:
                             if time.time() - self._last_redo_label_time < 15.0 and self._last_redo_label:
                                 lower_string2 += self.get_scrolling_display_text(self._last_redo_label, e.vpot_index()) + ' '
                             else:
@@ -3198,7 +3171,7 @@ class EncoderController(MackieC4Component, Component):
                     # show loop length
                     elif e.vpot_index() == encoder_14_index:
                         upper, lower = self.loop_length("on_update_display_timer", e.vpot_index())
-                        if self.__spot_erase_state > 0:
+                        if self.btn_ctlr.spot_erase_led_state > 0:
                             upper_string2 += self.get_scrolling_display_text(upper, e.vpot_index()) + ' '
                         else:
                             upper_string2 += upper
@@ -3207,7 +3180,7 @@ class EncoderController(MackieC4Component, Component):
                     # show loop start
                     elif e.vpot_index() == encoder_15_index:
                         get_loop_start = str(self.song().loop_start / 4)
-                        if self.__spot_erase_state > 0:
+                        if self.btn_ctlr.spot_erase_led_state > 0:
                             upper_string2 += self.get_scrolling_display_text('LoopStart', e.vpot_index()) + ' '
                         else:
                             upper_string2 += 'LoopStart'
@@ -3228,7 +3201,7 @@ class EncoderController(MackieC4Component, Component):
                         # show if we are in Session or Arrange view in upper row and selected track name in lower row
                         upper_string2 += ('Scroll' if self.application().view.is_view_visible('Session') else 'Zoom  ')
                         if liveobj_valid(selected_track):
-                            if self.__spot_erase_state > 0:
+                            if self.btn_ctlr.spot_erase_led_state > 0:
                                 lower_string2 += self.get_scrolling_display_text(selected_track.name, e.vpot_index())
                             else:
                                 lower_string2 += selected_track.name
@@ -3285,7 +3258,7 @@ class EncoderController(MackieC4Component, Component):
                 re_enable_automation_encoder.unlight_vpot_leds()
 
         # ONLY update displays when Not in USER mode
-        if self.__assignment_mode != C4M_USER:
+        if self.btn_ctlr.current_active_script_mode != C4M_USER:
             self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(upper_string1), LCD_TOP_ROW_OFFSET, force=force)
             self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(upper_string2), LCD_TOP_ROW_OFFSET, force=force)
             self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(upper_string3), LCD_TOP_ROW_OFFSET, force=force)
@@ -3360,10 +3333,10 @@ class EncoderController(MackieC4Component, Component):
 
     def refresh_state(self):
         # overrides MackieC4Component.refresh_state() which defers to C4.refresh_state() which drops and reloads all listeners, and we don't want that
-        self.main_script().set_shift_is_pressed(False)
-        self.main_script().set_option_is_pressed(False)
-        self.main_script().set_ctrl_is_pressed(False)
-        self.main_script().set_alt_is_pressed(False)
-        self.main_script().set_marker_is_pressed(False)
+        # self.main_script().set_shift_is_pressed(False)
+        # self.main_script().set_option_is_pressed(False)
+        # self.main_script().set_ctrl_is_pressed(False)
+        # self.main_script().set_alt_is_pressed(False)
+        # self.main_script().set_marker_is_pressed(False)
         for s in self.__encoders:
             s.refresh_state()
