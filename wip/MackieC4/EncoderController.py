@@ -475,13 +475,9 @@ class EncoderController(MackieC4Component, Component):
         self.__display_update_lag_upper_bounds = [0, 5, 10, 20]
         self.__display_update_lag_upper_bounds_index = 0
         self.__display_update_lag_counter = 0
-        # self.__spot_erase_state = self.btn_ctlr.splot_erase_led_state
         self.__view_is_changing = False
         self.add_special_parameter_listeners_pending = False
 
-        # self.__assignment_mode = C4M_CHANNEL_STRIP
-        # self.__last_assignment_mode = C4M_FUNCTION # don't initialize with C4M_USER
-        # self.__current_track_name = ''
         self.selected_track = None
         """reference to Live's selected-Track Object"""
         self.__locked_device_track = None
@@ -524,11 +520,6 @@ class EncoderController(MackieC4Component, Component):
 
         self.update_assignment_mode_leds()
         self.update_system_switch_leds()
-
-        # self.__shift_state = False
-        # self.__option_state = False
-        # self.__ctrl_state = False
-        # self.__alt_state = False
 
         self._last_undo_label = ""
         self._last_undo_label_time = 0
@@ -1077,10 +1068,7 @@ class EncoderController(MackieC4Component, Component):
         extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
         self.__eah.track_added(track_index, self.selected_track, extended_device_list, found_changed_track_callback_type)
 
-        # do we really need to refresh the whole control surface?
-        # couldn't we just "add listeners" for this one new track?
-        # MackieC4Component.refresh_state(self)  <-- drops and re-adds all "Mixin Listeners"
-        self.refresh_state()  # <-- clears any Modifier button "is pressed" status
+        self.refresh_state()
         device = None
         if not self.is_locked_to_device:
             self.__locked_device_track = self.selected_track
@@ -1586,20 +1574,12 @@ class EncoderController(MackieC4Component, Component):
         pressed = self.btn_ctlr.get_modifier_btn_pressed_state(switch_id)
         assert pressed == value # 0 or 127 'velocity data value'
         if switch_id == C4SID_SHIFT:
-            # self.__shift_state = value
-            # self.main_script().set_shift_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}SHIFT is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_OPTION:
-            # self.__option_state = value
-            # self.main_script().set_option_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}OPTION is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_CONTROL:
-            # self.__ctrl_state = value
-            # self.main_script().set_ctrl_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}CONTROL is {'' if pressed else 'NOT '}pressed")
         elif switch_id == C4SID_ALT:
-            # self.__alt_state = value
-            # self.main_script().set_alt_is_pressed(value)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ALT is {'' if pressed else 'NOT '}pressed")
 
 
@@ -3338,10 +3318,5 @@ class EncoderController(MackieC4Component, Component):
 
     def refresh_state(self):
         # overrides MackieC4Component.refresh_state() which defers to C4.refresh_state() which drops and reloads all listeners, and we don't want that
-        # self.main_script().set_shift_is_pressed(False)
-        # self.main_script().set_option_is_pressed(False)
-        # self.main_script().set_ctrl_is_pressed(False)
-        # self.main_script().set_alt_is_pressed(False)
-        # self.main_script().set_marker_is_pressed(False)
         for s in self.__encoders:
             s.refresh_state()

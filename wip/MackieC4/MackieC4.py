@@ -146,10 +146,6 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__time_display = TimeDisplay(self)
         self.register_component(self.__time_display)
 
-        self.__shift_is_pressed = False
-        self.__option_is_pressed = False
-        self.__ctrl_is_pressed = False
-        self.__alt_is_pressed = False
         self.__marker_is_pressed = False
         self.__user_mode_exit = False
 
@@ -646,30 +642,6 @@ class MackieC4(MackieC4ListenerMixin, object):
         """Live -> Script        Live can ask the script for an output port name to find a suitable one.        """
         """Since the C4 only has physical MIDI DIN connectors, the actual output port name can't be predicted here like it can for USB midi ports"""
         return 'Mackie C4'
-
-    # def shift_is_pressed(self):
-    #     return self.__encoder_controller.btn_ctlr.only_shift_is_pressed
-
-    # def set_shift_is_pressed(self, pressed):
-    #     self.__shift_is_pressed = pressed
-
-    # def option_is_pressed(self):
-    #     return self.__encoder_controller.btn_ctlr.only_option_is_pressed
-
-    # def set_option_is_pressed(self, pressed):
-    #     self.__option_is_pressed = pressed
-
-    # def ctrl_is_pressed(self):
-    #     return self.__encoder_controller.btn_ctlr.only_control_is_pressed
-
-    # def set_ctrl_is_pressed(self, pressed):
-    #     self.__ctrl_is_pressed = pressed
-
-    # def alt_is_pressed(self):
-    #     return self.__encoder_controller.btn_ctlr.only_alt_is_pressed
-
-    # def set_alt_is_pressed(self, pressed):
-    #     self.__alt_is_pressed = pressed
 
     # this 'is pressed' flag is controlled here in this class only, separate from self.__encoder_controller.btn_ctlr (ButtonController) state modeling
     # because "that" marker button LED flag is handled like a radio button, it remains 'selected' until another radio button gets 'selected' indicating
