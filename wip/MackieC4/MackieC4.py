@@ -28,14 +28,15 @@ from functools import partial, wraps
 import Live
 from ableton.v2.base import liveobj_valid, clamp
 
-from .TimeDisplay import TimeDisplay
-from . import song_util
+# from .TimeDisplay import TimeDisplay
+# from . import song_util
+from . import script_utils
 from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
 from .c4_device_provider import C4DeviceProvider
 from .MackieC4ListenerMixin import MackieC4ListenerMixin
-from .C4Decorators import CoolDown, TooSoon
+# from .C4Decorators import CoolDown, TooSoon
 
 if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
     from builtins import str
@@ -143,8 +144,8 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__encoder_controller.build_setup_database() # self.song() reference needed
 
         # To display song position pointer or beats on display
-        self.__time_display = TimeDisplay(self)
-        self.register_component(self.__time_display)
+        # self.__time_display = TimeDisplay(self)
+        # self.register_component(self.__time_display)
 
         self.__marker_is_pressed = False
         self.__user_mode_exit = False
@@ -549,10 +550,10 @@ class MackieC4(MackieC4ListenerMixin, object):
         else:
             try:
                 self.__throttled_scroll_view(cc_value)
-            except TooSoon as exception:
+            except script_utils.TooSoon as exception:
                 self.log_message(logging.DEBUG, f"C4.zoom_or_scroll: Too Soon {exception}")
 
-    @CoolDown(80) # milliseconds
+    @script_utils.CoolDown(80) # milliseconds
     def __throttled_scroll_view(self, cc_value):
         self.__zoom_view(cc_value)
 
