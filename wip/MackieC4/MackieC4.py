@@ -253,6 +253,9 @@ class MackieC4(MackieC4ListenerMixin, object):
         # EVERYTHING is the most verbose, deepest log detail level setting, the only self.current_script_log_level "less than TRACE"
         # encoder turns can quickly log dozens of CC messages here, for example, so ONLY log every received midi message
         self.log_message(self.script_log_levels["EVERYTHING"], f"{log_id}input is {midi_bytes}")
+        # you only really need to see logging from this method if you are actively bug hunting midi message dispatching or switching in and out of USER mode,
+        # otherwise only actually log from here if when the script is (currently) globally set to log "everything"
+        method_log_detail_level = self.script_log_levels["EVERYTHING"]  # ["TRACE"], logging.DEBUG
         # coming from C4 (button and knob actions) midi_bytes[0] is always 0x91 or 0xB1 (NOTE_ON or CC) [C4 sends note on with velocity 0 for note off]
         # velocity of note on messages is always 7F, velocity of note off messages is always 00
         # C4 always sends and receives on channel 1
@@ -279,15 +282,15 @@ class MackieC4(MackieC4ListenerMixin, object):
 
                 if is_marker_on_press:
                     self.set_marker_is_pressed(True)
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}USER mode MARKER is pressed")
+                    self.log_message(method_log_detail_level, f"{log_id}USER mode MARKER is pressed")
                 elif is_c4_marker_release or is_marker_off_release:
                     self.set_marker_is_pressed(False)
                     if is_c4_marker_release:
-                       self.log_message(self.script_log_levels["TRACE"], f"{log_id}USER mode MARKER is released, unexpected NOTE ON event")
+                       self.log_message(method_log_detail_level, f"{log_id}USER mode MARKER is released, unexpected NOTE ON event")
                     else:
-                        self.log_message(self.script_log_levels["TRACE"], f"{log_id}USER mode MARKER is released")
+                        self.log_message(method_log_detail_level, f"{log_id}USER mode MARKER is released")
                 elif is_lock_on_press and self.__marker_is_pressed:
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}USER mode LOCK press event while MARKER is pressed")
+                    self.log_message(method_log_detail_level, f"{log_id}USER mode LOCK press event while MARKER is pressed")
                     # conditions here do NOT need to guard against processing this button combo when NOT already in user mode
                     #  events for patch to process before sending STOP signal
                     # no LOCK Press event forwarded to the patch
@@ -300,17 +303,17 @@ class MackieC4(MackieC4ListenerMixin, object):
                     self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_OFF))
                     # STOP signal for patch to process
                     self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_OFF))  # for this signal: velocity 0 means STOP processing
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
+                    self.log_message(method_log_detail_level, f"{log_id}sending 'button 22' signal toggling Max bypass mode, STOP processing START bypassing")
                     self.__user_mode_exit = True  # flag needs to stay set until first method re-entry after USER mode only
                     last_mode = self.__encoder_controller.btn_ctlr.last_active_script_mode
                     curr_mode = self.__encoder_controller.btn_ctlr.current_active_script_mode
                     dtls = f"last {last_mode}, current {curr_mode}"
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}USER mode exit!  script is still in USER mode, {dtls}")
+                    self.log_message(method_log_detail_level, f"{log_id}USER mode exit!  script is still in USER mode, {dtls}")
                     self.__encoder_controller.handle_assignment_switch_ids(self.__encoder_controller.btn_ctlr.last_assignment_led_on, leaving_user_mode=True)
                     last_mode = self.__encoder_controller.btn_ctlr.last_active_script_mode
                     curr_mode = self.__encoder_controller.btn_ctlr.current_active_script_mode
                     dtls = f"last {last_mode}, current {curr_mode}"
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}USER mode exit!  script is no longer in USER mode, {dtls}")
+                    self.log_message(method_log_detail_level, f"{log_id}USER mode exit!  script is no longer in USER mode, {dtls}")
                     self.set_marker_is_pressed(False)  # technically not released yet but don't need the signal any longer
 
                 if not self.__user_mode_exit:
@@ -321,30 +324,30 @@ class MackieC4(MackieC4ListenerMixin, object):
                     # but every button PRESS and encoder TURN message received that reaches here becomes spurious feedback "forwarded" to the C4
                     # whenever the Max Sequencer patch is not in use.  If the script is running solo, it's probably "never" in USER mode anyway.
                     # no way to stop forwarding such spurious feedback messages programmatically without "knowing" whether the patch "exists" or not?
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}normal USER mode forwarding msg <{midi_bytes}>")
+                    self.log_message(method_log_detail_level, f"{log_id}normal USER mode forwarding msg <{midi_bytes}>")
                     self.__c_instance.send_midi(midi_bytes)  # all midi (Note and CC event messages)
             elif self.__user_mode_exit and self.__encoder_controller.btn_ctlr.last_active_script_mode == C4M_USER:
-                self.log_message(self.script_log_levels["TRACE"], f"{log_id}(first user mode exit) note message: ({midi_bytes})")
+                self.log_message(method_log_detail_level, f"{log_id}(first user mode exit) note message: ({midi_bytes})")
 
                 if is_note_on_msg and midi_bytes[1] == C4SID_LOCK and midi_bytes[2] == BUTTON_STATE_ON:
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}(first user mode exit) event passed - investigating LOCK button pressed event")
+                    self.log_message(method_log_detail_level, f"{log_id}(first user mode exit) event passed - investigating LOCK button pressed event")
                     pass
                 elif is_note_off_msg and midi_bytes[1] == C4SID_LOCK:
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}(first user mode exit) event passed - eating LOCK Note OFF event")
+                    self.log_message(method_log_detail_level, f"{log_id}(first user mode exit) event passed - eating LOCK Note OFF event")
                     pass
                 elif is_note_off_msg and midi_bytes[1] == C4SID_MARKER:
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}(first user mode exit) event handled - setting MARKER is released Note OFF event")
+                    self.log_message(method_log_detail_level, f"{log_id}(first user mode exit) event handled - setting MARKER is released Note OFF event")
                     self.set_marker_is_pressed(False)
                     mode = self.__encoder_controller.btn_ctlr.current_active_script_mode
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}(first user mode exit) event handled - active mode is {mode}")
+                    self.log_message(method_log_detail_level, f"{log_id}(first user mode exit) event handled - active mode is {mode}")
                 else:
                     self.log_message(logging.WARNING, f"{log_id}(first user mode exit) event unhandled - dropping event message {midi_bytes}")
                 # these button LEDs should be restored to "remote script" status display upon User mode exit
                 self.__encoder_controller.update_system_switch_leds()
                 self.__user_mode_exit = False
-                self.log_message(self.script_log_levels["TRACE"], f"{log_id}(first user mode exit) Split, Lock, SpotErase LEDs reset")
+                self.log_message(method_log_detail_level, f"{log_id}(first user mode exit) Split, Lock, SpotErase LEDs reset")
             else:
-                self.log_message(self.script_log_levels["TRACE"], f"{log_id}mode != C4M_USER")
+                self.log_message(method_log_detail_level, f"{log_id}mode != C4M_USER")
                 # in cases when the first midi_msg event after leaving USER mode is NOT a LOCK button event, clear the USER mode exit flag so this script
                 # will handle LOCK button events normally.
                 self.__user_mode_exit = False #
@@ -374,7 +377,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                                 last_mode = self.__encoder_controller.btn_ctlr.last_active_script_mode
                                 curr_mode = self.__encoder_controller.btn_ctlr.current_active_script_mode
                                 dtls = f"last {last_mode}, current {curr_mode}"
-                                self.log_message(self.script_log_levels["TRACE"], f"{log_id}note event {note} handled, script modes: {dtls}")
+                                self.log_message(method_log_detail_level, f"{log_id}note event {note} handled, script modes: {dtls}")
                             else:
                                 self.log_message(logging.ERROR, f"{log_id}unhandled note value: {note}")
 
@@ -383,24 +386,24 @@ class MackieC4(MackieC4ListenerMixin, object):
                             # now the script IS in USER mode, because self.__note_handling_dict[note](note) and note == C4SID_MARKER:
                             # but the Max patch is still NOT-processing yet, forward this midi event to the C4 display
                             msg = f"turning MARKER led OFF <{(NOTE_ON_STATUS, note, BUTTON_STATE_OFF)}>"
-                            self.log_message(self.script_log_levels["TRACE"], f"{log_id}before leaving script control, {msg}")
+                            self.log_message(method_log_detail_level, f"{log_id}before leaving script control, {msg}")
                             self.__c_instance.send_midi((NOTE_ON_STATUS, note, BUTTON_STATE_OFF))
                             # (just-before-going-into-user-mode) MARKER LED is now OFF (would normally be ON indicating USER mode)
-                            self.log_message(self.script_log_levels["TRACE"], f"{log_id}before leaving script control, sending user mode text to LCDs")
+                            self.log_message(method_log_detail_level, f"{log_id}before leaving script control, sending user mode text to LCDs")
                             self.__encoder_controller.send_user_mode_display_strings()
                             # and the buffered "displayed text" data from the previous mode display is overwritten with USER mode display text
                             # the LCDs will (now re)display correct text after we leave USER mode
                             # - this 'hack' is only needed when the Max patch IS connected and actually takes over control?
                             # send START signal for patch to process
                             msg = f"{log_id}sending 'button 22' signal toggling Max bypass mode, START processing STOP bypassing"
-                            self.log_message(self.script_log_levels["TRACE"], msg)
+                            self.log_message(method_log_detail_level, msg)
                             self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MAX_BYPASS_ID, BUTTON_STATE_ON))
                             self.set_marker_is_pressed(False)  # in case LOCK button is pressed by itself in USER mode, don't exit USER mode
 
                             last_mode = self.__encoder_controller.btn_ctlr.last_active_script_mode
                             curr_mode = self.__encoder_controller.btn_ctlr.current_active_script_mode
                             dtls = f"last {last_mode}, current {curr_mode}"
-                            self.log_message(self.script_log_levels["TRACE"], f"{log_id}script now in USER mode, Max patch is in control, {dtls}")
+                            self.log_message(method_log_detail_level, f"{log_id}script now in USER mode, Max patch is in control, {dtls}")
                             # MARKER Press+Release events created for the patch to "restore" the USER mode patch's MARKER button LED ON/OFF status
                             # One Press+Release event toggles the LED ON/OFF, Two (quick) Press+Release events mean the LED ON/OFF state "doesn't change"
                             self.__c_instance.send_midi((NOTE_ON_STATUS, C4SID_MARKER, BUTTON_STATE_ON))
@@ -422,7 +425,7 @@ class MackieC4(MackieC4ListenerMixin, object):
                         self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
 
                 elif is_note_off_msg:  # an actual Note Off event: is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
-                    self.log_message(self.script_log_levels["TRACE"], f"{log_id}note off event {midi_bytes}, only handling for modifier or single buttons")
+                    self.log_message(method_log_detail_level, f"{log_id}note off event {midi_bytes}, only handling for modifier or single buttons")
                     # this pass is expected, the C4 sends Note ON with velocity 0 for Note OFF.
                     # Live generates Note Offs the script can usually ignore here (not USER mode) because USER Mode has already processed above as needed
                     # self.log_message(logging.DEBUG, f"{log_id}when NOT in USER mode local MARKER flag is always released")
@@ -431,20 +434,21 @@ class MackieC4(MackieC4ListenerMixin, object):
                         # since modifier button 'is pressed' behavior depends on the 'release' event, also need to handle releases
                         # The C4 always sends (144, x, 0) for Note OFF, and Live always converts those messages to (128, x, 0),
                         # actual Note OFF message input entering receive_midi() for processing
-                        self.log_message(self.script_log_levels["TRACE"], f"{log_id}handling note off event for modifier button")
+                        self.log_message(method_log_detail_level, f"{log_id}handling note off event for modifier button")
                         self.__encoder_controller.handle_modifier_switch_ids(midi_bytes[1], midi_bytes[2])
                     elif midi_bytes[1] in [C4SID_SINGLE_LEFT, C4SID_SINGLE_RIGHT]:
                         # since the parameter group single buttons map to behavior that depends on the is_pressed status of these buttons
                         # this "note off press" counts as a release 
                         # don't count note offs for C4SID_BANK_LEFT, C4SID_BANK_RIGHT
-                        self.log_message(self.script_log_levels["TRACE"], f"{log_id}handling note off event for parameter - Single button")
+                        self.log_message(method_log_detail_level, f"{log_id}handling note off event for parameter - Single button")
                         self.__encoder_controller.handle_bank_switch_ids(midi_bytes[1])
                 elif midi_bytes[0] == 0xF0:
                     self.handle_sysex_msg(midi_bytes)
                 else:
                     self.log_message(logging.WARNING,f"{log_id}unhandled - sysex event dropped {midi_bytes}")
         else:
-            self.log_message(self.script_log_levels["TRACE"], f"{log_id}unhandled - sysex serial number response not yet received from C4. Is it powered on?")
+            msg = f"{log_id}input unhandled - sysex serial number response not yet received from C4. Is it powered on? Requesting firmware..."
+            self.log_message(logging.DEBUG, msg)
             self.request_firmware_version()
 
 
