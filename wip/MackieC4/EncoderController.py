@@ -1449,15 +1449,13 @@ class EncoderController(MackieC4Component, Component):
     def handle_assignment_switch_ids(self, switch_id, leaving_user_mode=False):
         """the 4 Assignment buttons on the C4, which control script mode switching"""
         self.btn_ctlr.handle_assignment_button_press(switch_id)
-
-        if not self.btn_ctlr.current_active_script_mode == C4M_USER or leaving_user_mode:
-            self.update_system_switch_leds()
-            self.update_assignment_mode_leds()
-            self.__reassign_encoder_parameters()
-            self.request_rebuild_midi_map()
-            if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
-                # need to wipe USER mode LCD screen displays when we leave USER mode, but not too soon, wait 20 ms
-                self.one_delayed_display_update(.020)
+        self.update_system_switch_leds()
+        self.update_assignment_mode_leds()
+        self.__reassign_encoder_parameters()
+        self.request_rebuild_midi_map()
+        if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
+            # need to wipe USER mode LCD screen displays when we leave USER mode, but not too soon, wait 20 ms
+            self.one_delayed_display_update(.020)
 
     def handle_bank_switch_ids(self, switch_id):
         """ Parameter Group Buttons: Bank Left, Bank Right, Single Left, Single Right are only mapped to behavior in the two 'track modes', channel-strip and devices """
