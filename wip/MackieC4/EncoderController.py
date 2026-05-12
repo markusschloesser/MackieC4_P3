@@ -28,6 +28,9 @@ import Live
 
 from .EncoderAssignmentHistory import EncoderAssignmentHistory, track_callback_types
 from .EncoderDisplaySegment import EncoderDisplaySegment
+from . import mode_utils_track_channel_strip as tcs_mode_util
+from . import mode_utils_track_device as td_mode_util
+from . import mode_utils_song_function as sf_mode_util
 from .MackieC4Component import *
 from _Generic.Devices import *
 # from .C4Decorators import CoolDown, TooSoon
@@ -2782,476 +2785,49 @@ class EncoderController(MackieC4Component, Component):
         log_id = "EC.__do_display_update: "
         upper_string1 = ''
         lower_string1 = ''
-        lower_string1a = ''
-        lower_string1b = ''
         upper_string2 = ''
         lower_string2 = ''
         upper_string3 = ''
         lower_string3 = ''
         upper_string4 = ''
         lower_string4 = ''
-
-        encoder_27_index = 26
-        encoder_28_index = 27
-        encoder_29_index = 28
-        encoder_30_index = 29
-        encoder_31_index = 30
-        encoder_32_index = 31
         selected_track = self.__locked_device_track  # == self.selected_track when not locked
         if self.btn_ctlr.current_active_script_mode == C4M_USER:
-            return  # no display updates in this mode
+            return  # no display updates in this mode (all updates in this mode, if any, are handled by the Max sequencer patch)
         elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
-
-            is_group_track = script_utils.is_group_track(selected_track)
-            is_grouped = script_utils.is_grouped(selected_track)
-            is_folded = script_utils.is_folded(selected_track) if liveobj_valid(selected_track) else False
-            is_view_visible_session = self.application().view.is_view_visible('Session')
-            is_view_visible_arranger = self.application().view.is_view_visible('Arranger')
-            if self.is_locked_to_device and liveobj_valid(self.__chosen_plugin):
-                selected_device_name = adjust_string(self.__chosen_plugin.name, 22)
-            elif liveobj_valid(self.__chosen_plugin):
-                selected_device_name = adjust_string(self.__chosen_plugin.name, 22)
-            else:  # not locked or valid
-                selected_device_name = '                      '  # length: 22
-
-            # shows "fold" or "unfold" or nothing depending on if group track or grouped track
-            if is_group_track or is_grouped:
-                fold_text = 'unfold' if is_folded else 'fold'
-                upper_string1 += '------ Track ------- {} ---------------'.format(fold_text)
-            else:
-                upper_string1 += '------ Track -------       ---------------'
-
-            # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
-            if liveobj_valid(selected_track):
-                lower_string1 += adjust_string(selected_track.name, 12)
-                if self.is_locked_to_device:
-                    if selected_track.is_frozen:
-                        # can you lock to a device on a frozen track? (where you can't change any (frozen) device parameter values)
-                        lower_string1 += 'Frzn+Lck'
-                    else:
-                        lower_string1 += '-Locked-'
-                elif selected_track.is_frozen:
-                    lower_string1 += '-Frozen-'
-                else: # not locked or frozen
-                    lower_string1 = adjust_string(selected_track.name, 20)
-            else:
-                lower_string1 += adjust_string('invalid Track object', 20)
-
-            if is_view_visible_session:
-                group_text = ' Group ' if (is_group_track or is_grouped) else '       '
-                lower_string1 += group_text
-            elif is_view_visible_arranger:
-                lower_string1 += ' Track '
-
-            lower_string1 += adjust_string(selected_device_name, 15)
-
-            # This text 'covers' display segments over all 8 encoders in the second row
-            upper_string2 += '----------------------- Devices -----------------------'  # length 55
-            # todo MS maybe try to visualize Racks/Groups here by using |  |  ?
-
-            for t in encoder_range:
-                try:
-                    text_for_display = next(x for x in self.__display_parameters if (x.filter_index(t)))
-                except StopIteration:
-                    text_for_display = EncoderDisplaySegment(self, t)
-                    text_for_display.set_text('zzzzzz', 'ZZZZZZ')
-
-                u_alt_text = text_for_display.get_upper_text()
-                l_alt_text = text_for_display.get_lower_text()
-
-                if t in range(6, NUM_ENCODERS_ONE_ROW):
-                    upper_string1 += ''.join([adjust_string(u_alt_text, 6), ' '])
-                    lower_string1 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
-                elif t in row_01_encoders:
-                    if self.btn_ctlr.spot_erase_led_state > 0:
-                        l_alt2_text = self.get_scrolling_display_text(l_alt_text, t)
-                        lower_string2 += adjust_string(l_alt2_text, 6) + ' '
-                    else:
-                        lower_string2 += adjust_string(l_alt_text, 6) + ' '
-                elif t in row_02_encoders:
-                    if self.btn_ctlr.spot_erase_led_state > 0:
-                        upper_string3 += ''.join([self.get_scrolling_display_text(u_alt_text, t), ' '])
-                    else:
-                        upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])
-                    lower_string3 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
-                elif t in row_03_encoders:
-                    if t < encoder_27_index:
-                        if self.btn_ctlr.spot_erase_led_state > 0:
-                            upper_string4 += ''.join([self.get_scrolling_display_text(u_alt_text, t), ' '])
-                        else:
-                            upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
-                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-
-                    if t == encoder_27_index:
-                        upper, lower = self.xfade("on_update_display_timer", t, u_alt_text, l_alt_text)
-                        upper_string4 += upper
-                        lower_string4 += lower
-
-                    if t == encoder_28_index:
-                        if liveobj_valid(selected_track):
-                            if self.subordinate_track_is_selected:
-                                if selected_track.solo:
-                                    l_alt_text = "ON"
-                                    self.__encoders[encoder_28_index].show_full_enlighted_poti()
-                                else:
-                                    l_alt_text = "OFF"
-                                    self.__encoders[encoder_28_index].unlight_vpot_leds()
-                            else:
-                                l_alt_text = "NoSolo"
-
-                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
-
-                    elif t == encoder_29_index:
-                        if liveobj_valid(selected_track):
-                            if selected_track.can_be_armed:
-                                if selected_track.arm:
-                                    l_alt_text = "ON"
-                                    self.__encoders[encoder_29_index].show_full_enlighted_poti()
-                                else:
-                                    l_alt_text = "OFF"
-                                    self.__encoders[encoder_29_index].unlight_vpot_leds()
-                            else:
-                                l_alt_text = "No Arm"
-
-                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
-
-                    elif t == encoder_30_index:
-                        if selected_track != self.song().master_track and liveobj_valid(selected_track):
-                            if selected_track.mute:
-                                l_alt_text = "ON"
-                                self.__encoders[encoder_30_index].show_full_enlighted_poti()
-                            else:
-                                l_alt_text = "OFF"
-                                self.__encoders[encoder_30_index].unlight_vpot_leds()
-                            lower_string4 += adjust_string(l_alt_text, 6)
-
-                        else:
-                            lower_string4 += adjust_string(l_alt_text, 6)
-                        lower_string4 += ' '
-                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
-
-                    elif t == encoder_31_index:
-                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
-
-                    elif t == encoder_32_index:
-                        lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                        upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
-
-        so_many_spaces = '                                                       '
-
-        if self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
-            encoder_7_index = 6
-            encoder_8_index = 7
-            t_d_idx = self.__eah.last_selected_device_index
-            add_tail = False
-            if self.is_locked_to_device and liveobj_valid(self.__chosen_plugin):
-                upper_string1 += f"------ Track --- LOCKED to Device {t_d_idx}"
-                add_tail = True
-            elif liveobj_valid(self.__chosen_plugin):
-                upper_string1 += f"------ Track ------- ----- Device {t_d_idx}"
-                add_tail = True
-            else:  # not locked or valid
-                upper_string1 +=  "------ Track ------- --No--Device----------"
-            if add_tail:
-                if t_d_idx is None:
-                    upper_string1 += ' ----- '
-                elif t_d_idx > 99:
-                    upper_string1 += ' --- '
-                else:
-                    upper_string1 += ' ---- ' if t_d_idx > 9 else ' ----- '
-            # self.main_script().log_message(f"device index is {t_d_idx} ")
-
-
-            if liveobj_valid(selected_track):
-                track_name = selected_track.name
-                # lower_string1a += f"{adjust_string(track_name, 12)}(Frozen)" if self.selected_track.is_frozen else adjust_string(track_name, 20)
-                lower_string1a += " " + adjust_string(track_name, 11)
-                if not self.is_locked_to_device and not selected_track.is_frozen:
-                    lower_string1a = adjust_string(selected_track.name, 20)
-                elif selected_track.is_frozen:
-                    lower_string1a += "-Frozen-"
-            else:
-                lower_string1a += adjust_string('invalid Track object', 20)
-
-            lower_string1a = self.pad_right_if_less(lower_string1a, max_length=27)
-
-            if not liveobj_valid(self.__chosen_plugin):
-                # blank everything out
-                upper_string1 += '             '
-                lower_string1b += '                                   '
-                lower_string1 += lower_string1a + lower_string1b
-                upper_string2 += '               NO DEVICES ON THIS TRACK                '
-                lower_string2 += so_many_spaces
-                upper_string3 += so_many_spaces
-                lower_string3 += so_many_spaces
-                upper_string4 += so_many_spaces
-                lower_string4 += so_many_spaces
-            else:
-                device_name = '  '
-                if self.is_locked_to_device:
-                    device_name = self.__chosen_plugin.name
-                elif t_d_idx is not None and t_d_idx > -1:
-                    device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, t_d_idx)
-                    device_name = device_ref.device_name
-                    # test: we don't need to dive down this rabbit hole fetching the Live device list every display update (if not locked to a device) do we?
-                    # self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
-                    # extended_device_list = self.get_device_list(selected_track.devices, expand_chains=self.expand_chains)
-                    # if liveobj_valid(selected_track) and len(extended_device_list) > t_d_idx:
-                    #     if liveobj_valid(extended_device_list[t_d_idx]):
-                    #         device_name = extended_device_list[t_d_idx].name
-                    #     else:
-                    #         device_name = f"trk{t_d_idx}: " + selected_track.name  # is "blanks" better?
-                    # else:
-                    #     # is "blanks" better? ("new" group track with no devices just two grouped tracks landed here)
-                    #     device_name = "trk: " + selected_track.name
-                # else:
-                #     self.main_script().log_message(logging.DEBUG, f"Current Track Device List length too short for index: name display blank over device index {t_d_idx}")
-
-                lower_string1b = str(device_name) # adjust_string(str(device_name), 20).center(20)
-                if self.is_locked_to_device:
-                    if selected_track.is_frozen:
-                        lower_string1b += ' FL'
-                    else:
-                        lower_string1b += ' Lk'
-                elif selected_track.is_frozen:
-                    lower_string1b += ' Fz'
-                #else: # not locked or frozen
-                lower_string1 += lower_string1a + adjust_string(str(lower_string1b), 20).center(20)
-                # make sure there is room for control text <<Bank and Bank>>
-                lower_string1 = self.pad_right_if_less(lower_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - len('<<BankBank>>'))
-                if self.is_locked_to_device:
-                    upper_string1 = self.pad_right_if_less(upper_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - len('-Params Bank-'))
-                # else:
-                #     self.pad_right_if_less(upper_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - 7)
-                upper_string1 += '-Params Bank-'
-                for t in encoder_range:
-                    try:
-                        text_for_display = self.__display_parameters[t]  # assumes always 32
-                    except IndexError:
-                        text_for_display = EncoderDisplaySegment(self, t)
-                        text_for_display.set_text('---', ' X ')
-
-                    u_raw_text = text_for_display.get_upper_text()
-                    l_raw_text = text_for_display.get_lower_text()
-
-                    # change the next 2 lines from get_scrolling_display_text to get_alternating_display_text to stop scrolling
-                    # and start toggling between 'front half' and 'back half' of the display text
-                    if self.btn_ctlr.spot_erase_led_state > 0:
-                        u_alt_text = self.get_scrolling_display_text(u_raw_text, t)
-                        l_alt_text = self.get_scrolling_display_text(l_raw_text, t)
-                    else:
-                        u_alt_text = u_raw_text
-                        l_alt_text = l_raw_text
-
-                    # if t in range(6, NUM_ENCODERS_ONE_ROW):
-                    if t in (encoder_7_index, encoder_8_index):
-                        l_alt_text = l_raw_text
-                        lower_string1 += adjust_string((str(l_alt_text)), 6)
-                        if t == encoder_7_index:
-                             lower_string1 +=  "/"
-                        elif t == encoder_8_index:
-                            pass
-                        else:
-                            lower_string1 += " "
-                    elif t in row_01_encoders:
-                        upper_string2 += adjust_string(u_alt_text, 6) + ' '
-                        lower_string2 += adjust_string(str(l_alt_text), 6) + ' '
-                    elif t in row_02_encoders:
-                        upper_string3 += adjust_string(u_alt_text, 6) + ' '
-                        lower_string3 += adjust_string(str(l_alt_text), 6) + ' '
-                    elif t in row_03_encoders:
-                        upper_string4 += adjust_string(u_alt_text, 6) + ' '
-                        lower_string4 += adjust_string(str(l_alt_text), 6) + ' '
-                    else:
-                        if t < encoder_7_index:
-                            pass   # valid indexes 0 - 5 get a pass
-                        else:
-                            self.main_script().log_message(logging.ERROR, f"{log_id}oopsie? {t} is NOT a valid encoder index?")
-
+            upper_string1, lower_string1, upper_string2, lower_string2, upper_string3, lower_string3, upper_string4, lower_string4 = (
+                tcs_mode_util.do_display_update(
+                self.application().view, selected_track, self.__chosen_plugin, self.is_locked_to_device, self.__display_parameters, self.btn_ctlr,
+                self.get_scrolling_display_text, self.xfade, self.subordinate_track_is_selected, self.__encoders)
+            )
+        elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
+            device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
+            upper_string1, lower_string1, upper_string2, lower_string2, upper_string3, lower_string3, upper_string4, lower_string4 = (
+                td_mode_util.do_display_update(
+                    self.__eah.last_selected_device_index, selected_track, self.__chosen_plugin, self.is_locked_to_device,
+                    self.pad_right_if_less, device_ref, self.__display_parameters, self.btn_ctlr, self.get_scrolling_display_text,
+                    self.main_script().log_message)
+            )
         elif self.btn_ctlr.current_active_script_mode == C4M_FUNCTION:
+            upper_string1, lower_string1, upper_string2, lower_string2, upper_string3, lower_string3, upper_string4, lower_string4 = (
+                sf_mode_util.do_display_update(
+                    self.application().view, self.song(), selected_track, self.__encoders, self.__display_parameters, self.unsolo_all_functionality, self.btn_ctlr,
+                    self._last_undo_label_time, self._last_undo_label, self.get_scrolling_display_text, self._last_redo_label_time, self._last_redo_label,
+                    self.beat_pointer, self.loop_length)
+            )
+        else:
+            self.main_script().log_message(logging.ERROR, f"{log_id}UNKNOWN SCRIPT MODE!!!")
 
-            encoder_06_index = 5  # unsolo all
-            encoder_07_index = 6  # unmute all
-            encoder_08_index = 7  # BTA
-            encoder_09_index = 8
-            encoder_10_index = 9
-            encoder_11_index = 10
-            encoder_12_index = 11
-            # encoder_13_index is covered / occupied by SPP from 12
-            encoder_14_index = 12  # because 12 is occupied, we still need 12 otherwise everything be shifted over
-            encoder_15_index = 13
-            encoder_16_index = 14
-            encoder_17_index = 16  # Metronome
-            encoder_18_index = 17  # re-enable automation
-            encoder_19_index = 18  # scrub clip
-            encoder_20_index = 19  # scroll clip
-            encoder_21_index = 20  # zoom clip
-            encoder_22_index = 21  # BPM
-            encoder_25_index = 24
-            encoder_26_index = 25
-            encoder_27_index = 26
-            for e in self.__encoders:
-                try:
-                    dspl_sgmt = next(x for x in self.__display_parameters if x.vpot_index() == e.vpot_index())
-                except StopIteration:
-                    break # nothing to display (coming out of USER mode: no parameters are mapped to encoders in USER mode, so no display parameters either (yet))
 
-                if e.vpot_index() in row_00_encoders:
-                    if e.vpot_index() == encoder_06_index:
-                        self.unsolo_all_functionality("on_update_display_timer", e.vpot_index())
+        self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(upper_string1), LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(upper_string2), LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(upper_string3), LCD_TOP_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(upper_string4), LCD_TOP_ROW_OFFSET, force=force)
 
-                    upper_string1 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
-                    lower_string1 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                elif e.vpot_index() in row_01_encoders:
-                    if e.vpot_index() == encoder_09_index:
-                        upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_undo), 6) + ' '
-                        # NEW: lower row = last undo label (from redo), scroll if available
-                        if self.btn_ctlr.spot_erase_led_state > 0:
-                            if time.time() - self._last_undo_label_time < 15.0 and self._last_undo_label:
-                                lower_string2 += self.get_scrolling_display_text(self._last_undo_label, e.vpot_index()) + ' '
-                            else:
-                                lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                        else:
-                            lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                        if self.song().can_undo:
-                            e.show_full_enlighted_poti()
-                        else:
-                            e.unlight_vpot_leds()
-
-                    elif e.vpot_index() == encoder_10_index:
-                        upper_string2 += adjust_string(dspl_sgmt.alter_upper_text(self.song().can_redo), 6) + ' '
-                        # NEW: lower row = last redo label (from undo), scroll if available
-                        if self.btn_ctlr.spot_erase_led_state > 0:
-                            if time.time() - self._last_redo_label_time < 15.0 and self._last_redo_label:
-                                lower_string2 += self.get_scrolling_display_text(self._last_redo_label, e.vpot_index()) + ' '
-                            else:
-                                lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                        else:
-                            lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                        if self.song().can_redo:
-                            e.show_full_enlighted_poti()
-                        else:
-                            e.unlight_vpot_leds()
-
-                    elif e.vpot_index() == encoder_11_index:
-                        upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
-                        lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                        if script_utils.any_armed_track(self.song().tracks):
-                            e.show_full_enlighted_poti()
-                        else:
-                            e.unlight_vpot_leds()
-
-                    elif e.vpot_index() == encoder_12_index:
-                        # show beat position pointer or SPP at encoder 12 AND encoder 13 position in second row
-                        upper, lower = self.beat_pointer("on_update_display_timer", e.vpot_index())
-                        upper_string2 += upper
-                        lower_string2 += lower
-
-                    # show loop length
-                    elif e.vpot_index() == encoder_14_index:
-                        upper, lower = self.loop_length("on_update_display_timer", e.vpot_index())
-                        if self.btn_ctlr.spot_erase_led_state > 0:
-                            upper_string2 += self.get_scrolling_display_text(upper, e.vpot_index()) + ' '
-                        else:
-                            upper_string2 += upper
-                        lower_string2 += lower
-
-                    # show loop start
-                    elif e.vpot_index() == encoder_15_index:
-                        get_loop_start = str(self.song().loop_start / 4)
-                        if self.btn_ctlr.spot_erase_led_state > 0:
-                            upper_string2 += self.get_scrolling_display_text('LoopStart', e.vpot_index()) + ' '
-                        else:
-                            upper_string2 += 'LoopStart'
-                        lower_string2 += adjust_string(get_loop_start, 6) + ' '
-
-                        # vpot ring light
-                        display_mode_cc_first = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][0]
-                        display_mode_cc_last = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_WRAP][1]
-
-                        scaler = make_interpolater(0, self.song().last_event_time, display_mode_cc_first, display_mode_cc_last)
-                        loop_start = int(self.song().loop_start)
-                        led_ring_val = int(scaler(loop_start))
-                        spp_vpot_index = 14
-                        spp_vpot = self.__encoders[spp_vpot_index]
-                        spp_vpot.update_led_ring(led_ring_val)
-
-                    elif e.vpot_index() == encoder_16_index:
-                        # show if we are in Session or Arrange view in upper row and selected track name in lower row
-                        upper_string2 += ('Scroll' if self.application().view.is_view_visible('Session') else 'Zoom  ')
-                        if liveobj_valid(selected_track):
-                            if self.btn_ctlr.spot_erase_led_state > 0:
-                                lower_string2 += self.get_scrolling_display_text(selected_track.name, e.vpot_index())
-                            else:
-                                lower_string2 += selected_track.name
-                        else:
-                            lower_string2 += '      '
-
-                    else:
-                        upper_string2 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
-                        lower_string2 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                elif e.vpot_index() in row_02_encoders:
-                    if e.vpot_index() == encoder_22_index:
-                        upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
-                        lower_string3 += adjust_string(('%3.2f' % self.song().tempo), 6) + ' '
-
-                    else:
-                        upper_string3 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
-                        lower_string3 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                elif e.vpot_index() in row_03_encoders:
-                    upper_string4 += adjust_string(dspl_sgmt.get_upper_text(), 6) + ' '
-                    lower_string4 += adjust_string(dspl_sgmt.get_lower_text(), 6) + ' '
-                    if e.vpot_index() == encoder_25_index:  # Song STOP
-                        if self.song().is_playing:
-                            e.unlight_vpot_leds()
-                        else:
-                            e.show_full_enlighted_poti()
-                    elif e.vpot_index() == encoder_26_index:  # Song PLAY
-                        if self.song().is_playing:
-                            e.show_full_enlighted_poti()
-                        else:
-                            e.unlight_vpot_leds()
-
-            unmute_all_encoder = self.__encoders[encoder_07_index]
-            tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
-            if script_utils.any_muted_track(tracks):
-                unmute_all_encoder.show_full_enlighted_poti()  # some track is muted (unmute has something to do)
-            else:
-                unmute_all_encoder.unlight_vpot_leds()  # no tracks are muted
-
-            back_to_arranger_encoder = self.__encoders[encoder_08_index]
-            if self.song().back_to_arranger:
-                back_to_arranger_encoder.show_full_enlighted_poti()
-            else:
-                back_to_arranger_encoder.unlight_vpot_leds()
-
-            metronome_encoder = self.__encoders[encoder_17_index]
-            if self.song().metronome:
-                metronome_encoder.show_full_enlighted_poti()
-            else:
-                metronome_encoder.unlight_vpot_leds()
-
-            re_enable_automation_encoder = self.__encoders[encoder_18_index]
-            if self.song().re_enable_automation_enabled:
-                re_enable_automation_encoder.show_full_enlighted_poti()
-            else:
-                re_enable_automation_encoder.unlight_vpot_leds()
-
-        # ONLY update displays when Not in USER mode
-        if self.btn_ctlr.current_active_script_mode != C4M_USER:
-            self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(upper_string1), LCD_TOP_ROW_OFFSET, force=force)
-            self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(upper_string2), LCD_TOP_ROW_OFFSET, force=force)
-            self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(upper_string3), LCD_TOP_ROW_OFFSET, force=force)
-            self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(upper_string4), LCD_TOP_ROW_OFFSET, force=force)
-            # sometimes the firmware version info doesn't get cleared from the end of this LCD "display line". If this lower_string1 is ever too short to
-            # cover that firmware version info, log the padding was added here
-            self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(lower_string1, log_success=True), LCD_BOTTOM_ROW_OFFSET, force=force)
-            self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(lower_string2), LCD_BOTTOM_ROW_OFFSET, force=force)
-            self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(lower_string3), LCD_BOTTOM_ROW_OFFSET, force=force)
-            self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(lower_string4), LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_ANGLED_ADDRESS, self.pad_right_if_less(lower_string1), LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_TOP_FLAT_ADDRESS, self.pad_right_if_less(lower_string2), LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_MDL_FLAT_ADDRESS, self.pad_right_if_less(lower_string3), LCD_BOTTOM_ROW_OFFSET, force=force)
+        self.send_display_string(LCD_BTM_FLAT_ADDRESS, self.pad_right_if_less(lower_string4), LCD_BOTTOM_ROW_OFFSET, force=force)
 
         return
 
