@@ -497,7 +497,7 @@ class EncoderController(MackieC4Component, Component):
 
         self.__display_parameters = []
         # initialize to blank LCD segments
-        self.__display_parameters = [EncoderDisplaySegment(self, x) for x in range(NUM_ENCODERS)]
+        self.__display_parameters = [EncoderDisplaySegment(x) for x in range(NUM_ENCODERS)]
 
         self.encoder_name_display_state = [
             {
@@ -1800,8 +1800,7 @@ class EncoderController(MackieC4Component, Component):
                         self.one_display_update(force=True)
 
             elif mode_name == "reassign_encoder_parameters":
-                vpot_display_text = EncoderDisplaySegment(self, vpot_index)
-                vpot_display_text.set_encoder_controller(self)
+                vpot_display_text = EncoderDisplaySegment(vpot_index)
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
                 if self.selected_track.has_audio_output:
                     if self.subordinate_track_is_selected != 1:
@@ -2357,8 +2356,7 @@ class EncoderController(MackieC4Component, Component):
 
             for s in self.__encoders:
                 s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(self, s_index)
-                vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
+                vpot_display_text = EncoderDisplaySegment(s_index)
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
                 if s_index in row_00_encoders:
@@ -2503,8 +2501,7 @@ class EncoderController(MackieC4Component, Component):
             m_bank_text = f"{max_device_bank_param_track:02d}"
             for s in self.__encoders:
                 s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(self, s_index)
-                vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
+                vpot_display_text = EncoderDisplaySegment(s_index)
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
                 if s_index == encoder_07_index:
@@ -2564,8 +2561,7 @@ class EncoderController(MackieC4Component, Component):
 
             for s in self.__encoders:
                 s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(self, s_index)
-                vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
+                vpot_display_text = EncoderDisplaySegment(s_index)
 
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
@@ -2606,8 +2602,7 @@ class EncoderController(MackieC4Component, Component):
             for s in self.__encoders:
                 s.unlight_vpot_leds()
                 s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(self, s_index)
-                vpot_display_text.set_encoder_controller(self)  # also sets associated Encoder reference
+                vpot_display_text = EncoderDisplaySegment(s_index)
 
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
                 s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
