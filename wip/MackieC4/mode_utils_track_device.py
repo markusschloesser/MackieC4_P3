@@ -51,21 +51,28 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
         #                  1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) lower
         #                  track-name12-Frozen-
         lower_string1a += adjust_string(track_name, 12)
-        if selected_track.is_frozen:
-            lower_string1a += "-Frozen-"
-        # if track is frozen - surface can't lock to device - track devices are frozen
-        if not is_locked_to_device and not selected_track.is_frozen:
-            lower_string1a = adjust_string(track_name, 20)
+        # same status details as in channel strip mode
+        if is_locked_to_device:
+            if selected_track.is_frozen:
+                lower_string1 += 'Frzn+Lck' # lgth 8
+            else:
+                lower_string1 += '-Locked-'  # lgth 8
+        elif selected_track.is_frozen:
+            lower_string1 += '-Frozen-'      # lgth 8
+        else:  # not locked or frozen
+            lower_string1 = adjust_string(selected_track.name, 21)
     else:
-        lower_string1a += adjust_string('invalid Track object', 20)
+        lower_string1a += adjust_string('invalid Track object', 21)
 
-    lower_string1a = pad_right_if_less(lower_string1a, max_length=27)
+    # lower_string1a = pad_right_if_less(lower_string1a, max_length=28)
 
     if not liveobj_valid(chosen_plugin):
         # blank everything out
-        upper_string1 += '             '
-        lower_string1b += '                                   '
-        lower_string1 += lower_string1a + lower_string1b
+        upper_string1  += ''.join(' ' for x in range(14))  # blank spaces over encoders 7 and 8
+        lower_string1b += ''.join(' ' for x in range(28))  # blank spaces over encoders 5, 6, 7, and 8
+        # don't append the track name again if the track is valid and has no devices
+        lower_string1 += lower_string1b # if not lower_string1a.startswith('invalid') else lower_string1a + lower_string1b
+        # assert len(lower_string1) == 27 + 28 == 55 == NUM_TEXT_BYTES_PER_SYSEX_MSG
         #                 1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
         upper_string2 += '               NO DEVICES ON THIS TRACK                ' # 55 chars
         lower_string2 += so_many_spaces
@@ -74,7 +81,7 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
         upper_string4 += so_many_spaces
         lower_string4 += so_many_spaces
     else:
-        device_name = '  '
+        device_name = 'dummy'
         if is_locked_to_device:
             device_name = chosen_plugin.name
         elif t_d_idx is not None and t_d_idx > -1:
@@ -89,7 +96,7 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
             lower_string1b += ' Fz'
         # else: # not locked or frozen
         # assert len(lower_string1a) == 20
-        lower_string1 += lower_string1a + adjust_string(str(lower_string1b), 20).center(20)
+        lower_string1 += lower_string1a + adjust_string(str(lower_string1b), 21).center(21)
         # assert len(lower_string1) == 40
         # leave room for control text <<Bank and Bank>>
         pad_limit = NUM_TEXT_BYTES_PER_SYSEX_MSG - len('<<Bank/Bank>>') # '<< 01 / 01 >>' pad_limit == 55 - 13 == 42

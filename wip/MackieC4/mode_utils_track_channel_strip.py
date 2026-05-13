@@ -56,19 +56,22 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
         elif selected_track.is_frozen:
             lower_string1 += '-Frozen-'      # lgth 8
         else:  # not locked or frozen
-            lower_string1 = adjust_string(selected_track.name, 20)
+            lower_string1 = adjust_string(selected_track.name, 21)
     else:
-        lower_string1 += adjust_string('invalid Track object', 20)
+        lower_string1 += adjust_string('invalid Track object', 21)
 
-    # assert len(lower_string1) == 20
-    if is_view_visible_session:
-        group_text = ' Group ' if (is_group_track or is_grouped) else '       '
-        lower_string1 += group_text
-    elif is_view_visible_arranger:
-        lower_string1 += ' Track '
-    # assert len(lower_string1) == 27
+    # assert len(lower_string1) == 21 == # * 7
+    group_text = ' Track ' if is_view_visible_arranger else ' Group ' if is_view_visible_session and (is_group_track or is_grouped) else '       '
+    # assert len(group_text) == 7
+    lower_string1 += group_text
+    # if is_view_visible_session:
+    #     group_text = ' Group  ' if is_group_track or is_grouped else '        '
+    #     lower_string1 += group_text
+    # elif is_view_visible_arranger:
+    #     lower_string1 += ' Track  '
 
-    lower_string1 += adjust_string(selected_device_name, 15) # len(lower_string1) == 42
+    # assert len(lower_string1) == 28
+    lower_string1 += adjust_string(selected_device_name, 14) # len(lower_string1) == 42
 
     # This text 'covers' display segments over all 8 encoders in the second row
     #                 1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
