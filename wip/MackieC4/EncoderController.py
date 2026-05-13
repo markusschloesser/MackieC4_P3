@@ -1192,20 +1192,32 @@ class EncoderController(MackieC4Component):
                 vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
                 if s_index in row_00_encoders:
-                    if s_index == encoder_07_index:
-                        if current_device_bank_track > 0:
-                            vpot_display_text.set_text('<<Bank', 'Device')
-                            s.show_full_enlighted_poti()
-                        else:
-                            s.unlight_vpot_leds()
-                    elif s_index == encoder_08_index:
-                        if current_device_bank_track < nbr_of_full_device_pages - 1:
-                            vpot_display_text.set_text('Bank>>', 'Device')
-                            s.show_full_enlighted_poti()
+                    if nbr_of_full_device_pages > 1:
+                        if s_index == encoder_07_index:
+                            vpot_display_text.set_text(
+                                f"  {current_device_bank_track + 1:02d}",
+                                "Device"
+                            )
+                            if current_device_bank_track > 0:
+                                s.show_full_enlighted_poti()
+                            else:
+                                s.unlight_vpot_leds()
+
+                        elif s_index == encoder_08_index:
+                            vpot_display_text.set_text(
+                                f" {nbr_of_full_device_pages:02d}",
+                                " Bank "
+                            )
+                            if current_device_bank_track < nbr_of_full_device_pages - 1:
+                                s.show_full_enlighted_poti()
+                            else:
+                                s.unlight_vpot_leds()
+
                         else:
                             s.unlight_vpot_leds()
                     else:
                         s.unlight_vpot_leds()
+
                     self.__display_parameters.append(vpot_display_text)
 
                 elif s_index in row_01_encoders:
@@ -1588,6 +1600,8 @@ class EncoderController(MackieC4Component):
         # encdr_range = len(encoder_range)
         # if dsply_sgmts != encdr_range:
         #     self.main_script().log_message("EC.on_update_display_timer: display segments loaded {0} encoder range {1}".format(dsply_sgmts, encdr_range))
+        encoder_07_index = 6
+        encoder_08_index = 7
         encoder_27_index = 26
         encoder_28_index = 27
         encoder_29_index = 28
@@ -1629,6 +1643,8 @@ class EncoderController(MackieC4Component):
             upper_string2 += '----------------------- Devices -----------------------'
             # todo MS maybe try to visualize Racks/Groups here by using |  |  ?
 
+            show_device_bank_pair = self.__eah.get_selected_device_bank_count() > 1
+
             for t in encoder_range:
                 try:
                     text_for_display = next(x for x in self.__display_parameters if (x.filter_index(t)))
@@ -1641,7 +1657,10 @@ class EncoderController(MackieC4Component):
 
                 if t in range(6, NUM_ENCODERS_ONE_ROW):
                     upper_string1 += ''.join([adjust_string(u_alt_text, 6), ' '])
-                    lower_string1 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
+                    if t == encoder_07_index and show_device_bank_pair:
+                        lower_string1 += adjust_string(str(l_alt_text), 6) + '/'
+                    else:
+                        lower_string1 += adjust_string(str(l_alt_text), 6) + ' '
                 elif t in row_01_encoders:
                     l_alt2_text = self.get_scrolling_display_text(l_alt_text, t)
                     lower_string2 += adjust_string(l_alt2_text, 6) + ' '
