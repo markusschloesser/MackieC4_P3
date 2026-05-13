@@ -38,10 +38,11 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
 
     # shows "fold" or "unfold" or nothing depending on if group track or grouped track
     if is_group_track or is_grouped:
-        fold_text = 'unfold' if is_folded else 'fold'
-        upper_string1 += '------ Track ------- {} ---------------'.format(fold_text)
+        ftxt = 'unfold' if is_folded else ' fold '
+        #                  1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
+        upper_string1 += f'------ Track ------- {ftxt} --------------'  # length 42 so far
     else:
-        upper_string1 += '------ Track -------       ---------------'
+        upper_string1 +=  '------ Track -------        --------------'
 
     # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
     if liveobj_valid(selected_track):
@@ -49,25 +50,28 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
         if is_locked_to_device:
             if selected_track.is_frozen:
                 # can you lock to a device on a frozen track? (where you can't change any (frozen) device parameter values)
-                lower_string1 += 'Frzn+Lck'
+                lower_string1 += 'Frzn+Lck' # lgth 8
             else:
-                lower_string1 += '-Locked-'
+                lower_string1 += '-Locked-'  # lgth 8
         elif selected_track.is_frozen:
-            lower_string1 += '-Frozen-'
+            lower_string1 += '-Frozen-'      # lgth 8
         else:  # not locked or frozen
             lower_string1 = adjust_string(selected_track.name, 20)
     else:
         lower_string1 += adjust_string('invalid Track object', 20)
 
+    # assert len(lower_string1) == 20
     if is_view_visible_session:
         group_text = ' Group ' if (is_group_track or is_grouped) else '       '
         lower_string1 += group_text
     elif is_view_visible_arranger:
         lower_string1 += ' Track '
+    # assert len(lower_string1) == 27
 
-    lower_string1 += adjust_string(selected_device_name, 15)
+    lower_string1 += adjust_string(selected_device_name, 15) # len(lower_string1) == 42
 
     # This text 'covers' display segments over all 8 encoders in the second row
+    #                 1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
     upper_string2 += '----------------------- Devices -----------------------'  # length 55
     # todo MS maybe try to visualize Racks/Groups here by using |  |  ?
 
@@ -82,27 +86,27 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
         l_alt_text = text_for_display.get_lower_text()
 
         if t in range(6, NUM_ENCODERS_ONE_ROW):
-            upper_string1 += ''.join([adjust_string(u_alt_text, 6), ' '])
-            lower_string1 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
+            upper_string1 += adjust_and_tag(u_alt_text)
+            lower_string1 += adjust_and_tag(l_alt_text)
         elif t in row_01_encoders:
             if btn_ctlr.spot_erase_led_state > 0:
                 l_alt2_text = scrolling_display_text(l_alt_text, t)
-                lower_string2 += adjust_string(l_alt2_text, 6) + ' '
+                lower_string2 += adjust_and_tag(l_alt2_text)
             else:
-                lower_string2 += adjust_string(l_alt_text, 6) + ' '
+                lower_string2 += adjust_and_tag(l_alt_text)
         elif t in row_02_encoders:
             if btn_ctlr.spot_erase_led_state > 0:
                 upper_string3 += ''.join([scrolling_display_text(u_alt_text, t), ' '])
             else:
-                upper_string3 += ''.join([adjust_string(u_alt_text, 6), ' '])
-            lower_string3 += ''.join([adjust_string(str(l_alt_text), 6), ' '])
+                upper_string3 += adjust_and_tag(u_alt_text)
+            lower_string3 += adjust_and_tag(l_alt_text)
         elif t in row_03_encoders:
             if t < encoder_27_index:
                 if btn_ctlr.spot_erase_led_state > 0:
                     upper_string4 += ''.join([scrolling_display_text(u_alt_text, t), ' '])
                 else:
-                    upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
-                lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
+                    upper_string4 += adjust_and_tag(u_alt_text)
+                lower_string4 += adjust_and_tag(l_alt_text)
 
             if t == encoder_27_index:
                 upper, lower = xfade("on_update_display_timer", t, u_alt_text, l_alt_text)
@@ -121,8 +125,8 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
                     else:
                         l_alt_text = "NoSolo"
 
-                lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                lower_string4 += adjust_and_tag(l_alt_text)
+                upper_string4 += adjust_and_tag(u_alt_text)
 
             elif t == encoder_29_index:
                 if liveobj_valid(selected_track):
@@ -136,8 +140,8 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
                     else:
                         l_alt_text = "No Arm"
 
-                lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                lower_string4 += adjust_and_tag(l_alt_text)
+                upper_string4 += adjust_and_tag(u_alt_text)
 
             elif t == encoder_30_index:
                 if subordinate_track_is_selected and liveobj_valid(selected_track):
@@ -147,19 +151,23 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
                     else:
                         l_alt_text = "OFF"
                         encoders[encoder_30_index].unlight_vpot_leds()
-                    lower_string4 += adjust_string(l_alt_text, 6)
+                    lower_string4 += adjust_string(l_alt_text, 6)  # and_tag?
 
                 else:
-                    lower_string4 += adjust_string(l_alt_text, 6)
+                    lower_string4 += adjust_and_tag(l_alt_text)
                 lower_string4 += ' '
-                upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                upper_string4 += adjust_and_tag(u_alt_text)
 
             elif t == encoder_31_index:
-                lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                lower_string4 += adjust_and_tag(l_alt_text)
+                upper_string4 += adjust_and_tag(u_alt_text)
 
             elif t == encoder_32_index:
-                lower_string4 += ''.join([adjust_string(l_alt_text, 6), ' '])
-                upper_string4 += ''.join([adjust_string(u_alt_text, 6), ' '])
+                lower_string4 += adjust_and_tag(l_alt_text)
+                upper_string4 += adjust_and_tag(u_alt_text)
 
     return upper_string1, lower_string1, upper_string2, lower_string2, upper_string3, lower_string3, upper_string4, lower_string4
+
+def adjust_and_tag(segment, tag=" "):
+    tag = tag[:1]
+    return ''.join([adjust_string(segment, 6), tag])

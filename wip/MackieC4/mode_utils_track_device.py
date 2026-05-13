@@ -27,32 +27,35 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
     encoder_7_index = 6
     encoder_8_index = 7
 
-    add_tail = False
+    nnn = "---" if t_d_idx is None else f"{t_d_idx:3d}"  # "  9", " 99", or "999"
     if is_locked_to_device and liveobj_valid(chosen_plugin):
-        upper_string1 += f"------ Track --- LOCKED to Device {t_d_idx}"
-        add_tail = True
+
+        #                  1------
+        #                         2------
+        #                                3------
+        #                                       4------
+        #                                              5------
+        #                                                     6------
+        #                                                            7------
+        #                                                                   8------
+        #                  1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
+        upper_string1 += f"------ Track --- LOCKED to Device {nnn} --"  # upper length == 42 chars
     elif liveobj_valid(chosen_plugin):
-        upper_string1 += f"------ Track ------- ----- Device {t_d_idx}"
-        add_tail = True
+        upper_string1 += f"------ Track ------- ----- Device {nnn} --"
     else:  # not locked or valid
-        upper_string1 += "------ Track ------- --No--Device----------"
-    if add_tail:
-        if t_d_idx is None:
-            upper_string1 += ' ----- '
-        elif t_d_idx > 99:
-            upper_string1 += ' --- '
-        else:
-            upper_string1 += ' ---- ' if t_d_idx > 9 else ' ----- '
-    # log_msg(f"device index is {t_d_idx} ")
+        upper_string1 += f"------ Track -------- --No-Device-{nnn}---"
 
     if liveobj_valid(selected_track):
         track_name = selected_track.name
         # lower_string1a += f"{adjust_string(track_name, 12)}(Frozen)" if selected_track.is_frozen else adjust_string(track_name, 20)
-        lower_string1a += " " + adjust_string(track_name, 11)
-        if not is_locked_to_device and not selected_track.is_frozen:
-            lower_string1a = adjust_string(selected_track.name, 20)
-        elif selected_track.is_frozen:
+        #                  1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) lower
+        #                  track-name12-Frozen-
+        lower_string1a += adjust_string(track_name, 12)
+        if selected_track.is_frozen:
             lower_string1a += "-Frozen-"
+        # if track is frozen - surface can't lock to device - track devices are frozen
+        if not is_locked_to_device and not selected_track.is_frozen:
+            lower_string1a = adjust_string(track_name, 20)
     else:
         lower_string1a += adjust_string('invalid Track object', 20)
 
@@ -63,7 +66,8 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
         upper_string1 += '             '
         lower_string1b += '                                   '
         lower_string1 += lower_string1a + lower_string1b
-        upper_string2 += '               NO DEVICES ON THIS TRACK                '
+        #                 1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
+        upper_string2 += '               NO DEVICES ON THIS TRACK                ' # 55 chars
         lower_string2 += so_many_spaces
         upper_string3 += so_many_spaces
         lower_string3 += so_many_spaces
@@ -74,25 +78,31 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
         if is_locked_to_device:
             device_name = chosen_plugin.name
         elif t_d_idx is not None and t_d_idx > -1:
-            # device_ref = self.__eah.data.get_device(self.__eah.last_selected_track_index, t_d_idx)
             device_name = device_ref.device_name
         lower_string1b = str(device_name)  # adjust_string(str(device_name), 20).center(20)
         if is_locked_to_device:
-            if selected_track.is_frozen:
+            if selected_track.is_frozen:  # possible when locked?
                 lower_string1b += ' FL'
             else:
                 lower_string1b += ' Lk'
         elif selected_track.is_frozen:
             lower_string1b += ' Fz'
         # else: # not locked or frozen
+        # assert len(lower_string1a) == 20
         lower_string1 += lower_string1a + adjust_string(str(lower_string1b), 20).center(20)
-        # make sure there is room for control text <<Bank and Bank>>
-        lower_string1 = pad_right_if_less(lower_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - len('<<BankBank>>'))
+        # assert len(lower_string1) == 40
+        # leave room for control text <<Bank and Bank>>
+        pad_limit = NUM_TEXT_BYTES_PER_SYSEX_MSG - len('<<Bank/Bank>>') # '<< 01 / 01 >>' pad_limit == 55 - 13 == 42
+        lower_string1 = pad_right_if_less(lower_string1, max_length=pad_limit)
         if is_locked_to_device:
-            upper_string1 = pad_right_if_less(upper_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - len('-Params Bank-'))
+            pad_limit = NUM_TEXT_BYTES_PER_SYSEX_MSG - len('-Params Bank-')
+            upper_string1 = pad_right_if_less(upper_string1, max_length=pad_limit)
         # else:
         #     self.pad_right_if_less(upper_string1, max_length=NUM_TEXT_BYTES_PER_SYSEX_MSG - 7)
         upper_string1 += '-Params Bank-'
+
+        # assert len(lower_string1) == pad_limit == 55 - 13 == 42 == 6 * 7
+        # assert len(upper_string1) == pad_limit == 55 - 13 == 42 == 6 * 7
         for t in encoder_range:
             try:
                 text_for_display = display_parameters[t]  # assumes always 32
@@ -114,14 +124,15 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
 
             # if t in range(6, NUM_ENCODERS_ONE_ROW):
             if t in (encoder_7_index, encoder_8_index):
-                l_alt_text = l_raw_text
+                l_alt_text = l_raw_text # this 'bank' text never scrolls
                 lower_string1 += adjust_string((str(l_alt_text)), 6)
                 if t == encoder_7_index:
                     lower_string1 += "/"
-                elif t == encoder_8_index:
-                    pass
-                else:
-                    lower_string1 += " "
+                # elif t == encoder_8_index:
+                #     pass
+                # else: # never happens here
+                #     lower_string1 += " "
+                # assert len(lower_string1) == 42 + 7 (+ 6) == 55
             elif t in row_01_encoders:
                 upper_string2 += adjust_string(u_alt_text, 6) + ' '
                 lower_string2 += adjust_string(str(l_alt_text), 6) + ' '
