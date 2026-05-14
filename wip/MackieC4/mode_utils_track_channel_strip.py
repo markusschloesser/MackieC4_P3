@@ -2,8 +2,8 @@ from ableton.v2.base import liveobj_valid
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
 from . import script_utils
+from .script_utils import EncoderDisplaySegment
 from .consts import *
-from .EncoderDisplaySegment import EncoderDisplaySegment
 
 
 def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_device, display_parameters,

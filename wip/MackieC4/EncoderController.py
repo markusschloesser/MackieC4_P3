@@ -23,17 +23,17 @@ if sys.version_info[0] >= 3:  # Python 3.x (Live 11+)
     from ableton.v3.live import util
 
 
-from . import script_utils
 import Live
 
+from . import script_utils
+# from .script_utils import CoolDown, TooSoon
+from .script_utils import EncoderDisplaySegment
 from .EncoderAssignmentHistory import EncoderAssignmentHistory, track_callback_types
-from .EncoderDisplaySegment import EncoderDisplaySegment
 from . import mode_utils_track_channel_strip as tcs_mode_util
 from . import mode_utils_track_device as td_mode_util
 from . import mode_utils_song_function as sf_mode_util
 from .MackieC4Component import *
 from _Generic.Devices import *
-# from .C4Decorators import CoolDown, TooSoon
 
 class ButtonController(object):
     """tracks the LED state of all seven C4 "control buttons" with associated LEDs (nine LEDs) and the pressed state of """ \

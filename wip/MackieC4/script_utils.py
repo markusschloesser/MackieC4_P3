@@ -206,6 +206,82 @@ def update_or_cycle_parameter_value(parameter, increment_amount, option_is_press
                 new_value = parameter.min
         parameter.value = new_value
 
+# unicode of Python2 is equivalent to str in Python3, so you can also write: str(text, 'utf-8') to get ascii text
+# Assuming that text is a bytes object, just use text.decode('utf-8')
+class EncoderDisplaySegment(object):
+    """ Represents the text to display on the LCD over ONE encoder of the Mackie C4 """
+    __module__ = __name__
+
+    def __init__(self, vpot_index):
+        self.__vpot_index = vpot_index
+        # self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
+
+        self.__upper_text = ''.join(' ' for x in range(7))  # '       '
+        self.__lower_text = ''.join(' ' for x in range(7))  # '       '
+        self.__upper_alt_text = ''.join('-' for x in range(6)) + '|'  # '------|'
+        self.__lower_alt_text = ''.join('-' for x in range(6)) + '|'  # '------|'
+
+        return
+
+    @property
+    def display_segment_index(self):
+        """The zero based index (0 - 31) of the LCD screen space over the encoder at the same index"""
+        return self.__vpot_index
+
+    def is_index_match(self, test_index):
+        if test_index == self.__vpot_index:
+            return True
+        else:
+            return False
+
+    def set_text(self, lower, upper):  # lower first in param list supports refactoring
+        self.set_lower_text(lower)
+        self.set_upper_text(upper)
+
+    def clear_text(self):
+        self.__upper_text = ''.join(' ' for x in range(7))  # '       '
+        self.__lower_text = ''.join(' ' for x in range(7))  # '       '
+
+    def set_lower_text(self, lower):
+        self.__lower_text = lower
+
+    def set_lower_text_and_alt(self, lower, alt_txt):
+        self.set_lower_text(lower)
+        self.__lower_alt_text = alt_txt
+
+    def set_upper_text(self, upper):
+        self.__upper_text = upper
+
+    def set_upper_text_and_alt(self, upper, alt_txt):
+        self.set_upper_text(upper)
+        self.__upper_alt_text = alt_txt
+
+    def get_upper_text(self):
+        return self.__upper_text
+
+    def alter_upper_text(self, alter_text=True):
+        if alter_text:
+            return self.__upper_alt_text
+        else:
+            return self.__upper_text
+
+    def get_lower_text(self):
+        if liveobj_valid(self.__lower_text):  # assume unicode
+            # return unicode(self.__lower_text).encode('ascii', errors='ignore').decode()
+            # unicode by default in Py3 - encode as ascii
+            return self.__lower_text.encode('utf-8', errors='ignore')
+        elif not liveobj_valid(self.__lower_text):  # assume None or lost weak ref
+            return "xxXXxx"
+        else:
+            return self.__lower_text  # assume ascii/LCD safe
+
+    def alter_lower_text(self, alter_text=True):
+        if alter_text:
+            return self.__lower_alt_text
+        else:
+            return self.get_lower_text()
+
+
 class TimeDisplay(object):
 
     @depends(smpt_format=(const(None)))
