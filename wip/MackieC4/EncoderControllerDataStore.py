@@ -8,7 +8,8 @@ from typing import Dict
 from ableton.v2.base import liveobj_valid, depends, liveobj_changed
 
 
-from . MackieC4Component import *
+from .MackieC4Component import *
+from .consts import *
 
 import math
 import logging
@@ -1356,7 +1357,7 @@ class SongData(object):
         return local_dict
 
 
-class EncoderAssignmentHistory(MackieC4Component):
+class EncoderControllerDataStore(MackieC4Component):
     """
      Keeps track of Song Track and Device content supporting SYSEX "LCD feedback message" generation and other script functions
     """

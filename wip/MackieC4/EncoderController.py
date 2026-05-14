@@ -21,7 +21,7 @@ import Live
 from . import script_utils
 # from .script_utils import CoolDown, TooSoon
 from .script_utils import EncoderDisplaySegment
-from .EncoderAssignmentHistory import EncoderAssignmentHistory, track_callback_types
+from .EncoderControllerDataStore import EncoderControllerDataStore, track_callback_types
 from . import mode_utils_track_channel_strip as tcs_mode_util
 from . import mode_utils_track_device as td_mode_util
 from . import mode_utils_song_function as sf_mode_util
@@ -469,7 +469,7 @@ class EncoderController(MackieC4Component, Component):
         for s in self.__own_encoders:
             s.set_encoder_controller(self)
 
-        self.__eah = EncoderAssignmentHistory(main_script, self)
+        self.__eah = EncoderControllerDataStore(main_script, self)
         self.__eah.data.class_logging = self.current_log_level < logging.DEBUG
         self.__time_display = script_utils.TimeDisplay(smpt_format=self.time_format)
         self.__display_update_lag_upper_bounds = [0, 5, 10, 20]
