@@ -266,14 +266,10 @@ class EncoderDisplaySegment(object):
             return self.__upper_text
 
     def get_lower_text(self):
-        if liveobj_valid(self.__lower_text):  # assume unicode
-            # return unicode(self.__lower_text).encode('ascii', errors='ignore').decode()
-            # unicode by default in Py3 - encode as ascii
-            return self.__lower_text.encode('utf-8', errors='ignore')
-        elif not liveobj_valid(self.__lower_text):  # assume None or lost weak ref
+        if not liveobj_valid(self.__lower_text):
             return "xxXXxx"
         else:
-            return self.__lower_text  # assume ascii/LCD safe
+            return str(self.__lower_text)
 
     def alter_lower_text(self, alter_text=True):
         if alter_text:
