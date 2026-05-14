@@ -1115,20 +1115,31 @@ class MackieC4(MackieC4ListenerMixin, object):
                 device_list.append(device)
                 # self.log_message(self.script_log_levels["TRACE"], f"{log_id}{device.name} device appended to list")
                 if expand_chains and device.can_have_chains:
-                    for d in self._get_devices_from_chains(device.chains):
-                        device_list.append(d)
-                    for dd in self._get_devices_from_chains(device.return_chains):
-                        device_list.append(dd)
+                    for d in self._get_devices_from_chains(device.chains, expand_chains):
+                        if d.can_have_chains:
+                            chained = self._get_devices_from_chains(d.chains, expand_chains)
+                            for chained_device in chained:
+                                device_list.append(chained_device)
+                        else:
+                            device_list.append(d)
+                    for dd in self._get_devices_from_chains(device.return_chains, expand_chains):
+                        if dd.can_have_chains:
+                            # can devices in "return chains" have "chains" too, or only "return_chains"?
+                            chained = self._get_devices_from_chains(dd.chains, expand_chains)
+                            for chained_device in chained:
+                                device_list.append(chained_device)
+                        else:
+                            device_list.append(dd)
         if report:
             self.log_message(self.script_log_levels["TRACE"], f"{log_id}returning {len(device_list)} devices")
             for i, d in enumerate(device_list):
                 self.log_message(self.script_log_levels["TRACE"], f"{log_id}<{i}> - {d.name} {d.class_name}")
         return device_list
 
-    def _get_devices_from_chains(self, chains):
+    def _get_devices_from_chains(self, chains, expand_chains=False):
         log_id = "C4.get_device_list_from_chain: "
         device_list = []
-        chained_devices = [cd for chain_obj in chains for cd in self.get_device_list(chain_obj.devices, False, False)]
+        chained_devices = [cd for chain_obj in chains for cd in self.get_device_list(chain_obj.devices, expand_chains, False)]
         for dd in chained_devices:
             if liveobj_valid(dd):  # and not isinstance(dd, Chain) or DrumChain ??
                 device_list.append(dd)
