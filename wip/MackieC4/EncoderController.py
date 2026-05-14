@@ -6,21 +6,14 @@
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from __future__ import division
 
-import re
-import sys
 import time
 import logging
-
 
 from ableton.v2.base import liveobj_valid, liveobj_changed, find_if, listens
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 from ableton.v2.control_surface.component import Component
 from ableton.v3.live.action import toggle_or_cycle_parameter_value
 import ableton.v3.live.util as v3_util
-
-if sys.version_info[0] >= 3:  # Python 3.x (Live 11+)
-    from builtins import range
-    from ableton.v3.live import util
 
 
 import Live
@@ -2054,7 +2047,7 @@ class EncoderController(MackieC4Component, Component):
                     try:
                         if param.is_enabled:
                             # if util.is_parameter_quantized(param, current_device_track):
-                            if util.is_parameter_quantized(param, device_ref.device):  # for stepped params or those that only have a limited range
+                            if v3_util.is_parameter_quantized(param, device_ref.device):  # for stepped params or those that only have a limited range
                                 toggle_or_cycle_parameter_value(param)
                             else:
                                 # button press == jump to default value of device parameter

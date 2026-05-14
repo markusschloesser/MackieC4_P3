@@ -2,14 +2,9 @@
 # Compiled at: 2011-01-12 12:23:43
 
 from __future__ import absolute_import, print_function, unicode_literals
-import sys
-if sys.version_info[0] >= 3:  # Live 11
-    from builtins import object
 
 from .consts import *
 import Live
-# import MidiRemoteScript
-
 
 class MackieC4Component(object):
     """Baseclass for every 'subcomponent' of the Mackie Control. Just offers some """

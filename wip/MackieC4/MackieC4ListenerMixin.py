@@ -2,11 +2,8 @@
 import logging
 
 from ableton.v2.base import liveobj_valid, depends
-from .consts import *  # importing sys from the import in .consts via the * (everything)
+from .consts import * 
 
-
-if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
-    from builtins import range
 
 logger = logging.getLogger(__name__)
 

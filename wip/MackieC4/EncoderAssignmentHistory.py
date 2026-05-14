@@ -2,14 +2,11 @@
 from __future__ import absolute_import, print_function, unicode_literals
 from __future__ import division
 
-import sys
 from itertools import zip_longest
 from typing import Dict
 
 from ableton.v2.base import liveobj_valid, depends, liveobj_changed
 
-if sys.version_info[0] >= 3:  # Live 11
-    from builtins import range
 
 from . MackieC4Component import *
 
