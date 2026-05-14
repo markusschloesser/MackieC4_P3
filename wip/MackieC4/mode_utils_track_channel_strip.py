@@ -18,6 +18,9 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
     upper_string4 = ''
     lower_string4 = ''
 
+    encoder_7_index = 6
+    encoder_8_index = 7
+
     encoder_27_index = 26
     encoder_28_index = 27
     encoder_29_index = 28
@@ -40,13 +43,14 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
     if is_group_track or is_grouped:
         ftxt = 'unfold' if is_folded else ' fold '
         #                  1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
-        upper_string1 += f'------ Track ------- {ftxt} --------------'  # length 42 so far
+        upper_string1 += f'------ Track ------- {ftxt} --------------'
     else:
         upper_string1 +=  '------ Track -------        --------------'
+    # assert len(upper_string1) == 42 so far
 
     # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
     if liveobj_valid(selected_track):
-        lower_string1 += adjust_string(selected_track.name, 12)
+        lower_string1 += adjust_string(selected_track.name, 12) + " "
         if is_locked_to_device:
             if selected_track.is_frozen:
                 # can you lock to a device on a frozen track? (where you can't change any (frozen) device parameter values)
@@ -56,27 +60,37 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
         elif selected_track.is_frozen:
             lower_string1 += '-Frozen-'      # lgth 8
         else:  # not locked or frozen
-            lower_string1 = adjust_string(selected_track.name, 21)
+            lower_string1 = adjust_string(selected_track.name, 20) + " "
     else:
-        lower_string1 += adjust_string('invalid Track object', 21)
+        lower_string1 += adjust_string('invalid Track object', 20) + " "
 
     # assert len(lower_string1) == 21 == # * 7
     group_text = ' Track ' if is_view_visible_arranger else ' Group ' if is_view_visible_session and (is_group_track or is_grouped) else '       '
     # assert len(group_text) == 7
     lower_string1 += group_text
-    # if is_view_visible_session:
-    #     group_text = ' Group  ' if is_group_track or is_grouped else '        '
-    #     lower_string1 += group_text
-    # elif is_view_visible_arranger:
-    #     lower_string1 += ' Track  '
 
     # assert len(lower_string1) == 28
     lower_string1 += adjust_string(selected_device_name, 14) # len(lower_string1) == 42
 
-    # This text 'covers' display segments over all 8 encoders in the second row
     #                 1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
     upper_string2 += '----------------------- Devices -----------------------'  # length 55
     # todo MS maybe try to visualize Racks/Groups here by using |  |  ?
+
+    try:
+        text_for_encoder_7 = display_parameters[encoder_7_index]
+        l_7raw_text = text_for_encoder_7.get_lower_text()
+        text_for_encoder_8 = display_parameters[encoder_8_index]
+        l_8raw_text = text_for_encoder_8.get_lower_text()
+    except IndexError:
+        l_7raw_text = "<<xxx "
+        l_8raw_text = "xxx>>"
+
+    upper_string1 += '-Device Bank-'
+    # assert len(upper_string1) == 42 + len('-Device Bank-') == 42 + 13 == 55
+
+    lower_string1 += adjust_string(l_7raw_text, 6) + "/"  # for '<< 01 /' 7 chars
+    lower_string1 += " " + adjust_string(l_8raw_text, 5)  # for ' 01 >>' 6 chars (end of line)
+
 
     for t in encoder_range:
         try:
@@ -88,10 +102,11 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
         u_alt_text = text_for_display.get_upper_text()
         l_alt_text = text_for_display.get_lower_text()
 
-        if t in range(6, NUM_ENCODERS_ONE_ROW):
-            upper_string1 += adjust_and_tag(u_alt_text)
-            lower_string1 += adjust_and_tag(l_alt_text)
-        elif t in row_01_encoders:
+        # if t in range(6, NUM_ENCODERS_ONE_ROW):
+        #     upper_string1 += adjust_and_tag(u_alt_text)
+        #     lower_string1 += adjust_and_tag(l_alt_text)
+        # elif t in row_01_encoders:
+        if t in row_01_encoders:
             if btn_ctlr.spot_erase_led_state > 0:
                 l_alt2_text = scrolling_display_text(l_alt_text, t)
                 lower_string2 += adjust_and_tag(l_alt2_text)
