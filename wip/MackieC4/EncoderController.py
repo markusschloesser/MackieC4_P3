@@ -2479,10 +2479,11 @@ class EncoderController(MackieC4Component, Component):
         if self.btn_ctlr.current_active_script_mode == C4M_USER:
             return  # no display updates in this mode (all updates in this mode, if any, are handled by the Max sequencer patch)
         elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
+            show_device_banking_text = self.__ds.selected_device_bank_count > 1
             upper_string1, lower_string1, upper_string2, lower_string2, upper_string3, lower_string3, upper_string4, lower_string4 = (
                 tcs_mode_util.do_display_update(
                 self.application().view, selected_track, self.__chosen_plugin, self.is_locked_to_device, self.__display_parameters, self.btn_ctlr,
-                self.get_scrolling_display_text, self.xfade, self.subordinate_track_is_selected, self.__encoders)
+                self.get_scrolling_display_text, self.xfade, self.subordinate_track_is_selected, self.__encoders, show_device_banking_text)
             )
         elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
             device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)

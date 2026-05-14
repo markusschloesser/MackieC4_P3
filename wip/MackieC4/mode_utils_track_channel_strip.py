@@ -51,15 +51,15 @@ def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, d
         vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
         if s_index in row_00_encoders:
+            vpot_display_text.set_text(f"{current_device_bank_track + 1:02d}", 'Device')
             if s_index == encoder_07_index:
                 if current_device_bank_track > 0:
-                    vpot_display_text.set_text('<<Bank', 'Device')
                     s.show_full_enlighted_poti()
                 else:
                     s.unlight_vpot_leds()
             elif s_index == encoder_08_index:
+                vpot_display_text.set_text(f"{nbr_of_full_device_pages :02d}", ' Bank ')
                 if current_device_bank_track < nbr_of_full_device_pages - 1:
-                    vpot_display_text.set_text('Bank>>', 'Device')
                     s.show_full_enlighted_poti()
                 else:
                     s.unlight_vpot_leds()
@@ -188,7 +188,7 @@ def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, d
 
 
 def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_device, display_parameters,
-                      btn_ctlr, scrolling_display_text, xfade, subordinate_track_is_selected, encoders):
+                      btn_ctlr, scrolling_display_text, xfade, subordinate_track_is_selected, encoders, show_device_bank_pair):
     log_id = "mode_utils_tcs.do_display_update: "
     upper_string1 = ''
     lower_string1 = ''
@@ -268,9 +268,11 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
 
     upper_string1 += '-Device Bank-'
     # assert len(upper_string1) == 42 + len('-Device Bank-') == 42 + 13 == 55
-
-    lower_string1 += adjust_string(l_7raw_text, 6) + "/"  # for '<< 01 /' 7 chars
-    lower_string1 += " " + adjust_string(l_8raw_text, 5)  # for ' 01 >>' 6 chars (end of line)
+    if show_device_bank_pair:
+        lower_string1 += adjust_string(l_7raw_text, 6) + "/"  # for '<< 01 /' 7 chars
+        lower_string1 += " " + adjust_string(l_8raw_text, 5)  # for ' 01 >>' 6 chars (end of line)
+    else:
+        lower_string1 += ''.join(" " for x in range(13))
 
 
     for t in encoder_range:
