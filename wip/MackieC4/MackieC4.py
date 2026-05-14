@@ -22,27 +22,16 @@ This is the second file that is loaded, by way of being instantiated through __i
 
 from __future__ import absolute_import, print_function, unicode_literals
 import logging
-import time
-from functools import partial, wraps
 
 import Live
 from ableton.v2.base import liveobj_valid, clamp
 
-# from .TimeDisplay import TimeDisplay
-# from . import song_util
 from . import script_utils
 from .consts import *
 from .Encoders import Encoders
 from .EncoderController import EncoderController
 from .c4_device_provider import C4DeviceProvider
 from .MackieC4ListenerMixin import MackieC4ListenerMixin
-# from .C4Decorators import CoolDown, TooSoon
-
-if sys.version_info[0] >= 3:  # Python 3.x+ (Live 11+)
-    from builtins import str
-    from builtins import range
-    from builtins import object
-
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +50,13 @@ class MackieC4(MackieC4ListenerMixin, object):
     scene_index = 0
     track_index = 0
     track_count = 0
+
+    MidiMap = Live.MidiMap
+    AppRoot = Live.Application
+    SongRoot = Live.Song
+    Chain = Live.Chain.Chain
+    NavDir = AppRoot.Application.View.NavDirection
+
     
     script_log_levels = {"EVERYTHING": 0, "TRACE": 5, "DEBUG": logging.DEBUG, "INFO": logging.INFO, "WARNING": logging.WARNING, "ERROR": logging.ERROR, "NOTHING": 99}
     # trace or lower log level automatically enables the (EncoderAssignmentHistory module) SongData class property self.class_logging = True
@@ -228,9 +224,9 @@ class MackieC4(MackieC4ListenerMixin, object):
         # you want Live doesn't forward the same message twice. Even for encoders mapped above (handled by Live directly), forward the midi messages they emit
         # Split button has 3 feedback addresses + 19 control buttons + 10 (unused spacers) + 32 encoder buttons == 64 midi note message forwarding requests
         for i in range(C4SID_FIRST, C4SID_LAST + 1):
-            Live.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
+            self.MidiMap.forward_midi_note(self.handle(), midi_map_handle, 0, i)
             if i < NUM_ENCODERS:
-                Live.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)  # 32 encoders
+                self.MidiMap.forward_midi_cc(self.handle(), midi_map_handle, 0, i)  # 32 encoders
 
     def request_firmware_version(self):
 
@@ -558,7 +554,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.__zoom_view(cc_value)
 
     def __zoom_view(self, cc_value):
-        nav = Live.Application.Application.View.NavDirection
+        nav = self.NavDir
         if cc_value >= 64:
             self.application().view.zoom_view(nav.left, '', self.__encoder_controller.btn_ctlr.only_alt_is_pressed)
         if cc_value <= 64:
@@ -574,7 +570,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def scroll_clip(self, cc_value):  # todo WIP
         log_id = "C4.scroll_clip: "
-        nav = Live.Application.Application.View.NavDirection
+        nav = self.NavDir
         app_view = self.application().view
         view_name = 'Detail/DeviceChain'
         self.log_message(logging.DEBUG,f'{log_id}called with cc_value: {cc_value}')
@@ -584,19 +580,19 @@ class MackieC4(MackieC4ListenerMixin, object):
         self.log_message(logging.DEBUG,f'{log_id}called with cc_value: {cc_value}')
 
         if cc_value > 64:
-            if not self.application().view.is_view_visible(view_name):
-                self.application().view.focus_view(view_name)
+            if not app_view.is_view_visible(view_name):
+                app_view.focus_view(view_name)
                 self.log_message(logging.DEBUG,f'{log_id}Focusing view to {view_name}')
                 # clip.move_playing_pos(- cc_value)
                 app_view.scroll_view(nav.left, view_name, False)
         if cc_value <= 64:
-            if not self.application().view.is_view_visible(view_name):
-                self.application().view.focus_view(view_name)
+            if not app_view.is_view_visible(view_name):
+                app_view.focus_view(view_name)
                 app_view.scroll_view(nav.right, view_name, False)
 
     def zoom_clip(self, cc_value):
         log_id = "C4.zoom_clip: "
-        nav = Live.Application.Application.View.NavDirection
+        nav = self.NavDir
         app_view = self.application().view
         view_name = 'Detail/Clip'
         self.log_message(logging.DEBUG,f'{log_id}called with cc_value: {cc_value}')
@@ -662,7 +658,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
     def application(self):
         """returns a reference to the application that we are running in"""
-        return Live.Application.get_application()
+        return self.AppRoot.get_application()
 
     def song(self):
         """returns a reference to the Live Song that we do interact with"""
@@ -705,10 +701,10 @@ class MackieC4(MackieC4ListenerMixin, object):
     def suggest_map_mode(self, cc_no, channel=0):
         """  Live -> Script   Live can ask the script for a suitable mapping mode for a given CC.    """
 
-        result = Live.MidiMap.MapMode.absolute
+        result = self.MidiMap.MapMode.absolute
 
         if cc_no in encoder_range:
-            result = Live.MidiMap.MapMode.relative_signed_bit
+            result = self.MidiMap.MapMode.relative_signed_bit
         return result
 
     def refresh_state(self):
@@ -894,7 +890,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         pass
 
     def overdub_change(self):
-        return Live.Song.Song.overdub
+        return self.SongRoot.Song.overdub
 
     def visible_tracks_change(self):
         """This is the Visible Tracks listener callback"""
@@ -1134,7 +1130,7 @@ class MackieC4(MackieC4ListenerMixin, object):
         device_list = []
         chained_devices = [cd for chain_obj in chains for cd in self.get_device_list(chain_obj.devices, False, False)]
         for dd in chained_devices:
-            if liveobj_valid(dd):  # and not isinstance(dd, Live.Chain.Chain) or DrumChain ??
+            if liveobj_valid(dd):  # and not isinstance(dd, Chain) or DrumChain ??
                 device_list.append(dd)
                 # self.log_message(self.script_log_levels["TRACE"], f"{log_id}chained device {dd.name} appended to list")
         return device_list
