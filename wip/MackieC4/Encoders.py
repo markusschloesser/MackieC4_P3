@@ -5,6 +5,7 @@
 from __future__ import absolute_import, print_function, unicode_literals  # MS
 from .MackieC4Component import *
 
+import Live
 
 from ableton.v2.base import liveobj_valid
 
@@ -12,6 +13,8 @@ from ableton.v2.base import liveobj_valid
 class Encoders(MackieC4Component):
     """ Represents one encoder of the Mackie C4 """
     __module__ = __name__
+
+    MidiMap = Live.MidiMap
 
     def __init__(self, main_script, vpot_index):
         super().__init__(main_script)
@@ -96,7 +99,7 @@ class Encoders(MackieC4Component):
         encoder = self.__vpot_index
         param = self.__v_pot_parameter
         if liveobj_valid(param):
-            feedback_rule = Live.MidiMap.CCFeedbackRule()
+            feedback_rule = self.MidiMap.CCFeedbackRule()
             feedback_rule.channel = 0
             feedback_rule.cc_no = self.__vpot_cc_nbr
             display_mode_cc_base = encoder_ring_led_mode_cc_values[self.__v_pot_display_mode][0]
@@ -104,12 +107,12 @@ class Encoders(MackieC4Component):
             feedback_val_range_len = feedback_val_range_len - display_mode_cc_base + 1
             feedback_rule.cc_value_map = tuple([display_mode_cc_base + x for x in range(feedback_val_range_len)])
             feedback_rule.delay_in_ms = -1.0
-            Live.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder,
-                                                       Live.MidiMap.MapMode.relative_signed_bit, feedback_rule,
+            self.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder,
+                                                       self.MidiMap.MapMode.relative_signed_bit, feedback_rule,
                                                        needs_takeover, sensitivity=1.0)
             # self.main_script().log_message("potIndex<{}> feedback<{}> MAPPED, coming from build_midi_map in __encoders".format(encoder, param))
 
-            Live.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
+            self.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
 
         else:
             if not liveobj_valid(param):
