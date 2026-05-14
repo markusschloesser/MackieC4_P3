@@ -9,13 +9,61 @@ from .script_utils import EncoderDisplaySegment
 from .consts import *
 
 
+def reassign_encoder_parameters(selected_track, ds, encoders, chosen_plugin, plugin_parameter, display_parameters ):
+    log_id = "mode_utils_td.reassign_encoder_parameters: "
+    encoder_07_index = 6
+    encoder_08_index = 7
+    current_device_bank_param_track = ds.last_selected_track_device_parameter_bank_nbr
+    c_bank_text = f"{(current_device_bank_param_track + 1):02d}"
+    max_device_bank_param_track = ds.max_last_selected_track_device_parameter_bank_nbr
+    m_bank_text = f"{max_device_bank_param_track:02d}"
+    for s in encoders:
+        s_index = s.vpot_index()
+        vpot_display_text = EncoderDisplaySegment(s_index)
+        vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+
+        if s_index == encoder_07_index:
+
+            if chosen_plugin is None:
+                s.unlight_vpot_leds()
+            elif current_device_bank_param_track > 0:
+                vpot_display_text.set_text("<< " + c_bank_text, "")
+                s.show_full_enlighted_poti()
+            else:
+                vpot_display_text.set_text("   " + c_bank_text, "")
+                s.unlight_vpot_leds()
+        elif s_index == encoder_08_index:
+            if chosen_plugin is None:
+                s.unlight_vpot_leds()
+            elif current_device_bank_param_track < max_device_bank_param_track - 1:
+                vpot_display_text.set_text(m_bank_text + ' >>', "")
+                s.show_full_enlighted_poti()
+            else:
+                vpot_display_text.set_text(m_bank_text + "   ", "")
+                s.unlight_vpot_leds()
+        else:
+            # these are the 24 encoders from 9 to 32. Some devices do not have more than 1 or 2 parameters
+            # we are only concerned with the 24 encoders on the current "device bank page"
+            plugin_param = plugin_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE)
+            if plugin_param is not None:
+                vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
+                # parameter name in top display row, param value in bottom row
+                if liveobj_valid(plugin_param[0]):  # then it is a DeviceParameter object
+                    vpot_display_text.set_text(plugin_param[0], plugin_param[1])
+
+        if selected_track.is_frozen:
+            # disconnect encoder from param mapping, display now shows blank values reinforcing track frozen status.
+            s.set_v_pot_parameter(None, None)
+        else:
+            s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+
+        display_parameters.append(vpot_display_text)
+
 def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_device, pad_right_if_less, device_ref, display_parameters,
                       btn_ctlr, scrolling_display_text, log_msg):
     log_id = "mode_utils_td.do_display_update: "
     upper_string1 = ''
     lower_string1 = ''
-    lower_string1a = ''
-    lower_string1b = ''
     upper_string2 = ''
     lower_string2 = ''
     upper_string3 = ''

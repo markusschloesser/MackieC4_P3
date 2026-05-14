@@ -4,8 +4,86 @@ from ableton.v2.base import liveobj_valid
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
 from . import script_utils
+from .script_utils import EncoderDisplaySegment
 from .consts import *
 from .MackieC4Component import make_interpolater
+
+
+def reassign_encoder_parameters(encoders, song, display_parameters):
+    encoder_01_index = 0
+    encoder_02_index = 1
+    encoder_03_index = 2
+    encoder_04_index = 3
+    encoder_05_index = 4
+    encoder_06_index = 5
+    encoder_07_index = 6
+    encoder_08_index = 7
+    encoder_09_index = 8
+    encoder_10_index = 9
+    encoder_11_index = 10
+    encoder_17_index = 16  # Metronome in Function mode
+    encoder_18_index = 17
+    encoder_19_index = 18
+    encoder_22_index = 21
+    encoder_25_index = 24
+    encoder_26_index = 25
+    encoder_27_index = 26
+    encoder_28_index = 27
+
+    encoders_to_display_text = {
+        encoder_01_index: ('unfllw', 'follow'),
+        encoder_02_index: ('on/off', 'Loop'),
+        encoder_03_index: ('Detail', 'Clip/'),
+        encoder_04_index: ('Arrang', 'Sessn'),
+        encoder_05_index: ('on/off', 'Browsr'),
+        encoder_06_index: ('all', 'unsolo'),
+        encoder_07_index: ('all', 'unmute'),
+        encoder_08_index: ('Arrang', 'Back 2'),
+        encoder_11_index: ('all', 'unarm'),
+        encoder_17_index: ('nome  ', 'Metro '),
+        encoder_18_index: ('Autmtn', 'Renabl'),
+        encoder_19_index: ('Clip  ', 'Scrub '),
+        encoder_22_index: (None, 'BPM   '),
+        encoder_28_index: ('on/off', 'Ovrdub'),
+    }
+
+    for s in encoders:
+        s_index = s.vpot_index()
+        vpot_display_text = EncoderDisplaySegment(s_index)
+
+        vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
+
+        if s_index in encoders_to_display_text:
+            display_text = encoders_to_display_text[s_index]
+            if display_text[0] is not None:
+                vpot_display_text.set_text(display_text[0], display_text[1])
+            else:
+                vpot_display_text.set_upper_text(display_text[1])
+        elif s.vpot_index() == encoder_09_index:
+            vpot_display_text.set_upper_text_and_alt('NoUndo', 'Undo  ')
+        elif s.vpot_index() == encoder_10_index:
+            vpot_display_text.set_upper_text_and_alt('NoRedo', 'Redo  ')
+
+        #  capture_midi
+
+        elif s.vpot_index() == encoder_25_index:
+            if song.is_playing:
+                vpot_display_text.set_text(' Stop ', ' Song ')
+            else:
+                vpot_display_text.set_text(' Stop ', ' Song ')
+        elif s.vpot_index() == encoder_26_index:
+            if not song.is_playing:
+                vpot_display_text.set_text(' Play ', ' Song ')
+            else:
+                vpot_display_text.set_text(' Play ', ' Song ')
+        elif s.vpot_index() == encoder_27_index:
+            if not song.is_playing:
+                vpot_display_text.set_text('contin', ' Song ')
+            else:
+                vpot_display_text.set_text('contin', ' Song ')
+
+        s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
+        display_parameters.append(vpot_display_text)
 
 
 def do_display_update(app_view, song, selected_track, encoders, display_parameters, unsolo_all_functionality,

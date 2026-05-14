@@ -25,6 +25,7 @@ from .EncoderControllerDataStore import EncoderControllerDataStore, track_callba
 from . import mode_utils_track_channel_strip as tcs_mode_util
 from . import mode_utils_track_device as td_mode_util
 from . import mode_utils_song_function as sf_mode_util
+from . import mode_utils_user as usr_mode_util
 from .MackieC4Component import *
 from _Generic.Devices import *
 
@@ -2269,13 +2270,8 @@ class EncoderController(MackieC4Component, Component):
         self.subordinate_track_is_selected = False
         self.subordinate_selected_track_allows_audio = False
         if not liveobj_valid(self.selected_track):
-            self.main_script().log_message(f"EC.__reassign_encoder_parameters: self.selected track is not valid, blowing up soon")
+            self.main_script().log_message(f"{log_id}self.selected track is not valid, blowing up soon")
 
-        # self.__current_track_name = self.selected_track.name if liveobj_valid(self.selected_track) else "None"
-        # EXPERIMENT: Can the script rely on the locally stored reference data now instead of fetching the extended device list from the LOM again here?
-        # self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
-        # extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
-        # this list of stored data already contains "expanded chains" or not
         assert self.selected_track == self.__ds.data.get_track(self.__ds.last_selected_track_index).track
         stored_devices = self.__ds.data.get_track_device_map(self.__ds.last_selected_track_index)
         extended_device_list = []
@@ -2286,334 +2282,29 @@ class EncoderController(MackieC4Component, Component):
                 extended_device_list.append(d)
 
         if self.selected_track != self.song().master_track:
-            self.subordinate_track_is_selected = True  # a regular track is selected (not master track)
+            self.subordinate_track_is_selected = True
             if self.selected_track.has_audio_output:
-                self.subordinate_selected_track_allows_audio = True  # a regular track with audio is selected (not master)
+                self.subordinate_selected_track_allows_audio = True
 
         self.__display_parameters = []
-        encoder_01_index = 0
-        encoder_02_index = 1
-        encoder_03_index = 2
-        encoder_04_index = 3
-        encoder_05_index = 4
-        encoder_06_index = 5
-        encoder_07_index = 6
-        encoder_08_index = 7
-        encoder_09_index = 8
-        encoder_10_index = 9
-        encoder_11_index = 10
-        encoder_12_index = 11
-        encoder_13_index = 12
-        encoder_14_index = 13
-        encoder_16_index = 14
-        encoder_17_index = 16  # Metronome in Function mode
-        encoder_18_index = 17
-        encoder_19_index = 18
-        encoder_21_index = 20
-        encoder_22_index = 21
-        encoder_24_index = 23
-        encoder_25_index = 24
-        encoder_26_index = 25
-        encoder_27_index = 26
-        encoder_28_index = 27
-        encoder_29_index = 28
-        encoder_30_index = 29
-        encoder_31_index = 30
-        encoder_32_index = 31
+
         if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
-
-            is_armable_track_selected = script_utils.can_be_armed(self.selected_track)
-
-            current_nbr_of_devices_on_selected_track = len(extended_device_list)
-            # value automatically calculated when devices are added/removed from track device list
-            # self.__eah.max_device_count = current_nbr_of_devices_on_selected_track  # set_max_device_count(current_nbr_of_devices_on_selected_track)
-
-            nbr_of_full_device_pages = int(current_nbr_of_devices_on_selected_track / SETUP_DB_DEVICE_BANK_SIZE)  # / 8
-            nbr_of_remainder_devices = int(current_nbr_of_devices_on_selected_track % SETUP_DB_DEVICE_BANK_SIZE)
-            if nbr_of_full_device_pages >= SETUP_DB_MAX_DEVICE_BANKS:
-                nbr_of_full_device_pages = SETUP_DB_MAX_DEVICE_BANKS
-            elif nbr_of_full_device_pages < 0:
-                nbr_of_full_device_pages = 0
-                self.main_script().log_message(logging.ERROR, "EC.__reassign_encoder_parameters: Not possible, right? and yet I am logged")
-
-            if nbr_of_full_device_pages == 0 and nbr_of_remainder_devices > 0:
-                nbr_of_full_device_pages = 1
-            elif nbr_of_remainder_devices > 0:  # 0 < nbr_of_full_device_pages <= SETUP_DB_MAX_DEVICE_BANKS  #  <= 16
-                nbr_of_full_device_pages += 1
-
-            # this is the max (channel mode) device page count (based on the current number of devices on the selected track)
-            # value automatically calculated when devices are added/removed from track device list
-            # self.__eah.selected_device_bank_count = nbr_of_full_device_pages
-
-            # the current selected bank should already be updated (and accurate)?
-            current_device_bank_track = self.__ds.last_selected_track_device_bank_view_index  # .selected_device_bank_index
-            if current_device_bank_track is None:
-                current_device_bank_track = 0
-
-            for s in self.__encoders:
-                s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(s_index)
-                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-
-                if s_index in row_00_encoders:
-                    if s_index == encoder_07_index:
-                        if current_device_bank_track > 0:
-                            vpot_display_text.set_text('<<Bank', 'Device')
-                            s.show_full_enlighted_poti()
-                        else:
-                            s.unlight_vpot_leds()
-                    elif s_index == encoder_08_index:
-                        if current_device_bank_track < nbr_of_full_device_pages - 1:
-                            vpot_display_text.set_text('Bank>>', 'Device')
-                            s.show_full_enlighted_poti()
-                        else:
-                            s.unlight_vpot_leds()
-                    else:
-                        s.unlight_vpot_leds()
-                    self.__display_parameters.append(vpot_display_text)
-
-                elif s_index in row_01_encoders:
-
-                    row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE  # row_index == "index of" s_index in row_01_encoders range
-                    current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
-
-                    # display part
-                    if row_index + current_encoder_bank_offset < self.__ds.max_device_count:
-                        encoder_index_in_row = row_index + int(current_encoder_bank_offset)
-                        if encoder_index_in_row < len(extended_device_list):
-                            device_name = extended_device_list[encoder_index_in_row].name
-
-                            # device_name in bottom row, blanks on top (top text blocked across full LCD)
-                            vpot_display_text.set_text(device_name, '')
-
-                        else:
-                            vpot_display_text.set_text('dvcNme', 'No')  # could just leave as default blank spaces
-
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                    self.__display_parameters.append(vpot_display_text)
-
-                    # to light up vpot ring for active devices
-                    # Get list of active devices
-                    active_devices = [device for device in extended_device_list if device.is_active]
-
-                    # add listener for devices
-                    for device in extended_device_list:
-                        device_encoder_index_in_row = extended_device_list.index(device)
-                        try:
-                            extended_device_list[device_encoder_index_in_row].add_is_active_listener(self._update_vpot_leds_for_device_toggle)
-                        except RuntimeError:
-                            pass
-
-                    # Loop over active devices and update their LEDs once initially
-                    active_device_encoder_indices = [extended_device_list.index(device) for device in active_devices]
-                    for encoder_index in range(len(self.__encoders)):
-                        if encoder_index in row_01_encoders:
-                            row_index = encoder_index - SETUP_DB_DEVICE_BANK_SIZE
-                            current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
-                            per_encoder_index_in_row = row_index + current_encoder_bank_offset
-                            if per_encoder_index_in_row < len(extended_device_list):
-                                if per_encoder_index_in_row in active_device_encoder_indices:
-                                    self.__encoders[encoder_index].show_full_enlighted_poti()
-                                else:
-                                    self.__encoders[encoder_index].unlight_vpot_leds()
-                            else:
-                                self.__encoders[encoder_index].unlight_vpot_leds()
-
-                elif s_index < encoder_27_index:
-                    if self.subordinate_selected_track_allows_audio:
-
-                        send_param = self.__send_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE * 2)
-                        param_obj = send_param[0]
-                        if liveobj_valid(param_obj) and param_obj.is_enabled:  # selected_track.mixer_device.sends[index].is_enabled
-                            vpot_param = (param_obj, VPOT_DISPLAY_WRAP)
-                            # encoder 17 index is (16 % 8) = index 0 ('send bank' 0) <-- 'sends index' 0
-                            # encoder 25 index is (24 % 8) = index 0 ('send bank' 1) <-- 'sends index' 8 (if any)
-                            vpot_display_text.set_text(param_obj, send_param[1])
-                        else:
-                            if self.current_log_level < self.log_levels["INFO"]:
-                                format_nbr = s_index % NUM_ENCODERS_ONE_ROW
-                                if s_index in row_03_encoders:
-                                    format_nbr += NUM_ENCODERS_ONE_ROW
-                                vpot_display_text.set_text(" ---- ", f"send{format_nbr}")
-
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                    self.__display_parameters.append(vpot_display_text)
-
-                elif s_index == encoder_27_index:
-                    self.xfade("reassign_encoder_parameters", s.vpot_index())
-
-                elif s_index == encoder_28_index:
-                    self.returns_switch = 0
-                    if self.subordinate_track_is_selected and not self.selected_track.solo:
-                        vpot_display_text.set_text(None, 'Solo')
-                    else:
-                        vpot_display_text.set_text(None, 'Solo' if self.subordinate_track_is_selected else 'Master')
-
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                    self.__display_parameters.append(vpot_display_text)
-
-                elif s_index == encoder_29_index:
-                    self.returns_switch = 0
-                    if self.subordinate_track_is_selected:
-                        vpot_param = (None, VPOT_DISPLAY_BOOLEAN)
-                        if is_armable_track_selected:
-                            is_armed = self.selected_track.arm
-                            vpot_display_text.set_text(is_armed, 'RecArm')  # this is static text
-                        else:
-                            vpot_display_text.set_text('Never', 'RecArm')
-                    else:
-                        vpot_display_text.set_text(None, 'Master')
-
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                    self.__display_parameters.append(vpot_display_text)
-
-                elif s_index == encoder_30_index:
-                    if self.subordinate_track_is_selected:
-                        is_muted = self.selected_track.mute
-                        vpot_display_text.set_text(is_muted, 'Mute')
-
-                    self.__display_parameters.append(vpot_display_text)
-                elif s_index == encoder_31_index:
-                    if self.selected_track.has_audio_output:
-                        vpot_display_text.set_text(self.selected_track.mixer_device.panning, 'Pan')  # static text
-                        vpot_param = (self.selected_track.mixer_device.panning, VPOT_DISPLAY_BOOST_CUT)  # the actual param
-
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                    self.__display_parameters.append(vpot_display_text)
-                elif s_index == encoder_32_index:
-                    if self.selected_track.has_audio_output:
-                        vpot_display_text.set_text(self.selected_track.mixer_device.volume, 'Volume')
-                        vpot_param = (self.selected_track.mixer_device.volume, VPOT_DISPLAY_WRAP)
-                    else:
-                        vpot_display_text.set_text('', '')
-
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                    self.__display_parameters.append(vpot_display_text)
+            self.returns_switch = 0
+            is_log_less_than_info = self.current_log_level < self.log_levels["INFO"]
+            tcs_mode_util.reassign_encoder_parameters(self.selected_track, extended_device_list, self.main_script().log_message, self.__ds, self.__encoders,
+                                                      self.__display_parameters, self._update_vpot_leds_for_device_toggle, self.subordinate_track_is_selected,
+                                                      self.subordinate_selected_track_allows_audio, self.__send_parameter, is_log_less_than_info, self.xfade)
 
         elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
-            current_device_bank_param_track = self.__ds.last_selected_track_device_parameter_bank_nbr
-            c_bank_text = f"{(current_device_bank_param_track + 1):02d}"
-            max_device_bank_param_track = self.__ds.max_last_selected_track_device_parameter_bank_nbr
-            m_bank_text = f"{max_device_bank_param_track:02d}"
-            for s in self.__encoders:
-                s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(s_index)
-                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-
-                if s_index == encoder_07_index:
-
-                    if self.__chosen_plugin is None:
-                        s.unlight_vpot_leds()
-                    elif current_device_bank_param_track > 0:
-                        vpot_display_text.set_text("<< " + c_bank_text, "")
-                        s.show_full_enlighted_poti()
-                    else:
-                        vpot_display_text.set_text("   " + c_bank_text, "")
-                        s.unlight_vpot_leds()
-                elif s_index == encoder_08_index:
-                    if self.__chosen_plugin is None:
-                        s.unlight_vpot_leds()
-                    elif current_device_bank_param_track < max_device_bank_param_track - 1:
-                        vpot_display_text.set_text(m_bank_text + ' >>', "")
-                        s.show_full_enlighted_poti()
-                    else:
-                        vpot_display_text.set_text(m_bank_text + "   ", "")
-                        s.unlight_vpot_leds()
-                else:
-                    # these are the 24 encoders from 9 to 32. Some devices do not have more than 1 or 2 parameters
-                    # we are only concerned with the 24 encoders on the current "device bank page"
-                    plugin_param = self.__plugin_parameter(s_index - SETUP_DB_DEVICE_BANK_SIZE)
-                    if plugin_param is not None:
-                        vpot_param = (plugin_param[0], VPOT_DISPLAY_WRAP)
-                        # parameter name in top display row, param value in bottom row
-                        if liveobj_valid(plugin_param[0]):  # then it is a DeviceParameter object
-                            vpot_display_text.set_text(plugin_param[0], plugin_param[1])
-
-                if self.selected_track.is_frozen:
-                    # disconnect encoder from param mapping, display now shows blank values reinforcing track frozen status.
-                    s.set_v_pot_parameter(None,None)
-                else:
-                    s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-
-                self.__display_parameters.append(vpot_display_text)
+            td_mode_util.reassign_encoder_parameters(self.selected_track, self.__ds, self.__encoders, self.__chosen_plugin, self.__plugin_parameter,
+                                                     self.__display_parameters)
 
         elif self.btn_ctlr.current_active_script_mode == C4M_FUNCTION:
-            encoders_to_display_text = {
-                encoder_01_index: ('unfllw', 'follow'),
-                encoder_02_index: ('on/off', 'Loop'),
-                encoder_03_index: ('Detail', 'Clip/'),
-                encoder_04_index: ('Arrang', 'Sessn'),
-                encoder_05_index: ('on/off', 'Browsr'),
-                encoder_06_index: ('all', 'unsolo'),
-                encoder_07_index: ('all', 'unmute'),
-                encoder_08_index: ('Arrang', 'Back 2'),
-                encoder_11_index: ('all', 'unarm'),
-                encoder_17_index: ('nome  ', 'Metro '),
-                encoder_18_index: ('Autmtn', 'Renabl'),
-                encoder_19_index: ('Clip  ', 'Scrub '),
-                encoder_22_index: (None, 'BPM   '),
-                encoder_28_index: ('on/off', 'Ovrdub'),
-            }
-
-            for s in self.__encoders:
-                s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(s_index)
-
-                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-
-                if s_index in encoders_to_display_text:
-                    display_text = encoders_to_display_text[s_index]
-                    if display_text[0] is not None:
-                        vpot_display_text.set_text(display_text[0], display_text[1])
-                    else:
-                        vpot_display_text.set_upper_text(display_text[1])
-                elif s.vpot_index() == encoder_09_index:
-                    vpot_display_text.set_upper_text_and_alt('NoUndo', 'Undo  ')
-                elif s.vpot_index() == encoder_10_index:
-                    vpot_display_text.set_upper_text_and_alt('NoRedo', 'Redo  ')
-
-                #  capture_midi
-
-                elif s.vpot_index() == encoder_25_index:
-                    if self.song().is_playing:
-                        vpot_display_text.set_text(' Stop ', ' Song ')
-                    else:
-                        vpot_display_text.set_text(' Stop ', ' Song ')
-                elif s.vpot_index() == encoder_26_index:
-                    if not self.song().is_playing:
-                        vpot_display_text.set_text(' Play ', ' Song ')
-                    else:
-                        vpot_display_text.set_text(' Play ', ' Song ')
-                elif s.vpot_index() == encoder_27_index:
-                    if not self.song().is_playing:
-                        vpot_display_text.set_text('contin', ' Song ')
-                    else:
-                        vpot_display_text.set_text('contin', ' Song ')
-
-                s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-                self.__display_parameters.append(vpot_display_text)
+            sf_mode_util.reassign_encoder_parameters(self.__encoders, self.song(), self.__display_parameters)
 
         elif self.btn_ctlr.current_active_script_mode == C4M_USER:
-            # need to rebuild the midi map for every encoder (disconnect from all parameters)
-            for s in self.__encoders:
-                s.unlight_vpot_leds()
-                s_index = s.vpot_index()
-                vpot_display_text = EncoderDisplaySegment(s_index)
-
-                vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
-                s.set_v_pot_parameter(vpot_param[0], vpot_param[1])
-            # don't actively listen for updates in USER mode
-            for device in extended_device_list:
-                device_encoder_index_in_row = extended_device_list.index(device)
-                try:
-                    extended_device_list[device_encoder_index_in_row].remove_is_active_listener(self._update_vpot_leds_for_device_toggle)
-                except RuntimeError:
-                    pass
-
-            # display these once only here because the Max sequencer handles its own display in C4M_USER mode
-            # users see these instructions displayed when the Max sequencer is NOT connected,
-            # and when it is connected but MIDI bandwidth is bottle-necked and slow
-            self.send_user_mode_display_strings()
+            usr_mode_util.reassign_encoder_parameters(self.__encoders, extended_device_list, self._update_vpot_leds_for_device_toggle,
+                                                      self.send_user_mode_display_strings)
 
         if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
             self.one_display_update(force=True)
