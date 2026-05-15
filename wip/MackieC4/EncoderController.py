@@ -86,6 +86,9 @@ class EncoderController(MackieC4Component):
             for _ in range(32)  # or however many encoders
         ]
 
+        self.__device_rack_start_indices = set()
+        self.__device_rack_end_indices = set()
+
         # __display_repeat_timer is a work-around for when the C4 LCD display changes due to a MIDI sysex message
         # received by the C4 from somewhere else, not-here.  Such a display change is not tracked here (obviously),
         # and the C4 itself can't be asked "what are you displaying right now?". So we just blast the display sysex
@@ -1185,6 +1188,21 @@ class EncoderController(MackieC4Component):
             # the current selected bank should already be updated (and accurate)?
             current_device_bank_track = self.__eah.get_selected_device_bank_index()
 
+            rack_start_indices = set()
+            rack_end_indices = set()
+
+            for i, device in enumerate(extended_device_list):
+                try:
+                    if device.can_have_chains:
+                        child_count = self._count_devices_in_rack(device)
+                        rack_start_indices.add(i)
+                        rack_end_indices.add(i + child_count)
+                except RuntimeError:
+                    pass
+
+            self.__device_rack_start_indices = rack_start_indices
+            self.__device_rack_end_indices = rack_end_indices
+
             for s in self.__encoders:
                 s_index = s.vpot_index()
                 vpot_display_text = EncoderDisplaySegment(self, s_index)
@@ -1641,7 +1659,6 @@ class EncoderController(MackieC4Component):
 
             # This text 'covers' display segments over all 8 encoders in the second row
             upper_string2 += '----------------------- Devices -----------------------'
-            # todo MS maybe try to visualize Racks/Groups here by using |  |  ?
 
             show_device_bank_pair = self.__eah.get_selected_device_bank_count() > 1
 
@@ -1662,8 +1679,39 @@ class EncoderController(MackieC4Component):
                     else:
                         lower_string1 += adjust_string(str(l_alt_text), 6) + ' '
                 elif t in row_01_encoders:
+                    row_index = t - SETUP_DB_DEVICE_BANK_SIZE
+                    current_device_bank_track = self.__eah.get_selected_device_bank_index()
+                    current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
+                    device_index = row_index + current_encoder_bank_offset
+
                     l_alt2_text = self.get_scrolling_display_text(l_alt_text, t)
-                    lower_string2 += adjust_string(l_alt2_text, 6) + ' '
+                    segment_text = adjust_string(l_alt2_text, 6)
+
+                    # group starts on first visible encoder: marker must live inside segment
+                    if row_index == 0 and device_index in self.__device_rack_start_indices:
+                        segment_text = '|' + adjust_string(segment_text, 5)
+
+                    # group ends on last visible encoder: marker must live inside segment
+                    if row_index == SETUP_DB_DEVICE_BANK_SIZE - 1 and device_index in self.__device_rack_end_indices:
+                        segment_text = adjust_string(segment_text, 5) + '|'
+
+                    lower_string2 += segment_text
+
+                    # separator between encoder 09..15 and next segment
+                    if row_index < SETUP_DB_DEVICE_BANK_SIZE - 1:
+                        next_device_index = device_index + 1
+
+                        separator = ' '
+
+                        # Boundary between current and next segment.
+                        # End after current OR start before next.
+                        if (
+                                device_index in self.__device_rack_end_indices
+                                or next_device_index in self.__device_rack_start_indices
+                        ):
+                            separator = '|'
+
+                        lower_string2 += separator
 
                 elif t in row_02_encoders:
                     upper_string3 += ''.join([self.get_scrolling_display_text(u_alt_text, t), ' '])

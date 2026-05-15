@@ -93,6 +93,21 @@ class MackieC4Component(object):
                 break
         return device_list
 
+    def _count_devices_in_rack(self, rack_device):
+        """Return number of flattened child devices inside a rack device."""
+        try:
+            if not rack_device.can_have_chains:
+                return 0
+
+            count = 0
+            for chain in rack_device.chains:
+                count += len(self.get_device_list(chain.devices))
+
+            return count
+
+        except RuntimeError:
+            return 0
+
 
 def make_interpolater(Live_value_min, Live_value_max, C4_min, C4_max):
     # Figure out how 'wide' each range is
