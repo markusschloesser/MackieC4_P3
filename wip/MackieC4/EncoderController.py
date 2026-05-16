@@ -394,6 +394,28 @@ class EncoderController(MackieC4Component):
     def handle_bank_switch_ids(self, switch_id):
         """ works in all modes """
         # self.main_script().log_message("EC.handle_bank_switch_ids: self.__assignment_mode == C4M_CHANNEL_STRIP is <{0}>".format(self.__assignment_mode == C4M_CHANNEL_STRIP))
+        if self.__assignment_mode == C4M_CHANNEL_STRIP and switch_id in (C4SID_BANK_LEFT, C4SID_BANK_RIGHT):
+            selected_device_bank_index = self.__eah.get_selected_device_bank_index()
+            max_device_bank_index = self.__eah.get_selected_device_bank_count() - 1
+            update_self = False
+
+            if switch_id == C4SID_BANK_LEFT:
+                if selected_device_bank_index > 0:
+                    selected_device_bank_index -= 1
+                    update_self = True
+
+            elif switch_id == C4SID_BANK_RIGHT:
+                if selected_device_bank_index < max_device_bank_index:
+                    selected_device_bank_index += 1
+                    update_self = True
+
+            if update_self:
+                self.__eah.set_selected_device_bank_index(selected_device_bank_index)
+                self.__reassign_encoder_parameters()
+                self.request_rebuild_midi_map()
+
+            return
+
         current_bank_nbr = self.__eah.get_current_track_device_parameter_bank_nbr()
         update_self = False
         if switch_id == C4SID_BANK_LEFT:
