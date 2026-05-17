@@ -81,9 +81,8 @@ class ButtonController(object):
         # these two assignments just declare the two dunder vars
         self.__last_assignment_led_on = assignment_mode_to_button_id[last_assignment_mode]
         self.__current_assignment_led_on = assignment_mode_to_button_id[init_assignment_mode]
-        # these two update calls also update the now declared dunder vars (to the same values) using "button press count" semantics
-        self._update_assignment_button_state(self.__last_assignment_led_on) # last is now both current (led is ON) and remains last (a contradiction, led is not OFF)
-        self._update_assignment_button_state(self.__current_assignment_led_on) # init is now current (led is ON) and last remains last (led is OFF)
+        # this update uses "button press" semantics
+        self._update_assignment_button_state(assignment_mode_to_button_id[init_assignment_mode]) # init is now current (led is ON) and last remains last (led is OFF)
 
     @property
     def split_led_cycle_index(self):
