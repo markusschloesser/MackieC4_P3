@@ -598,10 +598,8 @@ class EncoderController(MackieC4Component, Component):
         """only changes chain expansion behavior when you inc/dec tracks and devices using Session Group buttons on the C4 """ \
         """if BOTH Ctrl and Alt Modifier buttons are already pressed, otherwise chain expansion behavior doesn't change"""
         log_id = "EC._set_expand_chains: "
-        is_alt_pressed = True if self.btn_ctlr.get_modifier_btn_pressed_state(C4SID_ALT) > 0 else False
-        is_ctrl_pressed = True if self.btn_ctlr.get_modifier_btn_pressed_state(C4SID_CONTROL) > 0 else False
-        allowed = is_alt_pressed and is_ctrl_pressed
-        self.main_script().log_message(logging.DEBUG, f"{log_id}{self.expand_chains} currently, input is {expand} and control update is {'' if allowed else 'NOT '}allowed")
+        allowed = self.btn_ctlr.is_expand_chains_modifier_press_combo
+        self.main_script().log_message(logging.DEBUG, f"{log_id}{self.expand_chains} currently, input is {expand} and state update is {'' if allowed else 'NOT '}allowed")
         if allowed:
             self._expand_chains = expand
             self.main_script().log_message(logging.DEBUG, f"{log_id}now set to {self.expand_chains}")
@@ -1903,12 +1901,17 @@ class EncoderController(MackieC4Component, Component):
             if current_device_bank_index > 0:
                 current_device_bank_index -= 1
                 update_self = True
+            else:
+                self.main_script().log_message(logging.DEBUG, f"{log_id} can't move bank view Left, already displaying bank 0")
         elif control_index == bank_right_index:
             if current_device_bank_index < max_device_bank_index:
                 current_device_bank_index += 1
                 update_self = True
+            else:
+                self.main_script().log_message(logging.DEBUG, f"{log_id} can't move bank view Right, already displaying max bank {max_device_bank_index + 1}")
 
         if update_self:
+            self.main_script().log_message(logging.DEBUG, f"{log_id} moving bank view to new index {current_device_bank_index}")
             self.__ds.last_selected_track_device_bank_view_index = current_device_bank_index
         return update_self
 
@@ -2256,7 +2259,7 @@ class EncoderController(MackieC4Component, Component):
             return p, p.name
         else:
             # The Song doesn't have this many sends
-            return None, '      '
+            return None, ''.join([" " for i in range(6)])
 
     def __plugin_parameter(self, vpot_index):
         """ Return the plugin parameter that is assigned to the given encoder as a tuple (param, param.name) """
@@ -2272,7 +2275,7 @@ class EncoderController(MackieC4Component, Component):
                 return p
 
             # The device doesn't have this many parameters
-            return None, '      '
+            return None, ''.join([" " for i in range(6)])
         else: # theoretically not possible, vpot_index should never be outside the encoder_range
             return None, 'PPppPP'
 
