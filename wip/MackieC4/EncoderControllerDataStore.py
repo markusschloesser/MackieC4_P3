@@ -818,7 +818,7 @@ class SongData(object):
 
 
     def set_track_device_map_by_callback_type(self, track_callback_type_key, track_index_by_type, device_map: Dict[int, ActiveDevice]):
-        # log_id = "ECDS.SD.set_track_device_map_by_callback_type: "
+        log_id = "ECDS.SD.set_track_device_map_by_callback_type: "
         # self.log_msg(logging.DEBUG, f"{log_id}setting device map for {track_callback_type_key} track index {track_index_by_type}")
         active_device_list_ref = self.get_active_track_details_ref_by_type_key(track_callback_type_key, track_index_by_type)
         active_device_list_ref.set_track_device_map(device_map)
@@ -1482,29 +1482,54 @@ class EncoderControllerDataStore(MackieC4Component):
 
     @last_selected_device_index.setter
     def last_selected_device_index(self, device_index):
-        if isinstance(self.data.get_track(self.last_selected_track_index), ActiveTrack):
-            self.data.get_track(self.last_selected_track_index).selected_device_index = device_index
+        t = self.data.get_track(self.last_selected_track_index)
+        if isinstance(t, ActiveTrack):
+            t.selected_device_index = device_index
 
-    @property
-    def selected_device_bank_count(self):
-        if self.data.get_track(self.last_selected_track_index) is not None:
-            return self.data.get_track(self.last_selected_track_index).required_device_banks
-        else:
-            return -1
-
+    # @property
+    # def selected_device_bank_count(self):
+    #     return self.selected_track_nbr_required_device_banks
+    #
     @property
     def selected_device_bank_index(self):
-        if self.data.get_track(self.last_selected_track_index) is not None:
-            return self.data.get_track(self.last_selected_track_index).device_bank_index_of_selected_device
-        else:
-            return -1
+        return self.selected_track_selected_device_bank_index
 
     @property
     def max_device_count(self):
-        if self.data.get_track(self.last_selected_track_index) is not None:
-            return self.data.get_track(self.last_selected_track_index).device_count
+        return self.selected_track_nbr_stored_devices
+
+    @property
+    def selected_track_nbr_required_device_banks(self):
+        t = self.data.get_track(self.last_selected_track_index)
+        if t is not None:
+            return t.required_device_banks
         else:
             return -1
+
+    @property
+    def selected_track_selected_device_bank_index(self):
+        t = self.data.get_track(self.last_selected_track_index)
+        if t is not None:
+            return t.device_bank_index_of_selected_device
+        else:
+            return -1
+
+    @property
+    def selected_track_nbr_stored_devices(self):
+        t = self.data.get_track(self.last_selected_track_index)
+        if t is not None:
+            return t.device_count
+        else:
+            return -1
+
+    @property
+    def selected_track_stored_device_list(self):
+        """Returns a list of the Live.Device objects underlying the stored map of ActiveDevice objects associated with the selected track"""
+        devices = self.data.get_track_device_map(self.last_selected_track_index)
+        if devices is not None:
+            return [devices[i].device for i in range(len(devices.keys()))]
+        else:
+            return []
 
     @property
     def max_last_selected_track_device_parameter_bank_nbr(self, t_d_idx=None):
@@ -1525,13 +1550,15 @@ class EncoderControllerDataStore(MackieC4Component):
     def last_selected_track_device_bank_view_index(self):
         """ index of the selected track's current device-bank-view.  Which could differ from the device-bank of the track's selected device """
         rtn = 0
-        if self.data.get_track(self.last_selected_track_index) is not None and self.data.get_track(self.last_selected_track_index).track_device_bank_view_index is not None:
-            rtn = self.data.get_track(self.last_selected_track_index).track_device_bank_view_index
+        t = self.data.get_track(self.last_selected_track_index)
+        if t is not None and t.track_device_bank_view_index is not None:
+            rtn = t.track_device_bank_view_index
         return rtn
     @last_selected_track_device_bank_view_index.setter
     def last_selected_track_device_bank_view_index(self, next_bank_view_index):
-        if self.data.get_track(self.last_selected_track_index) is not None:
-            self.data.get_track(self.last_selected_track_index).track_device_bank_view_index = next_bank_view_index
+        t = self.data.get_track(self.last_selected_track_index)
+        if t is not None:
+            t.track_device_bank_view_index = next_bank_view_index
         
     @property
     def last_selected_device_parameter_bank_view_index(self):

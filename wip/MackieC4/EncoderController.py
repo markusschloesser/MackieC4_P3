@@ -967,11 +967,11 @@ class EncoderController(MackieC4Component, Component):
                             next_device = extended_device_list[nbr_devices - 1]
                             msg = f"{log_id}Because there are only {nbr_devices} devices in device list for track {self.selected_track.name}, index "
                             if liveobj_valid(next_device):
-                                msg += f"{selected_device_index} returned by EAH is OOB, using fallback selected device {next_device.name} found at index {nbr_devices - 1} "
+                                msg += f"{selected_device_index} returned by ECDS is OOB, using fallback selected device {next_device.name} found at index {nbr_devices - 1} "
                                 self.main_script().log_message(trace_level, msg + "instead.")
                             else:
                                 nbr_devices = 0
-                                msg += f"{selected_device_index} returned by EAH is OOB, and "
+                                msg += f"{selected_device_index} returned by ECDS is OOB, and "
                                 self.main_script().log_message(logging.ERROR, msg + f"invalid device found at index 0 of track's device list. assumption issue?")
                             self.__ds.track_changed(track_index)
                             self.__ds.update_device_counter(track_index, nbr_devices)
@@ -981,7 +981,6 @@ class EncoderController(MackieC4Component, Component):
                             self.main_script().log_message(logging.DEBUG, msg)
                     # else:
                     # selected_device_index is None or selected_device_index < 0
-
 
                 if not self.is_locked_to_device:
                     msg_prefix = f"{log_id}self.selected_track is now {self.selected_track.name} "
@@ -1295,7 +1294,7 @@ class EncoderController(MackieC4Component, Component):
                     device = None
                     # might happen if track with no devices deleted, and the next selected track also has no devices?
                     self.__ds.last_selected_device_index = None
-                    # self.main_script().log_message(logging.DEBUG, "{0}__chosen_plugin is now None because no EAH updated index".format(log_id))
+                    # self.main_script().log_message(logging.DEBUG, "{0}__chosen_plugin is now None because no ECDS updated index".format(log_id))
                 elif len(extended_device_list) > updated_idx:
                     device = extended_device_list[updated_idx]
                     self.__ds.last_selected_device_index = updated_idx
@@ -1538,7 +1537,7 @@ class EncoderController(MackieC4Component, Component):
         if self.btn_ctlr.current_active_script_mode != C4M_USER:  # button_id_to_assignment_mode[C4SID_MARKER]:
             self.btn_ctlr.handle_session_button_press(switch_id)
             current_trk_device_index = self.__ds.last_selected_device_index if self.__ds.last_selected_device_index is not None else 0
-            max_trk_device_index = self.__ds.max_device_count - 1
+            max_trk_device_index = self.__ds.selected_track_nbr_stored_devices - 1
             update_self = False
             if switch_id == C4SID_SLOT_DOWN:
                 if current_trk_device_index > 0:
@@ -1846,8 +1845,12 @@ class EncoderController(MackieC4Component, Component):
         return upper_string4, lower_string4
 
     def handle_track_device_bank_view_update(self, control_index):
+        log_id = "EC.handle_track_device_bank_view_update: "
         current_device_bank_index = self.__ds.last_selected_track_device_bank_view_index
-        max_device_bank_index = self.__ds.selected_device_bank_count - 1
+        # max_device_bank_index = self.__ds.selected_device_bank_count - 1
+        max_device_bank_index = self.__ds.selected_track_nbr_required_device_banks
+        self.main_script().log_message(logging.DEBUG, f"{log_id} stored bank view index {current_device_bank_index} stored nbr banks required {max_device_bank_index}")
+        max_device_bank_index -= 1  # index value
         bank_left_index = 6
         bank_right_index = 7
         update_self = False
@@ -2292,7 +2295,7 @@ class EncoderController(MackieC4Component, Component):
             self.returns_switch = 0
             is_log_less_than_info = self.current_log_level < self.log_levels["INFO"]
             tcs_mode_util.reassign_encoder_parameters(self.selected_track, extended_device_list, self.main_script().log_message, self.__ds, self.__encoders,
-                                                      self.__display_parameters, self._update_vpot_leds_for_device_toggle, self.subordinate_track_is_selected,
+                                                      self.__display_parameters, self._update_vpot_led_device_is_active_status, self.subordinate_track_is_selected,
                                                       self.subordinate_selected_track_allows_audio, self.__send_parameter, is_log_less_than_info, self.xfade)
 
         elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
@@ -2303,7 +2306,7 @@ class EncoderController(MackieC4Component, Component):
             sf_mode_util.reassign_encoder_parameters(self.__encoders, self.song(), self.__display_parameters)
 
         elif self.btn_ctlr.current_active_script_mode == C4M_USER:
-            usr_mode_util.reassign_encoder_parameters(self.__encoders, extended_device_list, self._update_vpot_leds_for_device_toggle,
+            usr_mode_util.reassign_encoder_parameters(self.__encoders, extended_device_list, self._update_vpot_led_device_is_active_status,
                                                       self.send_user_mode_display_strings)
 
         if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
@@ -2328,29 +2331,30 @@ class EncoderController(MackieC4Component, Component):
         self.send_display_string(LCD_BTM_FLAT_ADDRESS, top_line, LCD_TOP_ROW_OFFSET)
         self.send_display_string(LCD_BTM_FLAT_ADDRESS, bottom_line, LCD_BOTTOM_ROW_OFFSET)
 
-    def _update_vpot_leds_for_device_toggle(self):
+    def _update_vpot_led_device_is_active_status(self):
         log_id = "EC._update_vpot_leds_for_device_toggle: "
-        self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
-        extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
-        current_device_bank_track = self.__ds.last_selected_track_device_bank_view_index  # selected_device_bank_index
+        # self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
+        # extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
+        extended_device_list = self.__ds.selected_track_stored_device_list
+        current_device_bank_track = self.__ds.last_selected_track_device_bank_view_index
+        current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE) # offset is 0, 8, 16, 24, etc
+        assert self.__ds.selected_track_nbr_stored_devices == len(extended_device_list)
+        assert self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP
 
-        for s in self.__encoders:
-            s_index = s.vpot_index()
+        for s_index in row_01_encoders:
+            row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
+            if row_index + current_encoder_bank_offset < self.__ds.selected_track_nbr_stored_devices:
+                device_index = row_index + current_encoder_bank_offset
+                if device_index < len(extended_device_list):
+                    device = extended_device_list[device_index]
+                    if device.is_active:
+                        self.__encoders[s_index].show_full_enlighted_poti()
+                    else:
+                        self.__encoders[s_index].unlight_vpot_leds()
+                else:
+                    self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}index {device_index} too large for stored device list?")
+                    self.__encoders[s_index].unlight_vpot_leds()
 
-            if s_index in row_01_encoders:
-                row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE
-                current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
-
-                if row_index + current_encoder_bank_offset < self.__ds.max_device_count:
-                    device_index = row_index + current_encoder_bank_offset
-                    if device_index < len(extended_device_list):
-                        device = extended_device_list[device_index]
-                        device_encoder_index = row_index + NUM_ENCODERS_ONE_ROW
-
-                        if device.is_active:
-                            self.__encoders[device_encoder_index].show_full_enlighted_poti()
-                        else:
-                            self.__encoders[device_encoder_index].unlight_vpot_leds()
 
     def get_alternating_display_text(self, text: str, index: int, width: int = 6) -> str:
         """use this to switch between first 6 and second 6 characters for parameter names etc"""
@@ -2479,7 +2483,7 @@ class EncoderController(MackieC4Component, Component):
         if self.btn_ctlr.current_active_script_mode == C4M_USER:
             return  # no display updates in this mode (all updates in this mode, if any, are handled by the Max sequencer patch)
         elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
-            show_device_banking_text = self.__ds.selected_device_bank_count > 1
+            show_device_banking_text = self.__ds.selected_track_nbr_stored_devices > 1
             upper_string1, lower_string1, upper_string2, lower_string2, upper_string3, lower_string3, upper_string4, lower_string4 = (
                 tcs_mode_util.do_display_update(
                 self.application().view, selected_track, self.__chosen_plugin, self.is_locked_to_device, self.__display_parameters, self.btn_ctlr,
