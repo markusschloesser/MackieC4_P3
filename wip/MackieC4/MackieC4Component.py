@@ -77,7 +77,7 @@ class MackieC4Component(object):
         device_list = []
 
         for device in container:
-            if len(device_list) >= 127:
+            if len(device_list) >= SETUP_DB_DEFAULT_SIZE:
                 break
 
             device_list.append(device)
@@ -85,12 +85,12 @@ class MackieC4Component(object):
             if device.can_have_chains:
                 for ch in device.chains:
                     for d in self.get_device_list(ch.devices):
-                        if len(device_list) < 127:
+                        if len(device_list) < SETUP_DB_DEFAULT_SIZE:
                             device_list.append(d)
                         else:
                             break
 
-                    if len(device_list) >= 127:
+                    if len(device_list) >= SETUP_DB_DEFAULT_SIZE:
                         break
 
         return device_list
