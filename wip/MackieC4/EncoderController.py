@@ -859,6 +859,7 @@ class EncoderController(MackieC4Component, Component):
         # self.main_script().log_message(logging.DEBUG, "EC.build_setup_database: C4.main_script().track_count after setup <{0}>".format(self.main_script().track_count))
         selected_track = song.view.selected_track
         selected_index, selected_callback_type, callback_type_index, nbr_song_tracks = self.find_track_index(selected_track)
+        self.__ds.last_selected_track_index = selected_index
         self.track_changed(selected_index, selected_callback_type, callback_type_index)
 
         self.selected_track = selected_track
@@ -1028,6 +1029,20 @@ class EncoderController(MackieC4Component, Component):
                                         nm = "None" if self.__chosen_plugin is None else "Invalid" if not liveobj_valid(self.__chosen_plugin) else self.__chosen_plugin.name
                                         self.main_script().log_message(trace_level, f"{msg_prefix}processing local device change with index {selected_device_index}")
                                         self.__ds.device_added_deleted_or_changed(extended_device_list, next_device, selected_device_index)
+                                        self.main_script().log_message(trace_level, f"{log_id} {nm} to {next_device.name}")
+                                        stored_track_ref = self.__ds.data.get_track(track_index)
+                                        if stored_track_ref.selected_device_index != selected_device_index:
+                                            msg = f"{log_id}updating track ref selected device index {stored_track_ref.selected_device_index} to {selected_device_index}"
+                                            self.main_script().log_message(trace_level, msg)
+                                            stored_track_ref.selected_device_index = selected_device_index
+                                            if stored_track_ref.device_count != nbr_devices:
+                                                self.__ds.update_device_counter(stored_track_ref.index, nbr_devices)
+                                                msg = f"{log_id}number of devices on stored track reference not already updated?"
+                                                self.main_script().log_message(trace_level, msg)
+                                        if self.__ds.last_selected_device_index != selected_device_index:
+                                            msg = f"{log_id}updating last selected device index {self.__ds.last_selected_device_index} to {selected_device_index}"
+                                            self.main_script().log_message(trace_level, msg)
+                                            self.__ds.last_selected_device_index = selected_device_index
                                         self.main_script().log_message(trace_level, f"{msg_prefix}updating script chosen plugin from {nm} to {next_device.name}")
                                         self.__update_chosen_plugin_device(next_device)
                                         if liveobj_valid(next_device):
@@ -2265,26 +2280,20 @@ class EncoderController(MackieC4Component, Component):
         log_id = "EC.__reorder_parameters: "
         result = []
         if liveobj_valid(self.__chosen_plugin):
-            device_class_name = self.__chosen_plugin.class_name
-            nbr_params = len(self.__chosen_plugin.parameters)
-            if device_class_name in DEVICE_DICT:
-                device_banks = DEVICE_DICT[device_class_name]
-                bank_count = len(device_banks) # DEVICE_DICT stores tuples
-                self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{device_class_name} is in the DEVICE_DICT with {bank_count} banks")
-                for device_bank_index, bank in enumerate(device_banks):
-                    for param_bank_index, param_name in enumerate(bank):
-                        parameter = get_parameter_by_name(self.__chosen_plugin, param_name)
-
-                        if not parameter:
-                            param_index = param_bank_index + (SETUP_DB_DEVICE_BANK_SIZE * device_bank_index)
-                            if nbr_params > param_index:
-                                parameter = self.__chosen_plugin.parameters[param_index]
-
-                        result.append((parameter, parameter.name if parameter else None))
-
+            active_track_ref = self.__ds.data.get_track(self.__ds.last_selected_track_index)
+            assert active_track_ref.selected_device_index is not None
+            assert self.__ds.last_selected_device_index == active_track_ref.selected_device_index
+            active_device_ref = self.__ds.data.get_device(active_track_ref.index, active_track_ref.selected_device_index)
+            if active_device_ref is not None:
+                selected_device = active_device_ref.device
             else:
-                result = [(p, p.name) for p in self.__chosen_plugin.parameters]
+                msg = f"{log_id}no stored device for track {active_track_ref.track_name} at device index {active_track_ref.selected_device_index}, using chosen device params"
+                self.main_script().log_message(logging.ERROR, msg)
+                selected_device = self.__chosen_plugin
 
+            result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in selected_device.parameters]
+            device_class_name = selected_device.class_name
+            nbr_params = len(selected_device.parameters)
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for {device_class_name} with {nbr_params} params")
         else:
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for None device with zero params")

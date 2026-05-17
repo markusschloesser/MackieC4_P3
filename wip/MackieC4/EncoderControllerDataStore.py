@@ -602,10 +602,12 @@ class SongData(object):
         selected_device_index = 0 if nbr_devices > 0 else None
         track_ref = ActiveTrack(track, self.table_keys[track_callback_types[2]], song_index, song_index, nbr_devices, selected_device_index)
         self.log_msg(logging.DEBUG, f"ECDS.SD.init_master_track: BEFORE: master track ref {track_ref} at index {song_index}")
-        track_device_list = ActiveTrackDetails(track_ref, ext_devices)
-        self.device_list_table[track_callback_types[2]][song_index] = track_device_list
-        track_device_list = self.device_list_table[track_callback_types[2]][song_index]
-        self.log_msg(logging.DEBUG, f"ECDS.SD.init_master_track: AFTER: master ref {track_device_list.active_track} at index {song_index}")
+        track_details = ActiveTrackDetails(track_ref, ext_devices)
+        track_ref.device_list_is_dirty = False
+        track_details.chain_expansion_changed_flag = False
+        self.device_list_table[track_callback_types[2]][song_index] = track_details
+        track_details = self.device_list_table[track_callback_types[2]][song_index]
+        self.log_msg(logging.DEBUG, f"ECDS.SD.init_master_track: AFTER: master ref {track_details.active_track} at index {song_index}")
         # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
     def update_master_track_index(self, master_track_details_ref):
