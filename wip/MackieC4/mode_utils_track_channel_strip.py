@@ -23,22 +23,24 @@ def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, d
     is_armable_track_selected = script_utils.can_be_armed(selected_track)
     current_nbr_of_devices_on_selected_track = len(extended_device_list)
 
-    nbr_of_full_device_pages = int(current_nbr_of_devices_on_selected_track / SETUP_DB_DEVICE_BANK_SIZE)  # / 8
+    nbr_of_available_device_pages = int(current_nbr_of_devices_on_selected_track / SETUP_DB_DEVICE_BANK_SIZE)  # / 8
     nbr_of_remainder_devices = int(current_nbr_of_devices_on_selected_track % SETUP_DB_DEVICE_BANK_SIZE)
-    if nbr_of_full_device_pages >= SETUP_DB_MAX_DEVICE_BANKS:
-        nbr_of_full_device_pages = SETUP_DB_MAX_DEVICE_BANKS
-    elif nbr_of_full_device_pages < 0:
-        nbr_of_full_device_pages = 0
+    if nbr_of_available_device_pages >= SETUP_DB_MAX_DEVICE_BANKS:
+        nbr_of_available_device_pages = SETUP_DB_MAX_DEVICE_BANKS
+    elif nbr_of_available_device_pages < 0:
+        nbr_of_available_device_pages = 0
         log_msg(logging.ERROR, f"{log_id}Not possible, right? and yet I am logged")
 
-    if nbr_of_full_device_pages == 0 and nbr_of_remainder_devices > 0:
-        nbr_of_full_device_pages = 1
-    elif nbr_of_remainder_devices > 0:  # 0 < nbr_of_full_device_pages <= SETUP_DB_MAX_DEVICE_BANKS  #  <= 16
-        nbr_of_full_device_pages += 1
+    if nbr_of_available_device_pages == 0 and nbr_of_remainder_devices > 0:
+        nbr_of_available_device_pages = 1
+    elif nbr_of_remainder_devices > 0:  # 0 < nbr_of_available_device_pages <= SETUP_DB_MAX_DEVICE_BANKS  #  <= 128
+        nbr_of_available_device_pages += 1
 
     # this is the max (channel mode) device page count (based on the current number of devices on the selected track)
     # value automatically calculated when devices are added/removed from track device list
-    # ds.selected_device_bank_count = nbr_of_full_device_pages
+    required_nbr = ds.selected_track_nbr_required_device_banks
+    if required_nbr != nbr_of_available_device_pages:
+        log_msg(logging.ERROR, f"{log_id}assumtion issue: {required_nbr} stored required banks doesn't match calculated nbr {nbr_of_available_device_pages}")
 
     # the current selected bank should already be updated (and accurate)?
     current_device_bank_track = ds.last_selected_track_device_bank_view_index  # .selected_device_bank_index

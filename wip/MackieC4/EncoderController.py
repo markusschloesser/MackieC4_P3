@@ -2312,16 +2312,18 @@ class EncoderController(MackieC4Component, Component):
         self.subordinate_track_is_selected = False
         self.subordinate_selected_track_allows_audio = False
         if not liveobj_valid(self.selected_track):
-            self.main_script().log_message(f"{log_id}self.selected track is not valid, blowing up soon")
+            self.main_script().log_message(logging.DEBUG, f"{log_id}self.selected track is not valid, blowing up soon")
 
-        assert self.selected_track == self.__ds.data.get_track(self.__ds.last_selected_track_index).track
-        stored_devices = self.__ds.data.get_track_device_map(self.__ds.last_selected_track_index)
-        extended_device_list = []
-        for i in stored_devices.keys():
-            active_device_ref = stored_devices[i]
-            d = active_device_ref.device
-            if liveobj_valid(d):
-                extended_device_list.append(d)
+        stored_track_ref = self.__ds.data.get_track(self.__ds.last_selected_track_index)
+        if self.selected_track != stored_track_ref.track:
+            msg = f"{log_id}self.selected track {self.selected_track.name} is not stored selected track {stored_track_ref.track_name}, blowing up soon?"
+            self.main_script().log_message(logging.DEBUG, msg)
+        else:
+            assert self.selected_track == stored_track_ref.track
+
+        stored_devices = self.__ds.selected_track_stored_device_list
+        extended_device_list = stored_devices
+        self.main_script().log_message(logging.DEBUG, f"{log_id}reassigning encoder parameters for track with {len(extended_device_list)} devices")
 
         if self.selected_track != self.song().master_track:
             self.subordinate_track_is_selected = True
