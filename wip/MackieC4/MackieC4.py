@@ -1106,8 +1106,10 @@ class MackieC4(MackieC4ListenerMixin, object):
             # switch script to Track Channel Strip mode if not already
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
 
-    def get_device_list(self, container, expand_chains=False, report=True):
-        """ add each device in order. If device is a rack / RackDevice / GroupDevice, process each chain recursively."""
+    def get_device_list(self, container, expand_chains=False, report=True, full_depth=True):
+        """Add each device in order. If device is a rack or rack component (InstrumentGroupDevice, AudioEffectGroupDevice, DrumGroupDevice, etc.), and expand_chains """ \
+        """is True, process each device chain recursively.  If full_depth is True, recursively expand every chain encountered. If full_depth is False, """ \
+        """only expand one chain deep, and no further. report means log the list returned."""
         log_id = "C4.get_device_list: "
         device_list = []
         for device in container:
@@ -1136,8 +1138,8 @@ class MackieC4(MackieC4ListenerMixin, object):
                 self.log_message(self.script_log_levels["TRACE"], f"{log_id}<{i}> - {d.name} {d.class_name}")
         return device_list
 
-    def _get_devices_from_chains(self, chains, expand_chains=False):
-        log_id = "C4.get_device_list_from_chain: "
+    def _get_devices_from_chains(self, chains, expand_chains=False, full_depth=True):
+        log_id = "C4._get_devices_from_chains: "
         device_list = []
         chained_devices = [cd for chain_obj in chains for cd in self.get_device_list(chain_obj.devices, expand_chains, False)]
         for dd in chained_devices:

@@ -22,6 +22,7 @@ class ActiveTrack:
         self.type = track_type
         self.index = song_track_index
         self.index_by_type = callback_type_index
+        self._device_list_is_dirty = True
         self._device_count = device_count
         self._device_bank_count = int(math.ceil(device_count // SETUP_DB_DEVICE_BANK_SIZE))
         if self._device_bank_count * SETUP_DB_PARAM_BANK_SIZE < device_count:
@@ -72,6 +73,13 @@ class ActiveTrack:
         elif self.track.name is not None:
             nm = self.track.name
         return nm
+
+    @property
+    def device_list_is_dirty(self):
+        return self._device_list_is_dirty
+    @device_list_is_dirty.setter
+    def device_list_is_dirty(self, clean_or_dirty):
+        self._device_list_is_dirty = clean_or_dirty
 
     @property
     def device_count(self):
@@ -261,6 +269,7 @@ class ActiveTrackDetails:
         self.active_track = active_track_ref
         self.devices = dict[int, ActiveDevice]({})
         self.sends = dict[int, ActiveDeviceParameter]({})
+        self._device_chain_expansion_changed_device_map = False
         if devices is not None:
             self.build_device_map(devices)
         if sends is not None:
@@ -281,6 +290,64 @@ class ActiveTrackDetails:
                 d_ref = ActiveDevice(d, i, len(d.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
                 new_map[i] = d_ref
             self.set_track_device_map(new_map, 0)
+
+    def rebuild_device_map(self, new_devices=None):
+        current_device_map_copy = self.devices.copy()
+        if new_devices is not None and len(new_devices) > 0:
+            self.devices.clear()
+            new_map = {}
+            new_devices = [d for d in new_devices if liveobj_valid(d)]
+            old_device_refs = [current_device_map_copy[i] for i in current_device_map_copy.keys()]
+            if len(new_devices) > len(old_device_refs): # length increase, new is longer
+                for i, (existing, new) in enumerate(zip_longest(old_device_refs, new_devices)):
+                    if isinstance(existing, ActiveDevice):
+                        if liveobj_valid(existing.device):
+                            if existing.device == new:
+                                new_map[i] = existing
+                            else:
+                                new_map[i] = ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
+                        else:
+                            new_map[i] = ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
+                    else: # because more new devices, existing (ActiveDevice) is None
+                        new_map[i] = ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
+            elif len(new_devices) < len(old_device_refs): # length decrease, new is shorter (or same length)
+                for i, (new, existing) in enumerate(zip_longest(new_devices, old_device_refs)):
+                    if new is not None:
+                        if liveobj_valid(existing.device):
+                            if existing.device == new:
+                                new_map[i] = existing
+                            else:
+                                new_map[i] = ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
+                        else:
+                            new_map[i] = ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
+                    elif isinstance(existing, ActiveDevice): # because more existing devices, "new" (Live.Device) is None
+                        new_map[i] = existing
+
+            else:  # len(new_devices) == len(old_device_refs):
+                for i, (new, existing) in enumerate(zip_longest(new_devices, old_device_refs)):
+                    if liveobj_valid(existing.device) and liveobj_valid(new):
+                        if existing.device == new:
+                            # "chain expansion changed" and dirtied this track's stored device map but no chains in the track's device list
+                            new_map[i] = existing
+                    # doubtful any of these elses will ever happen when rebuilding map under the logical constraint
+                    # (new_devices is not None and len(new_devices) > 0) and len(new_devices) == len(old_device_refs)?
+                        else:
+                            new_map[i] = ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
+                    elif liveobj_valid(existing.device) and not liveobj_valid(new):
+                        new_map[i] = existing
+                    elif not liveobj_valid(existing.device) and liveobj_valid(new):
+                        new_map[i] = ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
+                    # else: # both not valid
+            i = 0 if self.selected_device_index is None or self.selected_device_index > len(new_map.keys()) else self.selected_device_index
+            self.set_track_device_map(new_map, selected_index=i)
+        return self.device_count
+
+    @property
+    def chain_expansion_changed_flag(self) -> bool:
+        return self._device_chain_expansion_changed_device_map
+    @chain_expansion_changed_flag.setter
+    def chain_expansion_changed_flag(self, flag):
+        self._device_chain_expansion_changed_device_map = flag
 
     def build_sends_map(self, new_sends):
         if new_sends is not None and len(new_sends) > 0:
@@ -363,6 +430,8 @@ class ActiveTrackDetails:
         # else:
         #     pass
         self.devices = device_map
+        self.chain_expansion_changed_flag = False
+        self.active_track.device_list_is_dirty = False
 
     def set_track_sends_map(self, sends_map: dict[int,ActiveDeviceParameter]):
         self.sends = sends_map
@@ -435,6 +504,13 @@ class SongData(object):
         dump_dict = self.get_all_tracks_by_type_key(type_key)
         vals = [x.active_track.track_name if isinstance(x, ActiveTrackDetails) else str(x) for x in dump_dict.values()]
         self.log_msg(logging.DEBUG, f"{type_key} cb_type dict keys {dump_dict.keys()} and values {vals}")
+
+    def chain_expansion_changed(self):
+        for callback_type in self.device_list_table.keys():
+            for i in self.device_list_table[callback_type].keys():
+                atd = self.device_list_table[callback_type][i]
+                atd.chain_expansion_changed_flag = True
+                atd.active_track.device_list_is_dirty = True
 
     def get_callback_type_for_song_index(self, track_index):
         rtn = 3
@@ -519,10 +595,10 @@ class SongData(object):
             master_track_index = self.master_track_index
         return self.get_track_by_type_key(track_callback_types[2], master_track_index)
 
-    def init_master_track(self, track, song_index):
+    def init_master_track(self, track, song_index, expand_chains=False):
         self.clear_tracks_by_type_key(track_callback_types[2])
         nbr_devices = len(track.devices)
-        ext_devices = self.extend_device_list(track.devices, expand_chains=False)
+        ext_devices = self.extend_device_list(track.devices, expand_chains=expand_chains)
         selected_device_index = 0 if nbr_devices > 0 else None
         track_ref = ActiveTrack(track, self.table_keys[track_callback_types[2]], song_index, song_index, nbr_devices, selected_device_index)
         self.log_msg(logging.DEBUG, f"ECDS.SD.init_master_track: BEFORE: master track ref {track_ref} at index {song_index}")
@@ -649,7 +725,7 @@ class SongData(object):
         # self.log_msg(logging.DEBUG, msg)
         # self.log_msg(logging.DEBUG, f"ECDS.SD.set_track: plain tracks {self.plain_track_count} return tracks {self.return_track_count}")
 
-    def init_tracks(self, p_tracks, r_tracks, m_track):
+    def init_tracks(self, p_tracks, r_tracks, m_track, expand_chains=False):
         rtn = None
         if len(self.device_list_table[track_callback_types[0]]) > 0 or len(self.device_list_table[track_callback_types[1]]) > 0:
             # already initialized...  clear dicts, raise error, just log and return? (SongData can't reference self.main_script().log_message)
@@ -658,7 +734,7 @@ class SongData(object):
         rtn_val = None
         if rtn is None:
             # self.log_msg(logging.DEBUG, f"ECDS.SD.init_tracks: initializing master track {m_track.name} at index {self.master_track_index}")
-            self.init_master_track(m_track, self.master_track_index)
+            self.init_master_track(m_track, self.master_track_index, expand_chains=expand_chains)
             new_master_track_ref = self.get_master_track()
 
             if new_master_track_ref is None:
@@ -666,8 +742,8 @@ class SongData(object):
             # else:
             #     self.log_msg(logging.DEBUG, f"ECDS.SD.init_tracks: master track after init: {new_master_track_ref}")
 
-            rtn = self.init_tracks_by_callback_type(track_callback_types[0], p_tracks)
-            rtn_rtn = self.init_tracks_by_callback_type(track_callback_types[1], r_tracks)
+            rtn = self.init_tracks_by_callback_type(track_callback_types[0], p_tracks, expand_chains=expand_chains)
+            rtn_rtn = self.init_tracks_by_callback_type(track_callback_types[1], r_tracks, expand_chains=expand_chains)
             if rtn is not None:
                 rtn_val = rtn
             if rtn_val is not None and rtn_rtn is not None:
@@ -678,7 +754,7 @@ class SongData(object):
 
         return rtn_val
 
-    def init_tracks_by_callback_type(self, track_callback_type_key, tracks) -> str|None:
+    def init_tracks_by_callback_type(self, track_callback_type_key, tracks, expand_chains=False) -> str|None:
         rtn = None
         log_id = f"ECDS.SD.init_tracks_by_callback_type: "
         self.log_msg(logging.DEBUG, f"{log_id}getting master track at index {self.master_track_index}")
@@ -696,7 +772,7 @@ class SongData(object):
             if self.table_keys[track_callback_type_key] > 0:
                 song_index_offset = self.plain_track_count
             for track in tracks:
-                self.add_track_by_callback_type(track_callback_type_key, song_index_offset, track_type_index, track)
+                self.add_track_by_callback_type(track_callback_type_key, song_index_offset, track_type_index, track, expand_chains=expand_chains)
                 track_type_index += 1
             assert track_count == len(self.device_list_table[track_callback_type_key].keys())
             if last_master_track_ref is not None:
@@ -712,7 +788,7 @@ class SongData(object):
 
         return rtn
 
-    def add_track(self, track, track_type, song_track_index, selected_device_index=0):
+    def add_track(self, track, track_type, song_track_index, selected_device_index=0, expand_chains=False):
         """automatically adds existing devices on input Live track objects"""
 
         rtns_index = song_track_index - self.plain_track_count
@@ -721,20 +797,21 @@ class SongData(object):
             song_index = self.plain_track_count
 
         if song_track_index < self.plain_track_count:
-            self.add_track_by_callback_type(track_callback_types[0], song_index, song_track_index, track, selected_device_index)
+            self.add_track_by_callback_type(track_callback_types[0], song_index, song_track_index, track, selected_device_index, expand_chains=expand_chains)
         elif rtns_index < self.return_track_count:
-            self.add_track_by_callback_type(track_callback_types[1], song_index, rtns_index, track, selected_device_index)
+            self.add_track_by_callback_type(track_callback_types[1], song_index, rtns_index, track, selected_device_index, expand_chains=expand_chains)
         elif song_track_index == self.plain_track_count + self.return_track_count:
             raise RuntimeError(f"can't add or remove master track at index {song_track_index}")
         else:
             raise RuntimeError(f"can't add track at OOB index {song_track_index}, max new index is less than {self.master_track_index}")
 
-    def add_track_by_callback_type(self, track_callback_type_key, song_index_type_offset, track_index_by_type, track, selected_device_index=0):
+    def add_track_by_callback_type(self, track_callback_type_key, song_index_type_offset, track_index_by_type,
+                                   track, selected_device_index=0, expand_chains=False):
         """automatically adds existing devices on input Live track objects"""
         log_id = "ECDS.SD.add_track_by_callback_type: "
         master_device_list_ref = self.get_active_track_details_ref_by_type_key(track_callback_types[2], self.master_track_index)
         last_master_track_ref = master_device_list_ref.active_track
-        ext_devices = None if len(track.devices) < 1 else self.extend_device_list(track.devices, expand_chains=False)
+        ext_devices = None if len(track.devices) < 1 else self.extend_device_list(track.devices, expand_chains=expand_chains)
         nbr_devices = 0 if ext_devices is None else len(ext_devices)
         selected_device_index = selected_device_index if nbr_devices > 0 else None
         cumulative_song_index = song_index_type_offset + track_index_by_type

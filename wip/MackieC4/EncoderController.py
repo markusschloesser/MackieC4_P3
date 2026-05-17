@@ -516,6 +516,7 @@ class EncoderController(MackieC4Component, Component):
             LCD_BTM_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []}
         }
         self.__pending_device_change = False
+        self.__chain_expansion_changed = False
         self.returns_switch = 0
 
         self.update_assignment_mode_leds()
@@ -605,6 +606,12 @@ class EncoderController(MackieC4Component, Component):
             self._expand_chains = expand
             self.main_script().log_message(logging.DEBUG, f"{log_id}now set to {self.expand_chains}")
 
+    @property
+    def chain_expansion_changed(self):
+        return self.__chain_expansion_changed
+    @chain_expansion_changed.setter
+    def chain_expansion_changed(self, assigned_state):
+        self.__chain_expansion_changed = assigned_state
 
     @listens("device")
     def __on_device_changed(self):
@@ -893,6 +900,10 @@ class EncoderController(MackieC4Component, Component):
         if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
+            self.chain_expansion_changed = True
+            self.__ds.data.chain_expansion_changed()
+        else:
+            self.chain_expansion_changed = False
 
         if liveobj_valid(self.selected_track):
             self.main_script().log_message(trace_level, f"{log_id}track_index input is {track_index}, selected_track is {self.selected_track.name}")
@@ -906,6 +917,7 @@ class EncoderController(MackieC4Component, Component):
         self.main_script().log_message(trace_level, f"{log_id}track_index input is {track_index}, stored active_track is {next_active_track_ref.track_name}")
         if liveobj_valid(next_active_track_ref.track) and self.selected_track != next_active_track_ref.track:
             self.main_script().log_message(trace_level, f"{log_id}live obj at index differs from stored ref at same index, track moved")
+            # don't worry about chain expansion changes here, "selected track" already changed, it's moved now
             self.track_moved(next_active_track_ref.type, track_index)
         else:
             if not liveobj_valid(next_active_track_ref.track) and liveobj_valid(self.selected_track):
@@ -916,6 +928,20 @@ class EncoderController(MackieC4Component, Component):
                 self.track_changed(track_index, selected_track_callback_type, callback_type_index) # stored track is valid now so we can process track_changed()
                 return
             else:
+                if next_active_track_ref.device_list_is_dirty:
+                    t = next_active_track_ref.track
+                    if liveobj_valid(t):
+                        changed_device_list = self.get_device_list(t.devices, self.expand_chains)
+                        msg = f"{log_id}chain expansion behavior has changed since stored active_track {next_active_track_ref.track_name} was stored with "
+                        msg += f"{next_active_track_ref.device_count} devices, rebuilding stored device map with {len(changed_device_list)} devices"
+                        self.main_script().log_message(trace_level, msg)
+                        atd = self.__ds.data.get_active_track_details_at_song_index(track_index)
+                        new_device_count = atd.rebuild_device_map(changed_device_list)
+                        assert len(changed_device_list) == new_device_count
+                        # this should be a moot assignment, next_active_track_ref is already atd.active_track,
+                        # but the local next_active_track_ref instance might not already be updated with the new device list references and atd.active_track is updated
+                        next_active_track_ref = atd.active_track
+
                 selected_device_index = next_active_track_ref.selected_device_index # next_active_track_ref.device_count
                 msg = f"{log_id}stored active_track {next_active_track_ref.track_name} has {next_active_track_ref.device_count} devices and "
                 self.main_script().log_message(trace_level, msg + f"selected_device_index {selected_device_index}")
@@ -934,6 +960,7 @@ class EncoderController(MackieC4Component, Component):
                         self.main_script().log_message(logging.ERROR, f"{log_id}pending device change to {next_device.name} cancelled, ")
                     elif nbr_devices > next_active_track_ref.device_count:
                         selected_device_index = nbr_devices - 1
+                        next_active_track_ref.device_count = nbr_devices
                         msg = f"{log_id}pending device change, device added, selected index is last device in chain {selected_device_index}"
                     else:
                         msg = f"{log_id}pending device change, device changed because track changed and selected index is {selected_device_index} here too"
@@ -1036,6 +1063,8 @@ class EncoderController(MackieC4Component, Component):
         if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
+            self.chain_expansion_changed = True
+            self.__ds.data.chain_expansion_changed()
 
         self.__ds.tracks_added(track_index, tracks_of_type, callback_track_type_of_selected_index)
         # (using same update selected track code as from self.track_deleted() instead of same update logic in track_added())
@@ -1051,6 +1080,8 @@ class EncoderController(MackieC4Component, Component):
         if self.btn_ctlr.is_expand_chains_modifier_press_combo:
             # chain expansion behavior changes when both Control and Alt are pressed
             self._set_expand_chains(not self.expand_chains)
+            self.chain_expansion_changed = True
+            self.__ds.data.chain_expansion_changed()
 
         self.__ds.unselected_tracks_added(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__ds.last_selected_track_index)
