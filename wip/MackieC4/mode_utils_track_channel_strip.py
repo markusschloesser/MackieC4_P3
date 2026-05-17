@@ -53,17 +53,19 @@ def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, d
         vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
         if s_index in row_00_encoders:
-            vpot_display_text.set_text(f"{current_device_bank_track + 1:02d}", 'Device')
             if s_index == encoder_07_index:
                 if current_device_bank_track > 0:
+                    vpot_display_text.set_text(f"<< {current_device_bank_track + 1:02d}", 'Device')
                     s.show_full_enlighted_poti()
                 else:
+                    vpot_display_text.set_text(f"   {current_device_bank_track + 1:02d}", 'Device')
                     s.unlight_vpot_leds()
             elif s_index == encoder_08_index:
-                vpot_display_text.set_text(f"{nbr_of_full_device_pages :02d}", ' Bank ')
-                if current_device_bank_track < nbr_of_full_device_pages - 1:
+                if current_device_bank_track < nbr_of_available_device_pages - 1:
+                    vpot_display_text.set_text(f"{nbr_of_available_device_pages :02d} >>", ' Bank ')
                     s.show_full_enlighted_poti()
                 else:
+                    vpot_display_text.set_text(f"{nbr_of_available_device_pages :02d}   ", ' Bank ')
                     s.unlight_vpot_leds()
             else:
                 s.unlight_vpot_leds()
@@ -75,7 +77,7 @@ def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, d
             current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE)
 
             # display part
-            if row_index + current_encoder_bank_offset < ds.max_device_count:
+            if row_index + current_encoder_bank_offset < ds.selected_track_nbr_stored_devices:
                 encoder_index_in_row = row_index + int(current_encoder_bank_offset)
                 if encoder_index_in_row < len(extended_device_list):
                     device_name = extended_device_list[encoder_index_in_row].name
@@ -216,7 +218,10 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
     is_folded = script_utils.is_folded(selected_track) if liveobj_valid(selected_track) else False
     is_view_visible_session = app_view.is_view_visible('Session')
     is_view_visible_arranger = app_view.is_view_visible('Arranger')
-    device_name_limit = 22
+    # device name is limited (truncated) to 22 chars if script is locked to a device on a grouped track,
+    # device name shifts left by 7 characters if the track is not grouped, and the name can be 7 chars longer before trucation
+    # device_name shifts left by another 7 chars if the script is not also locked to a device (on the selected track) and can be 14 characters longer before truncation
+    device_name_limit = 22 + 7 + 7
     if liveobj_valid(chosen_plugin):
         selected_device_name = adjust_string(chosen_plugin.name, device_name_limit)
     else:
@@ -233,17 +238,18 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
 
     # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
     if liveobj_valid(selected_track):
-        lower_string1 += adjust_string(selected_track.name, 12) + " "
+        segment = adjust_string(selected_track.name, 12) + " "
         if is_locked_to_device:
             if selected_track.is_frozen:
                 # can you lock to a device on a frozen track? (where you can't change any (frozen) device parameter values)
-                lower_string1 += 'Frzn+Lck' # lgth 8
+                segment += 'Frzn+Lck' # lgth 8
             else:
-                lower_string1 += '-Locked-'  # lgth 8
+                segment += '-Locked-'  # lgth 8
         elif selected_track.is_frozen:
-            lower_string1 += '-Frozen-'      # lgth 8
+            segment += '-Frozen-'      # lgth 8
         else:  # not locked or frozen
-            lower_string1 = adjust_string(selected_track.name, 20) + " "
+            segment = adjust_string(segment, 20) + " "
+        lower_string1 += segment
     else:
         lower_string1 += adjust_string('invalid Track object', 20) + " "
 
@@ -253,11 +259,28 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
     lower_string1 += group_text
 
     # assert len(lower_string1) == 28
-    lower_string1 += adjust_string(selected_device_name, 14) # len(lower_string1) == 42
+    empty_group_text = is_view_visible_session and not (is_group_track or is_grouped)
+    empty_track_details_text = not is_locked_to_device or (liveobj_valid(selected_track) and not selected_track.is_frozen)
+    if empty_group_text:
+        if empty_track_details_text:
+            blank_chars_to_slice = 14
+            new_len = len(lower_string1) - blank_chars_to_slice
+            lower_string1 = lower_string1[:new_len]
+            lower_string1 += adjust_string(selected_device_name, blank_chars_to_slice + 14)
+        else:
+            blank_chars_to_slice = 7
+            new_len = len(lower_string1) - blank_chars_to_slice
+            lower_string1 = lower_string1[:new_len]
+            lower_string1 += adjust_string(selected_device_name, blank_chars_to_slice + 14)
+    else:
+        lower_string1 += adjust_string(selected_device_name, 14)
+    # assert len(lower_string1) == (28 - 14) + 28 == (28 - 7) + 21 == 28 + 14 == 42,
+    # so maybe no space between end of truncated long device name and <<
+    # (where long means device names over the length of 22 if script is locked to some device on a grouped track
+    # and 36 in most other cases (not locked, not grouped)
 
     #                 1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
     upper_string2 += '----------------------- Devices -----------------------'  # length 55
-    # todo MS maybe try to visualize Racks/Groups here by using |  |  ?
 
     try:
         text_for_encoder_7 = display_parameters[encoder_7_index]
@@ -265,16 +288,19 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
         text_for_encoder_8 = display_parameters[encoder_8_index]
         l_8raw_text = text_for_encoder_8.get_lower_text()
     except IndexError:
-        l_7raw_text = "<<xxx "
-        l_8raw_text = "xxx>>"
+        l_7raw_text = "<< xx"
+        l_8raw_text = "xx >>"
+    assert len(l_7raw_text) == 5 and len(l_8raw_text) == 5
 
-    upper_string1 += '-Device Bank-'
-    # assert len(upper_string1) == 42 + len('-Device Bank-') == 42 + 13 == 55
-    if show_device_bank_pair:
-        lower_string1 += adjust_string(l_7raw_text, 6) + "/"  # for '<< 01 /' 7 chars
-        lower_string1 += " " + adjust_string(l_8raw_text, 5)  # for ' 01 >>' 6 chars (end of line)
+    upper_string1 += ' Device Bank-'
+    # assert len(upper_string1) == 42 + len(' Device Bank-') == 42 + 13 == 55
+    # assert len(lower_string1) == 42
+    if show_device_bank_pair: # only displaying bank navigation details when there is at least one device and banks to navigate (more than 8 devices)
+        lower_string1 += adjust_string(l_7raw_text, 6) + "/"  # for ' << 01 /' 7 chars
+        lower_string1 += " " + adjust_string(l_8raw_text, 5)        # for ' 01 >>'   6 chars (end of display line at 55 chars, encoder 8's "divider" char truncated)
     else:
         lower_string1 += ''.join(" " for x in range(13))
+    # assert len(lower_string1) == 42 + 13 == 55
 
 
     for t in encoder_range:
@@ -287,10 +313,7 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
         u_alt_text = text_for_display.get_upper_text()
         l_alt_text = text_for_display.get_lower_text()
 
-        # if t in range(6, NUM_ENCODERS_ONE_ROW):
-        #     upper_string1 += adjust_and_tag(u_alt_text)
-        #     lower_string1 += adjust_and_tag(l_alt_text)
-        # elif t in row_01_encoders:
+        # LCD text for row 0 encoders already constructed
         if t in row_01_encoders:
             if btn_ctlr.spot_erase_led_state > 0:
                 l_alt2_text = scrolling_display_text(l_alt_text, t)
@@ -354,7 +377,7 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
                     else:
                         l_alt_text = "OFF"
                         encoders[encoder_30_index].unlight_vpot_leds()
-                    lower_string4 += adjust_string(l_alt_text, 6)  # and_tag?
+                    lower_string4 += adjust_and_tag(l_alt_text)
 
                 else:
                     lower_string4 += adjust_and_tag(l_alt_text)

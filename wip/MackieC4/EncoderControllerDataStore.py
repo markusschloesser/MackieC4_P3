@@ -92,8 +92,13 @@ class ActiveTrack:
     def device_count(self, new_count):
         self._device_count = new_count
         self._device_bank_count = math.ceil(self._device_count // SETUP_DB_DEVICE_BANK_SIZE)
-        if self._device_bank_count * SETUP_DB_PARAM_BANK_SIZE < new_count:
-            self._device_bank_count += 1
+        remainder = -1 if self._device_count < 1 else self._device_count % SETUP_DB_DEVICE_BANK_SIZE
+        nbr_used_device_slots_in_bank_count = self._device_bank_count * SETUP_DB_DEVICE_BANK_SIZE
+        if nbr_used_device_slots_in_bank_count <= new_count:
+            if remainder == 0 and nbr_used_device_slots_in_bank_count == new_count:
+                self._device_bank_count += 1
+            else: # nbr_used_device_slots_in_bank_count < new_count and not remainder == 0
+                self._device_bank_count += 1
 
     @property
     def selected_device_index(self):
@@ -394,7 +399,7 @@ class ActiveTrackDetails:
             return None
 
     @property
-    def is_device_list_empty(self):
+    def is_device_list_empty(self) -> bool:
         return self.devices is None or len(self.devices.keys()) < 1
 
     def has_matching_device_map(self, other_devices: dict[int, ActiveDevice]):
@@ -420,15 +425,17 @@ class ActiveTrackDetails:
     
     def set_track_device_map(self, device_map: dict[int, ActiveDevice], selected_index: int|None=None):
         """Setting an empty map won't change the track's selected device index to None, use clear_device_list()"""
-        set_count = len(device_map.keys())
-        if self.active_track.device_count != set_count:
+        key_count = len(device_map.keys())
+        if self.active_track.device_count != key_count:
             self.active_track.device_count = len(device_map.keys())
         # else:
         #     pass
-        if selected_index is not None and self.active_track.selected_device_index != selected_index:
-            self.active_track.selected_device_index = selected_index
-        # else:
-        #     pass
+        if selected_index is not None:
+            if self.active_track.selected_device_index != selected_index:
+                self.active_track.selected_device_index = selected_index
+        else:
+            self.active_track.selected_device_index = 0 if key_count > 0 else None
+
         self.devices = device_map
         self.chain_expansion_changed_flag = False
         self.active_track.device_list_is_dirty = False
@@ -471,6 +478,7 @@ class SongData(object):
         # and has boundary issues like when moving a track or device to the zero index position (fix the boundary issues, or find a better swap alg eventually?)
         # 500^2 is 25k operations, 100^2 is "only" 10k operations, 50^2 is 2500.
         self.__rekey_map_algorithm_swap_limit = 50  # use fallback alg if 50+ devices on track or 50+ plain or return tracks in song
+
 
     def log_msg(self, level, msg):
         if self.class_logging:
@@ -2128,24 +2136,25 @@ class EncoderControllerDataStore(MackieC4Component):
                 d_ref = stored_devices[i] # expecting stored_devices table or insert_index to be updated after each iteration
                 if device == d_ref.device:  # this 'track device' is already stored at this index
                     self.main_script().log_message(logging.DEBUG, f"{log_id}{i} < {current_nbr_devices_stored}, skipping matching stored device at matching insert index")
-                    insert_index = i
+                    insert_index = i + 1
                 else: # this 'track device' isn't stored yet
                     if insert_index < current_nbr_devices_stored:
                         self.main_script().log_message(logging.DEBUG, f"{log_id}{insert_index} < {current_nbr_devices_stored}, inserting expected new stored device")
                         self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, insert_index, device)
+                        insert_index = i + 1
                         key_indexes_added.append(i)
             else: # this 'track device' isn't stored yet because the new device index i is 'too far right'
                 if i == current_nbr_devices_stored:
                     self.main_script().log_message(logging.DEBUG, f"{log_id}{i} == {current_nbr_devices_stored}, appending expected new last stored device")
                     self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, i, device)
                     key_indexes_added.append(i)
-                    insert_index = i
+                    insert_index = i + 1
                 else: # i > current_nbr_devices_stored ??
                     msg = f"{log_id}assumption issue: {i} > {current_nbr_devices_stored} force appending another last stored device"
                     self.main_script().log_message(logging.WARNING, msg)
                     self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, current_nbr_devices_stored, device)
                     key_indexes_added.append(current_nbr_devices_stored)
-                    insert_index = current_nbr_devices_stored
+                    insert_index = current_nbr_devices_stored + 1
 
         return key_indexes_added
 
