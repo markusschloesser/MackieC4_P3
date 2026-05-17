@@ -610,16 +610,17 @@ class SongData(object):
         self.log_msg(logging.DEBUG, f"ECDS.SD.init_master_track: AFTER: master ref {track_details.active_track} at index {song_index}")
         # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
-    def update_master_track_index(self, master_track_details_ref):
-        if len(self.device_list_table[track_callback_types[2]]) > 0:
-            self.clear_tracks_by_type_key(track_callback_types[2]) # remove master_device_list_ref with key == old master index
-        master_ref = master_track_details_ref.active_track
-        master_ref.index = self.master_track_index
-        master_ref.index_by_type = self.master_track_index
-        master_track_details_ref.active_track = master_ref
-        # add master_ref back with new key == self.master_track_index
-        self.device_list_table[track_callback_types[2]][self.master_track_index] = master_track_details_ref
-        # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
+    def update_master_track_index(self, master_track_details_ref: ActiveTrackDetails | None):
+        if master_track_details_ref is not None:
+            if len(self.device_list_table[track_callback_types[2]]) > 0:
+                self.clear_tracks_by_type_key(track_callback_types[2]) # remove master_device_list_ref with key == old master index
+            master_ref = master_track_details_ref.active_track
+            master_ref.index = self.master_track_index
+            master_ref.index_by_type = self.master_track_index
+            master_track_details_ref.active_track = master_ref
+            # add master_ref back with new key == self.master_track_index
+            self.device_list_table[track_callback_types[2]][self.master_track_index] = master_track_details_ref
+            # only use self._insert_track_slot() for non-master tracks (ordered lists with indexes from 0)
 
     # NOTE: no functions to update any other "internal stored object indexes" to match their associated track or device "slot index" (map key)"
     #       See get_track() and get_device() below, the ActiveTrackDetails and ActiveDevice object internal property index values are updated automatically
@@ -899,9 +900,14 @@ class SongData(object):
     def set_track_device_map_by_callback_type(self, track_callback_type_key, track_index_by_type, device_map: Dict[int, ActiveDevice]):
         log_id = "ECDS.SD.set_track_device_map_by_callback_type: "
         # self.log_msg(logging.DEBUG, f"{log_id}setting device map for {track_callback_type_key} track index {track_index_by_type}")
-        active_device_list_ref = self.get_active_track_details_ref_by_type_key(track_callback_type_key, track_index_by_type)
-        active_device_list_ref.set_track_device_map(device_map)
-        # self.device_list_table[track_callback_type_key][track_index_by_type].devices = device_map
+        active_track_details_ref = self.get_active_track_details_ref_by_type_key(track_callback_type_key, track_index_by_type)
+        if active_track_details_ref is not None:
+            sdi = active_track_details_ref.selected_device_index
+            i = 0 if sdi is None or not sdi < len(device_map) else sdi
+
+            active_track_details_ref.set_track_device_map(device_map, i)
+        else:
+            self.log_msg(logging.ERROR, f"{log_id}no active device list reference found at {track_callback_type_key} track index {track_index_by_type}")
 
     def get_device(self, song_track_index, device_index)-> ActiveDevice | None:
         active_device = None
@@ -1689,11 +1695,25 @@ class EncoderControllerDataStore(MackieC4Component):
     def update_device_counter(self, track_index, device_count):
         log_id = "ECDS.update_device_counter: "
         max_device_banks = math.ceil(device_count // SETUP_DB_DEVICE_BANK_SIZE)
-        self.data.get_track(track_index).device_bank_count = max_device_banks
-        if self.last_selected_track_index != track_index:
-            msg = f"{log_id}track index {track_index} for device count update didn't match last selected track index {self.last_selected_track_index}, updating"
+        if max_device_banks * SETUP_DB_DEVICE_BANK_SIZE < device_count:
+            max_device_banks += 1
+        t = self.data.get_track(track_index)
+        if t is not None:
+            if t.device_count != device_count:
+                msg = f"{log_id}assumption issue? updated stored track ref's device_count {t.device_count} isn't already updated? updating to {device_count}"
+                self.main_script().log_message(logging.DEBUG, msg)
+                t.device_count = device_count
+                if t.required_device_banks != max_device_banks:
+                    msg = f"{log_id}assumption issue: updated track.device_count didn't update track.required_device_banks correctly"
+                    self.main_script().log_message(logging.DEBUG, msg)
+        else:
+            msg = f"{log_id}assumption issue: stored track ref at song index {track_index} is None?"
             self.main_script().log_message(logging.DEBUG, msg)
-            self.track_changed(track_index)
+
+        if self.last_selected_track_index != track_index:
+            msg = f"{log_id}track at song index {track_index} for device count update didn't match last selected track index {self.last_selected_track_index}, updating"
+            self.main_script().log_message(logging.DEBUG, msg)
+            self.track_changed(track_index)  # Danger?  track_changed() calls update_device_counter() back
 
     def build_setup_database(self, song_ref=None):
         log_id = "ECDS.build_setup_database: "
