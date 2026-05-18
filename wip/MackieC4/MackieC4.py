@@ -28,7 +28,7 @@ from ableton.v2.base import liveobj_valid, clamp
 
 from . import script_utils
 from .consts import *
-from .Encoders import Encoders
+from .Encoder import Encoder
 from .EncoderController import EncoderController
 from .c4_device_provider import C4DeviceProvider
 from .MackieC4ListenerMixin import MackieC4ListenerMixin
@@ -83,7 +83,7 @@ class MackieC4(MackieC4ListenerMixin, object):
 
         # Guard needed because self.__encoder_controller doesn't exist yet when self.__encoders are initializing and trying to send_midi()
         self.__init_ready = False
-        self.__encoders = [Encoders(self, i) for i in encoder_range]
+        self.__encoders = [Encoder(self, i) for i in encoder_range]
         self.__encoder_controller = EncoderController(self, self.__encoders, self.__device_provider)        
         for comp in [*self.__encoders, self.__encoder_controller, self.__device_provider]:
             self.register_component(comp)

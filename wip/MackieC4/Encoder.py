@@ -10,7 +10,7 @@ import Live
 from ableton.v2.base import liveobj_valid
 
 
-class Encoders(MackieC4Component):
+class Encoder(MackieC4Component):
     """ Represents one encoder of the Mackie C4 """
     __module__ = __name__
 
@@ -23,7 +23,7 @@ class Encoders(MackieC4Component):
         self.__vpot_index = vpot_index
         self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
         self.__v_pot_parameter = None
-        self._Encoders__assigned_track = None
+        # self._Encoders__assigned_track = None
 
         self.__v_pot_display_memory = {VPOT_CURRENT_CC_VALUE: [], VPOT_NEXT_CC_VALUE: []}
         self.__update_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
