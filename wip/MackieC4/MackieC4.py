@@ -1109,7 +1109,7 @@ class MackieC4(MackieC4ListenerMixin, object):
     def get_device_list(self, container, expand_chains=False, report=True, full_depth=True):
         """Add each device in order. If device is a rack or rack component (InstrumentGroupDevice, AudioEffectGroupDevice, DrumGroupDevice, etc.), and expand_chains """ \
         """is True, process each device chain recursively.  If full_depth is True, recursively expand every chain encountered. If full_depth is False, """ \
-        """only expand one chain deep, and no further. report means log the list returned."""
+        """only expand one chain deep, and no further (unimplemented). report means log the list returned."""
         log_id = "C4.get_device_list: "
         device_list = []
         for device in container:
@@ -1118,20 +1118,22 @@ class MackieC4(MackieC4ListenerMixin, object):
                 # self.log_message(self.script_log_levels["TRACE"], f"{log_id}{device.name} device appended to list")
                 if expand_chains and device.can_have_chains:
                     for d in self._get_devices_from_chains(device.chains, expand_chains):
-                        if d.can_have_chains:
+                        device_list.append(d)
+                        if full_depth and d.can_have_chains:
                             chained = self._get_devices_from_chains(d.chains, expand_chains)
                             for chained_device in chained:
                                 device_list.append(chained_device)
-                        else:
-                            device_list.append(d)
                     for dd in self._get_devices_from_chains(device.return_chains, expand_chains):
-                        if dd.can_have_chains:
-                            # can devices in "return chains" have "chains" too, or only "return_chains"?
+                        device_list.append(dd)
+                        if full_depth and dd.can_have_chains:
+                            # do devices in "return chains" have "chains" too, or only "return_chains"?
                             chained = self._get_devices_from_chains(dd.chains, expand_chains)
                             for chained_device in chained:
                                 device_list.append(chained_device)
-                        else:
-                            device_list.append(dd)
+                            chained = self._get_devices_from_chains(dd.return_chains, expand_chains)
+                            for chained_device in chained:
+                                device_list.append(chained_device)
+
         if report:
             self.log_message(self.script_log_levels["TRACE"], f"{log_id}returning {len(device_list)} devices")
             for i, d in enumerate(device_list):
@@ -1141,11 +1143,13 @@ class MackieC4(MackieC4ListenerMixin, object):
     def _get_devices_from_chains(self, chains, expand_chains=False, full_depth=True):
         log_id = "C4._get_devices_from_chains: "
         device_list = []
-        chained_devices = [cd for chain_obj in chains for cd in self.get_device_list(chain_obj.devices, expand_chains, False)]
-        for dd in chained_devices:
-            if liveobj_valid(dd):  # and not isinstance(dd, Chain) or DrumChain ??
-                device_list.append(dd)
-                # self.log_message(self.script_log_levels["TRACE"], f"{log_id}chained device {dd.name} appended to list")
+        # self.log_message(self.script_log_levels["TRACE"], f"{log_id}chains {len(chains)} to unpack and expand {expand_chains}")
+        chained_devices = [cd for chain_obj in chains for cd in self.get_device_list(chain_obj.devices, expand_chains=expand_chains, report=True, full_depth=full_depth)]
+        # self.log_message(self.script_log_levels["TRACE"], f"{log_id}chains {len(chains)} yielded {len(chained_devices)} chained devices")
+        for cd in chained_devices:
+            if liveobj_valid(cd):
+                device_list.append(cd)
+
         return device_list
 
     def track_inc_dec(self, note):
