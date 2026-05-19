@@ -192,7 +192,7 @@ def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, d
 
 
 def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_device, display_parameters,
-                      btn_ctlr, scrolling_display_text, xfade, subordinate_track_is_selected, encoders, show_device_bank_pair):
+                      btn_ctlr, scrolling_display_text, xfade, subordinate_track_is_selected, encoders, show_device_bank_pair, lcd1_device_chain_flags):
     log_id = "mode_utils_tcs.do_display_update: "
     upper_string1 = ''
     lower_string1 = ''
@@ -272,6 +272,7 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
             new_len = len(lower_string1) - blank_chars_to_slice
             lower_string1 = lower_string1[:new_len]
             lower_string1 += adjust_string(selected_device_name, blank_chars_to_slice + 14)
+
     else:
         lower_string1 += adjust_string(selected_device_name, 14)
     # assert len(lower_string1) == (28 - 14) + 28 == (28 - 7) + 21 == 28 + 14 == 42,
@@ -280,7 +281,16 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
     # and 36 in most other cases (not locked, not grouped)
 
     #                 1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
-    upper_string2 += '----------------------- Devices -----------------------'  # length 55
+    upper_string2  = '----------------------- Devices -----------------------'  # length 55
+    for i in range(len(lcd1_device_chain_flags) - 1):
+        if lcd1_device_chain_flags[i]: # flag indexes 0 - 6
+            index_base = i * 7             #                        0,  1,  2,  3,  4,  5,  6)
+            replace_index = 7 + index_base # indexes are positions (7, 14, 21, 28, 35, 42, 49)
+            replace_index -= 1 # positions are indexes again
+            upper_string2 = upper_string2[:replace_index] + "|" + upper_string2[replace_index:]  # there is probably a more pythonic way to substitute chars than slicing
+    # now if for example, the devices associated with encoders 10, 12, 13, 15 have a class_name that ends with "GroupDevice",
+    #                                1------2------3------4------5------6------7------8------   == 56 chars (8 * 7)
+    # upper_string2 might look like '-------|-------------|- Devi|es -----------------|-----'  # on the top line of LCD 2 (of 4 from top)
 
     try:
         text_for_encoder_7 = display_parameters[encoder_7_index]

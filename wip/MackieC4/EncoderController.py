@@ -2528,10 +2528,22 @@ class EncoderController(MackieC4Component, Component):
             return  # no display updates in this mode (all updates in this mode, if any, are handled by the Max sequencer patch)
         elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
             show_device_banking_text = self.__ds.selected_track_nbr_stored_devices > 1
+            lcd1_device_chain_flags = [False for x in row_01_encoders]
+            atd = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
+            for i in range(SETUP_DB_DEVICE_BANK_SIZE):
+                # bank view index 4, with bank start index 32, means check devices 32 - 39 for 'chains' (xxxGroupDevice class_names)
+                bank_start = atd.active_track.track_device_bank_view_index * SETUP_DB_DEVICE_BANK_SIZE
+                device_index = bank_start + i
+                if device_index < atd.device_count:
+                    dev_ref = atd.devices[device_index]
+                    if dev_ref.device.class_name.endswith("GroupDevice"):
+                        lcd1_device_chain_flags[i] = True
+
             upper_string1, lower_string1, upper_string2, lower_string2, upper_string3, lower_string3, upper_string4, lower_string4 = (
                 tcs_mode_util.do_display_update(
                 self.application().view, selected_track, self.__chosen_plugin, self.is_locked_to_device, self.__display_parameters, self.btn_ctlr,
-                self.get_scrolling_display_text, self.xfade, self.subordinate_track_is_selected, self.__encoders, show_device_banking_text)
+                self.get_scrolling_display_text, self.xfade, self.subordinate_track_is_selected, self.__encoders, show_device_banking_text,
+                lcd1_device_chain_flags)
             )
         elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
             device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
