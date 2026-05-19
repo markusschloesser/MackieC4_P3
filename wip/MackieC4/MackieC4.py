@@ -1107,9 +1107,9 @@ class MackieC4(MackieC4ListenerMixin, object):
             self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
 
     #     # possible "deeply nested" chain structure: (top level input is always a "selected track's device list", track.devices)
-    #
+    #                                                     # this description skips (doesn't call out) container=dev4 or container=dev5 cases matching dev1, 3, 6, and 7 cases
     #     # track                                         # container=track.devices
-    #     # dev 0                                         # hasattr(dev0, "can_have_chains") == True and not len(dev.chains) > 0, no recursion yet
+    #     # dev 0                                         # container=dev0, has attr "can_have_chains" and not len(dev.chains) > 0, no recursion yet
     #     # chain A                                       # container=chainA, missing attr "can_have_chains" but has attr "devices"
     #     #                                               #   (chainA.devices == [dev1, chainB, dev5, chainD, dev7]
     #     #     ----> dev 1                               # container=dev1, has attr "can_have_chains" and not len(dev.chains) > 0, no recursion
@@ -1119,11 +1119,12 @@ class MackieC4(MackieC4ListenerMixin, object):
     #     #                       ----> chain c           # so third level nesting (and beyond) will be unrolled and flattened. Then when
     #     #                                 ----> dev 3   # container=chainC, as a dev2.chains member, (dev2.chains == [chainC]),
     #     #               ----> dev 4                     # loop back with chainA == chainC and dev1 == dev3, then
-    #     #     ----> dev 5                               # hasattr(dev3, "can_have_chains") == True and len(dev.chains) > 0, recursion goes no deeper
-    #     #     ----> chain d
-    #     #               ----> dev 6                     # (similarly container=chainD, as a member of chainA.devices, (chainD.devices == [dev6]), recursion goes no deeper
-    #     #     ----> dev 7
-    #     # get_device_list() should (eventually) return [dev0, chainA, dev1, chainB, dev2, chainC, dev3, dev4, dev5, chainD, dev6, dev7]
+    #     #     ----> dev 5                               # hasattr(dev3, "can_have_chains") == True and not len(dev.chains) > 0, recursion goes no deeper
+    #     #     ----> chain d                             # container=chainD, as a member of chainA.devices, (chainD.devices == [dev6])
+    #     #               ----> dev 6                     # container=dev6, has attr "can_have_chains" and not len(dev.chains) > 0, recursion goes no deeper
+    #     #     ----> dev 7                               # container=dev7, has attr "can_have_chains" and not len(dev.chains) > 0, no recursion
+
+    #     # get_device_list() should (eventually) return [dev0, chainA, dev1, chainB, dev2, chainC, dev3, dev4, dev5, chainD, dev6, dev7]?
     #     # but get_device_list() currently only returns "can_have_chains" devices [dev0, dev1, dev2, dev3, dev4, dev5, dev6, dev7]
     def get_device_list(self, container, expand_chains=False, report=True, full_depth=True):
         """Add each device in order. If device is a rack or rack component (InstrumentGroupDevice, AudioEffectGroupDevice, DrumGroupDevice, etc.), and expand_chains """ \
