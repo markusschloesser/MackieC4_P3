@@ -7,6 +7,7 @@ from typing import Dict
 
 from ableton.v2.base import liveobj_valid, depends, liveobj_changed
 
+import Live
 
 from .MackieC4Component import *
 from .consts import *
@@ -195,6 +196,25 @@ class ActiveDevice:
             nm = self.device.name
         return nm
 
+    @property
+    def is_instrument_device(self):
+        return self.device.type == Live.Device.DeviceType.instrument
+
+    @property
+    def is_audio_effect_device(self):
+        return self.device.type == Live.Device.DeviceType.audio_effect
+
+    @property
+    def is_midi_effect_device(self):
+        return self.device.type == Live.Device.DeviceType.midi_effect
+
+    @property
+    def is_drum_pad_device(self):
+        return isinstance(self.device, Live.DrumPad.DrumPad)
+
+    @property
+    def is_rack_device(self):
+        return isinstance(self.device, Live.RackDevice.RackDevice)
     @property
     def parameter_count(self):
         """ the raw count of parameters in parameter list """
