@@ -7,6 +7,32 @@ from . import script_utils
 from .script_utils import EncoderDisplaySegment
 from .consts import *
 
+
+def toggle_devices(active_track_details, cc_nbr, cc_val):
+    log_id = "mode_utils_tcs.toggle_devices: "
+    device_encoder_row_offset = row_01_encoders[0]
+    bank_start = active_track_details.active_track.track_device_bank_view_index * SETUP_DB_DEVICE_BANK_SIZE
+    rtn = ""
+    for i in range(SETUP_DB_DEVICE_BANK_SIZE):
+        device_index = bank_start + i
+        encoder_cc_nbr = device_encoder_row_offset + i
+        if device_index < active_track_details.device_count:
+            dev_ref = active_track_details.devices[device_index]
+            parameter = dev_ref.device_on_off_parameter # property value assigned will be None if not liveobj_valid(device_on_off_parameter)
+            if liveobj_valid(parameter) and parameter.is_enabled:
+                ccw_turn = cc_val > 64
+                if ccw_turn and cc_nbr == encoder_cc_nbr:
+                    parameter.value = False
+                elif not ccw_turn and cc_nbr == encoder_cc_nbr:
+                    parameter.value = True
+            else:
+                if not liveobj_valid(parameter):
+                    if len(rtn) > 0:
+                        rtn += f", and: device_ref {dev_ref.device_name}?"
+                    else:
+                        rtn += f"{log_id}assumption issue: device_ref {dev_ref.device_name} parameters[0] was not liveobj_valid?"
+    return rtn
+
 def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, ds, encoders, display_parameters,
                                 update_vpot_leds_for_device_toggle, subordinate_track_is_selected, subordinate_selected_track_allows_audio, send_parameter,
                                 is_log_less_than_info, xfade):

@@ -253,6 +253,12 @@ class ActiveDevice:
     def device_parameter_bank_view_index(self, next_bank_index):
         self._bank_index_of_device_param_view = next_bank_index
 
+    @property
+    def device_on_off_parameter(self):
+        if liveobj_valid(self.device) and len(self.device.parameters) > 0 and liveobj_valid(self.device.parameters[0]):
+            return self.device.parameters[0]
+        return None
+
 class ActiveDeviceParameter:
     """This class is strictly for storing the enabled status of track 'sends' which are (a list of) 'device parameters' of the track's 'mixer device' """ \
     """Return track 'sends' are disabled by default but can be enabled (by right-clicking the send and choosing enable)"""

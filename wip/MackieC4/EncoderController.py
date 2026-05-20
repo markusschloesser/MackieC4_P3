@@ -1385,46 +1385,21 @@ class EncoderController(MackieC4Component, Component):
     def toggle_devices(self, cc_no, cc_value):
         """any clockwise turn cc_value activates device represented by cc_no, counterclockwise turns deactivate device."""
         # Track - Channel Strip mode is the only mode that shows banks of devices to toggle on and off like this
-        # Track - Devices mode shows the "chosen device" parameters, one of which toggles the "chosen device" on and off like this
+        # Track - Devices mode shows the "chosen device" parameters, the first one of which directly toggles the "chosen device" on and off
         log_id = "EC.toggle_devices: "
         if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
-
-            device_list = self.song().view.selected_track.devices
-            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
-            extended_device_list = self.get_device_list(device_list, expand_chains=self.expand_chains)
-
-            # Calculate the index of the first device in the current device bank
-            current_device_bank_track = self.__ds.last_selected_track_device_bank_view_index # .selected_device_bank_index
-            bank_start_index = current_device_bank_track * 8
-
-            # Ensure that bank_start_index is non-negative
-            if bank_start_index < 0:
-                self.main_script().log_message(logging.DEBUG, "EC.toggle_devices: negative device bank index protection triggered")
-                bank_start_index = 0
-            # if not locked to device, always allow
-            # if locked to device, only allow if locked device's track is currently selected in Live
-            allow_toggle = True if (not self.is_locked_to_device or
-                                    (self.is_locked_to_device and self.__locked_device_track == self.song().view.selected_track)) else False
+            # some 'device bank' of the track where the device-to-which-the-script-is-locked is located is displayed
+            locked_devices_track_is_selected = self.is_locked_to_device and self.__locked_device_track == self.song().view.selected_track
+            allow_toggle = True if not self.is_locked_to_device or locked_devices_track_is_selected else False
             if allow_toggle:
-                bank_end = bank_start_index + 8
-                for i, device in enumerate(extended_device_list):
-                    # Get the 'bank index' of the encoder mapped to this device
-                    encoder_bank_index = i % 8
-                    encoder_cc_no = 8 + encoder_bank_index # i.e. row_01_encoders [8,9,10,11,12,13,14,15]
-
-                    # Check if the first parameter (always the device On/Off toggle switch parameter) is enabled and toggle it accordingly
-                    parameter = device.parameters[0]
-                    if liveobj_valid(parameter) and parameter.is_enabled:
-                        ccw_turn = cc_value > 64
-                        if ccw_turn and cc_no == encoder_cc_no:
-                            if bank_start_index <= i < bank_end:
-                                parameter.value = False
-                        elif not ccw_turn and cc_no == encoder_cc_no:
-                            if bank_start_index <= i < bank_end:
-                                parameter.value = True
-                    else:
-                        if not liveobj_valid(parameter):
-                            self.main_script().log_message(logging.WARNING, "EC.toggle_devices: assumption issue: device.parameters[0] was not liveobj_valid")
+                atd = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
+                bank_of_selected_device_is_the_device_bank_on_display = atd.device_bank_index_of_selected_device == atd.active_track.track_device_bank_view_index
+                # if script is locked to a device, script should probably only allow toggling the locked device ON/OFF, but that whole bank is on display
+                # locked or not, only process the devices in the bank on display
+                if bank_of_selected_device_is_the_device_bank_on_display or not self.is_locked_to_device:
+                    rtn_str = tcs_mode_util.toggle_devices(atd, cc_no, cc_value)
+                    if len(rtn_str) > 0:
+                        self.main_script().log_message(logging.WARNING, rtn_str)
 
 
     def assignment_mode(self):
