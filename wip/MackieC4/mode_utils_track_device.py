@@ -3,11 +3,50 @@ import logging
 
 from ableton.v2.base import liveobj_valid
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
+from ableton.v3.live.action import toggle_or_cycle_parameter_value
+import ableton.v3.live.util as v3_util
 
 from . import script_utils
 from .script_utils import EncoderDisplaySegment
 from .consts import *
 
+def handle_pressed_vpot(device_ref, display_parameters, pressed_encoder_button_id, selected_track,
+                        handle_selected_device_parameter_bank_view_update, encoders, ):
+
+    encoder_04_index = 3
+
+    encoder_index = pressed_encoder_button_id - C4SID_VPOT_PUSH_BASE
+    stop = len(display_parameters) + SETUP_DB_DEVICE_BANK_SIZE  # always 40?
+    display_params_range = range(SETUP_DB_DEVICE_BANK_SIZE, stop)  # display_params_range always 8 - 39?
+    # suspect display_params_range is supposed to protect against "short" parameter lists < 24
+    # when self.__display_parameters is always 32 EncoderDisplaySegments now
+    # we might need to check the length of the actual parameter list of the selected device
+    update_self = False
+
+    # group track fold toggle, also groups from within
+    if encoder_index == encoder_04_index:
+        script_utils.toggle_fold(selected_track)
+        update_self = True
+    elif encoder_index < display_params_range[0]:
+        update_self = handle_selected_device_parameter_bank_view_update(encoder_index)
+    # should be encoders 9 - 32 (on each param page), but stopping short on last/only (short is < 24) parameter page
+    elif encoder_index in display_params_range:
+        # if a device has less than 24 parameters exposed on this page, param will be (None, '    ')
+        param = encoders[encoder_index].v_pot_parameter()
+        if liveobj_valid(param):
+            # if param is not tuple:
+            try:
+                if param.is_enabled:
+                    # if util.is_parameter_quantized(param, current_device_track):
+                    if v3_util.is_parameter_quantized(param, device_ref.device):  # for stepped params or those that only have a limited range
+                        toggle_or_cycle_parameter_value(param)
+                    else:
+                        # button press == jump to default value of device parameter
+                        param.value = param.default_value
+            except (RuntimeError, AttributeError):
+                # There is no default value available for this type of parameter
+                # 'NoneType' object has no attribute 'default_value'
+                pass
 
 def reassign_encoder_parameters(selected_track, ds, encoders, chosen_plugin, plugin_parameter, display_parameters ):
     log_id = "mode_utils_td.reassign_encoder_parameters: "

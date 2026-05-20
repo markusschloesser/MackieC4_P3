@@ -531,6 +531,14 @@ class EncoderController(MackieC4Component, Component):
         self.clear_all_lcds()
         return
 
+    def update_undo_info(self, clean):
+        self._last_redo_label = clean
+        self._last_redo_label_time = time.time()
+
+    def update_redo_info(self, clean):
+        self._last_undo_label = clean
+        self._last_undo_label_time = time.time()
+
     def destroy(self):
 
         if self.main_script() is not None:
@@ -1490,60 +1498,9 @@ class EncoderController(MackieC4Component, Component):
             elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
                 update_self = self.handle_selected_device_parameter_bank_view_update(bank_right_index)
         elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP or self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
-            if liveobj_valid(self.__chosen_plugin):
-                last_param_name = self.__device_provider.get_last_param_value_change_name()
-                if liveobj_valid(self.__chosen_plugin.parameters):
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}looking for original param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
-                    cp = v3_util.get_parameter_by_name(last_param_name, self.__chosen_plugin)  # checks for match with p.original_name
-                    if not liveobj_valid(cp):
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}looking for param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
-                        chosen_param = script_utils.get_parameter_by_name(last_param_name, self.__chosen_plugin) # checks for match with p.name
-                    else:
-                        chosen_param = cp
-
-                    if liveobj_valid(chosen_param):
-                        if isinstance(chosen_param, tuple):
-                            self.main_script().log_message(logging.DEBUG, f"{log_id}v3_util.get_parameter_by_name() returned a valid tuple")
-                            param = chosen_param[0]
-                            if not liveobj_valid(param):
-                                self.main_script().log_message(logging.WARNING, f"{log_id}but obj at index 0 was not liveobj_valid?")
-                        else:
-                            param = chosen_param
-
-                        if liveobj_valid(param):
-                            modifier = 1.0
-                            if param.value < 1.0 and param.max == 1.0:
-                                modifier = 0.01
-                            if self.btn_ctlr.only_shift_is_pressed:
-                                modifier *= 5
-                            elif self.btn_ctlr.only_option_is_pressed:
-                                modifier *= 10
-
-                            if switch_id == C4SID_SINGLE_LEFT:
-                                inc_amt = -1 * modifier
-                            elif switch_id == C4SID_SINGLE_RIGHT:
-                                inc_amt = 1 * modifier
-                            else:
-                                inc_amt = None
-                            # self.main_script().log_message(logging.DEBUG, f"{log_id}updating value {param.value} by {inc_amt}")
-                            script_utils.update_or_cycle_parameter_value(param, inc_amt, self.btn_ctlr.only_alt_is_pressed)
-                            # btn_id, parameter, increment_amount
-                            self.__parameter_inc_dec_args = {"btn_id": switch_id, "parameter": param, "increment_amount": inc_amt}
-                            self.__parameter_inc_dec_flag = True
-                            update_self = False
-                            # self.main_script().log_message(logging.DEBUG, f"{log_id}updated value {param.value}")
-                        else:
-                            self.main_script().log_message(logging.WARNING, f"{log_id}param returned from get_parameter_by_name() was not liveobj_valid?")
-                    # else:
-                    #     # after a device change, but before a device parameter value change: when Single Left or Right buttons are pressed
-                    #     # execution silently passes through here (because the "last param changed" is None until a param changes)
-                    #     self.main_script().log_message(logging.DEBUG, f"{log_id}unable to get_parameter_by_name() neither returned parameter was liveobj_valid?")
-                else:
-                    self.main_script().log_message(logging.WARNING, f"{log_id}can't get parameters from valid device <{self.__chosen_plugin.name}>?")
+            update_self = self.handle_selected_device_parameter_inc_dec(switch_id)
 
         if update_self:
-            # selected device index assignments automatically update the selected device bank number
-            # self.__eah.last_selected_device_index = (current_bank_nbr * SETUP_DB_DEVICE_BANK_SIZE) + self.__eah.last_selected_device_index
             self.__reassign_encoder_parameters()
             self.request_rebuild_midi_map()
             if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
@@ -1925,306 +1882,91 @@ class EncoderController(MackieC4Component, Component):
             #     self.main_script().log_message(logging.DEBUG, msg + f"doesn't match device_ref value {idx}")
         return update_self
 
-    def handle_pressed_v_pot(self, vpot_index):
-        log_id = "EC.handle_pressed_v_pot: "
-        """ 'encoder button' /vpot push clicks"""
-        encoder_index = vpot_index - C4SID_VPOT_PUSH_BASE  # 0x20  32
-        current_device_bank_index = self.__ds.last_selected_track_device_bank_view_index
-        if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
-            is_armable_track_selected = script_utils.can_be_armed(self.selected_track)
-
-            if encoder_index in row_00_encoders:
-                encoder_04_index = 3
-                update_self = False
-
-                # group track fold toggle, also groups from within
-                if encoder_index == encoder_04_index:
-                    script_utils.toggle_fold(self.selected_track)  # <-- triggers track_changed() callback, maybe selected_track_changed() also
+    def handle_selected_device_parameter_inc_dec(self, switch_id):
+        log_id = "EC.handle_selected_device_parameter_inc_dec: "
+        update_self = True
+        if liveobj_valid(self.__chosen_plugin):
+            last_param_name = self.__device_provider.get_last_param_value_change_name()
+            if liveobj_valid(self.__chosen_plugin.parameters):
+                self.main_script().log_message(logging.DEBUG, f"{log_id}looking for original param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
+                cp = v3_util.get_parameter_by_name(last_param_name, self.__chosen_plugin)  # checks for match with p.original_name
+                if not liveobj_valid(cp):
+                    self.main_script().log_message(logging.DEBUG, f"{log_id}looking for param name <{last_param_name}> in device <{self.__chosen_plugin.name}>")
+                    chosen_param = script_utils.get_parameter_by_name(last_param_name, self.__chosen_plugin)  # checks for match with p.name
                 else:
-                    update_self = self.handle_track_device_bank_view_update(encoder_index)
+                    chosen_param = cp
 
-                if update_self:
-                    self.__reassign_encoder_parameters()
-                    if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
-                        self.one_display_update()
-
-            elif encoder_index in row_01_encoders:
-                # (row 2 "index" is 01) these encoders represent devices 1 - 8 in the device chain on the selected track in C4M_CHANNEL_STRIP mode
-                # behavior implemented is: encoder button press == automatically switch to Track/Plugins mode
-                # AND IF not already locked to a device
-                # switch to Track/Plugins mode  and update "self.__chosen_plugin" to the device represented by the encoder clicked
-                # ELSE
-                # switch to Track/Plugins mode using "self.__chosen_plugin" the "device to which the script is locked"
-                self.handle_assignment_switch_ids(C4SID_TRACK)
-
-                device_bank_offset = int(NUM_ENCODERS_ONE_ROW * current_device_bank_index)
-                device_offset = vpot_index - C4SID_VPOT_PUSH_BASE - NUM_ENCODERS_ONE_ROW + device_bank_offset
-                self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
-                extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
-                if not self.is_locked_to_device:
-                    if len(extended_device_list) > device_offset:  # if the calculated offset is valid device index
-                        # self.__eah.selected_device_bank_index = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_offset
-                        self.__ds.last_selected_device_index = device_offset
-                        device = extended_device_list[device_offset]
-                        if liveobj_valid(device):
-                            self.song().view.select_device(device)  # <-- triggers on_device_changed() callback
-                        else:
-                            self.__update_chosen_plugin_device(device) # device == None
+                if liveobj_valid(chosen_param):
+                    if isinstance(chosen_param, tuple):
+                        self.main_script().log_message(logging.DEBUG, f"{log_id}v3_util.get_parameter_by_name() returned a valid tuple")
+                        param = chosen_param[0]
+                        if not liveobj_valid(param):
+                            self.main_script().log_message(logging.WARNING, f"{log_id}but obj at index 0 was not liveobj_valid?")
                     else:
-                        msg = f"{log_id}can't update __chosen_plugin: the calculated device_offset {device_offset} is NOT a valid device index"
-                        self.main_script().log_message(logging.WARNING, msg)
-                        self.__update_chosen_plugin_device(None) # ???
-            elif encoder_index in row_02_encoders:
-                # these encoders represent Sends 1 - 8 in C4M_CHANNEL_STRIP mode
-                param = self.subordinate_selected_track_allows_audio and self.__encoders[encoder_index].v_pot_parameter()
-                if liveobj_valid(param):
-                    if isinstance(param, int):  # PyCharm says 'param' is an int based on the
-                        #                         self.__encoders[encoder_index].v_pot_parameter() assignment above.
-                        #                         int also doesn't have a default_value?
-                        param.value = 0  # if param is never actually an int when it isn't None, this assignment just satisfies PyCharm
-                    else:
-                        param.value = param.default_value  # button press == jump to default value of Send
-                else:
-                    self.main_script().log_message(logging.WARNING, "EC.handle_pressed_v_pot: can't update param.value to default: None object")
-            elif encoder_index in row_03_encoders:
+                        param = chosen_param
 
-                encoder_27_index = 26  # X-Fade
-                encoder_28_index = 27  # Solo
-                encoder_29_index = 28  # Rec Arm
-                encoder_30_index = 29  # Mute
-                s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
-
-                if encoder_index < encoder_27_index:
-                    # these encoders are the four < encoder_29_index, left half of bottom row, sends 9 - 12
-                    param = self.subordinate_selected_track_allows_audio and self.__encoders[encoder_index].v_pot_parameter()
                     if liveobj_valid(param):
-                        if isinstance(param, int):
-                            param.value = 0
+                        modifier = 1.0
+                        if param.value < 1.0 and param.max == 1.0:
+                            modifier = 0.01
+                        if self.btn_ctlr.only_shift_is_pressed:
+                            modifier *= 5
+                        elif self.btn_ctlr.only_option_is_pressed:
+                            modifier *= 10
+
+                        if switch_id == C4SID_SINGLE_LEFT:
+                            inc_amt = -1 * modifier
+                        elif switch_id == C4SID_SINGLE_RIGHT:
+                            inc_amt = 1 * modifier
                         else:
-                            param.value = param.default_value  # button press == jump to default value of Send
+                            inc_amt = None
+                        # self.main_script().log_message(logging.DEBUG, f"{log_id}updating value {param.value} by {inc_amt}")
+                        script_utils.update_or_cycle_parameter_value(param, inc_amt, self.btn_ctlr.only_alt_is_pressed)
+                        # btn_id, parameter, increment_amount
+                        self.__parameter_inc_dec_args = {"btn_id": switch_id, "parameter": param, "increment_amount": inc_amt}
+                        self.__parameter_inc_dec_flag = True
+                        update_self = False
+                        # self.main_script().log_message(logging.DEBUG, f"{log_id}updated value {param.value}")
                     else:
-                        self.main_script().log_message(logging.WARNING, "EC.handle_pressed_v_pot: can't update param.value to default: param not liveobj_valid()")
+                        self.main_script().log_message(logging.WARNING, f"{log_id}param returned from get_parameter_by_name() was not liveobj_valid?")
+                # else:
+                #     # after a device change, but before a device parameter value change: when Single Left or Right buttons are pressed
+                #     # execution silently passes through here (because the "last param changed" is None until a param changes)
+                #     self.main_script().log_message(logging.DEBUG, f"{log_id}unable to get_parameter_by_name() neither returned parameter was liveobj_valid?")
+            else:
+                self.main_script().log_message(logging.WARNING, f"{log_id}can't get parameters from valid device <{self.__chosen_plugin.name}>?")
+        return update_self
 
-                elif encoder_index == encoder_27_index:
-                    self.xfade("handle_pressed_v_pot", encoder_index)
+    def handle_pressed_v_pot(self, vpot_index):
+        """method handles midi messages sent by encoder buttons, v_pot == 'encoder button'"""
+        log_id = "EC.handle_pressed_v_pot: "
+        if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
+            atd = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
+            update_self = tcs_mode_util.handle_pressed_vpot(atd, vpot_index, self.handle_track_device_bank_view_update, self.handle_assignment_switch_ids,
+                                                            self.is_locked_to_device, self.__ds, self.song(), self.__update_chosen_plugin_device,
+                                                            self.main_script().log_message, self.subordinate_selected_track_allows_audio, self.__encoders,
+                                                            self.xfade, self.subordinate_track_is_selected, self.main_script().show_message)
+            if update_self:
+                self.__reassign_encoder_parameters()
 
-                elif encoder_index == encoder_28_index:
-                    if self.subordinate_track_is_selected:
-                        if self.selected_track.solo is not True:
-                            self.selected_track.solo = True
-                        else:
-                            self.selected_track.solo = False
-                    else:
-                        self.main_script().show_message("track cannot be soloed")
-                        s.unlight_vpot_leds()
-
-                elif encoder_index == encoder_29_index:
-                    if self.subordinate_track_is_selected:
-                        if is_armable_track_selected:
-                            if self.selected_track.arm is not True:
-                                self.selected_track.arm = True
-                            else:
-                                self.selected_track.arm = False
-                        else:
-                            self.main_script().show_message("track cannot be armed")
-                            s.unlight_vpot_leds()
-
-                elif encoder_index == encoder_30_index:
-                    if self.subordinate_track_is_selected:
-                        if self.selected_track.mute:
-                            self.selected_track.mute = False
-                        else:
-                            self.selected_track.mute = True
-                    else:
-                        self.main_script().show_message("master track cannot be muted")
-                        # s.unlight_vpot_leds()  # why only this encoder ring moved to on_update_display_timer
-
-                elif encoder_index > encoder_30_index:
-                    #  encoder 31 is "Pan"
-                    #  encoder 32 is "Volume"
-                    param = self.__encoders[encoder_index].v_pot_parameter()
-                    param.value = param.default_value  # button press == jump to default value of Pan or Vol
-            if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
-                self.one_display_update(force=True)
         elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
-            encoder_04_index = 3
 
             last_index = 0 if self.__ds.last_selected_device_index is None else self.__ds.last_selected_device_index
             device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, last_index)
-
-            stop = len(self.__display_parameters) + SETUP_DB_DEVICE_BANK_SIZE  # always 40?
-            display_params_range = range(SETUP_DB_DEVICE_BANK_SIZE, stop)  # display_params_range always 8 - 39?
-            # suspect display_params_range is supposed to protect against "short" parameter lists < 24
-            # when self.__display_parameters is always 32 EncoderDisplaySegments now
-            # we might need to check the length of the actual parameter list of the selected device
-            update_self = False
-
-            # group track fold toggle, also groups from within
-            if encoder_index == encoder_04_index:
-                script_utils.toggle_fold(self.selected_track)
-                update_self = True
-            elif encoder_index < display_params_range[0]:
-                update_self = self.handle_selected_device_parameter_bank_view_update(encoder_index)
-            # should be encoders 9 - 32 (on each param page), but stopping short on last/only (short is < 24) parameter page
-            elif encoder_index in display_params_range:
-                # if a device has less than 24 parameters exposed on this page, param will be (None, '    ')
-                param = self.__encoders[encoder_index].v_pot_parameter()
-                if liveobj_valid(param):
-                    # if param is not tuple:
-                    try:
-                        if param.is_enabled:
-                            # if util.is_parameter_quantized(param, current_device_track):
-                            if v3_util.is_parameter_quantized(param, device_ref.device):  # for stepped params or those that only have a limited range
-                                toggle_or_cycle_parameter_value(param)
-                            else:
-                                # button press == jump to default value of device parameter
-                                param.value = param.default_value
-                    except (RuntimeError, AttributeError):
-                        # There is no default value available for this type of parameter
-                        # 'NoneType' object has no attribute 'default_value'
-                        pass
-
+            selected_track = self.__ds.data.get_track(self.__ds.last_selected_track_index).track
+            update_self = td_mode_util.handle_pressed_vpot(device_ref, self.__display_parameters, vpot_index, selected_track,
+                                                           self.handle_selected_device_parameter_bank_view_update, self.__encoders)
             if update_self:
                 self.__reassign_encoder_parameters()
                 self.request_rebuild_midi_map()
-                if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
-                    self.one_display_update()
 
         elif self.btn_ctlr.current_active_script_mode == C4M_FUNCTION:
-            encoder_01_index = 0  # follow
-            encoder_02_index = 1  # loop
-            encoder_03_index = 2  # Detail / Clip
-            encoder_04_index = 3  # Session / Arrange mode
-            encoder_05_index = 4  # browser visible on/off
-            encoder_06_index = 5  # unsolo all
-            encoder_07_index = 6  # unmute all
-            encoder_08_index = 7  # BTA
-            encoder_09_index = 8  # Undo
-            encoder_10_index = 9  # Redo
-            encoder_11_index = 10  # unarm all
-            encoder_12_index = 11  # SPP
-            # encoder_13_index is covered / occupied by SPP from 12
-            encoder_14_index = 13
-            encoder_16_index = 15  # Scroll / Zoom
-            encoder_17_index = 16  # Metronome
-            encoder_18_index = 17  # re-enable automation
-            encoder_19_index = 18  # stop scrub
-            encoder_25_index = 24  # Stop
-            encoder_26_index = 25  # Play
-            encoder_27_index = 26  # continue play
-            encoder_28_index = 27  # overdub
-            s = next(x for x in self.__encoders if x.vpot_index() == encoder_index)
+            sf_mode_util.handle_pressed_v_pot(vpot_index, self.__encoders, self.song(), self.application().view, self.btn_ctlr, self.unsolo_all_functionality,
+                                              self.update_undo_info, self.update_redo_info, self.beat_pointer, self.nav_directions)
 
-            if encoder_index == encoder_01_index:
-                script_utils.toggle_follow(song_view=self.song().view)
-                if self.song().view.follow_song:
-                    s.show_full_enlighted_poti()
-                else:
-                    s.unlight_vpot_leds()
-            elif encoder_index == encoder_02_index:
-                if self.song().loop:
-                    script_utils.toggle_loop(song=self.song())
-                    s.unlight_vpot_leds()
-                else:
-                    script_utils.toggle_loop(song=self.song())
-                    s.show_full_enlighted_poti()
-
-            elif encoder_index == encoder_03_index:
-                script_utils.toggle_detail_sub_view(app_view=self.application().view, modifier_pressed=self.btn_ctlr.only_shift_is_pressed)
-                if self.application().view.is_view_visible('Detail/Clip'):
-                    s.show_full_enlighted_poti()
-                else:
-                    s.unlight_vpot_leds()
-            elif encoder_index == encoder_04_index:
-                script_utils.toggle_session_arranger_is_visible(app_view=self.application().view, modifier_pressed=self.btn_ctlr.only_shift_is_pressed)
-                if script_utils.is_arranger_visible(app_view=self.application().view):
-                    s.show_full_enlighted_poti()
-                else:
-                    s.unlight_vpot_leds()
-            elif encoder_index == encoder_05_index:
-                script_utils.toggle_browser_is_visible(app_view=self.application().view, modifier_pressed=self.btn_ctlr.only_shift_is_pressed)
-                if script_utils.is_browser_visible(app_view=self.application().view):
-                    s.show_full_enlighted_poti()
-                else:
-                    s.unlight_vpot_leds()
-            elif encoder_index == encoder_06_index:
-                self.unsolo_all_functionality("handle_pressed_v_pot", encoder_index)
-
-            elif encoder_index == encoder_07_index:
-                tracks = tuple(self.song().tracks) + tuple(self.song().return_tracks)
-                script_utils.unmute_all(tracks)
-
-            elif encoder_index == encoder_08_index:
-                script_utils.toggle_back_to_arranger(song=self.song())
-
-            elif encoder_index == encoder_09_index:  # Undo
-                if self.song().can_undo:
-                    result = self.song().undo()
-                    clean = result.removeprefix("Undo ").strip() if result else ""
-                    self._last_redo_label = clean
-                    self._last_redo_label_time = time.time()
-                else:
-                    s.unlight_vpot_leds()
-
-            elif encoder_index == encoder_10_index:  # Redo
-                if self.song().can_redo:
-                    result = self.song().redo()
-                    clean = result.removeprefix("Redo ").strip() if result else ""
-                    self._last_undo_label = clean
-                    self._last_undo_label_time = time.time()
-
-            elif encoder_index == encoder_11_index:
-                script_utils.unarm_all_button(self.song().tracks)
-
-            # toggle between BEAT and SMPTE mode for SPP
-            elif encoder_index == encoder_12_index:
-                self.beat_pointer("handle_pressed_v_pot", encoder_index)
-
-            elif encoder_index == encoder_16_index:
-                if self.application().view.is_view_visible('Arranger'):
-                    self.application().view.zoom_view(self.nav_directions.left, '', self.btn_ctlr.only_alt_is_pressed)
-
-            elif encoder_index == encoder_17_index:
-                self.song().metronome = not self.song().metronome
-
-            elif s.vpot_index() == encoder_18_index:
-                if self.song().re_enable_automation_enabled:
-                    """Returns true if some automated parameter has been overridden"""
-                    self.song().re_enable_automation()
-
-            elif s.vpot_index() == encoder_19_index:
-                if self.song().view.detail_clip:
-                    self.song().view.detail_clip.stop_scrub()
-
-            #  capture_midi placeholder
-
-            elif encoder_index == encoder_25_index:
-                self.song().stop_playing()
-                self.__encoders[encoder_26_index].unlight_vpot_leds()
-                self.__encoders[encoder_27_index].unlight_vpot_leds()
-            elif encoder_index == encoder_26_index:
-                if self.btn_ctlr.only_shift_is_pressed:
-                    if not self.song().is_playing:
-                        self.song().continue_playing()
-                    else:
-                        self.song().stop_playing()
-                elif self.btn_ctlr.only_control_is_pressed:
-                    self.song().play_selection()
-                else:
-                    self.song().start_playing()
-                s.show_full_enlighted_poti()
-            elif encoder_index == encoder_27_index:
-                self.song().continue_playing()
-                s.show_full_enlighted_poti()
-            elif encoder_index == encoder_28_index:
-                if self.song().overdub:
-                    s.unlight_vpot_leds()  # if lit (because overdub), turn off
-                else:
-                    s.show_full_enlighted_poti()
-                self.song().overdub = not self.song().overdub
-
-            if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
-                self.one_display_update()
+        # when no split leds are on, only do timer based display updates
+        if self.btn_ctlr.nbr_split_leds_on > 0:
+            self.one_display_update(force=True)
 
     def __send_parameter(self, vpot_index):
         """ Returns the send parameter that is assigned to the given encoder as a tuple (param, param.name) """
@@ -2358,7 +2100,8 @@ class EncoderController(MackieC4Component, Component):
         current_device_bank_track = self.__ds.last_selected_track_device_bank_view_index
         current_encoder_bank_offset = int(current_device_bank_track * SETUP_DB_DEVICE_BANK_SIZE) # offset is 0, 8, 16, 24, etc
         assert self.__ds.selected_track_nbr_stored_devices == len(extended_device_list)
-        assert self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP
+        # In C4M_PLUGINS mode encoder 8 "also" controls device ON/OFF status (first device parameter)
+        assert self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP or self.btn_ctlr.current_active_script_mode == C4M_PLUGINS
 
         for s_index in row_01_encoders:
             row_index = s_index - SETUP_DB_DEVICE_BANK_SIZE

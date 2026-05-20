@@ -1,3 +1,4 @@
+
 from ableton.v2.base import liveobj_valid
 from ableton.v2.control_surface.elements.display_data_source import adjust_string
 
@@ -5,6 +6,7 @@ import logging
 
 from . import script_utils
 from .script_utils import EncoderDisplaySegment
+from .EncoderControllerDataStore import ActiveTrackDetails
 from .consts import *
 
 
@@ -32,6 +34,121 @@ def toggle_devices(active_track_details, cc_nbr, cc_val):
                     else:
                         rtn += f"{log_id}assumption issue: device_ref {dev_ref.device_name} parameters[0] was not liveobj_valid?"
     return rtn
+
+def handle_pressed_vpot(active_track_details:ActiveTrackDetails, pressed_encoder_button_id, handle_track_device_bank_view_update, handle_assignment_switch_ids,
+                        locked_to_device, ds, song, update_chosen_plugin_device, log_message, subordinate_selected_track_allows_audio, encoders, xfade,
+                        subordinate_track_is_selected, show_message):
+    log_id = "mode_utils_tcs.handle_pressed_vpot: "
+    selected_track = active_track_details.active_track.track
+    # encoder button ids are offset from associated encoder ids by 32 (0x20), feedback goes to one LED ring at CC nbr == encoder button id
+    encoder_index = pressed_encoder_button_id - C4SID_VPOT_PUSH_BASE
+    is_armable_track_selected = script_utils.can_be_armed(selected_track)
+    update_self = False
+    if encoder_index in row_00_encoders:
+        encoder_04_index = 3
+        update_self = False
+
+        # group track fold toggle, also groups from within
+        if encoder_index == encoder_04_index:
+            script_utils.toggle_fold(selected_track)  # <-- triggers track_changed() callback, maybe selected_track_changed() also
+        else:
+            update_self = handle_track_device_bank_view_update(encoder_index)
+
+    elif encoder_index in row_01_encoders:
+        # (row 2 "index" is 01) these encoders represent devices 1 - 8 in the device chain on the selected track in C4M_CHANNEL_STRIP mode
+        # behavior implemented is: encoder button press == automatically switch to Track/Plugins mode
+        # AND IF not already locked to a device
+        # switch to Track/Plugins mode  and update "self.__chosen_plugin" to the device represented by the encoder clicked
+        # ELSE
+        # switch to Track/Plugins mode using "self.__chosen_plugin" the "device to which the script is locked"
+        handle_assignment_switch_ids(C4SID_TRACK)
+
+        device_bank_start_offset = NUM_ENCODERS_ONE_ROW * active_track_details.active_track.track_device_bank_view_index
+        device_offset = encoder_index - NUM_ENCODERS_ONE_ROW + device_bank_start_offset
+        if not locked_to_device:
+            if device_offset < active_track_details.device_count:  # if the calculated offset is valid device index
+
+                ds.last_selected_device_index = device_offset
+                device_ref = active_track_details.devices[device_offset]
+                if liveobj_valid(device_ref.device):
+                    song.view.select_device(device_ref.device)  # <-- triggers on_device_changed() callback
+                else:
+                    update_chosen_plugin_device(device_ref.device)  # device == None
+            else:
+                msg = f"{log_id}can't update __chosen_plugin: the calculated device_offset {device_offset} is NOT a valid device index"
+                log_message(logging.WARNING, msg)
+                update_chosen_plugin_device(None)  # ???
+    elif encoder_index in row_02_encoders:
+        # these encoders represent Sends 1 - 8 in C4M_CHANNEL_STRIP mode
+        param = subordinate_selected_track_allows_audio and encoders[encoder_index].v_pot_parameter()
+        if liveobj_valid(param):
+            if isinstance(param, int):  # PyCharm says 'param' is an int based on the
+                #                         self.__encoders[encoder_index].v_pot_parameter() assignment above.
+                #                         int also doesn't have a default_value?
+                param.value = 0  # if param is never actually an int when it isn't None, this assignment just satisfies PyCharm
+            else:
+                param.value = param.default_value  # button press == jump to default value of Send
+        else:
+            log_message(logging.WARNING, f"{log_id}can't update param.value to default: None object")
+    elif encoder_index in row_03_encoders:
+
+        encoder_27_index = 26  # X-Fade
+        encoder_28_index = 27  # Solo
+        encoder_29_index = 28  # Rec Arm
+        encoder_30_index = 29  # Mute
+        s = next(x for x in encoders if x.vpot_index() == encoder_index)
+
+        if encoder_index < encoder_27_index:
+            # these encoders are the four < encoder_29_index, left half of bottom row, sends 9 - 12
+            param = subordinate_selected_track_allows_audio and encoders[encoder_index].v_pot_parameter()
+            if liveobj_valid(param):
+                if isinstance(param, int):
+                    param.value = 0
+                else:
+                    param.value = param.default_value  # button press == jump to default value of Send
+            else:
+                log_message(logging.WARNING, f"{log_id}can't update param.value to default: param not liveobj_valid()")
+
+        elif encoder_index == encoder_27_index:
+            xfade("handle_pressed_v_pot", encoder_index)
+
+        elif encoder_index == encoder_28_index:
+            if subordinate_track_is_selected:
+                if not selected_track.solo:
+                    selected_track.solo = True
+                else:
+                    selected_track.solo = False
+            else:
+                show_message("track cannot be soloed")
+                s.unlight_vpot_leds()
+
+        elif encoder_index == encoder_29_index:
+            if subordinate_track_is_selected:
+                if is_armable_track_selected:
+                    if not selected_track.arm:
+                        selected_track.arm = True
+                    else:
+                        selected_track.arm = False
+                else:
+                    show_message("track cannot be armed")
+                    s.unlight_vpot_leds()
+
+        elif encoder_index == encoder_30_index:
+            if subordinate_track_is_selected:
+                if selected_track.mute:
+                    selected_track.mute = False
+                else:
+                    selected_track.mute = True
+            else:
+                show_message("master track cannot be muted")
+
+        elif encoder_index > encoder_30_index:
+            #  encoder 31 is "Pan"
+            #  encoder 32 is "Volume"
+            param = encoders[encoder_index].v_pot_parameter()
+            param.value = param.default_value  # button press == jump to default value of Pan or Vol
+
+    return update_self
 
 def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, ds, encoders, display_parameters,
                                 update_vpot_leds_for_device_toggle, subordinate_track_is_selected, subordinate_selected_track_allows_audio, send_parameter,
