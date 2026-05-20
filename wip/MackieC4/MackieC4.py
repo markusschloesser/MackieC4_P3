@@ -561,15 +561,40 @@ class MackieC4(object):
     def tracks_change(self):
         self.request_rebuild_midi_map()
 
+    def _add_track_listener(self, track, listener_type, callback):
+        add_listener = getattr(track, f"add_{listener_type}_listener")
+        add_listener(callback)
+
+    def _remove_track_listener_if_present(self, track, listener_type, callback):
+        try:
+            has_listener = getattr(track, f"{listener_type}_has_listener")
+            remove_listener = getattr(track, f"remove_{listener_type}_listener")
+
+            if has_listener(callback):
+                remove_listener(callback)
+        except (RuntimeError, AttributeError):
+            pass
+
+    def _add_mixer_value_listener(self, track, mixer_param_name, callback):
+        mixer_param = getattr(track.mixer_device, mixer_param_name)
+        mixer_param.add_value_listener(callback)
+
+    def _remove_mixer_value_listener_if_present(self, track, mixer_param_name, callback):
+        try:
+            mixer_param = getattr(track.mixer_device, mixer_param_name)
+
+            if mixer_param.value_has_listener(callback):
+                mixer_param.remove_value_listener(callback)
+        except (RuntimeError, AttributeError):
+            pass
+
     def rem_mixer_listeners(self):
         # Master Track
         for type in ('volume', 'panning', 'crossfader'):
             for tr in self.masterlisten[type]:
                 if liveobj_valid(tr):
                     cb = self.masterlisten[type][tr]
-                    test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
-                    if test == 1:
-                        eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
+                    self._remove_mixer_value_listener_if_present(tr, type, cb)
 
         # Normal Tracks
         for type in ('arm', 'solo', 'mute', 'current_monitoring_state', 'available_input_routing_channels',
@@ -582,25 +607,19 @@ class MackieC4(object):
                     cb = self.mlisten[type][tr]
                     if type == 'arm':
                         if tr.can_be_armed == 1:
-                            if tr.arm_has_listener(cb) == 1:
-                                tr.remove_arm_listener(cb)
+                            self._remove_track_listener_if_present(tr, type, cb)
 
                     elif type == 'current_monitoring_state':
                         if tr.can_be_armed == 1:
-                            if tr.current_monitoring_state_has_listener(cb) == 1:
-                                tr.remove_current_monitoring_state_listener(cb)
+                            self._remove_track_listener_if_present(tr, type, cb)
                     else:
-                        test = eval('tr.' + type + '_has_listener(cb)')
-                        if test == 1:
-                            eval('tr.remove_' + type + '_listener(cb)')
+                        self._remove_track_listener_if_present(tr, type, cb)
 
         for type in ('volume', 'panning'):
             for tr in self.mlisten[type]:
                 if liveobj_valid(tr):
                     cb = self.mlisten[type][tr]
-                    test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
-                    if test == 1:
-                        eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
+                    self._remove_mixer_value_listener_if_present(tr, type, cb)
 
         for tr in self.mlisten['sends']:
             if liveobj_valid(tr):
@@ -621,17 +640,13 @@ class MackieC4(object):
             for tr in self.rlisten[type]:
                 if liveobj_valid(tr):
                     cb = self.rlisten[type][tr]
-                    test = eval('tr.' + type + '_has_listener(cb)')
-                    if test == 1:
-                        eval('tr.remove_' + type + '_listener(cb)')
+                    self._remove_track_listener_if_present(tr, type, cb)
 
         for type in ('volume', 'panning'):
             for tr in self.rlisten[type]:
                 if liveobj_valid(tr):
                     cb = self.rlisten[type][tr]
-                    test = eval('tr.mixer_device.' + type + '.value_has_listener(cb)')
-                    if test == 1:
-                        eval('tr.mixer_device.' + type + '.remove_value_listener(cb)')
+                    self._remove_mixer_value_listener_if_present(tr, type, cb)
 
         for tr in self.rlisten['sends']:
             if liveobj_valid(tr):
@@ -678,11 +693,10 @@ class MackieC4(object):
             for type in ('volume', 'panning'):
                 self.add_mixerv_listener(track, type, tr)
 
-            for type in ('is_frozen'):
-                if tr.can_be_frozen == 1:
-                    if tr.is_frozen_has_listener(self.on_is_frozen_changed):
-                        tr.remove_is_frozen_listener(self.on_is_frozen_changed)
-                    tr.add_is_frozen_listener(self.on_is_frozen_changed)
+            if tr.can_be_frozen == 1:
+                if tr.is_frozen_has_listener(self.on_is_frozen_changed):
+                    tr.remove_is_frozen_listener(self.on_is_frozen_changed)
+                tr.add_is_frozen_listener(self.on_is_frozen_changed)
 
             for sid in range(len(tr.mixer_device.sends)):
                 self.add_send_listener(track, tr, sid, tr.mixer_device.sends[sid])
@@ -715,19 +729,19 @@ class MackieC4(object):
         if (track in self.mlisten[type]) != 1:
             cb = lambda: self.mixert_changestate(type, tid, track)
             self.mlisten[type][track] = cb
-            eval('track.add_' + type + '_listener(cb)')
+            self._add_track_listener(track, type, cb)
 
     def add_mixerv_listener(self, tid, type, track):
         if (track in self.mlisten[type]) != 1:
             cb = lambda: self.mixerv_changestate(type, tid, track)
             self.mlisten[type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+            self._add_mixer_value_listener(track, type, cb)
 
     def add_master_listener(self, tid, type, track):
         if (track in self.masterlisten[type]) != 1:
             cb = lambda: self.mixerv_changestate(type, tid, track, 2)
             self.masterlisten[type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+            self._add_mixer_value_listener(track, type, cb)
 
     def add_retsend_listener(self, tid, track, sid, send):
         if (track in self.rlisten['sends']) != 1:
@@ -741,26 +755,27 @@ class MackieC4(object):
         if (track in self.rlisten[type]) != 1:
             cb = lambda: self.mixert_changestate(type, tid, track, 1)
             self.rlisten[type][track] = cb
-            eval('track.add_' + type + '_listener(cb)')
+            self._add_track_listener(track, type, cb)
 
     def add_retmixerv_listener(self, tid, type, track):
         if (track in self.rlisten[type]) != 1:
             cb = lambda: self.mixerv_changestate(type, tid, track, 1)
             self.rlisten[type][track] = cb
-            eval('track.mixer_device.' + type + '.add_value_listener(cb)')
+            self._add_mixer_value_listener(track, type, cb)
 
     # Track name listener
     def add_trname_listener(self, tid, track, ret=0):
-        cb = lambda: self.trname_changestate(tid, track, ret)
-        if ret == 1:
-            if (track in self.rlisten['name']) != 1:
-                self.rlisten['name'][track] = cb
-        elif (track in self.mlisten['name']) != 1:
-            self.mlisten['name'][track] = cb
-        track.add_name_listener(cb)
+        listener_dict = self.rlisten['name'] if ret == 1 else self.mlisten['name']
+
+        if (track in listener_dict) != 1:
+            cb = lambda: self.trname_changestate(tid, track, ret)
+            listener_dict[track] = cb
+
+            if not track.name_has_listener(cb):
+                track.add_name_listener(cb)
 
     def mixerv_changestate(self, type, tid, track, r=0):
-        val = eval('track.mixer_device.' + type + '.value')
+        val = getattr(track.mixer_device, type).value
         types = {'panning': 'pan', 'volume': 'volume', 'crossfader': 'crossfader'}
         if r == 2:
             pass
@@ -768,7 +783,7 @@ class MackieC4(object):
             pass
 
     def mixert_changestate(self, type, tid, track, r=0):
-        val = eval('track.' + type)
+        val = getattr(track, type)
         if r == 1:
             pass
 
