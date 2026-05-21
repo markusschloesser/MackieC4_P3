@@ -30,8 +30,14 @@ from .MackieC4Component import *
 from _Generic.Devices import *
 
 class ButtonController(object):
-    """tracks the LED state of all seven C4 "control buttons" with associated LEDs (nine LEDs) and the pressed state of """ \
-    """Modifier Group buttons (Shift, Option, Control, Alt) """
+    """Tracks the state of all nineteen C4 "control buttons" 7 with associated LEDs (nine LEDs) and 12 without.  For the 12 buttons without an LED, """ \
+    """the LED state value depends on the way the button is used.  For the Modifier Group buttons (Shift, Option, Control, Alt), the pressed state determines the  """ \
+    """LED state, if the button had an LED, it would be ON when the button "is pressed", OFF otherwise.  For the Assignment Group buttons (Marker, Track, Chan Strip, """ \
+    """Function), which do have LEDs, the LEDs in the group act like 'radio buttons', only one can be ON (selected) at a time, and it stays ON until another button in """ \
+    """the group is pressed and its LED turns ON instead.  The Single Left and Single Right buttons in the Parameter group also follow the press & hold Modifier group """ \
+    """button behavior pattern, but generally all non-Modifier group buttons "react" on_press, 'ignoring' on_release button events. The Split button has three associated """ \
+    """LEDs labelled 1/3, 2/2, 3/1 respectively, but ignore the 'denominator' and imagine they are just labelled 1, 2, 3.  Each Split button press turns ON one more LED, """ \
+    """first 1, then 2, then 3 turn ON before the next press turns them all OFF again. """
 
     def __init__(self, last_assignment_mode=C4M_FUNCTION, init_assignment_mode=C4M_CHANNEL_STRIP):
 
@@ -267,8 +273,10 @@ class ButtonController(object):
 
     def get_assignment_btn_led_state(self, button_id):
         """These buttons have associated physical LEDs. Because this controller only counts assignment button presses, """ \
-        """the LED value returned here latches and returns state is ON or OFF until the button is pressed again. """ \
-        """However, buttons in this group represent mutually exclusive 'script operation modes'.  """
+        """the LED value returned here latches like a radio button and returns state is ON or OFF until another button in the group is pressed. """ \
+        """However, the Marker button behaves differently at the script level.  Because Marker means User mode and User mode could be connected to the Max """ \
+        """Sequencer patch and the Sequencer patch takes over control of the entire C4, the special way to exit User mode is to Press & Hold the marker button """ \
+        """then Press the Lock button.  The marker LED will turn OFF and the LED for the previous script mode will turn back ON."""
         return self._led_state(self.assignment_group_buttons[button_id], button_id)
 
     def get_modifier_btn_led_state(self, button_id):
@@ -292,7 +300,7 @@ class ButtonController(object):
         return 0 if not toggle else 127
 
     def get_parameter_btn_led_state(self, button_id):
-        """These buttons have associated physical LEDs. Because this controller counts both parameter button presses and releases, """ \
+        """These buttons do not have associated physical LEDs. Because this controller counts both parameter button presses and releases, """ \
         """the LED value returned here only returns state is ON while the button is actually pressed (unlike controlled buttons with physical LEDs that latch) """ 
         return self._led_state(self.parameter_group_buttons[button_id], button_id)
 
@@ -301,8 +309,8 @@ class ButtonController(object):
         return self._pressed_state(self.parameter_group_buttons[button_id])
 
     def get_session_btn_led_state(self, button_id):
-        """These buttons have associated physical LEDs. Because this controller counts both parameter button presses and releases, """ \
-        """the LED value returned here only returns state is ON while the button is actually pressed (unlike controlled buttons with physical LEDs that latch) """
+        """These buttons do not have associated physical LEDs. Because this controller only counts session button presses, """ \
+        """the LED value returned here latches and returns state is ON until the button is actually pressed again"""
         return self._led_state(self.session_group_buttons[button_id], button_id)
 
     def get_session_btn_pressed_state(self, button_id):
@@ -427,19 +435,23 @@ class ButtonController(object):
 
 
 class EncoderController(MackieC4Component, Component):
-    """
-     Controls all (the sum) encoders of the Mackie C4 Pro controller extension
-  """
+    """This is the main script "business logic" controller.  With helpers, it controls how all the buttons, encoders, LEDs, and LCDs on the """ \
+    """Mackie C4 (and C4 Pro) controller (MCU-extension controller) behave when this script connects Live to the C4. "Mapped" encoders are controlled by Live """ \
+    """when mapped and active, for example, encoder 32 in Track Channel Strip mode is mapped to 'Track Volume' in Live.  So turning the encoder on the C4 affects the """ \
+    """track volume in Live, and mouse-dragging the Track volume in Live affects the LED ring around encoder 32.  However, the LCD text over encoder 32 is entirely """ \
+    """generated and controlled by this script (in coordination with Live). In other words, 'midi mapping' (registering) a script's encoder in Live doesn't extend to """ \
+    """the associated LCD text segment over the encoder, all LCD text is handled 'manually' by this script (in coordination with Live). """
     __module__ = __name__
 
     time_format =  Live.Song.TimeFormat.smpte_25
     nav_directions =  Live.Application.Application.View.NavDirection
 
     def __init__(self, main_script, encoders, device_provider):
-        # suspect MackieC4Component exists because MackieC4 and EncoderController share some method_names.
-        # MackieC4Component means EncoderController doesn't need to use super-class-shared-method-name
-        # method calling semantics. Functions in MackieC4Component all delegate to functions in MackieC4,
-        # known as main_script here
+        # MackieC4Component sits between MackieC4 and EncoderController because that's how the original Mackie MCU scripts are designed.
+        # MackieC4Component means EncoderController doesn't need to use super-class-shared-method-name method calling semantics (like it would
+        # if it directly inherited from MackieC4).  Functions in MackieC4Component all (but one) delegate to functions in MackieC4, which is the self._init__()
+        # main_script input object here (which gets passed directly to MackieC4Component.__init__(self, main_script))
+        #
         if main_script is None:
             raise ValueError("main_script is None?")
         MackieC4Component.__init__(self, main_script)
@@ -447,25 +459,27 @@ class EncoderController(MackieC4Component, Component):
         
         self.log_levels = main_script.script_log_levels
         self.current_log_level = main_script.current_script_log_level
-        # definition of modes, for refactoring various code to separate functions
-        # this HAS TO BE up here. If further down in init, it will produce an error during initialization
+        # some EncoderController methods have modal functionality depending on "from where" they are called
+        # these modal functions have variable behavior based on "where" method "modal function" calls have come from.
+        # For example, if self.xfade() is called from self.on_update_display_timer() it does different work,
+        # than if it is called from self.handle_pressed_v_pot().
         self.mode_functions = {
             "handle_pressed_v_pot": self.handle_pressed_v_pot,
             "reassign_encoder_parameters": self.__reassign_encoder_parameters,
             "on_update_display_timer": self.on_update_display_timer
         }
+        """defines the only normal class functions allowed to call modal class functions like self.xfade()"""
 
         self.__parameter_inc_dec_flag = False
         self.__parameter_inc_dec_args = None
         self.btn_ctlr = ButtonController(last_assignment_mode=C4M_FUNCTION, init_assignment_mode=C4M_CHANNEL_STRIP)
         self.btn_ctlr.handle_function_button_press(C4SID_SPLIT_ERASE) # LCD text scrolling ON by default
-        self.__own_encoders = encoders  # why separate references? This reference is only used here in __init__
-        self.__encoders = encoders  # why these __encoders too? This reference is used everywhere else
-        # suspect the reason is because, at runtime, while this __init__ is running; the main_script here,
-        # the caller, MackieC4, is still inside its own __init__ (and thus can't be referenced successfully yet?)
-        # The encoders here though, are fully initialized and are successfully referenced
+        # suspect the reason for 'own_encoders' too is because, at runtime, while this self.__init__() is running; the main_script input,
+        # (and the caller), MackieC4, is still inside its own __init__ (and thus can't be referenced successfully yet?)
+        # The encoders here though, both sets, are fully initialized and are successfully referenced (here inside __init__())
+        self.__own_encoders = encoders
+        self.__encoders = encoders
 
-        # tell these encoders my self is now your controller
         for s in self.__own_encoders:
             s.set_encoder_controller(self)
 
@@ -479,9 +493,10 @@ class EncoderController(MackieC4Component, Component):
         self.add_special_parameter_listeners_pending = False
 
         self.selected_track = None
-        """reference to Live's selected-Track Object"""
+        """direct reference to Live's currently selected Track. song.view.selected_track"""
         self.__locked_device_track = None
-        """if script is not locked to a device, this property holds self.selected_track"""
+        """if script is not locked to a device, this property references self.selected_track, otherwise this property references the Track containing the device """ \
+        """to which the script is locked which may differ from Live's currently selected Track"""
 
         self.__ordered_plugin_parameters = []  # Live's DeviceParameters of __chosen_plugin (if exists)
         self.__device_provider = device_provider
@@ -492,8 +507,8 @@ class EncoderController(MackieC4Component, Component):
         self.__on_is_locked_to_device_changed.subject = self.__device_provider
 
         self.__display_parameters = []
-        # initialize to blank LCD segments
         self.__display_parameters = [EncoderDisplaySegment(x) for x in range(NUM_ENCODERS)]
+
 
         self.encoder_name_display_state = [
             {
@@ -504,11 +519,17 @@ class EncoderController(MackieC4Component, Component):
             }
             for _ in range(NUM_ENCODERS)
         ]
+        """the LCD text over each encoder is limited to 6 or 7 characters.  For Tracks and Devices with longer names, the 'full' name can scroll or toggle within the """ \
+        """limited space over an encoder (rather than getting mangled by automated contraction adjustments).  These 'encoder_id' to 'name display state' dicts manage """ \
+        """the associated scroll and or toggle details at runtime. """
 
         self.subordinate_track_is_selected = False
-        """any track that is not the master track"""
+        """False when the master track is selected, True otherwise."""
         self.subordinate_selected_track_allows_audio = False
-        """any track that is not the master track and has audio output (master always has audio output)"""
+        """True if the selected track is subordinate and has audio output (master always has audio output). """ \
+        """False if the selected track is subordinate and has no audio output (only midi output).  """ \
+        """Meaninglessly False if the selected track is master (master is not subordinate).""" \
+
         self.last_send_messages = {
             LCD_ANGLED_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
             LCD_TOP_FLAT_ADDRESS: {LCD_TOP_ROW_OFFSET: [], LCD_BOTTOM_ROW_OFFSET: []},
@@ -708,7 +729,7 @@ class EncoderController(MackieC4Component, Component):
                         existing_keys_lgth = len(stored_device_map.keys())
                         assert lgth >= existing_keys_lgth
                         assert existing_keys_lgth <= new_device_index < lgth  # new index is 'right of' all existing indexes
-                        self.main_script().log_message(logging.INFO, f"{log_id}recovering device {nm} by partially restoring device map")
+                        self.main_script().log_message(logging.INFO, f"{log_id}VISIBILITY!!! recovering device {nm} by partially restoring device map")
                         short_range = lgth - existing_keys_lgth
                         for i in range(short_range):
                             insert_index = i + existing_keys_lgth
@@ -769,7 +790,7 @@ class EncoderController(MackieC4Component, Component):
                     self.main_script().log_message(logging.ERROR, msg + "no device parameter listeners added, predicting something else will soon derail anyway")
 
     def find_devices_track(self, device):
-        """checks if input device is in device chain of song().view.selected_track returns the Track (selected_track) and song index where found or None"""
+        """checks if input device is in device chain of song().view.selected_track. returns the Track (selected_track) and song index where found or None"""
         log_id = "EC.find_devices_track: "
         selected_track = self.song().view.selected_track
         trace_level = self.log_levels["TRACE"]
