@@ -1660,10 +1660,10 @@ class EncoderController(MackieC4Component):
 
             # shows "fold" or "unfold" or nothing depending on if group track or grouped track
             if is_group_track or is_grouped:
-                fold_text = 'unfold' if is_folded else 'fold'
-                upper_string1 += '------ Track ------- {} ---------------'.format(fold_text)
+                fold_text = 'unfold' if is_folded else 'fold  '
+                upper_string1 += '------ Track ------- {} -------------'.format(fold_text)
             else:
-                upper_string1 += '------ Track -------       ---------------'
+                upper_string1 += '------ Track -------        -------------'
 
             # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
             if liveobj_valid(self.selected_track):
@@ -1672,12 +1672,12 @@ class EncoderController(MackieC4Component):
                 lower_string1 += "---------0--------1"
 
             if is_view_visible_session:
-                group_text = ' Group ' if (is_group_track or is_grouped) else '       '
+                group_text = ' Group  ' if (is_group_track or is_grouped) else '        '
                 lower_string1 += group_text
             elif is_view_visible_arranger:
-                lower_string1 += ' Track '
+                lower_string1 += ' Track  '
 
-            lower_string1 += adjust_string(selected_device_name, 15)
+            lower_string1 += adjust_string(selected_device_name, 13)  # 2 segments plus divider over 5 and 6
 
             # This text 'covers' display segments over all 8 encoders in the second row
             upper_string2 += '----------------------- Devices -----------------------'
@@ -1807,7 +1807,7 @@ class EncoderController(MackieC4Component):
             encoder_07_index = 6
             encoder_08_index = 7
             t_d_idx = self.__eah.get_selected_device_index()
-            upper_string1 += f"------ Track ------- ----- Device {t_d_idx}" if liveobj_valid(self.__chosen_plugin) else f"------ Track ------- --------------"
+            upper_string1 += f"------ Track ------- ----- Device {t_d_idx +1}" if liveobj_valid(self.__chosen_plugin) else f"------ Track ------- --------------"
             # self.main_script().log_message(f"device index is {t_d_idx} ")
             upper_string1 += ' ---- ' if t_d_idx > 9 else ' ----- '
 
