@@ -538,6 +538,7 @@ class EncoderController(MackieC4Component, Component):
         }
         self.__pending_device_change = False
         self.__chain_expansion_changed = False
+        self.__selected_device_changed_flag = False
         self.returns_switch = 0
 
         self.update_assignment_mode_leds()
@@ -641,6 +642,14 @@ class EncoderController(MackieC4Component, Component):
     def chain_expansion_changed(self, assigned_state):
         self.__chain_expansion_changed = assigned_state
 
+    @property
+    def selected_device_changed_flag(self):
+        return self.__selected_device_changed_flag
+
+    @selected_device_changed_flag.setter
+    def selected_device_changed_flag(self, flag_is_flying):
+        self.__selected_device_changed_flag = flag_is_flying
+
     @listens("device")
     def __on_device_changed(self):
         log_id = "EC.__on_device_changed: "
@@ -676,6 +685,7 @@ class EncoderController(MackieC4Component, Component):
 
                 self.main_script().log_message(trace_level, f"{log_id}device changed, updating chosen plugin from {last_name} to {d.name}")
                 self.__update_chosen_plugin_device(d)
+                self.selected_device_changed_flag = True  #  track's "device list" listener callback will see this flag and flip it back to False
             # else:
             #     # can land here when folding a group track and new selected (group) track doesn't have any devices
             #     self.main_script().log_message(logging.DEBUG, f"{log_id}listener popped, but device not liveobj valid?")

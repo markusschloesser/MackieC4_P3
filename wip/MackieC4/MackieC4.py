@@ -1029,13 +1029,18 @@ class MackieC4(MackieC4ListenerMixin, object):
 
 
         if self.last_selected_track_index == selected_index:
-            self.log_message(self.script_log_levels["TRACE"], f"{log_id}processing device change on script's selected track")
-            # if type == 1:
-            #     selected_index  = type_index
-            self.__processing_track_device_state_change = True
-            self.__encoder_controller.device_list_changed(track, cbtt_index_of_selected_index, type)
-            self.set_selected_track_index(selected_index, callback_track_type_of_selected_index, cbtt_index_of_selected_index, track_count)
-            self.__processing_track_device_state_change = False
+            # every time the track's "selected device" changes, the track's "device list" also changes
+            # when the device changes, it changes before the list changes (the EC.on_device_changed callback fired before this C4.selected_device_change_state callback)
+            # when the device moves (by drag & drop, say), the "selected device" doesn't change, only this C4.selected_device_change_state callback fires
+            if self.__encoder_controller.selected_device_changed_flag:
+                self.log_message(logging.DEBUG, f"{log_id}pass, device list change on script's selected track already processed as device change")
+                self.__encoder_controller.selected_device_changed_flag = not self.__encoder_controller.selected_device_changed_flag
+            else:
+                self.log_message(self.script_log_levels["TRACE"], f"{log_id}processing device list change on script's selected track")
+                self.__processing_track_device_state_change = True
+                self.__encoder_controller.device_list_changed(track, cbtt_index_of_selected_index, type)
+                self.set_selected_track_index(selected_index, callback_track_type_of_selected_index, cbtt_index_of_selected_index, track_count)
+                self.__processing_track_device_state_change = False
         else:
             msg = f"{log_id}pass on device change handling, selected track is changing to index {selected_index} "
             self.log_message(logging.DEBUG, msg)
