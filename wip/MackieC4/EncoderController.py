@@ -1541,36 +1541,56 @@ class EncoderController(MackieC4Component, Component):
         if self.btn_ctlr.current_active_script_mode != C4M_USER:  # button_id_to_assignment_mode[C4SID_MARKER]:
             self.btn_ctlr.handle_session_button_press(switch_id)
             trk_device_current_index = self.__ds.last_selected_device_index if self.__ds.last_selected_device_index is not None else 0
-            max_trk_device_index = self.__ds.selected_track_nbr_stored_devices - 1
+            max_trk_device_index = self.__ds.selected_track_nbr_stored_devices - 1 if self.__ds.selected_track_nbr_stored_devices > 1 else 0
             update_self = False
             trk_device_adjusted_index = 0
             if switch_id == C4SID_SLOT_DOWN:
                 if trk_device_current_index > 0:
-                    trk_device_adjusted_index -= 1
+                    trk_device_adjusted_index = trk_device_current_index - 1
                     update_self = True
             elif switch_id == C4SID_SLOT_UP:
                 if trk_device_current_index < max_trk_device_index:
-                    trk_device_adjusted_index += 1
+                    trk_device_adjusted_index = trk_device_current_index + 1
                     update_self = True
 
             if not self.is_locked_to_device and update_self:
-
+                song_device = self.song().view.selected_track.view.selected_device
                 stored_current_device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
                 self.__ds.last_selected_device_index = trk_device_adjusted_index
-                # if the stored selected device remains the device we think it is, get the next device reference to select in Live from local storage...
+                # if the stored selected device remains the device we think it is, get the next device reference to select in Live from local storage (if exists)...
                 # else get the next device reference to select in Live from Live using self.get_device_list()
                 msg_pfx = f"{log_id} getting next device to select from "
-                if liveobj_valid(stored_current_device_ref) and self.song().view.selected_track.view.selected_device == stored_current_device_ref.device:
+                valid_stored_ref_match = liveobj_valid(stored_current_device_ref) and song_device == stored_current_device_ref.device
+                if valid_stored_ref_match:
                     self.main_script().log_message(self.log_levels["TRACE"], msg_pfx + f"local storage at index {trk_device_adjusted_index}")
-                    current_selected_device = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
-                    if not liveobj_valid(current_selected_device):
-                        self.__ds.last_selected_device_index = None
+                    stored_next_device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
+                    if stored_next_device_ref is not None:
+                        current_selected_device = stored_next_device_ref.device
+                        if not liveobj_valid(current_selected_device):
+                            self.__ds.last_selected_device_index = None
+                    else: # else condition should only be necessary here where update_self == True if stored track device data is stale,
+                          # so recovery (from stale stored data) might not be possible
+                        if valid_stored_ref_match:
+                            current_selected_device = stored_current_device_ref.device
+                        else:
+                            active_track_details = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
+                            if active_track_details.device_count > 0:
+                                stored_next_device_ref = active_track_details.devices[0]
+                                current_selected_device = stored_next_device_ref.device
+                                if liveobj_valid(current_selected_device):
+                                    self.__ds.last_selected_device_index = 0
+                                else:
+                                    self.__ds.last_selected_device_index = None
+                            else:
+                                current_selected_device = None
+                                self.__ds.last_selected_device_index = None
                 else:
                     self.main_script().log_message(self.log_levels["TRACE"], msg_pfx + f"Live at index {trk_device_adjusted_index}")
                     self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
                     extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
                     if len(extended_device_list) > trk_device_adjusted_index:
                         current_selected_device = extended_device_list[trk_device_adjusted_index]
+                    # else conditions should only be necessary here where update_self == True if stored track and device index data is stale
                     elif len(extended_device_list) > 0:
                         current_selected_device = extended_device_list[0]
                         self.__ds.last_selected_device_index = 0
