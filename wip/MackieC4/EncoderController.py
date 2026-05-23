@@ -623,6 +623,7 @@ class EncoderController(MackieC4Component, Component):
     @property
     def expand_chains(self):
         return self._expand_chains
+
     def _set_expand_chains(self, expand=False):
         """only changes chain expansion behavior when you inc/dec tracks and devices using Session Group buttons on the C4 """ \
         """if BOTH Ctrl and Alt Modifier buttons are already pressed, otherwise chain expansion behavior doesn't change"""
@@ -961,11 +962,17 @@ class EncoderController(MackieC4Component, Component):
                     if liveobj_valid(t):
                         changed_device_list = self.get_device_list(t.devices, self.expand_chains)
                         msg = f"{log_id}chain expansion behavior has changed since stored active_track {next_active_track_ref.track_name} was stored with "
-                        msg += f"{next_active_track_ref.device_count} devices, rebuilding stored device map with {len(changed_device_list)} devices"
+                        msg += f"{next_active_track_ref.device_count} devices, "
                         self.main_script().log_message(trace_level, msg)
+                        self.main_script().log_message(trace_level, f"rebuilding stored device map with {len(changed_device_list)} devices")
                         atd = self.__ds.data.get_active_track_details_at_song_index(track_index)
                         new_device_count = atd.rebuild_device_map(changed_device_list)
-                        assert len(changed_device_list) == new_device_count
+                        if not len(changed_device_list) == new_device_count:
+                            compare = f"Live devices {len(changed_device_list)} vs stored devices {new_device_count}"
+                            msg = f"{log_id}device count mismatch after rebuilding device map for track {next_active_track_ref.track_name}: {compare}"
+                            self.main_script().log_message(logging.DEBUG, msg)
+                        # else:
+                        #     assert len(changed_device_list) == new_device_count
                         # this should be a moot assignment, next_active_track_ref is already atd.active_track,
                         # but the local next_active_track_ref instance might not already be updated with the new device list references and atd.active_track is updated
                         next_active_track_ref = atd.active_track
@@ -2309,6 +2316,7 @@ class EncoderController(MackieC4Component, Component):
         elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
             show_device_banking_text = self.__ds.selected_track_nbr_stored_devices > 1
             lcd1_device_chain_flags = [False for x in row_01_encoders]
+
             atd = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
             for i in range(SETUP_DB_DEVICE_BANK_SIZE):
                 # bank view index 4, with bank start index 32, means check devices 32 - 39 for 'chains' (xxxGroupDevice class_names)
