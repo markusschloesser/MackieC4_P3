@@ -2082,20 +2082,70 @@ class EncoderController(MackieC4Component, Component):
         result = []
         if liveobj_valid(self.__chosen_plugin):
             active_track_ref = self.__ds.data.get_track(self.__ds.last_selected_track_index)
-            assert active_track_ref.selected_device_index is not None
-            assert self.__ds.last_selected_device_index == active_track_ref.selected_device_index
-            active_device_ref = self.__ds.data.get_device(active_track_ref.index, active_track_ref.selected_device_index)
-            if active_device_ref is not None:
-                selected_device = active_device_ref.device
-            else:
-                msg = f"{log_id}no stored device for track {active_track_ref.track_name} at device index {active_track_ref.selected_device_index}, using chosen device params"
-                self.main_script().log_message(logging.ERROR, msg)
-                selected_device = self.__chosen_plugin
+            # AssertionError: assert active_track_ref.selected_device_index is not None #(when rebuilding midi map after normal device change - testing deep chaining)
+            if active_track_ref.selected_device_index is None:
+                if self.__ds.last_selected_device_index is not None:
+                    active_track_ref.selected_device_index = self.__ds.last_selected_device_index
+                    assert active_track_ref.selected_device_index is not None
+                    assert self.__ds.last_selected_device_index == active_track_ref.selected_device_index
+                    active_device_ref = self.__ds.data.get_device(active_track_ref.index, active_track_ref.selected_device_index)
+                    if active_device_ref is not None:
+                        selected_device = active_device_ref.device
+                    else:
+                        msg = f"{log_id}no stored device for track {active_track_ref.track_name} at device index {active_track_ref.selected_device_index}, "
+                        self.main_script().log_message(logging.ERROR, msg + "using chosen device params")
+                        selected_device = self.__chosen_plugin
 
-            result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in selected_device.parameters]
-            device_class_name = selected_device.class_name
-            nbr_params = len(selected_device.parameters)
-            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for {device_class_name} with {nbr_params} params")
+                    result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in selected_device.parameters]
+                    device_class_name = selected_device.class_name
+                    nbr_params = len(selected_device.parameters)
+                    self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for {device_class_name} with {nbr_params} params")
+                else:
+                    assert self.__ds.last_selected_device_index is None
+                    assert active_track_ref.selected_device_index is None
+                    msg = f"{log_id}no stored device for track ref {active_track_ref.track_name} at selected device indexes None, "
+                    self.main_script().log_message(logging.ERROR, msg + "trying track details")
+                    active_track_details_ref = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
+                    if active_track_details_ref.selected_device_index is not None:
+                        if active_track_details_ref.selected_device is not None:
+                            # this is a sign that (some?) stored references are only getting updated at the 'track details' level when chain expansion behavior changes
+                            self.__ds.last_selected_device_index = active_track_details_ref.selected_device_index
+                            active_track_ref.selected_device_index = active_track_details_ref.selected_device_index
+                            selected_device = active_track_details_ref.selected_device.device
+                            self.main_script().log_message(logging.ERROR, f"{log_id}SUCCESS with track details")
+                        else:
+                            msg = f"{log_id}no stored device for track details ref {active_track_details_ref.track_name} even though stored device index "
+                            msg += f"{active_track_details_ref.selected_device_index} is not None, using chosen device params"
+                            self.main_script().log_message(logging.ERROR, msg)
+                            selected_device = self.__chosen_plugin
+                    else:
+                        assert active_track_details_ref.selected_device_index is None
+                        assert active_track_details_ref.selected_device is None
+                        msg = f"{log_id}no stored device for track details ref {active_track_details_ref.track_name} because stored device index "
+                        msg += f"is also None, using chosen device params"
+                        self.main_script().log_message(logging.ERROR, msg)
+                        selected_device = self.__chosen_plugin
+                    result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in selected_device.parameters]
+                    device_class_name = selected_device.class_name
+                    nbr_params = len(selected_device.parameters)
+                    self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for {device_class_name} with {nbr_params} params")
+            else:
+                assert active_track_ref.selected_device_index is not None
+                if self.__ds.last_selected_device_index is None:
+                    self.__ds.last_selected_device_index = active_track_ref.selected_device_index
+
+                active_device_ref = self.__ds.data.get_device(active_track_ref.index, active_track_ref.selected_device_index)
+                if active_device_ref is not None:
+                    selected_device = active_device_ref.device
+                else:
+                    msg = f"{log_id}no stored device for track {active_track_ref.track_name} at device index {active_track_ref.selected_device_index}, "
+                    self.main_script().log_message(logging.ERROR, msg + "using chosen device params")
+                    selected_device = self.__chosen_plugin
+
+                result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in selected_device.parameters]
+                device_class_name = selected_device.class_name
+                nbr_params = len(selected_device.parameters)
+                self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for {device_class_name} with {nbr_params} params")
         else:
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for None device with zero params")
         self.__ordered_plugin_parameters = result

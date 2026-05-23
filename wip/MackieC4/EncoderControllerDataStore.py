@@ -624,6 +624,12 @@ class SongData(object):
             return None # song may not have any return tracks
         return self.device_list_table[track_callback_type_key][track_index_by_type]
 
+    def set_active_track_details(self, active_track_details_ref: ActiveTrackDetails):
+        callback_type_key = track_callback_types[active_track_details_ref.active_track.type]
+        self.device_list_table[callback_type_key][active_track_details_ref.track_index_by_type] = active_track_details_ref
+
+
+
     def get_master_track(self, master_track_index=None)-> ActiveTrack:
         if master_track_index is None:
             master_track_index = self.master_track_index
@@ -2059,98 +2065,112 @@ class EncoderControllerDataStore(MackieC4Component):
                 self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device_idx<{selected_device_idx}> points to a non-negative index")
 
         active_device_list_ref = self.data.get_active_track_details_at_song_index(self.last_selected_track_index)
-        last_track_ref = active_device_list_ref.active_track
-        old_device_count_track = last_track_ref.device_count
-        old_selected_device_index = last_track_ref.selected_device_index # could be None
-        msg = f"{log_id}track index ref {last_track_ref.index} has name {last_track_ref.track_name} and old device count {old_device_count_track}"
-        self.main_script().log_message(trace_level, msg)
+        if active_device_list_ref is not None:
+            last_track_ref = active_device_list_ref.active_track
+            old_device_count_track = last_track_ref.device_count
+            old_selected_device_index = last_track_ref.selected_device_index # could be None
+            msg = f"{log_id}track index ref {last_track_ref.index} has name {last_track_ref.track_name} and old device count {old_device_count_track}"
+            self.main_script().log_message(trace_level, msg)
 
-        device_was_added = new_device_count_track > old_device_count_track
-        devices_were_added = True if device_was_added and new_device_count_track - old_device_count_track > 1 else False
-        device_was_removed = new_device_count_track < old_device_count_track
-        devices_were_removed = True if device_was_removed and old_device_count_track - new_device_count_track > 1 else False
-        selected_device_was_changed = new_device_count_track > 0 and new_device_count_track == old_device_count_track
-        no_devices_on_track = new_device_count_track == 0
-        rack_devices_added = new_device_count_track - old_device_count_track if device_was_added else 0
-        rack_devices_deleted = old_device_count_track - new_device_count_track if device_was_removed else 0
+            device_was_added = new_device_count_track > old_device_count_track
+            devices_were_added = True if device_was_added and new_device_count_track - old_device_count_track > 1 else False
+            device_was_removed = new_device_count_track < old_device_count_track
+            devices_were_removed = True if device_was_removed and old_device_count_track - new_device_count_track > 1 else False
+            selected_device_was_changed = new_device_count_track > 0 and new_device_count_track == old_device_count_track
+            no_devices_on_track = new_device_count_track == 0
+            rack_devices_added = new_device_count_track - old_device_count_track if device_was_added else 0
+            rack_devices_deleted = old_device_count_track - new_device_count_track if device_was_removed else 0
 
-        # log_msg = f"{log_id}input selected_device_idx<{selected_device_idx}> and input device list len<{new_device_count_track}> "
-        # if selected_device_idx is None or selected_device_idx == -1:
-        #     self.main_script().log_message(logging.DEBUG, f"{log_msg}agree that no devices currently populate the device chain for this track")
-        #     assert no_devices_on_track
-        # else:
-        #     self.main_script().log_message(logging.DEBUG, f"{log_msg}allow modification of the device chain for this track")
+            # log_msg = f"{log_id}input selected_device_idx<{selected_device_idx}> and input device list len<{new_device_count_track}> "
+            # if selected_device_idx is None or selected_device_idx == -1:
+            #     self.main_script().log_message(logging.DEBUG, f"{log_msg}agree that no devices currently populate the device chain for this track")
+            #     assert no_devices_on_track
+            # else:
+            #     self.main_script().log_message(logging.DEBUG, f"{log_msg}allow modification of the device chain for this track")
 
-        new_device_index = 0
-        deleted_device_index = 0
-        changed_device_index = 0
-        rtn_device_index = -1
-        found_input_device_index = False  # selected_device is in all_devices
+            new_device_index = 0
+            deleted_device_index = 0
+            changed_device_index = 0
+            rtn_device_index = -1
+            found_input_device_index = False  # selected_device is in all_devices
 
-        # if there are no devices on track, there are no devices in input all_devices list and this loop is not entered,
-        # all "change indexes" stay 0. If a device was deleted, selected_device will be at the index before the deleted device
-        for index,device in enumerate(all_track_devices):
-            if selected_device == device:
-                new_device_index = index
-                deleted_device_index = index
-                changed_device_index = index
-                rtn_device_index = index
-                found_input_device_index = True
-                # log_msg = f"{log_id}matched input selected_device<{selected_device.name}> with device<{device.name}> at index<{index}> of input device list"
-                # self.main_script().log_message(logging.DEBUG, log_msg)
-                break
+            # if there are no devices on track, there are no devices in input all_devices list and this loop is not entered,
+            # all "change indexes" stay 0. If a device was deleted, selected_device will be at the index before the deleted device
+            for index,device in enumerate(all_track_devices):
+                if selected_device == device:
+                    new_device_index = index
+                    deleted_device_index = index
+                    changed_device_index = index
+                    rtn_device_index = index
+                    found_input_device_index = True
+                    # log_msg = f"{log_id}matched input selected_device<{selected_device.name}> with device<{device.name}> at index<{index}> of input device list"
+                    # self.main_script().log_message(logging.DEBUG, log_msg)
+                    break
 
 
-        current_bank = last_track_ref.device_bank_index_of_selected_device # cb = self.t_d_bank_current[self.t_current]
+            current_bank = last_track_ref.device_bank_index_of_selected_device # cb = self.t_d_bank_current[self.t_current]
 
-        if found_input_device_index:
-            last_track_ref.selected_device_index = rtn_device_index
-            self.next_selected_device_index = rtn_device_index
-        else:
-            last_track_ref.selected_device_index = None
-            current_bank = last_track_ref.device_bank_index_of_selected_device
+            if found_input_device_index:
+                last_track_ref.selected_device_index = rtn_device_index
+                self.next_selected_device_index = rtn_device_index
+            else:
+                last_track_ref.selected_device_index = None
+                current_bank = last_track_ref.device_bank_index_of_selected_device
 
-        self.data.set_track(last_track_ref)
-        # FROM HERE: f"the found 'track_changed' event changed device index <{index}> and device <{device.name}> represent 'source of truth'"
-        # device == self.last_selected_track.devices[index]
-        # so we could return rtn_device_index right here, except for updating the "assignment history" database
+            active_device_list_ref.active_track = last_track_ref
+            self.data.set_active_track_details(active_device_list_ref)
+            # self.data.set_track(last_track_ref)
+            # FROM HERE: f"the found 'track_changed' event changed device index <{index}> and device <{device.name}> represent 'source of truth'"
+            # device == self.last_selected_track.devices[index]
+            # so we could return rtn_device_index right here, except for updating the "assignment history" database
 
-        if device_was_added:
-            self.update_device_counts_on_addition(new_device_index, all_track_devices, old_device_count_track, new_device_count_track)
+            if device_was_added:
+                self.update_device_counts_on_addition(new_device_index, all_track_devices, old_device_count_track, new_device_count_track)
 
-        elif device_was_removed:
-            self.update_device_counts_on_removal(deleted_device_index, all_track_devices, old_device_count_track, new_device_count_track)
+            elif device_was_removed:
+                self.update_device_counts_on_removal(deleted_device_index, all_track_devices, old_device_count_track, new_device_count_track)
 
-        elif selected_device_was_changed:
-            self.update_device_counts_on_change(all_track_devices, selected_device, old_selected_device_index, changed_device_index, new_device_count_track)
+            elif selected_device_was_changed:
+                self.update_device_counts_on_change(all_track_devices, selected_device, old_selected_device_index, changed_device_index, new_device_count_track)
+        else: # active_device_list_ref is None
+            self.main_script().log_message(logging.DEBUG, f"{log_id}last selected track index <{self.last_selected_track_index}> points to None active track details")
+            rtn_device_index = -1
 
         return rtn_device_index
 
     def update_device_counts_on_addition(self, new_device_index, all_track_devices, old_device_count_track, new_device_count_track):
         log_id = f"ECDS.update_device_counts_on_addition: "
-        last_track_ref = self.data.get_track(self.last_selected_track_index)
-        if not last_track_ref.device_count < new_device_count_track:
-            self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue: nothing added, what was updated?")
-        else:
-            devices_to_add = new_device_count_track - old_device_count_track
-            expando = False
-            if not self.__my_controlling_encoder.expand_chains:
-                if new_device_index + devices_to_add < len(all_track_devices):
-                    for i in range(devices_to_add):
-                        new_device = all_track_devices[new_device_index + i]
-                        self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, new_device_index + i, new_device)
-                    # msg = f"{log_id}updated {last_track_ref.track_name}, device added {new_device.name} at index {new_device_index}, "
-                    # self.main_script().log_message(self.log_levels["TRACE"], msg + f"new device count is {last_track_ref.device_count})
-                else: # new_device_index is "too far right" to add all new devices by this algorithm
+        active_track_details = self.data.get_active_track_details_at_song_index(self.last_selected_track_index)
+        if active_track_details is not None:
+            last_track_ref = active_track_details.active_track
+            if not last_track_ref.device_count < new_device_count_track:
+                self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue: nothing added, what was updated?")
+            else:
+                devices_to_add = new_device_count_track - old_device_count_track
+                expando = False
+                if not self.__my_controlling_encoder.expand_chains:
+                    if new_device_index + devices_to_add < len(all_track_devices):
+                        for i in range(devices_to_add):
+                            new_device = all_track_devices[new_device_index + i]
+                            self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, new_device_index + i, new_device)
+                            last_track_ref.selected_device_index = new_device_index + i
+                        # msg = f"{log_id}updated {last_track_ref.track_name}, device added {new_device.name} at index {new_device_index}, "
+                        # self.main_script().log_message(self.log_levels["TRACE"], msg + f"new device count is {last_track_ref.device_count})
+                    else: # new_device_index is "too far right" to add all new devices by this algorithm
+                        expando = True
+                else: # is expand chains
                     expando = True
-            else: # is expand chains
-                expando = True
 
-            if expando:
-                stored_devices = self.data.get_track_device_map(self.last_selected_track_index)
-                old_device_count = len(stored_devices.keys())
-                key_indexes_added = self.__do_device_addition(stored_devices, all_track_devices, last_track_ref)
-                assert old_device_count + len(key_indexes_added) == len(all_track_devices)
+                if expando:
+                    stored_devices = active_track_details.devices
+                    old_device_count = len(stored_devices.keys())
+                    key_indexes_added = self.__do_device_addition(stored_devices, all_track_devices, last_track_ref)
+                    assert old_device_count + len(key_indexes_added) == len(all_track_devices)
+                    assert len(active_track_details.devices) == len(all_track_devices)
+                    assert last_track_ref.selected_device_index == self.last_selected_device_index
+            active_track_details.active_track = last_track_ref
+            self.data.set_active_track_details(active_track_details)
+            self.data.set_track(last_track_ref)
 
     def __do_device_addition(self, stored_devices, all_track_devices, last_track_ref):
         log_id = "ECDS.__do_device_addition: "
@@ -2167,18 +2187,24 @@ class EncoderControllerDataStore(MackieC4Component):
                     if insert_index < current_nbr_devices_stored:
                         self.main_script().log_message(logging.DEBUG, f"{log_id}{insert_index} < {current_nbr_devices_stored}, inserting expected new stored device")
                         self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, insert_index, device)
+                        last_track_ref.selected_device_index = insert_index
+                        self.last_selected_device_index = last_track_ref.selected_device_index
                         insert_index = i + 1
                         key_indexes_added.append(i)
             else: # this 'track device' isn't stored yet because the new device index i is 'too far right'
                 if i == current_nbr_devices_stored:
                     self.main_script().log_message(logging.DEBUG, f"{log_id}{i} == {current_nbr_devices_stored}, appending expected new last stored device")
                     self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, i, device)
+                    last_track_ref.selected_device_index = i
+                    self.last_selected_device_index = last_track_ref.selected_device_index
                     key_indexes_added.append(i)
                     insert_index = i + 1
                 else: # i > current_nbr_devices_stored ??
                     msg = f"{log_id}assumption issue: {i} > {current_nbr_devices_stored} force appending another last stored device"
                     self.main_script().log_message(logging.WARNING, msg)
                     self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, current_nbr_devices_stored, device)
+                    last_track_ref.selected_device_index = current_nbr_devices_stored
+                    self.last_selected_device_index = last_track_ref.selected_device_index
                     key_indexes_added.append(current_nbr_devices_stored)
                     insert_index = current_nbr_devices_stored + 1
 
