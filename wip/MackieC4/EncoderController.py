@@ -1598,7 +1598,7 @@ class EncoderController(MackieC4Component, Component):
                         current_selected_device = None
                         self.__ds.last_selected_device_index = None
 
-                if liveobj_valid(current_selected_device):
+                if liveobj_valid(current_selected_device) and liveobj_changed(current_selected_device, song_device):
                     self.song().view.select_device(current_selected_device)
                 else:
                     self.__update_chosen_plugin_device(current_selected_device) # current_selected_device == None
