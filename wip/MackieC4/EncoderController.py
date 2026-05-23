@@ -35,8 +35,8 @@ class ButtonController(object):
     """LED state, if the button had an LED, it would be ON when the button "is pressed", OFF otherwise.  For the Assignment Group buttons (Marker, Track, Chan Strip, """ \
     """Function), which do have LEDs, the LEDs in the group act like 'radio buttons', only one can be ON (selected) at a time, and it stays ON until another button in """ \
     """the group is pressed and its LED turns ON instead.  The Single Left and Single Right buttons in the Parameter group also follow the press & hold Modifier group """ \
-    """button behavior pattern, but generally all non-Modifier group buttons "react" on_press, 'ignoring' on_release button events. The Split button has three associated """ \
-    """LEDs labelled 1/3, 2/2, 3/1 respectively, but ignore the 'denominator' and imagine they are just labelled 1, 2, 3.  Each Split button press turns ON one more LED, """ \
+    """button behavior pattern, but generally all non-Modifier group buttons "react" on_press, 'ignoring' on_release button events. The Split button has three associated """\
+    """LEDs labelled 1/3, 2/2, 3/1 respectively, but ignore the 'denominator' and imagine they are just labelled 1, 2, 3.  Each Split button press turns ON one more LED, """\
     """first 1, then 2, then 3 turn ON before the next press turns them all OFF again. """
 
     def __init__(self, last_assignment_mode=C4M_FUNCTION, init_assignment_mode=C4M_CHANNEL_STRIP):
@@ -1051,7 +1051,8 @@ class EncoderController(MackieC4Component, Component):
             # selected_device_index is None or selected_device_index < 0
 
         if not self.is_locked_to_device:
-            msg_prefix = f"{log_id}script data update for new Live selected_track {self.selected_track.name} finished. Now updating script data for new Live selected_device."
+            self.main_script().log_message(trace_level, f"{log_id}script data update for new Live selected_track {self.selected_track.name} finished. ")
+            msg_prefix = f"{log_id}Now updating script data for new Live selected_device, "
             if liveobj_valid(next_device):
                 self.__locked_device_track = self.selected_track
                 if not self.is_processing_track_device_state_change():
@@ -1260,7 +1261,8 @@ class EncoderController(MackieC4Component, Component):
                 insert = "remains"
 
             log_list = [self.__ds.last_selected_track_index, self.__ds.last_selected_track_callback_type, self.__ds.last_selected_track_callback_type_index]
-            self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}song index {track_index} {insert} last selected [song index, cb_type, type_index] {log_list}")
+            msg = f"{log_id}song index {track_index} {insert} last selected [song index, cb_type, type_index] {log_list}"
+            self.main_script().log_message(self.log_levels["TRACE"], msg)
 
         self.refresh_state()  # class local refresh, resets "modifier is pressed" states to "released"
 
@@ -1465,7 +1467,7 @@ class EncoderController(MackieC4Component, Component):
     #
     # C4SID_LOCK is mapped to Live's (Python) LOM API "Lock control surface to device" behavior.
     #
-    # C4SID_SPLIT_ERASE (dependent on SPLIT state) enables or disables the "LCD screen text scrolling" (when LESS THAN 3 C4SID_SPLIT leds are ON)
+    # C4SID_SPLIT_ERASE (semi-dependent on SPLIT state) enables or disables the "LCD screen text scrolling" (when LESS THAN 3 C4SID_SPLIT leds are ON)
     #   dependency is if all 3 C4SID_SPLIT leds are ON - set "LCD screen text scrolling", C4SID_SPLIT_ERASE led state to off, disabled)
     def handle_system_switch_ids(self, switch_id):
 
@@ -1487,8 +1489,8 @@ class EncoderController(MackieC4Component, Component):
                 # ONLY do callback based display updates when all  C4SID_SPLIT leds are ON
                 # (do both display update styles when 1 or 2 Split leds are on)
                 self.one_display_update()
-        # elif switch_id == C4SID_SPLIT_ERASE:
-        #     self.__spot_erase_state = self.btn_ctlr.split_erase_led_state
+        elif switch_id == C4SID_SPLIT_ERASE:
+            pass # self.__spot_erase_state = self.btn_ctlr.split_erase_led_state
         else:
             self.main_script().log_message(logging.ERROR, f"EC.handle_system_switch_ids: unknown system switch id {switch_id}, no change in generated feedback")
 
@@ -2090,10 +2092,16 @@ class EncoderController(MackieC4Component, Component):
 
 
     @staticmethod
-    def get_on_off_parameter(device=None):
-        if liveobj_valid(device):
-            return find_if(lambda p: p.original_name.startswith('Device On') and liveobj_valid(p) and p.is_enabled, device.__ordered_plugin_parameters)
-        return device # device == None
+    def get_device_on_off_parameter(d=None):
+        if liveobj_valid(d):
+            return find_if(lambda p: p.original_name.startswith('Device On') and liveobj_valid(p) and p.is_enabled, d.parameters)
+        return None
+
+    def get_ordered_on_off_parameter(self, d=None):
+        if liveobj_valid(d):
+            params = self.__ordered_plugin_parameters
+            return find_if(lambda p: p.original_name.startswith('Device On') and liveobj_valid(p) and p.is_enabled, params)
+        return None
 
     def __reassign_encoder_parameters(self):
         """ Reevaluate all v-pot -> parameter assignments """

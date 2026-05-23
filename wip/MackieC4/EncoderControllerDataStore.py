@@ -971,7 +971,7 @@ class SongData(object):
             raise RuntimeError("can't set a device not already in the device map")
 
     def add_device(self, song_track_index, track_callback_type_index, device_index, device_obj):
-        selected_parameter_index = 0 if len(device_obj.parameters) > 0 else None  # devices always have at least 1 parameter
+        selected_parameter_index = 0 if len(device_obj.parameters) > 0 else None  # never none because devices always have at least 1 parameter
         device_ref = ActiveDevice(device_obj, device_index, len(device_obj.parameters), selected_parameter_index, song_track_index, track_callback_type_index)
         rtns_index = song_track_index - self.plain_track_count
         # log_msg = f"ECDS.SD.add_device: adding device ref {device_ref} at "
@@ -2159,7 +2159,7 @@ class EncoderControllerDataStore(MackieC4Component):
         for i, device in enumerate(all_track_devices):
             current_nbr_devices_stored = len(stored_devices)
             if i < current_nbr_devices_stored:
-                d_ref = stored_devices[i] # expecting stored_devices table or insert_index to be updated after each iteration
+                d_ref = stored_devices[i] # expecting stored_devices table and/or insert_index to be updated after each iteration
                 if device == d_ref.device:  # this 'track device' is already stored at this index
                     self.main_script().log_message(logging.DEBUG, f"{log_id}{i} < {current_nbr_devices_stored}, skipping matching stored device at matching insert index")
                     insert_index = i + 1
