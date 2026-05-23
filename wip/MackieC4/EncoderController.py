@@ -2323,7 +2323,7 @@ class EncoderController(MackieC4Component, Component):
                 tcs_mode_util.do_display_update(
                 self.application().view, selected_track, self.__chosen_plugin, self.is_locked_to_device, self.__display_parameters, self.btn_ctlr,
                 self.get_scrolling_display_text, self.xfade, self.subordinate_track_is_selected, self.__encoders, show_device_banking_text,
-                lcd1_device_chain_flags)
+                lcd1_device_chain_flags, self.expand_chains)
             )
         elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
             device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
