@@ -357,72 +357,105 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
     encoder_31_index = 30
     encoder_32_index = 31
 
-    is_group_track = script_utils.is_group_track(selected_track)
-    is_grouped = script_utils.is_grouped(selected_track)
+    blank_div = " "
+    is_group_track = script_utils.is_group_track(selected_track) if liveobj_valid(selected_track) else False
+    is_grouped = script_utils.is_grouped(selected_track) if liveobj_valid(selected_track) else False
     is_folded = script_utils.is_folded(selected_track) if liveobj_valid(selected_track) else False
     is_view_visible_session = app_view.is_view_visible('Session')
     is_view_visible_arranger = app_view.is_view_visible('Arranger')
-    # device name is limited (truncated) to 22 chars if script is locked to a device on a grouped track,
-    # device name shifts left by 7 characters if the track is not grouped, and the name can be 7 chars longer before trucation
-    # device_name shifts left by another 7 chars if the script is not also locked to a device (on the selected track) and can be 14 characters longer before truncation
-    device_name_limit = 22 + 7 + 7
-    if liveobj_valid(chosen_plugin):
-        selected_device_name = adjust_string(chosen_plugin.name, device_name_limit)
-    else:
-        selected_device_name = ''.join(' ' for x in range(device_name_limit))
 
-    # shows "fold" or "unfold" or nothing depending on if group track or grouped track
+    e4_text = ' Track ' if is_view_visible_arranger else ' Group ' if is_view_visible_session and (is_group_track or is_grouped) else ''
+    if liveobj_valid(selected_track):
+        raw_track_name = selected_track.name
+        if is_locked_to_device:
+            if selected_track.is_frozen:
+                e3_text = 'Frzn+Lck'  # lgth 8
+            else:
+                e3_text = '-Locked-'  # lgth 8
+        elif selected_track.is_frozen:
+            e3_text = '-Frozen-'  # lgth 8
+        else: # not locked or frozen
+            e3_text = ''
+    else:
+        # raw_track_name is never referenced in this invalid track case, but the assignment silences a warning
+        raw_track_name = 'like some horses, invalid Track objects have no name'
+        e3_text = '' # these assignments also silence warnings
+        e4_text = ''
+        lower_string1 = adjust_string('invalid Track object', 20) + ''.join(" " for x in range(8))
+
+    if len(lower_string1) == 0:
+        if e3_text == '' and e4_text != '': # case T F  (e3 empty, e4 not-empty)
+            # since track is not locked and there is e4 text, the adjusted track name can fill into e3 text space and be longer than 12
+            lower_string1 = adjust_string(raw_track_name, 20) + e3_text + e4_text + blank_div  # 20 + 0 + 7 + 1 = 28
+            assert len(lower_string1) == 28
+            max_available_device_name_space = 14
+        elif e3_text != '' and e4_text != '': # case F F (both e3, e4 empty)
+            # since track is locked and there is e4 text, the adjusted track name can only fill e1 and e2 text space (but not all)
+            lower_string1 = adjust_string(raw_track_name, 12) + e3_text + e4_text + blank_div # 12 + 8 + 7 + 1 = 28
+            assert len(lower_string1) == 28
+            max_available_device_name_space = 14
+        elif e3_text == '' and e4_text == '': # case T T (both e3, e4 not-empty)
+            # since track is not locked and there is not e4 text, the adjusted track name can only fill e1 and e2 text space (to leave room for left-shifted device names)
+            lower_string1 = adjust_string(raw_track_name, 13) + e3_text + e4_text + blank_div # 13 + 0 + 0 + 1 = 14
+            assert len(lower_string1) == 14
+            max_available_device_name_space = 28
+        else: # e3_text != '' and e4_text == '': # case T F (e3 not-empty, e4 empty)
+            # since track is locked and there is not e4 text, the adjusted track name can only fill e1 and e2 text space (because e3_text == 'locked', say)
+            lower_string1 = adjust_string(raw_track_name, 12) + e3_text + e4_text + blank_div # 12 + 8 + 0 + 1 = 21
+            assert len(lower_string1) == 21
+            max_available_device_name_space = 21
+    else: # invalid Track object
+        assert len(lower_string1) == 28
+        max_available_device_name_space = 14
+    assert len(lower_string1) + max_available_device_name_space == 42
+
+    med_name = False
+    long_name = False
+    raw_name = "" if not liveobj_valid(chosen_plugin) else chosen_plugin.name
+    lgth = len(raw_name)
+    if lgth > 21:
+        long_name = True
+    elif 14 < lgth <= 21:
+        med_name = True
+
+    if liveobj_valid(chosen_plugin):
+        if long_name:
+            # long device name, take all available space
+            selected_device_name = adjust_string(raw_name, max_available_device_name_space)
+        elif med_name:
+            # medium name, only slide name left by one encoder if enough space is available, only one encoder even if more space is available
+            if max_available_device_name_space  == 28:
+                # only medium length name, don't slide name all the way left, only occupy one encoder more space
+                free_space = ''.join(" " for x in range(7))
+                selected_device_name = free_space + adjust_string(raw_name, max_available_device_name_space - len(free_space))
+            else: # use all available space
+                selected_device_name = adjust_string(raw_name, max_available_device_name_space)
+        else:
+            # short_name, only use minimum space (over encoders 5 and 6) even if more space is available
+            if max_available_device_name_space == 28:
+                # only short length name, don't slide left at all, only occupy the minimum two encoders of space
+                free_space = ''.join(" " for x in range(14)) # leave e3 and e4 text showing blanks
+                selected_device_name = free_space + adjust_string(raw_name, 14)
+            elif max_available_device_name_space == 21:
+                # only short length name, don't slide left at all, only occupy the minimum two encoders of space
+                free_space = ''.join(" " for x in range(7)) # leave e4 text showing blanks
+                selected_device_name = free_space + adjust_string(raw_name, 14)
+            else: # max_available_device_name_space == 14
+                selected_device_name = adjust_string(raw_name, max_available_device_name_space)
+    else: # not liveobj_valid(chosen_plugin):
+        selected_device_name = ''.join(' ' for x in range(max_available_device_name_space))
+
+    lower_string1 += selected_device_name
+    # assert len(lower_string1) == 42 # == 7 * 6 == 6 of 8 encoders
+
     if is_group_track or is_grouped:
         ftxt = 'unfold' if is_folded else ' fold '
         #                  1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
         upper_string1 += f'------ Track ------- {ftxt} --------------'
     else:
         upper_string1 +=  '------ Track -------        --------------'
-    # assert len(upper_string1) == 42 so far
+    # assert len(upper_string1) == 42 # == 7 * 6 == 6 of 8 encoders
 
-    # 'selected track' name, centered over the first 3 encoders in top row, also indicates frozen tracks
-    if liveobj_valid(selected_track):
-        segment = adjust_string(selected_track.name, 12) + " "
-        if is_locked_to_device:
-            if selected_track.is_frozen:
-                # can you lock to a device on a frozen track? (where you can't change any (frozen) device parameter values)
-                segment += 'Frzn+Lck' # lgth 8
-            else:
-                segment += '-Locked-'  # lgth 8
-        elif selected_track.is_frozen:
-            segment += '-Frozen-'      # lgth 8
-        else:  # not locked or frozen
-            segment = adjust_string(segment, 20) + " "
-        lower_string1 += segment
-    else:
-        lower_string1 += adjust_string('invalid Track object', 20) + " "
-
-    # assert len(lower_string1) == 21 == # * 7
-    group_text = ' Track ' if is_view_visible_arranger else ' Group ' if is_view_visible_session and (is_group_track or is_grouped) else '       '
-    # assert len(group_text) == 7
-    lower_string1 += group_text
-
-    # assert len(lower_string1) == 28
-    empty_group_text = is_view_visible_session and not (is_group_track or is_grouped)
-    empty_track_details_text = not is_locked_to_device or (liveobj_valid(selected_track) and not selected_track.is_frozen)
-    if empty_group_text:
-        if empty_track_details_text:
-            blank_chars_to_slice = 14
-            new_len = len(lower_string1) - blank_chars_to_slice
-            lower_string1 = lower_string1[:new_len]
-            lower_string1 += adjust_string(selected_device_name, blank_chars_to_slice + 14)
-        else:
-            blank_chars_to_slice = 7
-            new_len = len(lower_string1) - blank_chars_to_slice
-            lower_string1 = lower_string1[:new_len]
-            lower_string1 += adjust_string(selected_device_name, blank_chars_to_slice + 14)
-
-    else:
-        lower_string1 += adjust_string(selected_device_name, 14)
-    # assert len(lower_string1) == (28 - 14) + 28 == (28 - 7) + 21 == 28 + 14 == 42,
-    # so maybe no space between end of truncated long device name and <<
-    # (where long means device names over the length of 22 if script is locked to some device on a grouped track
-    # and 36 in most other cases (not locked, not grouped)
 
     #                 1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
     upper_string2  = '----------------------- Devices -----------------------'  # length 55
