@@ -391,6 +391,10 @@ class ActiveTrackDetails:
             self.set_track_sends_map(new_map)
 
     @property
+    def track_name(self):
+        return self.active_track.track_name
+
+    @property
     def song_track_index(self):
         """ when type 0 (visible) and type 1 (return) tracks are combined into one collection, index of this Track in that collection """
         return self.active_track.index

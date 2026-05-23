@@ -1318,13 +1318,13 @@ class EncoderController(MackieC4Component, Component):
             self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
             extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
             track_dtls_ref = self.__ds.data.get_active_track_details_ref_by_type_key(type_key, track_type_index)
-            track_ref = track_dtls_ref.active_track  # self.__eah.data.get_track_by_type_key(type_key, track_type_index)
+            track_ref = track_dtls_ref.active_track
             stored_selected_device_index = track_ref.selected_device_index
-            stored_device_count = track_dtls_ref.device_count  # len(self.__eah.data.get_track_device_map_by_callback_type(type_key, track_type_index).keys())
+            stored_device_count = track_dtls_ref.device_count
             if stored_device_count == track_ref.device_count:
                 if stored_device_count == len(extended_device_list):
                     selected_device_obj = self.selected_track.view.selected_device
-                    last_device_ref = track_dtls_ref.selected_device  # self.__eah.data.get_device(self.__eah.last_selected_track_index, self.__eah.last_selected_device_index)
+                    last_device_ref = track_dtls_ref.selected_device
                     last_device_ref_obj = None if last_device_ref is None else last_device_ref.device
                     if liveobj_valid(last_device_ref_obj) and selected_device_obj == last_device_ref_obj:
                         # once through both collections in one pass to skip rekeying lists that already match
