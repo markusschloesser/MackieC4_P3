@@ -2185,7 +2185,8 @@ class EncoderControllerDataStore(MackieC4Component):
             if i < current_nbr_devices_stored:
                 d_ref = stored_devices[i] # expecting stored_devices table and/or insert_index to be updated after each iteration
                 if device == d_ref.device:  # this 'track device' is already stored at this index
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}{i} < {current_nbr_devices_stored}, skipping matching stored device at matching insert index")
+                    msg = "skipping matching stored device at matching insert index"
+                    self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{i} < {current_nbr_devices_stored}, " + msg)
                     insert_index = i + 1
                 else: # this 'track device' isn't stored yet
                     if insert_index < current_nbr_devices_stored:
