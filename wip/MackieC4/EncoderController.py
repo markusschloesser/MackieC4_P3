@@ -2390,7 +2390,9 @@ class EncoderController(MackieC4Component, Component):
             atd = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
             for i in range(SETUP_DB_DEVICE_BANK_SIZE):
                 # bank view index 4, with bank start index 32, means check devices 32 - 39 for 'chains' (xxxGroupDevice class_names)
-                bank_start = atd.active_track.track_device_bank_view_index * SETUP_DB_DEVICE_BANK_SIZE
+                # {unsupported operand type(s) for *: 'NoneType' and 'int'} if the selected track never had a device bank in view before
+                # when two existing tracks are Ctrl-G grouped, the new (Group) Track can fall into this category and cause the bracketed RemoteScriptError
+                bank_start = 0 if atd.active_track.track_device_bank_view_index is None else atd.active_track.track_device_bank_view_index * SETUP_DB_DEVICE_BANK_SIZE
                 device_index = bank_start + i
                 if device_index < atd.device_count:
                     dev_ref = atd.devices[device_index]
