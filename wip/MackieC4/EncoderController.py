@@ -722,7 +722,7 @@ class EncoderController(MackieC4Component, Component):
             else:
                 # a device move was undone, the stored device at the (previously) moved-to index has already been deleted and reinserted (by Live)
                 # back at the moved-from index
-                self.main_script().log_message(logging.DEBUG, f"{log_id}conditions for undo/redo of device {nm} movement detected, attempting to recover")
+                self.main_script().log_message(logging.INFO, f"{log_id}conditions for undo/redo of device {nm} movement detected, attempting to recover")
                 stored_device_map = self.__ds.data.get_track_device_map(self.__ds.last_selected_track_index)
                 full_rebuild = True
                 if stored_device_map is not None:
@@ -752,11 +752,12 @@ class EncoderController(MackieC4Component, Component):
                 stored_active_device = self.__ds.data.get_device(self.__ds.last_selected_track_index, new_device_index)
                 log_msg = f"{log_id}recovery attempt completed "
                 if stored_active_device is not None and stored_active_device.device == device_obj:
-                    self.main_script().log_message(logging.DEBUG, log_msg + "successfully")
+                    self.main_script().log_message(logging.INFO, log_msg + "successfully")
                 else:
-                    self.main_script().log_message(logging.DEBUG, log_msg + "unsuccessfully")
+                    self.main_script().log_message(logging.INFO, log_msg + "unsuccessfully")
         else:
-            self.main_script().log_message(logging.INFO, f"{log_id}conditions for movement of device {nm} not detected as expected?")
+            # landed here moving a Group track containing two "rack tracks" (a rack of DrumGroup devices and a rack of InstrumentGroup devices)
+            self.main_script().log_message(logging.DEBUG, f"{log_id}conditions for movement of device {nm} not detected, maybe the track moved?")
             device_moved = False
         if device_moved and self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
             # the track's visible device bank order has changed, update the LCD device bank display order to match (if the device bank is already showing)
@@ -2082,7 +2083,8 @@ class EncoderController(MackieC4Component, Component):
         result = []
         if liveobj_valid(self.__chosen_plugin):
             active_track_ref = self.__ds.data.get_track(self.__ds.last_selected_track_index)
-            # AssertionError: assert active_track_ref.selected_device_index is not None #(when rebuilding midi map after normal device change - testing deep chaining)
+            # AssertionError: assert active_track_ref.selected_device_index is not None
+            # (when rebuilding midi map after normal "add device" change - with chains expanding)
             if active_track_ref.selected_device_index is None:
                 if self.__ds.last_selected_device_index is not None:
                     active_track_ref.selected_device_index = self.__ds.last_selected_device_index
