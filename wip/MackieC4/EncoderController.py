@@ -85,8 +85,8 @@ class ButtonController(object):
         self.__split_led_cycle_index = 0
 
         # these two assignments just declare the two dunder vars
-        self.__last_assignment_led_on = assignment_mode_to_button_id[last_assignment_mode]
-        self.__current_assignment_led_on = assignment_mode_to_button_id[init_assignment_mode]
+        self.__last_assignment_led_on = assignment_mode_to_button_id[init_assignment_mode]
+        self.__current_assignment_led_on = assignment_mode_to_button_id[last_assignment_mode]
         # this update uses "button press" semantics
         self._update_assignment_button_state(assignment_mode_to_button_id[init_assignment_mode]) # init is now current (led is ON) and last remains last (led is OFF)
 
