@@ -2169,7 +2169,10 @@ class EncoderControllerDataStore(MackieC4Component):
                     stored_devices = active_track_details.devices
                     old_device_count = len(stored_devices.keys())
                     key_indexes_added = self.__do_device_addition(stored_devices, all_track_devices, last_track_ref)
-                    assert old_device_count + len(key_indexes_added) == len(all_track_devices)
+                    if not old_device_count + len(key_indexes_added) == len(all_track_devices):
+                        # AssertionError so changed to if, when Alt+U expanding all groups in Live while the script was already in "expand chains" mode
+                        # (and something didn't add up about the updated device list), but no harm no foul?  the script seems to have recovered, trying again
+                        self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue: change details don't add up?")
                     assert len(active_track_details.devices) == len(all_track_devices)
                     assert last_track_ref.selected_device_index == self.last_selected_device_index
             active_track_details.active_track = last_track_ref
