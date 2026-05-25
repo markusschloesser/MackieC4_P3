@@ -114,7 +114,9 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
     encoder_7_index = 6
     encoder_8_index = 7
 
-    nnn = "---" if t_d_idx is None else f"{t_d_idx:3d}"  # "  9", " 99", or "999"
+    # max (track) devices is 1024 because max device banks is 128 and 128 * 8 = 1024 (so the displayed device id number could have 4 digits)
+    # max (device) parameters is 1456 because max parameter banks is 64 and 64 * 24 = 1456 (but the script doesn't display a parameter's id number anywhere)
+    nnnn = "----" if t_d_idx is None else f"{t_d_idx:4d}"  # "  9", " 99", " 999", or "9999"
     if is_locked_to_device and liveobj_valid(chosen_plugin):
 
         #                  1------
@@ -126,11 +128,11 @@ def do_display_update(t_d_idx, selected_track, chosen_plugin, is_locked_to_devic
         #                                                            7------
         #                                                                   8------
         #                  1------2------3------4------5------6------7------8------   == 56 chars (8 * 7) upper
-        upper_string1 += f"------ Track --- LOCKED to Device {nnn} --"  # upper length == 42 chars
+        upper_string1 += f"------ Track --- LOCKED to Device {nnnn} -"  # upper length == 42 chars
     elif liveobj_valid(chosen_plugin):
-        upper_string1 += f"------ Track ------- ----- Device {nnn} --"
+        upper_string1 += f"------ Track ------- ----- Device {nnnn} -"
     else:  # not locked or valid
-        upper_string1 += f"------ Track -------- --No-Device-{nnn}---"
+        upper_string1 += f"------ Track -------- --No-Device-{nnnn}--"
     # assert len(upper_string1) == 42 chars
 
     if liveobj_valid(selected_track):
