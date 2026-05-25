@@ -196,19 +196,36 @@ def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, d
         vpot_param = (None, VPOT_DISPLAY_SINGLE_DOT)
 
         if s_index in row_00_encoders:
+
             if s_index == encoder_07_index:
                 if current_device_bank_track > 0:
-                    vpot_display_text.set_text(f"<< {current_device_bank_track + 1:02d}", 'Device')
+                    if current_device_bank_track < 99:
+                        lwr_txt = f"<< {current_device_bank_track + 1:02d}"
+                    else:
+                        lwr_txt = f"<<{current_device_bank_track + 1:03d}"
+                    vpot_display_text.set_text(lwr_txt, 'Device')
                     s.show_full_enlighted_poti()
                 else:
-                    vpot_display_text.set_text(f"   {current_device_bank_track + 1:02d}", 'Device')
+                    if current_device_bank_track < 99:
+                        lwr_txt = f"   {current_device_bank_track + 1:02d}"
+                    else:
+                        lwr_txt = f"  {current_device_bank_track + 1:03d}"
+                    vpot_display_text.set_text(lwr_txt, 'Device')
                     s.unlight_vpot_leds()
             elif s_index == encoder_08_index:
                 if current_device_bank_track < nbr_of_available_device_pages - 1:
-                    vpot_display_text.set_text(f"{nbr_of_available_device_pages :02d} >>", ' Bank ')
+                    if nbr_of_available_device_pages > 99:
+                        lwr_txt = f"{nbr_of_available_device_pages :03d}>>"
+                    else:
+                        lwr_txt = f"{nbr_of_available_device_pages :02d} >>"
+                    vpot_display_text.set_text(lwr_txt, ' Bank ')
                     s.show_full_enlighted_poti()
-                else:
-                    vpot_display_text.set_text(f"{nbr_of_available_device_pages :02d}   ", ' Bank ')
+                else: # current_device_bank_track == nbr_of_available_device_pages - 1  == last bank index
+                    if nbr_of_available_device_pages > 99:
+                        lwr_txt = f"{nbr_of_available_device_pages :03d}  "
+                    else:
+                        lwr_txt = f"{nbr_of_available_device_pages :02d}   "
+                    vpot_display_text.set_text(lwr_txt, ' Bank ')
                     s.unlight_vpot_leds()
             else:
                 s.unlight_vpot_leds()
@@ -336,7 +353,7 @@ def reassign_encoder_parameters(selected_track, extended_device_list, log_msg, d
 
 def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_device, display_parameters,
                       btn_ctlr, scrolling_display_text, xfade, subordinate_track_is_selected, encoders, show_device_bank_pair, lcd1_device_chain_flags,
-                      is_expanding_chains):
+                      is_expanding_chains, log_msg):
     log_id = "mode_utils_tcs.do_display_update: "
     upper_string1 = ''
     lower_string1 = ''
@@ -479,7 +496,15 @@ def do_display_update(app_view, selected_track, chosen_plugin, is_locked_to_devi
     except IndexError:
         l_7raw_text = "<< xx"
         l_8raw_text = "xx >>"
-    assert len(l_7raw_text) == 5 and len(l_8raw_text) == 5
+    if not (len(l_7raw_text) == 5 or len(l_8raw_text) == 5):
+        # AssertionError upon adding a "drum kit" instrument - the 24th kit in a Drum rack track
+        log_msg(logging.ERROR, f"{log_id}assumtion issue:  e7 raw {l_7raw_text} or e8 raw {l_8raw_text} text not 5 chars?")
+        if not len(l_7raw_text) == 5:
+            l_7raw_text = "<< zz"
+        if not len(l_8raw_text) == 5:
+            l_8raw_text = "zz >>"
+    # else:
+    #     assert len(l_7raw_text) == 5 and len(l_8raw_text) == 5
 
     upper_string1 += ' Device Bank-'
     # assert len(upper_string1) == 42 + len(' Device Bank-') == 42 + 13 == 55
