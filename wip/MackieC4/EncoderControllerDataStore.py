@@ -41,7 +41,7 @@ class ActiveTrack:
             """when selected device changes. This value can differ from the device bank index currently "on display". You can 'browse' device banks without changing """ \
             """selected devices. """
         else:
-            self._device_bank_index_of_selected_device = int(math.floor(selected_device_index % self.required_device_banks))
+            self._device_bank_index_of_selected_device = int(selected_device_index / SETUP_DB_DEVICE_BANK_SIZE)
 
     def new_copy(self, new_song_index, new_type_index):
         return ActiveTrack(self.track, self.type, new_song_index, new_type_index, self.device_count, self.selected_device_index)
@@ -107,24 +107,33 @@ class ActiveTrack:
         return self._selected_device_index
     @property
     def selected_devices_bank_index(self):
-        """ the raw device index value % SETUP_DB_DEVICE_BANK_SIZE (0 - 7 by default) or None if no devices """
+        """selected_device_index % SETUP_DB_DEVICE_BANK_SIZE (0 - 7 by default) or None if no devices or no selected index"""
         return self._selected_devices_bank_index
     @property
     def device_bank_index_of_selected_device(self):
-        """ the raw device index value % self.device_bank_count (0 unless a track has more than 8 devices, 10+ if a track has more than 80 devices) or None if no devices """
+        """int(selected_device_index / SETUP_DB_DEVICE_BANK_SIZE) int(7/8) = 0, int(15/8) = 1, etc or None if no devices or no selected index"""
         return self._device_bank_index_of_selected_device
 
     @selected_device_index.setter
     def selected_device_index(self, selected_device_index):
         self._selected_device_index = selected_device_index
-        self._selected_devices_bank_index = None if selected_device_index is None else selected_device_index % SETUP_DB_DEVICE_BANK_SIZE
         if selected_device_index is None or self.required_device_banks < 1:
+            self._selected_devices_bank_index = None
             self._device_bank_index_of_selected_device = None
         else:
-            self._device_bank_index_of_selected_device = selected_device_index % self.required_device_banks
+            assert selected_device_index is not None and self.required_device_banks > 0
+            # 1 device requires 1 (partial) bank of 8 devices
+            # 42 devices require 6 banks (5 full + 1 partial) of 8 devices
+            if selected_device_index < self.device_count:
+                bank_index = int(selected_device_index / SETUP_DB_DEVICE_BANK_SIZE)  # 7 / 8 = 0; 15 / 8 = 1; 23 / 8 = 2
+                index_within_bank = selected_device_index % SETUP_DB_DEVICE_BANK_SIZE  # 0 - 7
+                self._selected_devices_bank_index = index_within_bank
+                self._device_bank_index_of_selected_device = bank_index
+
     
     @property
     def track_device_bank_view_index(self):
+        """index of the track's device bank displayed on the C4, could be different from the device bank of the track's selected device"""
         return self._track_view_device_bank_index
     @track_device_bank_view_index.setter
     def track_device_bank_view_index(self, next_bank_index):
