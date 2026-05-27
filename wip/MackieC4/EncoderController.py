@@ -1111,6 +1111,7 @@ class EncoderController(MackieC4Component, Component):
                             else:
                                 msg = f"{log_id}pending device change to {name} ignored in favor of change to {next_device.name}?"
                                 self.main_script().log_message(logging.ERROR, msg)
+                    self._adjust_bank_view()
                 else:
                     self.main_script().log_message(logging.DEBUG, f"{msg_prefix}but device state is already actively changing")
             else:
@@ -1124,6 +1125,24 @@ class EncoderController(MackieC4Component, Component):
                     self.__ds.next_selected_device = None
 
                 self.__pending_device_change = False
+
+    def _adjust_bank_view(self):
+        log_id = "EC._adjust_bank_view: "
+        if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
+            if not self.btn_ctlr.only_shift_is_pressed:
+                active_track_details = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
+                active_track_ref = active_track_details.active_track
+                bk_idx = active_track_ref.track_device_bank_view_index
+                dv_bk_idx = active_track_ref.device_bank_index_of_selected_device
+                d_idx = active_track_details.selected_device_index
+                msg = f"{log_id}Track(bank view id {bk_idx} sel dev id {d_idx} bank id of sel dev {dv_bk_idx})"
+                self.main_script().log_message(self.log_levels["TRACE"], msg)
+                lst_bk_id = self.__ds.last_selected_track_device_bank_view_index
+                self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}current DataStore(bank view id {lst_bk_id})")
+                msg = f"{log_id}reassigning track's stored bank in view to bank of selected device {dv_bk_idx} replacing {lst_bk_id}"
+                self.main_script().log_message(logging.DEBUG, msg)
+                self.__ds.last_selected_track_device_bank_view_index = active_track_ref.device_bank_index_of_selected_device
+                active_track_ref.track_device_bank_view_index = active_track_ref.device_bank_index_of_selected_device
 
     # a Group track expanded and the selected track index is changing (Group expanded 'left of' selected track of this track type)
     def tracks_added(self, track_index, tracks_of_type, callback_track_type_of_selected_index):
@@ -1522,6 +1541,7 @@ class EncoderController(MackieC4Component, Component):
         self.btn_ctlr.handle_assignment_button_press(switch_id)
         self.update_system_switch_leds()
         self.update_assignment_mode_leds()
+        self._adjust_bank_view()
         self.__reassign_encoder_parameters()
         self.request_rebuild_midi_map()
         if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
