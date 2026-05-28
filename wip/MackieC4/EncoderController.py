@@ -1469,7 +1469,8 @@ class EncoderController(MackieC4Component, Component):
             allow_toggle = True if not self.is_locked_to_device or locked_devices_track_is_selected else False
             if allow_toggle:
                 atd = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
-                bank_of_selected_device_is_the_device_bank_on_display = atd.device_bank_index_of_selected_device == atd.active_track.track_device_bank_view_index
+                a_t = atd.active_track
+                bank_of_selected_device_is_the_device_bank_on_display = a_t.device_bank_index_of_selected_device == a_t.track_device_bank_view_index
                 # if script is locked to a device, script should probably only allow toggling the locked device ON/OFF, but that whole bank is on display
                 # locked or not, only process the devices in the bank on display
                 if bank_of_selected_device_is_the_device_bank_on_display or not self.is_locked_to_device:
