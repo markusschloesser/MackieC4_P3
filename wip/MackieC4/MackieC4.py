@@ -1133,32 +1133,33 @@ class MackieC4(MackieC4ListenerMixin, object):
     #     # but get_device_list() currently only returns "can_have_chains" devices [dev0, dev1, dev2, dev3, dev4, dev5, dev6, dev7]
     def get_device_list(self, container, expand_chains=False, report=True, full_depth=True):
         """Add each device in order. If device is a rack or rack component (InstrumentGroupDevice, AudioEffectGroupDevice, DrumGroupDevice, etc.), and expand_chains """ \
-        """is True, process each device chain recursively.  If full_depth is True, recursively expand every chain encountered. If full_depth is False, """ \
-        """only expand one chain deep, and no further (unimplemented). report means log the list returned."""
+        """is True, process each device chain recursively.  report means log the list returned. """ \
+        """ (unimplemented) when full_depth is False, only expand one chain deep, and no further."""
         log_id = "C4.get_device_list: "
         device_list = []
         for device in container:
             if liveobj_valid(device):
-                # device_list.append(device)
-                if hasattr(device, "can_have_chains"):
-                    # can't put "chain marker" devices like 'DrumChain' into the EncoderControllerDataStore because (on line 313, in rebuild_device_map())
-                    # ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
-                    # throws AttributeError 'DrumChain' object has no attribute 'parameters' (doesn't have 'chains' or 'can_have_chains' attributes either, what else?)
-                    # need to solve that architectural (device storage) issue, or leave "chain marker" devices out of expanded device lists.
+
+                if self.is_device_device(device):
+                    # This is NOT a "xxxGroup" device (Instrument, Drum, Audio Effect, etc...)
+                    # DrumGroup, RackGroup, etc objects don't have the can_have_chains attribute
                     device_list.append(device)
 
-                    # DrumGroup, RackGroup, etc objects don't have the can_have_chains attribute
-                    # any chain expansion related recursion STOPS if/when not hasattr(device, "can_have_chains") or not device.can_have_chains
-                    descend_the_chain = expand_chains and hasattr(device, "can_have_chains") and device.can_have_chains
+                    descend_the_chain = expand_chains and device.can_have_chains
                     if descend_the_chain:
+                        # any chain expansion related recursion STOPS if/when not hasattr(device, "can_have_chains") or not device.can_have_chains
                         for cd in self._get_devices_from_chains(device.chains, device.return_chains, expand_chains=expand_chains, report=report, full_depth=full_depth):
-                            if hasattr(cd, "can_have_chains"):
+                            if self.is_device_device(device):
+                                # NOT appending any recursively found DrumGroup, RackGroup, etc objects that don't have the can_have_chains attribute
                                 device_list.append(cd)
-                else: # a Chain of some kind
+                else:
+                    # a Chain device of some kind that doesn't have the can_have_chains attribute
+                    # (Devices can contain inner Chains or Devices; but Chains can only contain inner Devices)
+                    # Devices have a 'chains' List attribute, Chains have a 'devices' List attribute
                     inner_chained_devices = []
                     # this is a 'DrumChain' object, for example, the object has no attributes 'can_have_chains', 'chains', or 'parameters'
-                    # so it can't be an actual Device, but it might contain devices?
-                    if hasattr(device, "devices"): # https://docs.cycling74.com/apiref/lom/chain/   live_set tracks N devices M chains L devices K chains P ...
+                    # so it can't be an actual Device, but it might contain devices.
+                    if self.is_chain_device(device): # https://docs.cycling74.com/apiref/lom/chain/   live_set tracks N devices M chains L devices K chains P ...
                         self.log_message(self.script_log_levels["TRACE"], f"{log_id}{device.name} device can't have chains but has devices")
                         inner_chained_devices = [device.devices[i] for i in range(len(device.devices)) if liveobj_valid(device.devices[i])]
                     else:
@@ -1169,12 +1170,14 @@ class MackieC4(MackieC4ListenerMixin, object):
                             self.log_message(self.script_log_levels["TRACE"], msg)
 
                     for icd in inner_chained_devices:
-                        if hasattr(icd, "can_have_chains"):
+                        if self.is_device_device(icd):
+                            # NOT appending any recursively found DrumGroup, RackGroup, etc objects that don't have the can_have_chains attribute
                             device_list.append(icd)
-                        descend_the_chain = expand_chains and hasattr(icd, "can_have_chains") and icd.can_have_chains
+                        descend_the_chain = expand_chains and self.is_device_device(icd) and icd.can_have_chains
                         if descend_the_chain:
                             for cd in self._get_devices_from_chains(icd.chains, icd.return_chains, expand_chains=expand_chains, report=report, full_depth=full_depth):
-                                if hasattr(icd, "can_have_chains"):
+                                if self.is_device_device(cd):
+                                    # NOT appending any recursively found DrumGroup, RackGroup, etc objects that don't have the can_have_chains attribute
                                     device_list.append(cd)
 
 
@@ -1184,6 +1187,16 @@ class MackieC4(MackieC4ListenerMixin, object):
                 cls_nm = d.name + "-Chain" if not hasattr(d, "class_name") else d.class_name
                 self.log_message(self.script_log_levels["TRACE"], f"{log_id}<{i}> - {d.name} {cls_nm}")
         return device_list
+
+    @staticmethod
+    def is_device_device(d):
+        """True if hasattr(d, "can_have_chains"), False otherwise.  True for Devices, False for Tracks and Chains"""
+        return hasattr(d, "can_have_chains")
+
+    @staticmethod
+    def is_chain_device(d):
+        """True if hasattr(d, "devices"), False otherwise.  True for Tracks and Chains, False for Devices"""
+        return hasattr(d, "devices")
 
     def _get_devices_from_chains(self, chain, return_chain, expand_chains=False, report=True, full_depth=True):
 
