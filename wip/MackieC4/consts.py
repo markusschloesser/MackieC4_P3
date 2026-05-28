@@ -319,6 +319,10 @@ C4SID_TRACK_RIGHT = 0x14  # 20 G# 0
 # buttons around the 'solid black' ellipse on the C4 graphics
 track_nav_switch_ids = range(C4SID_TRACK_LEFT, C4SID_TRACK_RIGHT + 1)
 
+modifier_btns = (C4SID_SHIFT, C4SID_OPTION, C4SID_CONTROL, C4SID_ALT)
+parameter_btns = (C4SID_BANK_LEFT, C4SID_BANK_RIGHT, C4SID_SINGLE_LEFT, C4SID_SINGLE_RIGHT)
+session_btns = (C4SID_SLOT_UP, C4SID_SLOT_DOWN, C4SID_TRACK_LEFT, C4SID_TRACK_RIGHT)
+
 # Note Numbers 21 through 31 (0x15 - 0x1F) don't actually represent C4 buttons so they can represent signals
 C4SID_MAX_TRANSPORT_ID = 0x15  # Already used internally by the Max sequencer patch (toggles external/internal sequencer transport)
 C4SID_MAX_BYPASS_ID = 0x16  # signal toggles Max sequencer patch processing ON/OFF

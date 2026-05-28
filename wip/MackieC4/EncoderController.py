@@ -472,6 +472,10 @@ class EncoderController(MackieC4Component, Component):
 
         self.__parameter_inc_dec_flag = False
         self.__parameter_inc_dec_args = None
+        self.button_is_held_flag = False
+        self.button_is_held_args = None
+        self.button_is_held_delay_threshold = 10
+        self.button_is_held_delay_count = 0
         self.btn_ctlr = ButtonController(last_assignment_mode=C4M_FUNCTION, init_assignment_mode=C4M_CHANNEL_STRIP)
         self.btn_ctlr.handle_function_button_press(C4SID_SPLIT_ERASE) # LCD text scrolling ON by default
         # suspect the reason for 'own_encoders' too is because, at runtime, while this self.__init__() is running; the main_script input,
@@ -1549,26 +1553,27 @@ class EncoderController(MackieC4Component, Component):
             # need to wipe USER mode LCD screen displays when we leave USER mode, but not too soon, wait 20 ms
             self.one_delayed_display_update(.020)
 
-    def handle_bank_switch_ids(self, switch_id):
+    def handle_bank_switch_ids(self, switch_id, is_note_on=True):
         """ Parameter Group Buttons: Bank Left, Bank Right, Single Left, Single Right are only mapped to behavior in the two 'track modes', channel-strip and devices """
         # no wrap around: stop moving left at track 0, stop moving right at master track
         log_id = "EC.handle_bank_switch_ids: "
         self.btn_ctlr.handle_parameter_button_press(switch_id)
         update_self = False
-        if switch_id == C4SID_BANK_LEFT:
-            bank_left_index = 6
-            if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
-                update_self = self.handle_track_device_bank_view_update(bank_left_index)
-            elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
-                update_self = self.handle_selected_device_parameter_bank_view_update(bank_left_index)
-        elif switch_id == C4SID_BANK_RIGHT:
-            bank_right_index = 7
-            if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
-                update_self = self.handle_track_device_bank_view_update(bank_right_index)
-            elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
-                update_self = self.handle_selected_device_parameter_bank_view_update(bank_right_index)
-        elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP or self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
-            update_self = self.handle_selected_device_parameter_inc_dec(switch_id)
+        if is_note_on:
+            if switch_id == C4SID_BANK_LEFT:
+                bank_left_index = 6
+                if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
+                    update_self = self.handle_track_device_bank_view_update(bank_left_index)
+                elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
+                    update_self = self.handle_selected_device_parameter_bank_view_update(bank_left_index, is_param_btn=True)
+            elif switch_id == C4SID_BANK_RIGHT:
+                bank_right_index = 7
+                if self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP:
+                    update_self = self.handle_track_device_bank_view_update(bank_right_index)
+                elif self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
+                    update_self = self.handle_selected_device_parameter_bank_view_update(bank_right_index, is_param_btn=True)
+            elif self.btn_ctlr.current_active_script_mode == C4M_CHANNEL_STRIP or self.btn_ctlr.current_active_script_mode == C4M_PLUGINS:
+                update_self = self.handle_selected_device_parameter_inc_dec(switch_id)
 
         if update_self:
             self.__reassign_encoder_parameters()
@@ -1576,73 +1581,80 @@ class EncoderController(MackieC4Component, Component):
             if self.btn_ctlr.nbr_split_leds_on > 0:  # when no split leds are on, only do timer based display updates
                 self.one_display_update()
 
-    def handle_slot_nav_switch_ids(self, switch_id):
+    def handle_slot_nav_switch_ids(self, switch_id, is_note_on=True):
         """ "slot navigation" (arrow up 🔼/down 🔽) switches between Devices in all modes except User """
         log_id = "EC.handle_slot_nav_switch_ids: "
         if self.btn_ctlr.current_active_script_mode != C4M_USER:  # button_id_to_assignment_mode[C4SID_MARKER]:
             self.btn_ctlr.handle_session_button_press(switch_id)
-            trk_device_current_index = self.__ds.last_selected_device_index if self.__ds.last_selected_device_index is not None else 0
-            max_trk_device_index = self.__ds.selected_track_nbr_stored_devices - 1 if self.__ds.selected_track_nbr_stored_devices > 1 else 0
-            update_self = False
-            trk_device_adjusted_index = 0
-            if switch_id == C4SID_SLOT_DOWN:
-                if trk_device_current_index > 0:
-                    trk_device_adjusted_index = trk_device_current_index - 1
-                    update_self = True
-            elif switch_id == C4SID_SLOT_UP:
-                if trk_device_current_index < max_trk_device_index:
-                    trk_device_adjusted_index = trk_device_current_index + 1
-                    update_self = True
+            if is_note_on:
+                trk_device_current_index = self.__ds.last_selected_device_index if self.__ds.last_selected_device_index is not None else 0
+                max_trk_device_index = self.__ds.selected_track_nbr_stored_devices - 1 if self.__ds.selected_track_nbr_stored_devices > 1 else 0
+                update_self = False
+                trk_device_adjusted_index = 0
+                if switch_id == C4SID_SLOT_DOWN:
+                    if trk_device_current_index > 0:
+                        trk_device_adjusted_index = trk_device_current_index - 1
+                        update_self = True
+                elif switch_id == C4SID_SLOT_UP:
+                    if trk_device_current_index < max_trk_device_index:
+                        trk_device_adjusted_index = trk_device_current_index + 1
+                        update_self = True
 
-            if not self.is_locked_to_device and update_self:
-                song_device = self.song().view.selected_track.view.selected_device
-                stored_current_device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
-                self.__ds.last_selected_device_index = trk_device_adjusted_index
-                # if the stored selected device remains the device we think it is, get the next device reference to select in Live from local storage (if exists)...
-                # else get the next device reference to select in Live from Live using self.get_device_list()
-                msg_pfx = f"{log_id} getting next device to select from "
-                valid_stored_ref_match = liveobj_valid(stored_current_device_ref) and song_device == stored_current_device_ref.device
-                if valid_stored_ref_match:
-                    self.main_script().log_message(self.log_levels["TRACE"], msg_pfx + f"local storage at index {trk_device_adjusted_index}")
-                    stored_next_device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
-                    if stored_next_device_ref is not None:
-                        current_selected_device = stored_next_device_ref.device
-                        if not liveobj_valid(current_selected_device):
-                            self.__ds.last_selected_device_index = None
-                    else: # else condition should only be necessary here where update_self == True if stored track device data is stale,
-                          # so recovery (from stale stored data) might not be possible
-                        if valid_stored_ref_match:
-                            current_selected_device = stored_current_device_ref.device
-                        else:
-                            active_track_details = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
-                            if active_track_details.device_count > 0:
-                                stored_next_device_ref = active_track_details.devices[0]
-                                current_selected_device = stored_next_device_ref.device
-                                if liveobj_valid(current_selected_device):
-                                    self.__ds.last_selected_device_index = 0
-                                else:
-                                    self.__ds.last_selected_device_index = None
-                            else:
-                                current_selected_device = None
+                if not self.is_locked_to_device and update_self:
+                    song_device = self.song().view.selected_track.view.selected_device
+                    stored_current_device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
+                    self.__ds.last_selected_device_index = trk_device_adjusted_index
+                    # if the stored selected device remains the device we think it is, get the next device reference to select in Live from local storage (if exists)...
+                    # else get the next device reference to select in Live from Live using self.get_device_list()
+                    msg_pfx = f"{log_id} getting next device to select from "
+                    valid_stored_ref_match = liveobj_valid(stored_current_device_ref) and song_device == stored_current_device_ref.device
+                    if valid_stored_ref_match:
+                        self.main_script().log_message(self.log_levels["TRACE"], msg_pfx + f"local storage at index {trk_device_adjusted_index}")
+                        stored_next_device_ref = self.__ds.data.get_device(self.__ds.last_selected_track_index, self.__ds.last_selected_device_index)
+                        if stored_next_device_ref is not None:
+                            current_selected_device = stored_next_device_ref.device
+                            if not liveobj_valid(current_selected_device):
                                 self.__ds.last_selected_device_index = None
-                else:
-                    self.main_script().log_message(self.log_levels["TRACE"], msg_pfx + f"Live at index {trk_device_adjusted_index}")
-                    self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
-                    extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
-                    if len(extended_device_list) > trk_device_adjusted_index:
-                        current_selected_device = extended_device_list[trk_device_adjusted_index]
-                    # else conditions should only be necessary here where update_self == True if stored track and device index data is stale
-                    elif len(extended_device_list) > 0:
-                        current_selected_device = extended_device_list[0]
-                        self.__ds.last_selected_device_index = 0
+                        else: # else condition should only be necessary here where update_self == True if stored track device data is stale,
+                              # so recovery (from stale stored data) might not be possible
+                            if valid_stored_ref_match:
+                                current_selected_device = stored_current_device_ref.device
+                            else:
+                                active_track_details = self.__ds.data.get_active_track_details_at_song_index(self.__ds.last_selected_track_index)
+                                if active_track_details.device_count > 0:
+                                    stored_next_device_ref = active_track_details.devices[0]
+                                    current_selected_device = stored_next_device_ref.device
+                                    if liveobj_valid(current_selected_device):
+                                        self.__ds.last_selected_device_index = 0
+                                    else:
+                                        self.__ds.last_selected_device_index = None
+                                else:
+                                    current_selected_device = None
+                                    self.__ds.last_selected_device_index = None
                     else:
-                        current_selected_device = None
-                        self.__ds.last_selected_device_index = None
+                        self.main_script().log_message(self.log_levels["TRACE"], msg_pfx + f"Live at index {trk_device_adjusted_index}")
+                        self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{'' if self.expand_chains else 'NOT '}expanding chains")
+                        extended_device_list = self.get_device_list(self.selected_track.devices, expand_chains=self.expand_chains)
+                        if len(extended_device_list) > trk_device_adjusted_index:
+                            current_selected_device = extended_device_list[trk_device_adjusted_index]
+                        # else conditions should only be necessary here where update_self == True if stored track and device index data is stale
+                        elif len(extended_device_list) > 0:
+                            current_selected_device = extended_device_list[0]
+                            self.__ds.last_selected_device_index = 0
+                        else:
+                            current_selected_device = None
+                            self.__ds.last_selected_device_index = None
 
-                if liveobj_valid(current_selected_device) and liveobj_changed(current_selected_device, song_device):
-                    self.song().view.select_device(current_selected_device)
-                else:
-                    self.__update_chosen_plugin_device(current_selected_device) # current_selected_device == None
+                    if liveobj_valid(current_selected_device) and liveobj_changed(current_selected_device, song_device):
+                        self.song().view.select_device(current_selected_device)
+                        # don't start "is held" repeats until the 11th time the repeater method is called by the display timer callback
+                        # give the device change time to propagate
+                        self.button_is_held_delay_count = 0
+                        self.button_is_held_delay_threshold = 10
+                        self.button_is_held_args = switch_id
+                        self.button_is_held_flag = True
+                    else:
+                        self.__update_chosen_plugin_device(current_selected_device) # current_selected_device == None
 
     def handle_modifier_switch_ids(self, switch_id, value):
         log_id = "EC.handle_modifier_switch_ids: "
@@ -1922,7 +1934,7 @@ class EncoderController(MackieC4Component, Component):
             raise ValueError(f"Invalid mode name: {mode_name}")
         return upper_string4, lower_string4
 
-    def handle_track_device_bank_view_update(self, control_index):
+    def handle_track_device_bank_view_update(self, control_index, is_param_btn=False):
         log_id = "EC.handle_track_device_bank_view_update: "
         current_device_bank_index = self.__ds.last_selected_track_device_bank_view_index
         # max_device_bank_index = self.__ds.selected_device_bank_count - 1
@@ -1948,9 +1960,15 @@ class EncoderController(MackieC4Component, Component):
         if update_self:
             self.main_script().log_message(logging.DEBUG, f"{log_id} moving bank view to new index {current_device_bank_index}")
             self.__ds.last_selected_track_device_bank_view_index = current_device_bank_index
+            if is_param_btn:
+                # changing track device bank view doesn't require any change listener propagation time
+                self.button_is_held_delay_count = 0
+                self.button_is_held_delay_threshold = 1
+                self.button_is_held_args = control_index
+                self.button_is_held_flag = True
         return update_self
 
-    def handle_selected_device_parameter_bank_view_update(self, control_index):
+    def handle_selected_device_parameter_bank_view_update(self, control_index, is_param_btn=False):
         log_id = "EC.handle_selected_device_parameter_bank_view_update: "
         current_parameter_bank_track = self.__ds.last_selected_device_parameter_bank_view_index
         bank_left_index = 6
@@ -1963,6 +1981,12 @@ class EncoderController(MackieC4Component, Component):
                 # self.main_script().log_message(logging.DEBUG, f"{log_id}self.t_d_p_bank_current[self.t_current]: {self.__eah.last_selected_device_index})
                 update_self = True
                 current_track_device_parameter_bank_nbr_changed = True
+                if is_param_btn:
+                    # changing device parameter bank view doesn't require any change listener propagation time
+                    self.button_is_held_delay_count = 0
+                    self.button_is_held_delay_threshold = 1
+                    self.button_is_held_args = control_index
+                    self.button_is_held_flag = True
         elif control_index == bank_right_index:
             current_track_device_preset_bank = current_parameter_bank_track
             # self.main_script().log_message(logging.DEBUG, f"{log_id}current_track_device_preset_bank: {0}".format(current_track_device_preset_bank))
@@ -1972,6 +1996,12 @@ class EncoderController(MackieC4Component, Component):
                 current_parameter_bank_track += 1
                 update_self = True
                 current_track_device_parameter_bank_nbr_changed = True
+                if is_param_btn:
+                    # changing device parameter bank view doesn't require any change listener propagation time
+                    self.button_is_held_delay_count = 0
+                    self.button_is_held_delay_threshold = 1
+                    self.button_is_held_args = control_index
+                    self.button_is_held_flag = True
         if update_self and current_track_device_parameter_bank_nbr_changed:
             self.__ds.last_selected_device_parameter_bank_view_index = current_parameter_bank_track
             # msg = f"{log_id}device parameter-bank in view {current_parameter_bank_track} after pressed-vpot event handling, "
@@ -2354,6 +2384,26 @@ class EncoderController(MackieC4Component, Component):
             self.__parameter_inc_dec_args = None
             self.__parameter_inc_dec_flag = False
 
+    @script_utils.CoolDown(700)
+    def repeating_button_presses(self, btn_id):
+        # as above except "just another button click" and delayed
+        if self.button_is_held_delay_count > self.button_is_held_delay_threshold:
+            if btn_id in parameter_btns:
+                if self.btn_ctlr.get_parameter_btn_pressed_state(btn_id):
+                    self.handle_bank_switch_ids(btn_id)
+            elif btn_id in session_btns:
+                if self.btn_ctlr.get_session_btn_pressed_state(btn_id):
+                    if btn_id in [C4SID_TRACK_LEFT, C4SID_TRACK_RIGHT]:
+                        self.main_script().track_inc_dec(btn_id)
+                    else:
+                        self.handle_slot_nav_switch_ids(btn_id)
+            else:
+                self.button_is_held_args = None
+                self.button_is_held_flag = False
+                self.button_is_held_delay_count = 0
+        else:
+            self.button_is_held_delay_count += 1
+
     def on_update_display_timer(self):
         """Called by Live every 100 ms. This is the original "real time" device-display update callback method"""
         if self.btn_ctlr.nbr_split_leds_on < 3: # when 3 split leds are ON, don't do any timer based display updates
@@ -2365,6 +2415,12 @@ class EncoderController(MackieC4Component, Component):
         if self.__parameter_inc_dec_flag and self.__parameter_inc_dec_args is not None:
             try:
                 self.repeating_param_inc_dec_moves(**self.__parameter_inc_dec_args)
+            except script_utils.TooSoon:
+                pass
+            
+        if self.button_is_held_flag and self.button_is_held_args is not None:
+            try:
+                self.repeating_button_presses(self.button_is_held_args)
             except script_utils.TooSoon:
                 pass
 

@@ -422,23 +422,27 @@ class MackieC4(MackieC4ListenerMixin, object):
                         self.__encoder_controller.handle_vpot_rotation(cc_no, cc_value)
 
                 elif is_note_off_msg:  # an actual Note Off event: is_note_off_msg = midi_bytes[0] & 0xF0 == NOTE_OFF_STATUS
+                    # The C4 always sends (144, x, 0) for Note OFF, and Live always converts those messages to (128, x, 0),
+                    # actual Note OFF message input entering receive_midi() for processing
                     self.log_message(method_log_detail_level, f"{log_id}note off event {midi_bytes}, only handling for modifier or single buttons")
                     # this pass is expected, the C4 sends Note ON with velocity 0 for Note OFF.
                     # Live generates Note Offs the script can usually ignore here (not USER mode) because USER Mode has already processed above as needed
                     # self.log_message(logging.DEBUG, f"{log_id}when NOT in USER mode local MARKER flag is always released")
                     self.set_marker_is_pressed(False)
-                    if midi_bytes[1] in [C4SID_SHIFT, C4SID_OPTION, C4SID_CONTROL, C4SID_ALT]:  # Shift, Option, Control, Alt
-                        # since modifier button 'is pressed' behavior depends on the 'release' event, also need to handle releases
-                        # The C4 always sends (144, x, 0) for Note OFF, and Live always converts those messages to (128, x, 0),
-                        # actual Note OFF message input entering receive_midi() for processing
+                    # since the 'is pressed' behavior of all buttons without an LED depends on the 'release' event, also need to handle releases
+                    if midi_bytes[1] in modifier_btns:  # Shift, Option, Control, Alt
                         self.log_message(method_log_detail_level, f"{log_id}handling note off event for modifier button")
-                        self.__encoder_controller.handle_modifier_switch_ids(midi_bytes[1], midi_bytes[2])
-                    elif midi_bytes[1] in [C4SID_SINGLE_LEFT, C4SID_SINGLE_RIGHT]:
-                        # since the parameter group single buttons map to behavior that depends on the is_pressed status of these buttons
-                        # this "note off press" counts as a release 
-                        # don't count note offs for C4SID_BANK_LEFT, C4SID_BANK_RIGHT
-                        self.log_message(method_log_detail_level, f"{log_id}handling note off event for parameter - Single button")
-                        self.__encoder_controller.handle_bank_switch_ids(midi_bytes[1])
+                        self.__encoder_controller.handle_modifier_switch_ids(midi_bytes[1], value=midi_bytes[2])
+                    elif midi_bytes[1] in parameter_btns: # Bank Left, Bank Right, Single Left, Single Right
+                        self.log_message(method_log_detail_level, f"{log_id}handling note off event for parameter button")
+                        self.__encoder_controller.handle_bank_switch_ids(midi_bytes[1], is_note_on=False)
+                    elif midi_bytes[1] in session_btns: # Slot Up, Slot Down, Track left, Track Right
+                        self.log_message(method_log_detail_level, f"{log_id}handling note off event for session button")
+                        if midi_bytes[1] in [C4SID_TRACK_LEFT, C4SID_TRACK_RIGHT]:
+                            self.track_inc_dec(midi_bytes[1], is_note_on=False)
+                        else:
+                            self.__encoder_controller.handle_slot_nav_switch_ids(midi_bytes[1], is_note_on=False)
+
                 elif midi_bytes[0] == 0xF0:
                     self.handle_sysex_msg(midi_bytes)
                 else:
@@ -1211,36 +1215,44 @@ class MackieC4(MackieC4ListenerMixin, object):
                 devices_to_return.append(rd)
         return devices_to_return
 
-    def track_inc_dec(self, note):
+    def track_inc_dec(self, note, is_note_on=True):
         log_id = "C4.track_inc_dec: "
-        self.processing_track_inc_dec_event = True
-        old_selected_track = self.song().view.selected_track
-        tracks = self.song().visible_tracks + self.song().return_tracks
+        self.__encoder_controller.btn_ctlr.handle_session_button_press(note) # counts both note ON and note OFF (presses and releases)
+        if is_note_on: # only press events might trigger track change actions
+            self.processing_track_inc_dec_event = True
+            old_selected_track = self.song().view.selected_track
+            tracks = self.song().visible_tracks + self.song().return_tracks
 
-        if old_selected_track == self.song().master_track:
-            if note == C4SID_TRACK_LEFT:
-                new_selected_index = len(tracks) - 1
-                self.song().view.selected_track = tracks[new_selected_index]
-            else: # can't move right of master track
-                new_selected_index = len(tracks) # still master
-        else:
-            old_selected_index = tracks.index(old_selected_track)
-            self.log_message(logging.DEBUG,f"{log_id}before processing, song track {old_selected_track.name} at index {old_selected_index} is selected")
-            new_selected_index = old_selected_index
-            for index, track in enumerate(tracks):
-                if track == old_selected_track:
-                    if note == C4SID_TRACK_LEFT and index > 0:
-                        new_selected_index = index - 1
-                    elif note == C4SID_TRACK_RIGHT and index < len(tracks) - 1:
-                        new_selected_index = index + 1
-                    elif note == C4SID_TRACK_RIGHT and index == len(tracks) - 1:
-                        self.song().view.selected_track = self.song().master_track
-                        return  # Return early since the master track has been selected
+            if old_selected_track == self.song().master_track:
+                if note == C4SID_TRACK_LEFT:
+                    new_selected_index = len(tracks) - 1
+                    self.song().view.selected_track = tracks[new_selected_index]
+                else: # can't move right of master track
+                    new_selected_index = len(tracks) # still master
+            else:
+                old_selected_index = tracks.index(old_selected_track)
+                self.log_message(logging.DEBUG,f"{log_id}before processing, song track {old_selected_track.name} at index {old_selected_index} is selected")
+                new_selected_index = old_selected_index
+                for index, track in enumerate(tracks):
+                    if track == old_selected_track:
+                        if note == C4SID_TRACK_LEFT and index > 0:
+                            new_selected_index = index - 1
+                        elif note == C4SID_TRACK_RIGHT and index < len(tracks) - 1:
+                            new_selected_index = index + 1
+                        elif note == C4SID_TRACK_RIGHT and index == len(tracks) - 1:
+                            self.song().view.selected_track = self.song().master_track
+                            return  # Return early since the master track has been selected and it doesn't matter if the button is held, no more tracks
 
-            if 0 <= new_selected_index < len(tracks):
-                self.song().view.selected_track = tracks[new_selected_index]
+                if 0 <= new_selected_index < len(tracks):
+                    self.song().view.selected_track = tracks[new_selected_index]
+                    # don't start "is held" repeats until the 11th time the repeater method is called by the display timer callback
+                    # give the track change callbacks time to propagate
+                    self.__encoder_controller.button_is_held_delay_count = 0
+                    self.__encoder_controller.button_is_held_delay_threshold = 10
+                    self.__encoder_controller.button_is_held_args = note
+                    self.__encoder_controller.button_is_held_flag = True
 
-        self.log_message(logging.DEBUG,f"{log_id}after processing, song track {self.song().view.selected_track.name} at index {new_selected_index} is selected")
+            self.log_message(logging.DEBUG,f"{log_id}after processing, song track {self.song().view.selected_track.name} at index {new_selected_index} is selected")
 
     def get_is_locked_to_device(self):
         return self.__surface_is_locked
