@@ -206,6 +206,23 @@ def update_or_cycle_parameter_value(parameter, increment_amount, option_is_press
                 new_value = parameter.min
         parameter.value = new_value
 
+
+
+def make_interpolater(Live_value_min, Live_value_max, C4_min, C4_max):
+    # Figure out how 'wide' each range is
+    LiveSpan = Live_value_max - Live_value_min
+    C4_Span = C4_max - C4_min
+
+    # Compute the scale factor between left and right values
+    scaleFactor = float(C4_Span) / float(LiveSpan)
+
+    # create interpolation function using pre-calculated scaleFactor
+    def interp_fn(value):
+        return C4_min + (value - Live_value_min) * scaleFactor
+
+    return interp_fn
+
+
 # unicode of Python2 is equivalent to str in Python3, so you can also write: str(text, 'utf-8') to get ascii text
 # Assuming that text is a bytes object, just use text.decode('utf-8')
 class EncoderDisplaySegment(object):

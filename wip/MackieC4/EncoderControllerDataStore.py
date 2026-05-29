@@ -9,7 +9,7 @@ from ableton.v2.base import liveobj_valid, depends, liveobj_changed
 
 import Live
 
-from .MackieC4Component import *
+# from .MackieC4Component import *
 from .consts import *
 
 import math
@@ -784,7 +784,7 @@ class SongData(object):
     def init_tracks(self, p_tracks, r_tracks, m_track, expand_chains=False):
         rtn = None
         if len(self.device_list_table[track_callback_types[0]]) > 0 or len(self.device_list_table[track_callback_types[1]]) > 0:
-            # already initialized...  clear dicts, raise error, just log and return? (SongData can't reference self.main_script().log_message)
+            # already initialized...  clear dicts, raise error, just log and return? (SongData can't reference self.logger)
             rtn = "ECDS.SD.init_tracks: assumption issue: track tables not already clear?"
 
         rtn_val = None
@@ -1495,22 +1495,25 @@ class SongData(object):
         return local_dict
 
 
-class EncoderControllerDataStore(MackieC4Component):
+class EncoderControllerDataStore(object):
     """
      Keeps track of Song Track and Device content supporting SYSEX "LCD feedback message" generation and other script functions
     """
     __module__ = __name__
 
     def __init__(self, main_script, encoder_controller):
-        MackieC4Component.__init__(self, main_script)
+        # MackieC4Component.__init__(self, main_script)
+        
+        self.main_script = main_script
+        self.logger = main_script.log_message
 
         self.log_levels = main_script.script_log_levels
-        self.data = SongData(logger=self.main_script().log_message, get_device_list=self.get_device_list)
+        self.data = SongData(logger=self.logger, get_device_list=encoder_controller.get_device_list)
         self.data.class_logging = main_script.current_script_log_level < self.log_levels["TRACE"] # or True
 
         self.__my_controlling_encoder = encoder_controller
-        self.__selected_track = self.main_script().song().view.selected_track
-        self.__alt_selected_track = self.main_script().song().view.selected_track
+        self.__selected_track = self.main_script.song().view.selected_track
+        self.__alt_selected_track = self.main_script.song().view.selected_track
         self.__selected_device = self.__selected_track.view.selected_device
         self.__alt_selected_device = self.__selected_track.view.selected_device
         self.__master_track_index = self.data.master_track_index  # not a valid index until build_setup_database() runs
@@ -1675,7 +1678,7 @@ class EncoderControllerDataStore(MackieC4Component):
         device_ref = self.data.get_device(self.last_selected_track_index, self.last_selected_device_index)
         if device_ref is not None:
             msg = f"{log_id}device {device_ref.device_name} occupies {device_ref.required_parameter_banks} banks for {device_ref.parameter_count} parameters"
-            self.main_script().log_message(self.log_levels["TRACE"], msg)
+            self.logger(self.log_levels["TRACE"], msg)
             return device_ref.required_parameter_banks
         else:
             return -1
@@ -1754,24 +1757,24 @@ class EncoderControllerDataStore(MackieC4Component):
         if t is not None:
             if t.device_count != device_count:
                 msg = f"{log_id}assumption issue? updated stored track ref's device_count {t.device_count} isn't already updated? updating to {device_count}"
-                self.main_script().log_message(logging.DEBUG, msg)
+                self.logger(logging.DEBUG, msg)
                 t.device_count = device_count
                 if t.required_device_banks != max_device_banks:
                     msg = f"{log_id}assumption issue: updated track.device_count didn't update track.required_device_banks correctly"
-                    self.main_script().log_message(logging.DEBUG, msg)
+                    self.logger(logging.DEBUG, msg)
         else:
             msg = f"{log_id}assumption issue: stored track ref at song index {track_index} is None?"
-            self.main_script().log_message(logging.DEBUG, msg)
+            self.logger(logging.DEBUG, msg)
 
         if self.last_selected_track_index != track_index:
             msg = f"{log_id}track at song index {track_index} for device count update didn't match last selected track index {self.last_selected_track_index}, updating"
-            self.main_script().log_message(logging.DEBUG, msg)
+            self.logger(logging.DEBUG, msg)
             self.track_changed(track_index)  # Danger?  track_changed() calls update_device_counter() back
 
     def build_setup_database(self, song_ref=None):
         log_id = "ECDS.build_setup_database: "
         if song_ref is None:
-            song_ref = self.song()
+            song_ref = self.main_script.song()
 
         self.data.initializing_database = True
         self.data.clear_all_tracks()
@@ -1779,7 +1782,7 @@ class EncoderControllerDataStore(MackieC4Component):
         # tracks include devices
         error_msg = self.data.init_tracks(song_ref.visible_tracks, song_ref.return_tracks, song_ref.master_track)
         if error_msg is not None:
-            self.main_script().log_message(logging.ERROR, error_msg)
+            self.logger(logging.ERROR, error_msg)
 
         self.data.initializing_database = False
 
@@ -1806,9 +1809,9 @@ class EncoderControllerDataStore(MackieC4Component):
         stored_track_refs_of_type = self.data.get_all_tracks_by_type_key(track_callback_types[callback_track_type])
         if len(stored_track_refs_of_type.keys()) == len(all_track_objs_of_type):
             if stored_track_refs_of_type[next_callback_type_index].active_track.track == track_obj_that_moved:
-                self.main_script().log_message(logging.WARNING, f"{log_id}no move {track_obj_that_moved.name} ref already stored at cb type index {next_callback_type_index}")
+                self.logger(logging.WARNING, f"{log_id}no move {track_obj_that_moved.name} ref already stored at cb type index {next_callback_type_index}")
                 return
-            self.main_script().log_message(logging.INFO, f"{log_id}moving {track_obj_that_moved.name} to new stored cb type index {next_callback_type_index}")
+            self.logger(logging.INFO, f"{log_id}moving {track_obj_that_moved.name} to new stored cb type index {next_callback_type_index}")
             self.data.rekey_track_list_of_callback_type(callback_track_type, next_callback_type_index, all_track_objs_of_type, track_obj_that_moved)
             self.track_changed(next_song_index)
         # else:
@@ -1821,7 +1824,7 @@ class EncoderControllerDataStore(MackieC4Component):
         log_id = "ECDS.unselected_tracks_changed: "
         cb_type = track_callback_types[found_changed_track_callback_type]
         msg = f"{log_id}the count ({callback_type_track_count} of {cb_type} track callback type {found_changed_track_callback_type} "
-        self.main_script().log_message(logging.ERROR, msg + "tracks didn't change, but the tracks_changed() callback fired. Did the track list order change?")
+        self.logger(logging.ERROR, msg + "tracks didn't change, but the tracks_changed() callback fired. Did the track list order change?")
 
     def tracks_added(self, selected_song_track_index_after, tracks_of_type_after, callback_type):
         """automatically adds existing devices on added Live (song) track objects"""
@@ -1836,7 +1839,7 @@ class EncoderControllerDataStore(MackieC4Component):
 
         final_callback_type_track_count = 0  # minimum == no return tracks (always 1 master and 1 visible for 2 total minimum)
         trace_level = self.log_levels["TRACE"]
-        self.main_script().log_message(trace_level, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        self.logger(trace_level, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         if callback_type == 0:
             final_callback_type_track_count = len(tracks_of_type_after)
             self.unselected_tracks_added(callback_type, final_callback_type_track_count)
@@ -1851,7 +1854,7 @@ class EncoderControllerDataStore(MackieC4Component):
         if update_selected_track_index_after:
             self.last_selected_track_index = selected_song_track_index_after
 
-        self.main_script().log_message(trace_level, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        self.logger(trace_level, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         assert final_callback_type_track_count == self.data.total_track_count - 1  # not counting master here
 
 
@@ -1863,32 +1866,32 @@ class EncoderControllerDataStore(MackieC4Component):
         # add that track at that index, rinse and repeat. Imagine unfolding a group track using a mouse while any other track is selected,
         # the "added tracks" will occupy indexes formerly occupied by non-group tracks (of the same callback type) that shifted right to make room (index += 1)
         log_id = "ECDS.unselected_tracks_added: "
-        tracks_of_type = self.main_script().song().visible_tracks
+        tracks_of_type = self.main_script.song().visible_tracks
         rtns_offset = len(tracks_of_type)
         t_type = track_callback_types[found_changed_track_callback_type]
         if found_changed_track_callback_type == 1:
-            tracks_of_type = self.main_script().song().return_tracks
+            tracks_of_type = self.main_script.song().return_tracks
         assert len(tracks_of_type) == callback_type_track_count
         changed_track_type_table = self.data.get_all_tracks_by_type_key(t_type)
         at_index = 0
 
         table_size = len(changed_track_type_table.keys())
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
+        # self.logger(logging.DEBUG, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         while len(changed_track_type_table.keys()) < callback_type_track_count and at_index < len(tracks_of_type):
             track_obj = tracks_of_type[at_index]
             if at_index < len(changed_track_type_table.keys()) and track_obj == changed_track_type_table[at_index].active_track.track:
                 # msg = f"{log_id}{t_type} tracks added, but cb type index {at_index} track_ref matches {track_obj.name}, no add"
-                # self.main_script().log_message(logging.DEBUG, msg)
+                # self.logger(logging.DEBUG, msg)
                 pass
             else:
                 msg = f"{log_id}"
-                if self.main_script().current_script_log_level < logging.DEBUG:
+                if self.main_script.current_script_log_level < logging.DEBUG:
                     msg += f"{t_type} tracks added, and cb type index {at_index} track_ref doesn't equal {track_obj.name}, "
                 if found_changed_track_callback_type == 1:
-                    self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at returns offset track index {rtns_offset + at_index}")
+                    self.logger(logging.DEBUG, msg + f"adding unselected track at returns offset track index {rtns_offset + at_index}")
                     self.track_added(rtns_offset + at_index, track_obj, is_selected=False, found_changed_track_callback_type=1)
                 else:
-                    self.main_script().log_message(logging.DEBUG, msg + f"adding unselected track at plains track index {at_index}")
+                    self.logger(logging.DEBUG, msg + f"adding unselected track at plains track index {at_index}")
                     self.track_added(at_index, track_obj, is_selected=False, found_changed_track_callback_type=0)
             at_index += 1
             table_size = len(self.data.get_all_tracks_by_type_key(t_type))
@@ -1907,7 +1910,7 @@ class EncoderControllerDataStore(MackieC4Component):
         else: # not a "callback type boundary" case
             cb_type = self.data.get_callback_type_for_song_index(song_track_index)
             # msg = f"ECDS.track_added: get_cb_type {cb_type} for input index {song_track_index} and "
-            # self.main_script().log_message(logging.DEBUG, msg + f"input found type {found_changed_track_callback_type}")
+            # self.logger(logging.DEBUG, msg + f"input found type {found_changed_track_callback_type}")
             self.data.add_track(track_obj, cb_type, song_track_index)
 
         if is_selected:
@@ -1931,7 +1934,7 @@ class EncoderControllerDataStore(MackieC4Component):
         final_callback_type_track_count = 0 # minimum == no return tracks (total minimum is 2 == 1 plain + 1 master)
 
         trace_level = self.log_levels["TRACE"]
-        self.main_script().log_message(trace_level, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        self.logger(trace_level, f"{log_id}BEFORE: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         if callback_type == 0:
             nbr_to_remove = self.data.plain_track_count - len(tracks_of_type_after)
             final_callback_type_track_count = self.data.plain_track_count - nbr_to_remove
@@ -1949,54 +1952,54 @@ class EncoderControllerDataStore(MackieC4Component):
         if update_selected_track_index_after:
             self.last_selected_track_index = selected_song_track_index_after
 
-        self.main_script().log_message(trace_level, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
+        self.logger(trace_level, f"{log_id}AFTER: plains {self.data.plain_track_count}, returns {self.data.return_track_count}")
         assert final_callback_type_track_count == self.data.total_track_count - 1 # not counting master here
 
     def unselected_tracks_deleted(self, found_changed_track_callback_type, callback_type_track_count):
         # when deleted tracks "disappear from view" the stored track references at the "deleted indexes" become not liveobj valid
         # when grouped tracks "disappear from view" the stored track references at the "deleted indexes" remain liveobj valid and become not visible
         log_id = "ECDS.unselected_tracks_deleted: "
-        tracks_of_type = self.main_script().song().visible_tracks
+        tracks_of_type = self.main_script.song().visible_tracks
         rtns_offset = len(tracks_of_type)
         t_type_key = track_callback_types[found_changed_track_callback_type]
         trace_level = self.log_levels["TRACE"]
 
         if found_changed_track_callback_type == 1:
-            tracks_of_type = self.main_script().song().return_tracks
+            tracks_of_type = self.main_script.song().return_tracks
         assert len(tracks_of_type) == callback_type_track_count
         changed_track_type_table = self.data.get_all_tracks_by_type_key(t_type_key)
         table_size = len(changed_track_type_table.keys())
         nbr_tracks_removed = table_size - callback_type_track_count
         selected_callback_type_before = self.last_selected_track_callback_type
 
-        self.main_script().log_message(trace_level, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
+        self.logger(trace_level, f"{log_id}BEFORE: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
         shallow_copy = changed_track_type_table.copy()
         type_index_offset = 0
         for type_index in shallow_copy.keys():
             live_track_obj = shallow_copy[type_index].active_track.track
             if not liveobj_valid(live_track_obj) or not live_track_obj.is_visible:
                 cb_type = "returns" if found_changed_track_callback_type == 1 else "plains"
-                self.main_script().log_message(logging.DEBUG, f"{log_id}deleting track ref at {cb_type} track type index {type_index}")
+                self.logger(logging.DEBUG, f"{log_id}deleting track ref at {cb_type} track type index {type_index}")
                 type_index -= type_index_offset # changed_track_type_table is getting smaller and smaller
                 type_index_before_deleted_track = 0 if type_index < 1 else type_index - 1
                 self.data.remove_track_by_callback_type(track_callback_types[found_changed_track_callback_type], type_index_before_deleted_track)
                 type_index_offset += 1
         table_size = len(self.data.get_all_tracks_by_type_key(t_type_key).keys())
-        self.main_script().log_message(trace_level, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
+        self.logger(trace_level, f"{log_id}AFTER: cbtt_count={callback_type_track_count}, db_cbtt_keys={table_size}")
 
         assert len(changed_track_type_table.keys()) == callback_type_track_count == table_size
 
         oopsie = False
         # iterating through the remaining track list "again" is an expensive validation if everything is working as expected
-        if self.main_script().current_script_log_level < logging.DEBUG:
+        if self.main_script.current_script_log_level < logging.DEBUG:
             for t_obj, t_ref in zip_longest(tracks_of_type, changed_track_type_table.values()):
                 if liveobj_changed(t_obj, t_ref.active_track.track):
                     msg = f"{log_id}after deletes, stored reference {t_ref.active_track.track_name} doesn't equal Live object {t_obj.name} at same index"
-                    self.main_script().log_message(logging.WARNING, msg)
+                    self.logger(logging.WARNING, msg)
                     oopsie = True
             if not oopsie:
                 msg = f"{log_id}after deletes, all stored references equal the Live objects at same indexes"
-                self.main_script().log_message(logging.INFO, msg)
+                self.logger(logging.INFO, msg)
 
         next_selected_index = self.last_selected_track_index - nbr_tracks_removed
         if found_changed_track_callback_type == 0 and selected_callback_type_before > 0:
@@ -2004,13 +2007,13 @@ class EncoderControllerDataStore(MackieC4Component):
             # if the last selected index was 7 (last return track) before the two type 0 "unselected tracks" were removed because the group collapsed
             # the stored "last selected callback type index" doesn't change, but the stored "last selected song index" does
             msg = f"{log_id}shifting local stored last selected (song) index from {self.last_selected_track_index} to {next_selected_index}"
-            self.main_script().log_message(logging.DEBUG, msg)
+            self.logger(logging.DEBUG, msg)
             self.last_selected_track_index = next_selected_index
         elif found_changed_track_callback_type == 1 and selected_callback_type_before > 0:
             if selected_callback_type_before == 2:
                 # return track(s) removed from view while master was selected  (can happen by undo/redo while master selected)
                 msg = f"{log_id}shifting local stored (master) last selected (song) index from {self.last_selected_track_index} to {next_selected_index}"
-                self.main_script().log_message(logging.DEBUG, msg)
+                self.logger(logging.DEBUG, msg)
                 self.last_selected_track_index = next_selected_index
             else:  # selected_callback_type_before == 1
                 # if unselected return track left of selected return track was deleted (by undo/redo), decrement selected index
@@ -2020,7 +2023,7 @@ class EncoderControllerDataStore(MackieC4Component):
                 self.last_selected_track_index = track_info[0]
         # else:
         #     msg = f"{log_id}last selected index remains {self.last_selected_track_index} because last selected cb type was {selected_callback_type_before}"
-        #     self.main_script().log_message(logging.DEBUG, msg)
+        #     self.logger(logging.DEBUG, msg)
 
 
     def track_deleted(self, track_index_before_delete_index, is_selected=True):
@@ -2028,17 +2031,17 @@ class EncoderControllerDataStore(MackieC4Component):
         log_id = "ECDS.track_deleted: "
         # if self.last_selected_track_index != track_index:
         #     msg = f"{log_id} deleting track index {track_index} that is not last_selected_index {self.last_selected_track_index}"
-        #     self.main_script().log_message(logging.DEBUG, msg)
+        #     self.logger(logging.DEBUG, msg)
         # track_ref = self.data.get_track(track_index_before_delete_index)
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}removing track_ref {track_ref.track_name} at index {track_index}")
+        # self.logger(logging.DEBUG, f"{log_id}removing track_ref {track_ref.track_name} at index {track_index}")
         self.data.remove_track(0 if track_index_before_delete_index < 0 else track_index_before_delete_index)
         if is_selected:
             self.last_selected_track_index = 0 if track_index_before_delete_index < 1 else track_index_before_delete_index
         else:
             self.last_selected_track_index = 0 if self.last_selected_track_index < 1 else self.last_selected_track_index
-            # self.main_script().log_message(logging.DEBUG, f"{log_id}removed unselected track reference at song index {track_index}")
+            # self.logger(logging.DEBUG, f"{log_id}removed unselected track reference at song index {track_index}")
         # track_ref = self.data.get_track(self.last_selected_track_index)
-        # self.main_script().log_message(logging.DEBUG, f"{log_id}selected track_ref is now {track_ref.track_name} at index {self.last_selected_track_index}")
+        # self.logger(logging.DEBUG, f"{log_id}selected track_ref is now {track_ref.track_name} at index {self.last_selected_track_index}")
 
     def track_device_moved(self, new_device_list_order, device_obj, new_device_index):
         log_id = "ECDS.track_device_moved: "
@@ -2051,31 +2054,31 @@ class EncoderControllerDataStore(MackieC4Component):
                 self.data.track_device_moved(old_device_map, device_obj, new_device_index, self.last_selected_device_index)
                 self.last_selected_device_index = new_device_index
             else:
-                self.main_script().log_message(logging.DEBUG, f"{log_id}track device list lengths don't match? Can't be a device move?")
+                self.logger(logging.DEBUG, f"{log_id}track device list lengths don't match? Can't be a device move?")
         else:
-            self.main_script().log_message(logging.DEBUG, f"{log_id}stored selected device doesn't match input device? Can't be a device move?")
+            self.logger(logging.DEBUG, f"{log_id}stored selected device doesn't match input device? Can't be a device move?")
 
     def device_added_deleted_or_changed(self, all_track_devices, selected_device, selected_device_idx):
         log_id = "ECDS.device_added_deleted_or_changed: "
         new_device_count_track = len(all_track_devices)
         trace_level = self.log_levels["TRACE"]
-        if self.main_script().current_script_log_level < trace_level:
+        if self.main_script.current_script_log_level < trace_level:
             idx = 0
             log_msg = f"{log_id}device in input device list at index<{idx}> is "
             for device in all_track_devices:
                 if liveobj_valid(device):
                     # pass
-                    self.main_script().log_message(logging.DEBUG, f"{log_msg}a valid Live object named <{device.name}>")
+                    self.logger(logging.DEBUG, f"{log_msg}a valid Live object named <{device.name}>")
                 else:
-                    self.main_script().log_message(logging.WARNING, f"{log_msg}<None> or a lost weakref")
+                    self.logger(logging.WARNING, f"{log_msg}<None> or a lost weakref")
                 idx += 1
                 log_msg = "{0}device in input device list at index<{1}> is ".format(log_id, idx)
             if not new_device_count_track == idx:
-                self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue, collection size {new_device_count_track} doesn't match iterator {idx}")
+                self.logger(logging.WARNING, f"{log_id}assumption issue, collection size {new_device_count_track} doesn't match iterator {idx}")
             if liveobj_valid(selected_device):
-                self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device is a valid Live object named<{selected_device.name}>")
+                self.logger(logging.DEBUG, f"{log_id}input selected_device is a valid Live object named<{selected_device.name}>")
             if selected_device_idx > -1:
-                self.main_script().log_message(logging.DEBUG, f"{log_id}input selected_device_idx<{selected_device_idx}> points to a non-negative index")
+                self.logger(logging.DEBUG, f"{log_id}input selected_device_idx<{selected_device_idx}> points to a non-negative index")
 
         active_device_list_ref = self.data.get_active_track_details_at_song_index(self.last_selected_track_index)
         if active_device_list_ref is not None:
@@ -2083,7 +2086,7 @@ class EncoderControllerDataStore(MackieC4Component):
             old_device_count_track = last_track_ref.device_count
             old_selected_device_index = last_track_ref.selected_device_index # could be None
             msg = f"{log_id}track index ref {last_track_ref.index} has name {last_track_ref.track_name} and old device count {old_device_count_track}"
-            self.main_script().log_message(trace_level, msg)
+            self.logger(trace_level, msg)
 
             device_was_added = new_device_count_track > old_device_count_track
             devices_were_added = True if device_was_added and new_device_count_track - old_device_count_track > 1 else False
@@ -2096,10 +2099,10 @@ class EncoderControllerDataStore(MackieC4Component):
 
             # log_msg = f"{log_id}input selected_device_idx<{selected_device_idx}> and input device list len<{new_device_count_track}> "
             # if selected_device_idx is None or selected_device_idx == -1:
-            #     self.main_script().log_message(logging.DEBUG, f"{log_msg}agree that no devices currently populate the device chain for this track")
+            #     self.logger(logging.DEBUG, f"{log_msg}agree that no devices currently populate the device chain for this track")
             #     assert no_devices_on_track
             # else:
-            #     self.main_script().log_message(logging.DEBUG, f"{log_msg}allow modification of the device chain for this track")
+            #     self.logger(logging.DEBUG, f"{log_msg}allow modification of the device chain for this track")
 
             new_device_index = 0
             deleted_device_index = 0
@@ -2117,11 +2120,11 @@ class EncoderControllerDataStore(MackieC4Component):
                     rtn_device_index = index
                     found_input_device_index = True
                     # log_msg = f"{log_id}matched input selected_device<{selected_device.name}> with device<{device.name}> at index<{index}> of input device list"
-                    # self.main_script().log_message(logging.DEBUG, log_msg)
+                    # self.logger(logging.DEBUG, log_msg)
                     break
 
 
-            current_bank = last_track_ref.device_bank_index_of_selected_device # cb = self.t_d_bank_current[self.t_current]
+            current_bank = last_track_ref.device_bank_index_of_selected_device 
 
             if found_input_device_index:
                 last_track_ref.selected_device_index = rtn_device_index
@@ -2146,7 +2149,7 @@ class EncoderControllerDataStore(MackieC4Component):
             elif selected_device_was_changed:
                 self.update_device_counts_on_change(all_track_devices, selected_device, old_selected_device_index, changed_device_index, new_device_count_track)
         else: # active_device_list_ref is None
-            self.main_script().log_message(logging.DEBUG, f"{log_id}last selected track index <{self.last_selected_track_index}> points to None active track details")
+            self.logger(logging.DEBUG, f"{log_id}last selected track index <{self.last_selected_track_index}> points to None active track details")
             rtn_device_index = -1
 
         return rtn_device_index
@@ -2157,7 +2160,7 @@ class EncoderControllerDataStore(MackieC4Component):
         if active_track_details is not None:
             last_track_ref = active_track_details.active_track
             if not last_track_ref.device_count < new_device_count_track:
-                self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue: nothing added, what was updated?")
+                self.logger(logging.WARNING, f"{log_id}assumption issue: nothing added, what was updated?")
             else:
                 devices_to_add = new_device_count_track - old_device_count_track
                 expando = False
@@ -2168,7 +2171,7 @@ class EncoderControllerDataStore(MackieC4Component):
                             self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, new_device_index + i, new_device)
                             last_track_ref.selected_device_index = new_device_index + i
                         # msg = f"{log_id}updated {last_track_ref.track_name}, device added {new_device.name} at index {new_device_index}, "
-                        # self.main_script().log_message(self.log_levels["TRACE"], msg + f"new device count is {last_track_ref.device_count})
+                        # self.logger(self.log_levels["TRACE"], msg + f"new device count is {last_track_ref.device_count})
                     else: # new_device_index is "too far right" to add all new devices by this algorithm
                         expando = True
                 else: # is expand chains
@@ -2181,7 +2184,7 @@ class EncoderControllerDataStore(MackieC4Component):
                     if not old_device_count + len(key_indexes_added) == len(all_track_devices):
                         # AssertionError so changed to if, when Alt+U expanding all groups in Live while the script was already in "expand chains" mode
                         # (and something didn't add up about the updated device list), but no harm no foul?  the script seems to have recovered, trying again
-                        self.main_script().log_message(logging.WARNING, f"{log_id}assumption issue: change details don't add up?")
+                        self.logger(logging.WARNING, f"{log_id}assumption issue: change details don't add up?")
                     assert len(active_track_details.devices) == len(all_track_devices)
                     assert last_track_ref.selected_device_index == self.last_selected_device_index
             active_track_details.active_track = last_track_ref
@@ -2198,11 +2201,11 @@ class EncoderControllerDataStore(MackieC4Component):
                 d_ref = stored_devices[i] # expecting stored_devices table and/or insert_index to be updated after each iteration
                 if device == d_ref.device:  # this 'track device' is already stored at this index
                     msg = "skipping matching stored device at matching insert index"
-                    self.main_script().log_message(self.log_levels["TRACE"], f"{log_id}{i} < {current_nbr_devices_stored}, " + msg)
+                    self.logger(self.log_levels["TRACE"], f"{log_id}{i} < {current_nbr_devices_stored}, " + msg)
                     insert_index = i + 1
                 else: # this 'track device' isn't stored yet
                     if insert_index < current_nbr_devices_stored:
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}{insert_index} < {current_nbr_devices_stored}, inserting expected new stored device")
+                        self.logger(logging.DEBUG, f"{log_id}{insert_index} < {current_nbr_devices_stored}, inserting expected new stored device")
                         self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, insert_index, device)
                         last_track_ref.selected_device_index = insert_index
                         self.last_selected_device_index = last_track_ref.selected_device_index
@@ -2210,7 +2213,7 @@ class EncoderControllerDataStore(MackieC4Component):
                         key_indexes_added.append(i)
             else: # this 'track device' isn't stored yet because the new device index i is 'too far right'
                 if i == current_nbr_devices_stored:
-                    self.main_script().log_message(logging.DEBUG, f"{log_id}{i} == {current_nbr_devices_stored}, appending expected new last stored device")
+                    self.logger(logging.DEBUG, f"{log_id}{i} == {current_nbr_devices_stored}, appending expected new last stored device")
                     self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, i, device)
                     last_track_ref.selected_device_index = i
                     self.last_selected_device_index = last_track_ref.selected_device_index
@@ -2218,7 +2221,7 @@ class EncoderControllerDataStore(MackieC4Component):
                     insert_index = i + 1
                 else: # i > current_nbr_devices_stored ??
                     msg = f"{log_id}assumption issue: {i} > {current_nbr_devices_stored} force appending another last stored device"
-                    self.main_script().log_message(logging.WARNING, msg)
+                    self.logger(logging.WARNING, msg)
                     self.data.add_device(last_track_ref.index, last_track_ref.index_by_type, current_nbr_devices_stored, device)
                     last_track_ref.selected_device_index = current_nbr_devices_stored
                     self.last_selected_device_index = last_track_ref.selected_device_index
@@ -2229,22 +2232,22 @@ class EncoderControllerDataStore(MackieC4Component):
 
     def update_device_counts_on_removal(self, deleted_device_index, all_track_devices, old_device_count_track, new_device_count_track):
         log_id = "ECDS.update_device_counts_on_removal: "
-        self.main_script().log_message(logging.DEBUG, f"{log_id}deletion index {deleted_device_index}")
+        self.logger(logging.DEBUG, f"{log_id}deletion index {deleted_device_index}")
 
         stored_devices = self.data.get_track_device_map(self.last_selected_track_index)
         key_indexes_removed = self.__do_device_removal(stored_devices, all_track_devices)
 
         devices_to_remove = old_device_count_track - new_device_count_track
-        self.main_script().log_message(logging.DEBUG, f"{log_id} number to remove {devices_to_remove}, nbr removed {len(key_indexes_removed)}")
+        self.logger(logging.DEBUG, f"{log_id} number to remove {devices_to_remove}, nbr removed {len(key_indexes_removed)}")
         if not len(key_indexes_removed) == devices_to_remove:
-            self.main_script().log_message(logging.DEBUG, f"{log_id}remaining after removal")
+            self.logger(logging.DEBUG, f"{log_id}remaining after removal")
             stored_devices = self.data.get_track_device_map(self.last_selected_track_index)
             for key in stored_devices.keys():
                 d = stored_devices[key].device
                 msg = f"{log_id}name {d.name} class_name {d.class_name} "
-                self.main_script().log_message(logging.DEBUG, msg + f"can chains {d.can_have_chains} can pads {d.can_have_drum_pads}")
+                self.logger(logging.DEBUG, msg + f"can chains {d.can_have_chains} can pads {d.can_have_drum_pads}")
         assert len(key_indexes_removed) == devices_to_remove
-        self.main_script().log_message(logging.DEBUG, f"{log_id} index to remove {deleted_device_index}, removed indexes {key_indexes_removed}")
+        self.logger(logging.DEBUG, f"{log_id} index to remove {deleted_device_index}, removed indexes {key_indexes_removed}")
         # assert deleted_device_index in key_indexes_removed <-- only True when at least one device gets deleted, not also True when chained devices collapse
 
         last_track_ref = self.data.get_track(self.last_selected_track_index)
@@ -2254,7 +2257,7 @@ class EncoderControllerDataStore(MackieC4Component):
             max_needed_device_banks += 1
         if max_needed_device_banks != last_track_ref.required_device_banks:
             msg = f"{log_id}assumption issue: {max_needed_device_banks} calculated and required_device_banks {last_track_ref.required_device_banks} not matching"
-            self.main_script().log_message(logging.ERROR, msg)
+            self.logger(logging.ERROR, msg)
 
     def __do_device_removal(self, stored_devices, all_track_devices):
         log_id = "ECDS.__do_device_removal: "
@@ -2276,7 +2279,7 @@ class EncoderControllerDataStore(MackieC4Component):
             d_ref = copy_of_stored_devices[key]
             if not liveobj_valid(d_ref.device):  # device was deleted (chain expansion behavior only changes when selected track changes and chained devices are valid)
                 remove = True
-                self.main_script().log_message(logging.DEBUG, f"{log_id}key {key} passing index {key - 1} to remove not liveobj_valid device")
+                self.logger(logging.DEBUG, f"{log_id}key {key} passing index {key - 1} to remove not liveobj_valid device")
             elif not self.__my_controlling_encoder.expand_chains:
                 if not found_chain_closer:
                     if not found_chain_opener:
@@ -2295,7 +2298,7 @@ class EncoderControllerDataStore(MackieC4Component):
                     else:
                         remove = False  # device remains in 'collapsed' device list
                     if remove:
-                        self.main_script().log_message(logging.DEBUG, f"{log_id}key {key} passing index {key - 1} to remove collapsed chained device {d_ref.device.name}")
+                        self.logger(logging.DEBUG, f"{log_id}key {key} passing index {key - 1} to remove collapsed chained device {d_ref.device.name}")
                 else:
                     remove = True  # redundant assignment 'found chain closers' are always removed and both vars are always reset False before next iteration
             else:  # is valid and expanded chains
@@ -2303,7 +2306,7 @@ class EncoderControllerDataStore(MackieC4Component):
                 remove = False if d_ref.device in all_track_devices else True
                 if remove:
                     msg = f"{log_id}key {key} passing index {key - 1} removing expanded chained device {d_ref.device.name} not in all track devices"
-                    self.main_script().log_message(logging.WARNING, msg)
+                    self.logger(logging.WARNING, msg)
                 else:
                     pass  # expecting to keep storing this valid device found in all track devices
 

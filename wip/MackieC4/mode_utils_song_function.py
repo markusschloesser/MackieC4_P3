@@ -5,8 +5,8 @@ from ableton.v2.control_surface.elements.display_data_source import adjust_strin
 
 from . import script_utils
 from .script_utils import EncoderDisplaySegment
+from .script_utils import make_interpolater
 from .consts import *
-from .MackieC4Component import make_interpolater
 
 
 def handle_pressed_v_pot(pressed_encoder_button_id, encoders, song, app_view, btn_ctlr, unsolo_all_functionality, update_undo_info, update_redo_info,

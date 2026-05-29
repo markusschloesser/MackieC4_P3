@@ -2,28 +2,31 @@
 # Embedded file name: /Applications/Live 8.2.1 OS X/Live.app/Contents/App-Resources/MIDI Remote Scripts/MackieC4/Encoders.py
 # Compiled at: 2011-01-13 21:07:51
 
-from __future__ import absolute_import, print_function, unicode_literals  # MS
-from .MackieC4Component import *
+from __future__ import absolute_import, print_function, unicode_literals
+from .consts import *
 
 import Live
 
 from ableton.v2.base import liveobj_valid
 
 
-class Encoder(MackieC4Component):
+class Encoder(object):
     """ Represents one encoder of the Mackie C4 """
     __module__ = __name__
 
     MidiMap = Live.MidiMap
 
     def __init__(self, main_script, vpot_index):
-        super().__init__(main_script)
+        # super().__init__(main_script)
+        self.log_levels = main_script.script_log_levels
+        self.logger = main_script.log_message
+        
         self.within_destroy = False
         self.__encoder_controller = None
         self.__vpot_index = vpot_index
         self.__vpot_cc_nbr = vpot_index + C4SID_VPOT_CC_ADDRESS_BASE
         self.__v_pot_parameter = None
-        # self._Encoders__assigned_track = None
+
 
         self.__v_pot_display_memory = {VPOT_CURRENT_CC_VALUE: [], VPOT_NEXT_CC_VALUE: []}
         self.__update_led_ring_display_mode(VPOT_DISPLAY_SINGLE_DOT)
@@ -32,13 +35,12 @@ class Encoder(MackieC4Component):
         self.v_pot_display_memory_len = len(self.__v_pot_display_memory[VPOT_CURRENT_CC_VALUE])
         return
 
-    # function provided by MackieC4Component super
+    # formerly an override of MackieC4Component super.destroy()
     def destroy(self):
-        # self.destroy()
         self.within_destroy = True
         self.unlight_vpot_leds()
         self.refresh_state()
-        MackieC4Component.destroy(self)
+        # MackieC4Component.destroy(self)
         self.within_destroy = False
 
     def set_encoder_controller(self, encoder_controller):
@@ -78,7 +80,7 @@ class Encoder(MackieC4Component):
 
     def update_led_ring(self, update_value):
         if self.__encoder_controller.assignment_mode != C4M_USER:
-            self.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
+            self.__encoder_controller.send_midi((CC_STATUS, self.__vpot_cc_nbr, update_value))
 
     def unlight_vpot_leds(self):
         data2 = encoder_ring_led_mode_cc_values[VPOT_DISPLAY_BOOLEAN][0]
@@ -95,6 +97,8 @@ class Encoder(MackieC4Component):
         Build DeviceParameter Mappings, that are processed in Audio time, or forward MIDI messages explicitly to our receive_midi_functions.
         Which means that when you are not forwarding MIDI, nor mapping parameters, you will never get any MIDI messages at all.
         """
+        log_lvl = self.log_levels["EVERYTHING"]
+        log_id = "EN.build_midi_map: "
         needs_takeover = False
         encoder = self.__vpot_index
         param = self.__v_pot_parameter
@@ -110,7 +114,7 @@ class Encoder(MackieC4Component):
             self.MidiMap.map_midi_cc_with_feedback_map(midi_map_handle, param, 0, encoder,
                                                        self.MidiMap.MapMode.relative_signed_bit, feedback_rule,
                                                        needs_takeover, sensitivity=1.0)
-            # self.main_script().log_message("potIndex<{}> feedback<{}> MAPPED, coming from build_midi_map in __encoders".format(encoder, param))
+            self.logger(log_lvl, f"{log_id}feedback from param <{param}> to encoder ID <{self.__vpot_index}> MAPPED at feedback ID {self.__vpot_cc_nbr}")
 
             self.MidiMap.send_feedback_for_parameter(midi_map_handle, param)
 
@@ -119,13 +123,13 @@ class Encoder(MackieC4Component):
                 if param is None:
                     channel = 0
                     cc_no = self.__vpot_cc_nbr
-                    Live.MidiMap.forward_midi_cc(self.script_handle(), midi_map_handle, channel, cc_no)
-                    # self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> mapping encoder to FORWARD CC <{1}> MS: coming from build_midi_map in __encoders".format(encoder, cc_no))
-            #     else:
-            #         # because USER mode has nothing mapped
-            #         self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> nothing mapped param is lost weak ref".format(encoder))
-            # else:
-            #     self.main_script().log_message("Encoders.build_midi_map: potIndex<{0}> nothing mapped param <{1}>".format(encoder, param))
+                    Live.MidiMap.forward_midi_cc(self.__encoder_controller.script_handle(), midi_map_handle, channel, cc_no)
+                    self.logger(log_lvl, f"{log_id}'param' not liveobj_valid, mapping encoder ID {encoder} to FORWARD CC <{cc_no}> to script")
+                else:
+                    # because USER mode has nothing mapped
+                    self.logger(log_lvl, f"{log_id}nothing mapped for encoder ID <{encoder}> param is None, must be in User mode?")
+            else:
+                self.logger(log_lvl, f"{log_id}SURPRISE!!! param <{param}> is VALID after NOT VALID, no feedback to encoder ID <{encoder}> mapped")
 
     def handle_vpot_rotation(self, vpot_index, cc_value):
         if vpot_index is self.__vpot_index and self.__encoder_controller is not None:
