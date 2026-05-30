@@ -22,7 +22,7 @@ from . import script_utils
 # from .script_utils import CoolDown, TooSoon
 from .script_utils import EncoderDisplaySegment
 from .script_utils import make_interpolater
-from .EncoderControllerDataStore import EncoderControllerDataStore, track_callback_types
+from .EncoderControllerDataStore import EncoderControllerDataStore, track_callback_types, ActiveDevice
 from . import mode_utils_track_channel_strip as tcs_mode_util
 from . import mode_utils_track_device as td_mode_util
 from . import mode_utils_song_function as sf_mode_util
@@ -2203,10 +2203,10 @@ class EncoderController(Component):
 
 
     @staticmethod
-    def get_device_on_off_parameter(d=None):
-        if liveobj_valid(d):
-            return find_if(lambda p: p.original_name.startswith('Device On') and liveobj_valid(p) and p.is_enabled, d.parameters)
-        return None
+    def get_device_on_off_parameter(active_device: ActiveDevice|None=None):
+        if active_device is not None and liveobj_valid(active_device.device):
+            return active_device.device_on_off_parameter
+        return -1, None
 
     def get_ordered_on_off_parameter(self, d=None):
         if liveobj_valid(d):

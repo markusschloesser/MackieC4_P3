@@ -283,9 +283,30 @@ class ActiveDevice:
 
     @property
     def device_on_off_parameter(self):
-        if liveobj_valid(self.device) and len(self.device.parameters) > 0 and liveobj_valid(self.device.parameters[0]):
-            return self.device.parameters[0]
-        return None
+        if liveobj_valid(self.device):
+            predicate = lambda p: p.original_name.startswith('Device On') and liveobj_valid(p) and p.is_enabled
+            for i, p in enumerate(self.device.parameters):
+                if predicate(p):
+                    return i, p
+        return -1, None
+
+    @property
+    def on_off_biased_parameter_list(self):
+        if liveobj_valid(self.device):
+            on_off_index, on_off_param = self.device_on_off_parameter
+            if on_off_index > -1:
+                assert on_off_param is not None
+                rtn = [on_off_param]
+                for i, p in enumerate(self.device.parameters):
+                    if on_off_index != i:
+                        # every param in the same order, except the on_off parameter moves to first if not already
+                        rtn.append(p)
+                assert len(rtn) == len(self.device.parameters)
+            else: # on_off parameter NOT located? return list is NOT biased!
+                rtn = self.device.parameters
+        else:
+            rtn = []
+        return rtn
 
 class ActiveDeviceParameter:
     """This class is strictly for storing the enabled status of track 'sends' which are (a list of) 'device parameters' of the track's 'mixer device' """ \
@@ -542,7 +563,7 @@ class ActiveTrackDetails:
                         # reassign sorted values between start_key and end_key
                         # this only updates the values associated with existing previous-keys in the copied map,
                         # k, the current key and beyond are not touched
-                        # (should not invalidate the iteration because len(shallow_copy.keys()) dpoesn't change)
+                        # (should not invalidate the iteration because len(shallow_copy.keys()) doesn't change)
                         shallow_copy[j] = temp[i]
 
                     temp = []
@@ -551,7 +572,7 @@ class ActiveTrackDetails:
 
         # Update the dictionary with the key/value pairs from other, overwriting existing keys
         # only the 'sorted entries' have changed index-position in the map
-        # (only some values are now associated with updated keys)
+        # (only some keys are now associated with updated (sorted) values)
         active_devices.update(shallow_copy)
         return active_devices
 
