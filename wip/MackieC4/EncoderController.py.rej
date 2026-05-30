@@ -1,0 +1,11 @@
+diff a/wip/MackieC4/EncoderController.py b/wip/MackieC4/EncoderController.py	(rejected hunks)
+@@ -2146,7 +2146,8 @@
+                         self.logger(logging.ERROR, msg + "using chosen device params")
+                         selected_device = self.__chosen_plugin
+ 
+-                    result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in selected_device.parameters]
++                    on_off_biased_params = active_device_ref.on_off_biased_parameter_list if active_device_ref is not None else selected_device.parameters
++                    result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in on_off_biased_params]
+                     device_class_name = selected_device.class_name
+                     nbr_params = len(selected_device.parameters)
+                     self.logger(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for {device_class_name} with {nbr_params} params")
