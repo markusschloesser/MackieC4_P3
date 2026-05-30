@@ -207,23 +207,42 @@ class ActiveDevice:
 
     @property
     def is_instrument_device(self):
+        """True if self.device.type == Live.Device.DeviceType.instrument, False otherwise."""
         return self.device.type == Live.Device.DeviceType.instrument
 
     @property
     def is_audio_effect_device(self):
+        """True if self.device.type == Live.Device.DeviceType.audio_effect, False otherwise."""
         return self.device.type == Live.Device.DeviceType.audio_effect
 
     @property
     def is_midi_effect_device(self):
+        """True if self.device.type == Live.Device.DeviceType.midi_effect, False otherwise."""
         return self.device.type == Live.Device.DeviceType.midi_effect
 
     @property
-    def is_drum_pad_device(self):
-        return isinstance(self.device, Live.DrumPad.DrumPad)
+    def is_rack_device(self):
+        """True if isinstance(self.device, Live.RackDevice.RackDevice), False otherwise."""
+        return isinstance(self.device, Live.RackDevice.RackDevice)
 
     @property
-    def is_rack_device(self):
-        return isinstance(self.device, Live.RackDevice.RackDevice)
+    def is_device_device(self):
+        """True if hasattr(self.device, "can_have_chains"), False otherwise.  True for Devices, False for Chains"""
+        return hasattr(self.device, "can_have_chains")
+
+    @property
+    def is_chain_device(self):
+        """True if hasattr(self.device, "devices"), False otherwise.  True for Chains, False for Devices"""
+        return hasattr(self.device, "devices")
+
+    @property
+    def is_drum_pad_device(self):
+        return self.is_device_device and isinstance(self.device, Live.DrumPad.DrumPad)
+
+    @property
+    def is_drum_chain_device(self):
+        return self.is_chain_device and isinstance(self.device, Live.DrumChain.DrumChain)
+
     @property
     def parameter_count(self):
         """ the raw count of parameters in parameter list """
@@ -462,7 +481,7 @@ class ActiveTrackDetails:
                 break
         return rtn
     
-    def set_track_device_map(self, device_map: dict[int, ActiveDevice], selected_index: int|None=None):
+    def set_track_device_map(self, device_map: dict[int, ActiveDevice], selected_index: int|None=None, is_expanded_chains=False):
         """Setting an empty map won't change the track's selected device index to None, use clear_device_list()"""
         key_count = len(device_map.keys())
         if self.active_track.device_count != key_count:
@@ -475,9 +494,67 @@ class ActiveTrackDetails:
         else:
             self.active_track.selected_device_index = 0 if key_count > 0 else None
 
-        self.devices = device_map
+        if is_expanded_chains:
+            self.devices = self._sort_drum_pads_by_note(device_map)
+        else:
+            self.devices = device_map
         self.chain_expansion_changed_flag = False
         self.active_track.device_list_is_dirty = False
+
+    @staticmethod
+    def _sort_drum_pads_by_note(active_devices: dict[int, ActiveDevice]):
+        """(when chains are expanded), sorts each sub-set of 'device.is_drum_pad_device' devices by its 'note' property """ \
+        """Assumes there is always at least one 'non-drum-pad-device' between every sub-set of pad devices, otherwise """ \
+        """all note == 0 pads will sort before any note 1 pads, for example """
+        # find start key, copy value to temp list, find next key, until end key,
+        # sort temp list, reassign values at start to end keys in sorted order
+        temp = []
+        start_key = None
+        end_key = None
+        shallow_copy = active_devices.copy()
+        for k in shallow_copy.keys():
+            ad = shallow_copy[k]
+            if start_key is None and end_key is None:
+                if ad.is_drum_pad_device:
+                    start_key = k
+                    temp.append(ad)
+            elif start_key is not None and end_key is None:
+                if ad.is_drum_pad_device:
+                    end_key = k
+                    temp.append(ad)
+                else: # no 'consecutive' pads, there was only the one 'starting pad'
+                    temp = []
+                    start_key = None
+            else: # both not None
+                if ad.is_drum_pad_device:
+                    end_key = k
+                    temp.append(ad)
+                else:
+                    # previous iteration marked the end of this "drum pads" sub-section of the input map of active devices
+                    assert end_key == k - 1
+                    key = lambda x: x.note
+                    temp.sort(key=key)
+                    if start_key is None:
+                        # never entered, but int assignment satisfies a PyCharm inspection squiggly using start_key with range() below
+                        start_key = k - 1
+
+                    for i, j in enumerate(range(start_key, k)):
+                        # reassign sorted values between start_key and end_key
+                        # this only updates the values associated with existing previous-keys in the copied map,
+                        # k, the current key and beyond are not touched
+                        # (should not invalidate the iteration because len(shallow_copy.keys()) dpoesn't change)
+                        shallow_copy[j] = temp[i]
+
+                    temp = []
+                    start_key = None
+                    end_key = None
+
+        # Update the dictionary with the key/value pairs from other, overwriting existing keys
+        # only the 'sorted entries' have changed index-position in the map
+        # (only some values are now associated with updated keys)
+        active_devices.update(shallow_copy)
+        return active_devices
+
 
     def set_track_sends_map(self, sends_map: dict[int,ActiveDeviceParameter]):
         self.sends = sends_map
@@ -513,6 +590,7 @@ class SongData(object):
         
         self.__master_track_count = 1
         self.__initializing_database = True
+        self.__is_expanded_chains = False
         # the default swap alg is O^2 but more accurate, the fallback alg is not much better ln(O^2) (I think)
         # and has boundary issues like when moving a track or device to the zero index position (fix the boundary issues, or find a better swap alg eventually?)
         # 500^2 is 25k operations, 100^2 is "only" 10k operations, 50^2 is 2500.
@@ -621,6 +699,13 @@ class SongData(object):
         # minimum example: 1 plain + 0 return == 1 track before master, master index is never less than 1 (second track, during init)
         rtn = tracks_before if tracks_before > 0 else 1
         return rtn
+
+    @property
+    def is_expanded_chains(self):
+        return self.__is_expanded_chains
+    @is_expanded_chains.setter
+    def is_expanded_chains(self, expand):
+        self.__is_expanded_chains = expand
 
     def get_active_track_details_at_song_index(self, song_track_index) -> ActiveTrackDetails | None:
         rtns_index = song_track_index - self.plain_track_count
@@ -957,8 +1042,7 @@ class SongData(object):
         if active_track_details_ref is not None:
             sdi = active_track_details_ref.selected_device_index
             i = 0 if sdi is None or not sdi < len(device_map) else sdi
-
-            active_track_details_ref.set_track_device_map(device_map, i)
+            active_track_details_ref.set_track_device_map(device_map, selected_device_index=i, is_expanded_chains=self.is_expanded_chains)
         else:
             self.log_msg(logging.ERROR, f"{log_id}no active device list reference found at {track_callback_type_key} track index {track_index_by_type}")
 

@@ -652,9 +652,9 @@ class EncoderController(Component):
         """only changes chain expansion behavior when you inc/dec tracks and devices using Session Group buttons on the C4 """ \
         """if BOTH Ctrl and Alt Modifier buttons are already pressed, otherwise chain expansion behavior doesn't change"""
         log_id = "EC._set_expand_chains: "
-        allowed = self.btn_ctlr.is_expand_chains_modifier_press_combo
-        self.logger(logging.DEBUG, f"{log_id}{self.expand_chains} currently, input is {expand} and state update is {'' if allowed else 'NOT '}allowed")
-        if allowed:
+        allowed_by_combo = self.btn_ctlr.is_expand_chains_modifier_press_combo
+        self.logger(logging.DEBUG, f"{log_id}{self.expand_chains} currently, input is {expand} and state update is {'' if allowed_by_combo else 'NOT '}allowed")
+        if allowed_by_combo:
             self._expand_chains = expand
             self.logger(logging.DEBUG, f"{log_id}now set to {self.expand_chains}")
 
@@ -965,6 +965,7 @@ class EncoderController(Component):
             self._set_expand_chains(not self.expand_chains)
             self.chain_expansion_changed = True
             self.__ds.data.chain_expansion_changed()
+            self.__ds.data.is_expanded_chains = self.expand_chains
         else:
             self.chain_expansion_changed = False
 
@@ -1175,6 +1176,7 @@ class EncoderController(Component):
             self._set_expand_chains(not self.expand_chains)
             self.chain_expansion_changed = True
             self.__ds.data.chain_expansion_changed()
+            self.__ds.data.is_expanded_chains = self.expand_chains
 
         self.__ds.tracks_added(track_index, tracks_of_type, callback_track_type_of_selected_index)
         # (using same update selected track code as from self.track_deleted() instead of same update logic in track_added())
@@ -1192,6 +1194,7 @@ class EncoderController(Component):
             self._set_expand_chains(not self.expand_chains)
             self.chain_expansion_changed = True
             self.__ds.data.chain_expansion_changed()
+            self.__ds.data.is_expanded_chains = self.expand_chains
 
         self.__ds.unselected_tracks_added(found_changed_track_callback_type, callback_type_track_count)
         self.__update_selected_track(self.__ds.last_selected_track_index)
@@ -2127,6 +2130,7 @@ class EncoderController(Component):
         result = []
         if liveobj_valid(self.__chosen_plugin):
             active_track_ref = self.__ds.data.get_track(self.__ds.last_selected_track_index)
+            assert active_track_ref is not None
             # AssertionError: assert active_track_ref.selected_device_index is not None
             # (when rebuilding midi map after normal "add device" change - with chains expanding)
             if active_track_ref.selected_device_index is None:
@@ -2142,7 +2146,8 @@ class EncoderController(Component):
                         self.logger(logging.ERROR, msg + "using chosen device params")
                         selected_device = self.__chosen_plugin
 
-                    result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in selected_device.parameters]
+                    on_off_biased_params = active_device_ref.on_off_biased_parameter_list if active_device_ref is not None else selected_device.parameters
+                    result = [(p, p.name) if liveobj_valid(p) else (p, "None") for p in on_off_biased_params]
                     device_class_name = selected_device.class_name
                     nbr_params = len(selected_device.parameters)
                     self.logger(self.log_levels["TRACE"], f"{log_id}ordered {len(result)} params for {device_class_name} with {nbr_params} params")
