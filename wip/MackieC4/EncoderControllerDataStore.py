@@ -419,7 +419,7 @@ class ActiveTrackDetails:
                         new_map[i] = ActiveDevice(new, i, len(new.parameters), song_track_index=self.song_track_index, callback_type_index=self.track_index_by_type)
                     # else: # both not valid
             i = 0 if self.selected_device_index is None or self.selected_device_index > len(new_map.keys()) else self.selected_device_index
-            self.set_track_device_map(new_map, selected_index=i)
+            self.set_track_device_map(new_map, selected_device_index=i)
         return self.device_count
 
     @property
