@@ -1095,7 +1095,7 @@ class SongData(object):
             raise RuntimeError("can't set a device not already in the device map")
 
     def add_device(self, song_track_index, track_callback_type_index, device_index, device_obj):
-        selected_parameter_index = 0 if len(device_obj.parameters) > 0 else None  # never none because devices always have at least 1 parameter
+        selected_parameter_index = 0 if len(device_obj.parameters) > 0 else -1  # never -1 because devices always have at least 1 parameter
         device_ref = ActiveDevice(device_obj, device_index, len(device_obj.parameters), selected_parameter_index, song_track_index, track_callback_type_index)
         rtns_index = song_track_index - self.plain_track_count
         # log_msg = f"ECDS.SD.add_device: adding device ref {device_ref} at "
@@ -1232,7 +1232,8 @@ class SongData(object):
                     msg = f"{log_id}stored track ref at new index {next_selected_callback_type_index} is {old_atd_ref_at_new_index.active_track.track_name}"
                     self.log_msg(logging.DEBUG, msg)
                     if old_atd_ref_at_new_index.active_track.track == selected_track_obj:
-                        self.log_msg(logging.DEBUG, f"{log_id}stored track ref at next index {next_selected_callback_type_index} already matches {selected_track_obj.name} ")
+                        msg = f"{log_id}stored track ref at next index {next_selected_callback_type_index} already matches {selected_track_obj.name} "
+                        self.log_msg(logging.DEBUG, msg)
                         pass # no sorting required, no "track move" detected
                     else:
                         master_device_list_ref = self.get_active_track_details_ref_by_type_key(track_callback_types[2], self.master_track_index)
@@ -1252,7 +1253,8 @@ class SongData(object):
                             self.log_msg(logging.DEBUG, f"{log_id}after removing and re-adding track, updating master track ref index to {self.master_track_index}")
                             self.update_master_track_index(master_device_list_ref)
                         else:
-                            self.log_msg(logging.DEBUG, f"{log_id}oddly, after removing and re-adding track, master track ref index is already {self.master_track_index}")
+                            msg = f"{log_id}oddly, after removing and re-adding track, master track ref index is already {self.master_track_index}"
+                            self.log_msg(logging.DEBUG, msg)
                     msg = f"{log_id}AFTER: updated {type_key} track count {len(old_track_list_of_type.keys())} vs input count {len(all_tracks_of_type)}"
                     self.log_msg(logging.DEBUG, msg)
                     assert len(all_tracks_of_type) == len(old_track_list_of_type.keys())
@@ -1274,12 +1276,13 @@ class SongData(object):
                 break
         return rtn
 
-    def rekey_device_list_by_track_callback_type(self, track_callback_type_key, callback_type_index, all_track_devices, selected_device_obj, selected_device_obj_index=None):
-
+    def rekey_device_list_by_track_callback_type(self, track_callback_type_key, callback_type_index, all_track_devices,
+                                                 selected_device_obj, selected_device_obj_index=None):
+        log_id = "ECDS.SD.rekey_device_list_by_track_callback_type: "
         old_keyed_map = self.get_track_device_map_by_callback_type(track_callback_type_key, callback_type_index)
         new_keyed_map = {}
         track_ref = self.get_track_by_type_key(track_callback_type_key, callback_type_index)
-        self.log_msg(logging.DEBUG, f"ECDS.SD.rekey_device_list_by_track_callback_type: track {track_ref.track_name} has {track_ref.device_count} active devices")
+        self.log_msg(logging.DEBUG, f"{log_id}track {track_ref.track_name} has {track_ref.device_count} active devices")
         if len(all_track_devices) == len(old_keyed_map.keys()) == track_ref.device_count:
             if track_ref.device_count < self.__rekey_map_algorithm_swap_limit:
                 shallow_copy = old_keyed_map.copy()
@@ -1288,13 +1291,13 @@ class SongData(object):
                         device_ref = old_keyed_map[device_ref_index]
                         if device_ref.device == device_obj:
                             new_keyed_map[new_index] = device_ref
-                            self.log_msg(logging.INFO, f"ECDS.SD.rekey_device_list_by_track_callback_type: moving {device_ref.device_name} to new stored index {new_index}")
+                            self.log_msg(logging.INFO, f"{log_id}moving {device_ref.device_name} to new stored index {new_index}")
                             if device_obj == selected_device_obj:
                                 track_ref.selected_device_index = new_index
                             del shallow_copy[device_ref_index]  # <-- inner search loop gets smaller after every match
                             break
                 if not len(old_keyed_map.keys()) == len(new_keyed_map.keys()):
-                    log_msg = f"ECDS.SD.rekey_device_list_by_track_callback_type: updated key counts don't match: live {len(all_track_devices)} "
+                    log_msg = f"{log_id}updated key counts don't match: live {len(all_track_devices)} "
                     self.log_msg(logging.WARNING, log_msg + f"old stored {len(old_keyed_map.keys())} new stored {new_keyed_map} old count {track_ref.device_count}")
                 else:
                     assert len(old_keyed_map.keys()) == len(new_keyed_map.keys())
@@ -1350,8 +1353,8 @@ class SongData(object):
             nbr = track_device_list_first_remove_index + nbr_devices_to_remove
             end_of_remove_range = nbr if track_device_list_first_remove_index == 0 else nbr + 1
             remove_range_nbr = end_of_remove_range - track_device_list_first_remove_index
-            log_msg = f"ECDS.SD.remove_devices: removing {remove_range_nbr} devices between indexes {track_device_list_first_remove_index} and {end_of_remove_range} (one past) "
-            self.log_msg(logging.DEBUG, log_msg)
+            log_msg = f"ECDS.SD.remove_devices: removing {remove_range_nbr} devices between indexes {track_device_list_first_remove_index} "
+            self.log_msg(logging.DEBUG, log_msg + f"and {end_of_remove_range} (one past) ")
             for i in range(track_device_list_first_remove_index, end_of_remove_range):
                 index_left_of_remove_index = i if i == 0 else i - 1
                 self.remove_device(song_track_index, index_left_of_remove_index)
@@ -1422,7 +1425,8 @@ class SongData(object):
             track_ref.selected_device_index = None
         return track_ref
 
-    def _insert_track_details_slot(self, type_dict: Dict[int, ActiveTrackDetails], insert_at_track_callback_type_index, track_device_list_ref: ActiveTrackDetails)-> dict[int, ActiveTrackDetails]:
+    def _insert_track_details_slot(self, type_dict: Dict[int, ActiveTrackDetails], insert_at_track_callback_type_index,
+                                   track_device_list_ref: ActiveTrackDetails)-> dict[int, ActiveTrackDetails]:
         log_id = "ECDS.SD._insert_track_details_slot: "
         if insert_at_track_callback_type_index in type_dict.keys():
             type_dict = self.__shift_keys_right(type_dict, insert_at_track_callback_type_index, track_device_list_ref)
@@ -1442,7 +1446,8 @@ class SongData(object):
                 self.log_msg(logging.DEBUG, f"{log_id}inserting last or only device at device index {insert_at_device_index}, insert without shift")
                 type_dict[insert_at_device_index] = active_device
             except AssertionError:
-                self.log_msg(logging.DEBUG, f"{log_id}NOT inserting at non-consecutive device index {insert_at_device_index}, max insert index is {len(type_dict.keys())}")
+                msg = f"{log_id}NOT inserting at non-consecutive device index {insert_at_device_index}, max insert index is {len(type_dict.keys())}"
+                self.log_msg(logging.DEBUG, msg)
                 # raise RuntimeError()
 
         return type_dict
@@ -1457,15 +1462,18 @@ class SongData(object):
                 assert track_callback_type_index_left_of_collapse_index == -1
                 self.log_msg(logging.DEBUG, f"{log_id}collapsing first track of type at type index 0, collapse and shift here")
                 del type_dict[0]
-                self.log_msg(logging.DEBUG, f"{log_id}type dict keys after del {type_dict.keys()} and values {[x.active_track.track_name for x in type_dict.values()]}")
+                msg = f"{log_id}type dict keys after del {type_dict.keys()} and values {[x.active_track.track_name for x in type_dict.values()]}"
+                self.log_msg(logging.DEBUG, msg)
                 remaining_slots = {i - 1:type_dict[i] for i in type_dict.keys()}
                 type_dict.clear()
-                self.log_msg(logging.DEBUG, f"{log_id}remaining dict after shift {remaining_slots.keys()} and values {[x.active_track.track_name for x in remaining_slots.values()]}")
+                msg = f"{log_id}remaining dict after shift {remaining_slots.keys()} and values {[x.active_track.track_name for x in remaining_slots.values()]}"
+                self.log_msg(logging.DEBUG, msg)
                 type_dict.update(remaining_slots)
                 self.log_msg(logging.DEBUG, f"{log_id}returning keys {type_dict.keys()} and values {[x.active_track.track_name for x in type_dict.values()]}")
                 return type_dict
             except AssertionError:
-                self.log_msg(logging.DEBUG, f"{log_id}NOT collapsing at negative track index {track_callback_type_index_left_of_collapse_index}, min collapse index is -1")
+                msg = f"{log_id}NOT collapsing at negative track index {track_callback_type_index_left_of_collapse_index}, min collapse index is -1"
+                self.log_msg(logging.DEBUG, msg)
 
     def _collapse_track_device_slot(self, type_dict, device_index_left_of_collapse_index)-> dict[int, ActiveDevice]:
         log_id = "ECDS.SD._collapse_track_device_slot: "
@@ -1518,7 +1526,8 @@ class SongData(object):
         log_dtls = [f"{x[1].device_name}" for x in local_dict.items()]
         self.log_msg(logging.DEBUG, f"{log_id}AFTER Swap: {log_dtls}, swapped indexes {left_key} and {right_key}")
 
-    def __shift_keys_right(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveTrackDetails], key_of_add, value_to_add: ActiveDevice | ActiveTrackDetails) -> dict[int, ActiveDevice] | dict[int,ActiveTrackDetails]:
+    def __shift_keys_right(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveTrackDetails], key_of_add,
+                           value_to_add: ActiveDevice | ActiveTrackDetails) -> dict[int, ActiveDevice] | dict[int,ActiveTrackDetails]:
         log_id = "ECDS.SD.__shift_keys_right: "
         # local_dict is either an active_track reference mapped by type index
         #     {callback_type_index=key_of_add: active_device_list=value_to_add}
@@ -1543,7 +1552,8 @@ class SongData(object):
         self.log_msg(logging.DEBUG, f"{log_id}returning updated dict keys {local_dict.keys()} and values {vals}")
         return local_dict
 
-    def __shift_keys_left(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveTrackDetails], key_before_del) -> dict[int, ActiveDevice] | dict[int,ActiveTrackDetails]:
+    def __shift_keys_left(self, local_dict: dict[int, ActiveDevice]|dict[int,ActiveTrackDetails],
+                          key_before_del) -> dict[int, ActiveDevice] | dict[int,ActiveTrackDetails]:
         """special key_before_del input range expected: given a standard local_dict index-key range(0, m), the associated special input is 'shifted left', range(-1, m-1)"""
         log_id = "ECDS.SD.__shift_keys_left: "
         key_to_remove = key_before_del + 1
