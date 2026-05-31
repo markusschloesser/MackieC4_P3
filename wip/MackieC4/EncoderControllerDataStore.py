@@ -502,33 +502,46 @@ class ActiveTrackDetails:
                 break
         return rtn
     
-    def set_track_device_map(self, device_map: dict[int, ActiveDevice], selected_index: int|None=None, is_expanded_chains=False):
+    def set_track_device_map(self, device_map: dict[int, ActiveDevice], selected_device_index: int | None=None, is_expanded_chains=False, logger=None):
         """Setting an empty map won't change the track's selected device index to None, use clear_device_list()"""
+        log_id = "ATD.set_track_device_map: "
+        do_log = logger is not None
         key_count = len(device_map.keys())
         if self.active_track.device_count != key_count:
-            self.active_track.device_count = len(device_map.keys())
+            if do_log:
+                logger(logging.DEBUG, f"{log_id}updating track device count {self.active_track.device_count} to device map key count {key_count}")
+            self.active_track.device_count = key_count
         # else:
         #     pass
-        if selected_index is not None:
-            if self.active_track.selected_device_index != selected_index:
-                self.active_track.selected_device_index = selected_index
+        if selected_device_index is not None:
+            if self.active_track.selected_device_index != selected_device_index:
+                if do_log:
+                    logger(logging.DEBUG, f"{log_id}updating track selected device index {self.active_track.selected_device_index} to input index {selected_device_index}")
+                self.active_track.selected_device_index = selected_device_index
         else:
+            if do_log:
+                msg = f"{log_id}updating track selected device index {self.active_track.selected_device_index} to input index None unless key_count > 0, then to index 0"
+                logger(logging.DEBUG, msg)
             self.active_track.selected_device_index = 0 if key_count > 0 else None
 
         if is_expanded_chains:
-            self.devices = self._sort_drum_pads_by_note(device_map)
+            if do_log:
+                logger(logging.DEBUG, f"{log_id}sorting drum pads in track expanded device list by 'note' value")
+            self.devices = self._sort_drum_pads_by_note(device_map, logger)
         else:
             self.devices = device_map
         self.chain_expansion_changed_flag = False
         self.active_track.device_list_is_dirty = False
 
     @staticmethod
-    def _sort_drum_pads_by_note(active_devices: dict[int, ActiveDevice]):
+    def _sort_drum_pads_by_note(active_devices: dict[int, ActiveDevice], logger=None):
         """(when chains are expanded), sorts each sub-set of 'device.is_drum_pad_device' devices by its 'note' property """ \
         """Assumes there is always at least one 'non-drum-pad-device' between every sub-set of pad devices, otherwise """ \
         """all note == 0 pads will sort before any note 1 pads, for example """
         # find start key, copy value to temp list, find next key, until end key,
         # sort temp list, reassign values at start to end keys in sorted order
+        log_id = "ATD._sort_drum_pads_by_note: "
+        do_log = logger is not None
         temp = []
         start_key = None
         end_key = None
@@ -1063,7 +1076,7 @@ class SongData(object):
         if active_track_details_ref is not None:
             sdi = active_track_details_ref.selected_device_index
             i = 0 if sdi is None or not sdi < len(device_map) else sdi
-            active_track_details_ref.set_track_device_map(device_map, selected_device_index=i, is_expanded_chains=self.is_expanded_chains)
+            active_track_details_ref.set_track_device_map(device_map, selected_device_index=i, is_expanded_chains=self.is_expanded_chains, logger=self.log_msg)
         else:
             self.log_msg(logging.ERROR, f"{log_id}no active device list reference found at {track_callback_type_key} track index {track_index_by_type}")
 
@@ -2297,10 +2310,19 @@ class EncoderControllerDataStore(object):
                     old_device_count = len(stored_devices.keys())
                     key_indexes_added = self.__do_device_addition(stored_devices, all_track_devices, last_track_ref)
                     if not old_device_count + len(key_indexes_added) == len(all_track_devices):
-                        # AssertionError so changed to if, when Alt+U expanding all groups in Live while the script was already in "expand chains" mode
+                        # while the script was already in "expand chains" mode
+                        # AssertionError so changed to if. When Alt+U expanding all groups in Live
                         # (and something didn't add up about the updated device list), but no harm no foul?  the script seems to have recovered, trying again
                         self.logger(logging.WARNING, f"{log_id}assumption issue: change details don't add up?")
-                    assert len(active_track_details.devices) == len(all_track_devices)
+                    if not len(active_track_details.devices) == len(all_track_devices):
+                        # while the script was already in "expand chains" mode AND change details already didn't add up
+                        # AssertionError so changed to if. After deleting a (second) track with no devices, next track in view had 40 devices became selected track
+                        # (and something didn't add up about the updated device list), but no harm no foul?  the script recovered changing tracks and back
+                        # log traces seem to indicate, when no-device-track at index 2 was deleted and track at index 3 "slid left" to index 2 becoming the selected
+                        # track, the local selected track index slid left too (where?) and then the 40 "missing" devices got added to the track at index 1 instead
+                        # of being "found" in the device list of the track at index 2.  Then after Track Left to select the track at index 1 for real, the 40 spuriously
+                        # added devices got removed, and Track Right to index 2 again, the track's 40 devices were correctly found again
+                        self.logger(logging.WARNING, f"{log_id}assumption issue: device counts don't add up?")
                     assert last_track_ref.selected_device_index == self.last_selected_device_index
             active_track_details.active_track = last_track_ref
             self.data.set_active_track_details(active_track_details)
@@ -2443,8 +2465,11 @@ class EncoderControllerDataStore(object):
         # just updating the stored selected device index to the new selected index here
 
         last_track_ref = self.data.get_track(self.last_selected_track_index)
-        last_track_ref.selected_device_index = changed_device_index
-        self.last_selected_device_index = changed_device_index
-        assert new_device_count_track == last_track_ref.device_count
-        self.data.set_track(last_track_ref)
+        if last_track_ref is not None:
+            last_track_ref.selected_device_index = changed_device_index
+            self.last_selected_device_index = changed_device_index
+            assert new_device_count_track == last_track_ref.device_count
+            self.data.set_track(last_track_ref)
+        else:
+            self.logger(logging.DEBUG, f"ECDS.update_device_counts_on_change: no stored track at index {self.last_selected_track_index}?")
 
