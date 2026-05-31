@@ -1822,11 +1822,11 @@ class EncoderControllerDataStore(object):
 
 
     def on_param_state_change(self, callback_track_type, callback_track_type_index, device_index, parameter_index, param):
-        track_of_type = self.song().master_track
+        track_of_type = self.main_script.song().master_track
         if callback_track_type == 0:
-            track_of_type = self.song().visible_tracks[callback_track_type_index]
+            track_of_type = self.main_script.song().visible_tracks[callback_track_type_index]
         elif callback_track_type == 1:
-            track_of_type = self.song().return_tracks[callback_track_type_index]
+            track_of_type = self.main_script.song().return_tracks[callback_track_type_index]
         elif callback_track_type != 2:
             track_of_type = None  # not possible?
 
@@ -1906,10 +1906,10 @@ class EncoderControllerDataStore(object):
 
     def track_moved(self, callback_track_type, next_song_index, track_obj_that_moved):
         log_id = "ECDS.track_moved: "
-        all_track_objs_of_type = self.song().visible_tracks
+        all_track_objs_of_type = self.main_script.song().visible_tracks
         next_callback_type_index = next_song_index
         if callback_track_type == 1:
-            all_track_objs_of_type = self.song().return_tracks
+            all_track_objs_of_type = self.main_script.song().return_tracks
             next_callback_type_index = next_song_index - self.data.plain_track_count
         stored_track_refs_of_type = self.data.get_all_tracks_by_type_key(track_callback_types[callback_track_type])
         if len(stored_track_refs_of_type.keys()) == len(all_track_objs_of_type):
@@ -2124,7 +2124,7 @@ class EncoderControllerDataStore(object):
                 # if unselected return track left of selected return track was deleted (by undo/redo), decrement selected index
                 # else don't decrement selected index. Ambiguous conditions - find song selected index directly
                 # self.find_track_index() returns a tuple (selected_index, callback_track_type_of_selected_index, callback_type_index, nbr_song_tracks)
-                track_info = self.find_track_index(self.song().view.selected_track)
+                track_info = self.main_script.find_track_index(self.main_script.song().view.selected_track)
                 self.last_selected_track_index = track_info[0]
         # else:
         #     msg = f"{log_id}last selected index remains {self.last_selected_track_index} because last selected cb type was {selected_callback_type_before}"
