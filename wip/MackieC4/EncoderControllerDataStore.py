@@ -292,20 +292,16 @@ class ActiveDevice:
 
     @property
     def on_off_biased_parameter_list(self):
+        rtn = []
         if liveobj_valid(self.device):
-            on_off_index, on_off_param = self.device_on_off_parameter
-            if on_off_index > -1:
-                assert on_off_param is not None
-                rtn = [on_off_param]
-                for i, p in enumerate(self.device.parameters):
-                    if on_off_index != i:
-                        # every param in the same order, except the on_off parameter moves to first if not already
-                        rtn.append(p)
-                assert len(rtn) == len(self.device.parameters)
-            else: # on_off parameter NOT located? return list is NOT biased!
-                rtn = self.device.parameters
-        else:
-            rtn = []
+            # on_off_index, on_off_param = self.device_on_off_parameter  only iterate the parameters list once
+            is_on_off_param = lambda prm: prm.original_name.startswith('Device On') and liveobj_valid(prm) and prm.is_enabled
+            for p in self.device.parameters:
+                if is_on_off_param(p):
+                    rtn.insert(0, p)
+                else:
+                    rtn.append(p)
+
         return rtn
 
 class ActiveDeviceParameter:
