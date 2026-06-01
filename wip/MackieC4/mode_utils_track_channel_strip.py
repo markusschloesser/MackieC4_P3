@@ -20,19 +20,26 @@ def toggle_devices(active_track_details, cc_nbr, cc_val):
         encoder_cc_nbr = device_encoder_row_offset + i
         if device_index < active_track_details.device_count:
             dev_ref = active_track_details.devices[device_index]
-            parameter = dev_ref.device_on_off_parameter # property value assigned will be None if not liveobj_valid(device_on_off_parameter)
+            j, parameter = dev_ref.device_on_off_parameter # property value assigned will be None if not liveobj_valid(device_on_off_parameter)
             if liveobj_valid(parameter) and parameter.is_enabled:
                 ccw_turn = cc_val > 64
                 if ccw_turn and cc_nbr == encoder_cc_nbr:
                     parameter.value = False
                 elif not ccw_turn and cc_nbr == encoder_cc_nbr:
                     parameter.value = True
-            else:
-                if not liveobj_valid(parameter):
-                    if len(rtn) > 0:
-                        rtn += f", and: device_ref {dev_ref.device_name}?"
-                    else:
-                        rtn += f"{log_id}assumption issue: device_ref {dev_ref.device_name} parameters[0] was not liveobj_valid?"
+
+            # if chains are expanded and you turn OFF an effect rack device, all of the racked devices become disabled automatically
+            # and dev_ref.device_on_off_parameter returns None when the device on off parameter is liveobj_valid and not enabled
+            # the (uncommented) code below is hit when the effect rack device and some racked devices are in the same track "device bank" in view
+            # and you twist the effect rack's encoder, disabling the racked devices
+            # mode_utils_tcs.toggle_devices: assumption issue: device_ref Saturator parameters[0] was not liveobj_valid?,
+            # and: device_ref Compressor?, and: device_ref Delay?
+            # else:
+            #     if not liveobj_valid(parameter):
+            #         if len(rtn) > 0:
+            #             rtn += f", and: device_ref {dev_ref.device_name}?"
+            #         else:
+            #             rtn += f"{log_id}assumption issue: device_ref {dev_ref.device_name} parameters[0] was not liveobj_valid?"
     return rtn
 
 def handle_pressed_vpot(active_track_details:ActiveTrackDetails, pressed_encoder_button_id, handle_track_device_bank_view_update, handle_assignment_switch_ids,
