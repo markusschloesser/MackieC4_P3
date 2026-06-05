@@ -718,47 +718,49 @@ class MackieC4(object):
         self.__encoder_controller.handle_assignment_switch_ids(C4SID_CHANNEL_STRIP)
 
     def add_send_listener(self, tid, track, sid, send):
-        if (track in self.mlisten['sends']) != 1:
+        if track not in self.mlisten['sends']:
             self.mlisten['sends'][track] = {}
-        if (send in self.mlisten['sends'][track]) != 1:
+
+        if send not in self.mlisten['sends'][track]:
             cb = lambda: self.send_changestate(tid, track, sid, send)
             self.mlisten['sends'][track][send] = cb
             send.add_value_listener(cb)
 
     def add_mixert_listener(self, tid, type, track):
-        if (track in self.mlisten[type]) != 1:
+        if track not in self.mlisten[type]:
             cb = lambda: self.mixert_changestate(type, tid, track)
             self.mlisten[type][track] = cb
             self._add_track_listener(track, type, cb)
 
     def add_mixerv_listener(self, tid, type, track):
-        if (track in self.mlisten[type]) != 1:
+        if track not in self.mlisten[type]:
             cb = lambda: self.mixerv_changestate(type, tid, track)
             self.mlisten[type][track] = cb
             self._add_mixer_value_listener(track, type, cb)
 
     def add_master_listener(self, tid, type, track):
-        if (track in self.masterlisten[type]) != 1:
+        if track not in self.masterlisten[type]:
             cb = lambda: self.mixerv_changestate(type, tid, track, 2)
             self.masterlisten[type][track] = cb
             self._add_mixer_value_listener(track, type, cb)
 
     def add_retsend_listener(self, tid, track, sid, send):
-        if (track in self.rlisten['sends']) != 1:
+        if track not in self.rlisten['sends']:
             self.rlisten['sends'][track] = {}
-        if (send in self.rlisten['sends'][track]) != 1:
+
+        if send not in self.rlisten['sends'][track]:
             cb = lambda: self.send_changestate(tid, track, sid, send, 1)
             self.rlisten['sends'][track][send] = cb
             send.add_value_listener(cb)
 
     def add_retmixert_listener(self, tid, type, track):
-        if (track in self.rlisten[type]) != 1:
+        if track not in self.rlisten[type]:
             cb = lambda: self.mixert_changestate(type, tid, track, 1)
             self.rlisten[type][track] = cb
             self._add_track_listener(track, type, cb)
 
     def add_retmixerv_listener(self, tid, type, track):
-        if (track in self.rlisten[type]) != 1:
+        if track not in self.rlisten[type]:
             cb = lambda: self.mixerv_changestate(type, tid, track, 1)
             self.rlisten[type][track] = cb
             self._add_mixer_value_listener(track, type, cb)
@@ -767,12 +769,10 @@ class MackieC4(object):
     def add_trname_listener(self, tid, track, ret=0):
         listener_dict = self.rlisten['name'] if ret == 1 else self.mlisten['name']
 
-        if (track in listener_dict) != 1:
+        if track not in listener_dict:
             cb = lambda: self.trname_changestate(tid, track, ret)
             listener_dict[track] = cb
-
-            if not track.name_has_listener(cb):
-                track.add_name_listener(cb)
+            track.add_name_listener(cb)
 
     def mixerv_changestate(self, type, tid, track, r=0):
         val = getattr(track.mixer_device, type).value
